@@ -84,3 +84,40 @@ Thank you for the setup. Our next goal is to implement the full set of CRUD oper
 
 ### Copilot's Action
 Enhanced the TaskItem model with a unique Id property. Implemented full CRUD operations in TaskManagerService, including GetAllTasks, GetTaskById, UpdateTask, and DeleteTask, with unique Id assignment. Added comprehensive unit tests for all CRUD methods in TaskManagerServiceTests. Removed unused boilerplate files from both projects. All tests passed successfully.
+
+# Log Entry 6
+## User Prompt
+With the core service logic in place, our next task is to create an interactive user interface in the `PriorityTaskManager.CLI` project. This will allow us to manually test the CRUD operations we've implemented.
+
+**Your Task:**
+
+Refactor the `Program.cs` file in the `PriorityTaskManager.CLI` project to create a menu-driven application.
+
+1.  **Instantiate the Service:**
+	*   At the beginning of the `Main` method, create a single instance of `TaskManagerService`. This instance will be passed to the methods that need it.
+
+2.  **Create the Main Loop:**
+	*   Implement a `while` loop that runs continuously until the user chooses to exit.
+	*   Inside the loop, first display the menu of options, then wait for the user's input.
+
+3.  **Implement Menu Logic:**
+	*   Use a `switch` statement to handle the user's menu choice.
+	*   The menu should present the following options:
+		1.  Add a New Task
+		2.  View All Tasks
+		3.  Update an Existing Task
+		4.  Delete a Task
+		5.  Exit
+
+4.  **Create Helper Methods:**
+	*   To keep the `Main` method clean, create separate `private static` methods for each menu option's functionality (e.g., `HandleAddTask`, `HandleViewAllTasks`, etc.).
+
+5.  **Implement Functionality for Each Option:**
+	*   **Add Task:** Prompt the user for a `Title`, `Description`, and `Importance`. Create a new `TaskItem` object, pass it to the service's `AddTask` method, and print a success message.
+	*   **View All Tasks:** Call the service's `GetAllTasks` method. If there are no tasks, print a message saying so. Otherwise, loop through the tasks and print the `Id`, `Title`, `Description`, and `IsCompleted` status for each one in a readable format.
+	*   **Update Task:** Prompt the user for the `Id` of the task to update. Ask for the new `Title` and `Description`. Call the `UpdateTask` method and inform the user if the update was successful or if the task was not found.
+	*   **Delete Task:** Prompt the user for the `Id` of the task to delete. Call the service's `DeleteTask` method and inform the user if the deletion was successful or if the task was not found.
+	*   **Exit:** Cause the main loop to terminate, printing a "Goodbye!" message.
+
+### Copilot's Action
+Refactored Program.cs in PriorityTaskManager.CLI to implement a menu-driven interactive CLI for manual CRUD testing. Added helper methods for each menu option and ensured clean separation of logic. The CLI now allows users to add, view, update, and delete tasks interactively.
