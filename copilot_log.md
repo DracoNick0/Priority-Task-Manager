@@ -121,3 +121,28 @@ Refactor the `Program.cs` file in the `PriorityTaskManager.CLI` project to creat
 
 ### Copilot's Action
 Refactored Program.cs in PriorityTaskManager.CLI to implement a menu-driven interactive CLI for manual CRUD testing. Added helper methods for each menu option and ensured clean separation of logic. The CLI now allows users to add, view, update, and delete tasks interactively.
+# Log Entry 7
+## User Prompt
+Excellent progress. Our next task is to enhance the task model and add a key piece of functionality: marking tasks as complete. We will also refactor the `Importance` scale to be more granular. As always, we will follow our test-driven development workflow.
+
+**Your Task:**
+
+1.  **Refactor the Task Model (`TaskItem.cs`):**
+	*   Delete the `ImportanceLevel` enum entirely.
+	*   Change the `Importance` property in the `TaskItem` class from type `ImportanceLevel` to `int`.
+
+2.  **Add New Service Logic (`TaskManagerService.cs`):**
+	*   Create a new public method: `bool MarkTaskAsComplete(int id)`.
+	*   This method should find the task by its `Id` and set its `IsCompleted` property to `true`. It should return `true` on success and `false` if the task is not found.
+
+3.  **Update and Add Tests (`TaskManagerServiceTests.cs`):**
+	*   Update all existing test methods that use `ImportanceLevel` to use integer values for `Importance`.
+	*   Add a new test method: `MarkTaskAsComplete_ShouldSetIsCompletedToTrue_WhenTaskExists`.
+
+4.  **Update the CLI (`Program.cs`):**
+	*   Modify "Add Task" to prompt for importance (1-10) and validate input.
+	*   Modify "Update Task" to allow updating importance (1-10).
+	*   Add "Complete Task" functionality with a new menu option and handler.
+
+### Copilot's Action
+Refactored the TaskItem model to use an int for Importance and removed the enum. Added MarkTaskAsComplete to the service. Updated all tests for the new model and added a test for marking tasks complete. Enhanced the CLI to support granular importance, updating importance, and marking tasks as complete. All tests pass successfully.

@@ -50,5 +50,13 @@ namespace PriorityTaskManager.Services
         {
             return _tasks.Count;
         }
+        public bool MarkTaskAsComplete(int id)
+        {
+            var task = _tasks.Find(t => t.Id == id);
+            if (task == null)
+                return false;
+            task.IsCompleted = true;
+            return true;
+        }
     }
 }

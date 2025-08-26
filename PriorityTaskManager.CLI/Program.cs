@@ -17,7 +17,8 @@ namespace PriorityTaskManager.CLI
 				Console.WriteLine("2. View All Tasks");
 				Console.WriteLine("3. Update an Existing Task");
 				Console.WriteLine("4. Delete a Task");
-				Console.WriteLine("5. Exit");
+				Console.WriteLine("5. Mark Task as Complete");
+				Console.WriteLine("6. Exit");
 				Console.Write("Select an option: ");
 				var input = Console.ReadLine();
 				switch (input)
@@ -35,6 +36,9 @@ namespace PriorityTaskManager.CLI
 						HandleDeleteTask(service);
 						break;
 					case "5":
+						HandleMarkTaskAsComplete(service);
+						break;
+					case "6":
 						running = false;
 						Console.WriteLine("Goodbye!");
 						break;
@@ -51,13 +55,14 @@ namespace PriorityTaskManager.CLI
 			var title = Console.ReadLine();
 			Console.Write("Enter Description: ");
 			var description = Console.ReadLine();
-			Console.Write("Enter Importance (Low, Medium, High): ");
-			var importanceInput = Console.ReadLine();
-			ImportanceLevel importance;
-			if (!Enum.TryParse(importanceInput, true, out importance))
+			int importance = 1;
+			while (true)
 			{
-				Console.WriteLine("Invalid importance. Defaulting to Low.");
-				importance = ImportanceLevel.Low;
+				Console.Write("Enter Importance (1-10): ");
+				var importanceInput = Console.ReadLine();
+				if (int.TryParse(importanceInput, out importance) && importance >= 1 && importance <= 10)
+					break;
+				Console.WriteLine("Invalid importance. Please enter a number between 1 and 10.");
 			}
 			var task = new TaskItem
 			{
@@ -104,12 +109,21 @@ namespace PriorityTaskManager.CLI
 			var title = Console.ReadLine();
 			Console.Write("Enter new Description: ");
 			var description = Console.ReadLine();
+			int importance = existing.Importance;
+			while (true)
+			{
+				Console.Write("Enter new Importance (1-10): ");
+				var importanceInput = Console.ReadLine();
+				if (int.TryParse(importanceInput, out importance) && importance >= 1 && importance <= 10)
+					break;
+				Console.WriteLine("Invalid importance. Please enter a number between 1 and 10.");
+			}
 			var updated = new TaskItem
 			{
 				Id = id,
 				Title = title,
 				Description = description,
-				Importance = existing.Importance,
+				Importance = importance,
 				DueDate = existing.DueDate,
 				IsCompleted = existing.IsCompleted
 			};
@@ -129,6 +143,20 @@ namespace PriorityTaskManager.CLI
 			}
 			if (service.DeleteTask(id))
 				Console.WriteLine("Task deleted successfully.");
+			else
+				Console.WriteLine("Task not found.");
+		}
+
+		private static void HandleMarkTaskAsComplete(TaskManagerService service)
+		{
+			Console.Write("Enter Id of task to mark as complete: ");
+			if (!int.TryParse(Console.ReadLine(), out int id))
+			{
+				Console.WriteLine("Invalid Id.");
+				return;
+			}
+			if (service.MarkTaskAsComplete(id))
+				Console.WriteLine("Task marked as complete.");
 			else
 				Console.WriteLine("Task not found.");
 		}

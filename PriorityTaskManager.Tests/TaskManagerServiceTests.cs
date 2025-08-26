@@ -16,7 +16,7 @@ namespace PriorityTaskManager.Tests
             {
                 Title = "Test Task",
                 Description = "Test Description",
-                Importance = ImportanceLevel.High,
+                Importance = 8,
                 DueDate = DateTime.Now.AddDays(1),
                 IsCompleted = false
             };
@@ -32,7 +32,7 @@ namespace PriorityTaskManager.Tests
         public void GetTaskById_ShouldReturnCorrectTask_WhenTaskExists()
         {
             var service = new TaskManagerService();
-            var task = new TaskItem { Title = "A", Description = "B", Importance = ImportanceLevel.Low, DueDate = DateTime.Now, IsCompleted = false };
+            var task = new TaskItem { Title = "A", Description = "B", Importance = 2, DueDate = DateTime.Now, IsCompleted = false };
             service.AddTask(task);
             var found = service.GetTaskById(task.Id);
             Assert.NotNull(found);
@@ -51,25 +51,39 @@ namespace PriorityTaskManager.Tests
         public void UpdateTask_ShouldChangeTaskProperties_WhenTaskExists()
         {
             var service = new TaskManagerService();
-            var task = new TaskItem { Title = "Old", Description = "Old", Importance = ImportanceLevel.Low, DueDate = DateTime.Now, IsCompleted = false };
+            var task = new TaskItem { Title = "Old", Description = "Old", Importance = 2, DueDate = DateTime.Now, IsCompleted = false };
             service.AddTask(task);
-            var updated = new TaskItem { Id = task.Id, Title = "New", Description = "New", Importance = ImportanceLevel.High, DueDate = DateTime.Now.AddDays(1), IsCompleted = true };
+            var updated = new TaskItem { Id = task.Id, Title = "New", Description = "New", Importance = 9, DueDate = DateTime.Now.AddDays(1), IsCompleted = true };
             var result = service.UpdateTask(updated);
             Assert.True(result);
             var found = service.GetTaskById(task.Id);
+            Assert.NotNull(found);
             Assert.Equal("New", found.Title);
-            Assert.Equal(ImportanceLevel.High, found.Importance);
+            Assert.Equal(9, found.Importance);
         }
 
         [Fact]
         public void DeleteTask_ShouldRemoveTaskFromList_WhenTaskExists()
         {
             var service = new TaskManagerService();
-            var task = new TaskItem { Title = "Delete", Description = "Delete", Importance = ImportanceLevel.Medium, DueDate = DateTime.Now, IsCompleted = false };
+            var task = new TaskItem { Title = "Delete", Description = "Delete", Importance = 5, DueDate = DateTime.Now, IsCompleted = false };
             service.AddTask(task);
             var result = service.DeleteTask(task.Id);
             Assert.True(result);
             Assert.Null(service.GetTaskById(task.Id));
+        }
+
+        [Fact]
+        public void MarkTaskAsComplete_ShouldSetIsCompletedToTrue_WhenTaskExists()
+        {
+            var service = new TaskManagerService();
+            var task = new TaskItem { Title = "Complete", Description = "Complete", Importance = 7, DueDate = DateTime.Now, IsCompleted = false };
+            service.AddTask(task);
+            var result = service.MarkTaskAsComplete(task.Id);
+            Assert.True(result);
+            var found = service.GetTaskById(task.Id);
+            Assert.NotNull(found);
+            Assert.True(found.IsCompleted);
         }
     }
 }
