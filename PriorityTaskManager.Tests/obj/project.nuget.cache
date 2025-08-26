@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "27eV6FMdaRg=",
+  "dgSpecHash": "uw+pshD/xpE=",
   "success": true,
-  "projectFilePath": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.Tests\\PriorityTaskManager.Tests.csproj",
+  "projectFilePath": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.Tests\\PriorityTaskManager.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\NiXta\\.nuget\\packages\\coverlet.collector\\6.0.0\\coverlet.collector.6.0.0.nupkg.sha512",
     "C:\\Users\\NiXta\\.nuget\\packages\\microsoft.codecoverage\\17.8.0\\microsoft.codecoverage.17.8.0.nupkg.sha512",

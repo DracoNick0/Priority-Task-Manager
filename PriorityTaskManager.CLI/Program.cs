@@ -64,13 +64,45 @@ namespace PriorityTaskManager.CLI
 					break;
 				Console.WriteLine("Invalid importance. Please enter a number between 1 and 10.");
 			}
+			double durationHours = 1.0;
+			while (true)
+			{
+				Console.Write("Enter Estimated Duration (hours): ");
+				var durationInput = Console.ReadLine();
+				if (double.TryParse(durationInput, out durationHours) && durationHours > 0)
+					break;
+				Console.WriteLine("Invalid duration. Please enter a positive number.");
+			}
+			double progress = 0.0;
+			while (true)
+			{
+				Console.Write("Enter Progress (0-100): ");
+				var progressInput = Console.ReadLine();
+				if (double.TryParse(progressInput, out progress) && progress >= 0 && progress <= 100)
+					break;
+				Console.WriteLine("Invalid progress. Please enter a number between 0 and 100.");
+			}
+			Console.Write("Enter Dependencies (comma-separated task IDs, or leave blank): ");
+			var depsInput = Console.ReadLine();
+			var deps = new List<int>();
+			if (!string.IsNullOrWhiteSpace(depsInput))
+			{
+				foreach (var part in depsInput.Split(','))
+				{
+					if (int.TryParse(part.Trim(), out int depId))
+						deps.Add(depId);
+				}
+			}
 			var task = new TaskItem
 			{
 				Title = title,
 				Description = description,
 				Importance = importance,
 				DueDate = DateTime.Now.AddDays(1),
-				IsCompleted = false
+				IsCompleted = false,
+				EstimatedDuration = TimeSpan.FromHours(durationHours),
+				Progress = progress / 100.0,
+				Dependencies = deps
 			};
 			service.AddTask(task);
 			Console.WriteLine($"Task added with Id {task.Id}.");
@@ -78,16 +110,17 @@ namespace PriorityTaskManager.CLI
 
 		private static void HandleViewAllTasks(TaskManagerService service)
 		{
-			var tasks = service.GetAllTasks();
-			if (tasks == null || !tasks.GetEnumerator().MoveNext())
+			service.CalculateUrgencyForAllTasks();
+			var tasks = service.GetAllTasks().OrderByDescending(t => t.UrgencyScore).ToList();
+			if (tasks.Count == 0)
 			{
 				Console.WriteLine("No tasks found.");
 				return;
 			}
-			Console.WriteLine("\nAll Tasks:");
+			Console.WriteLine("\nAll Tasks (sorted by urgency):");
 			foreach (var task in tasks)
 			{
-				Console.WriteLine($"Id: {task.Id}, Title: {task.Title}, Description: {task.Description}, Completed: {task.IsCompleted}");
+				Console.WriteLine($"Id: {task.Id}, Title: {task.Title}, Description: {task.Description}, Completed: {task.IsCompleted}, Urgency: {task.UrgencyScore:F3}, LPSD: {task.LatestPossibleStartDate:yyyy-MM-dd}");
 			}
 		}
 
@@ -118,6 +151,35 @@ namespace PriorityTaskManager.CLI
 					break;
 				Console.WriteLine("Invalid importance. Please enter a number between 1 and 10.");
 			}
+			double durationHours = existing.EstimatedDuration.TotalHours;
+			while (true)
+			{
+				Console.Write("Enter new Estimated Duration (hours): ");
+				var durationInput = Console.ReadLine();
+				if (double.TryParse(durationInput, out durationHours) && durationHours > 0)
+					break;
+				Console.WriteLine("Invalid duration. Please enter a positive number.");
+			}
+			double progress = existing.Progress * 100.0;
+			while (true)
+			{
+				Console.Write("Enter new Progress (0-100): ");
+				var progressInput = Console.ReadLine();
+				if (double.TryParse(progressInput, out progress) && progress >= 0 && progress <= 100)
+					break;
+				Console.WriteLine("Invalid progress. Please enter a number between 0 and 100.");
+			}
+			Console.Write("Enter new Dependencies (comma-separated task IDs, or leave blank): ");
+			var depsInput = Console.ReadLine();
+			var deps = new List<int>();
+			if (!string.IsNullOrWhiteSpace(depsInput))
+			{
+				foreach (var part in depsInput.Split(','))
+				{
+					if (int.TryParse(part.Trim(), out int depId))
+						deps.Add(depId);
+				}
+			}
 			var updated = new TaskItem
 			{
 				Id = id,
@@ -125,7 +187,10 @@ namespace PriorityTaskManager.CLI
 				Description = description,
 				Importance = importance,
 				DueDate = existing.DueDate,
-				IsCompleted = existing.IsCompleted
+				IsCompleted = existing.IsCompleted,
+				EstimatedDuration = TimeSpan.FromHours(durationHours),
+				Progress = progress / 100.0,
+				Dependencies = deps
 			};
 			if (service.UpdateTask(updated))
 				Console.WriteLine("Task updated successfully.");

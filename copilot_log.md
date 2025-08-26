@@ -121,6 +121,7 @@ Refactor the `Program.cs` file in the `PriorityTaskManager.CLI` project to creat
 
 ### Copilot's Action
 Refactored Program.cs in PriorityTaskManager.CLI to implement a menu-driven interactive CLI for manual CRUD testing. Added helper methods for each menu option and ensured clean separation of logic. The CLI now allows users to add, view, update, and delete tasks interactively.
+
 # Log Entry 7
 ## User Prompt
 Excellent progress. Our next task is to enhance the task model and add a key piece of functionality: marking tasks as complete. We will also refactor the `Importance` scale to be more granular. As always, we will follow our test-driven development workflow.
@@ -146,3 +147,14 @@ Excellent progress. Our next task is to enhance the task model and add a key pie
 
 ### Copilot's Action
 Refactored the TaskItem model to use an int for Importance and removed the enum. Added MarkTaskAsComplete to the service. Updated all tests for the new model and added a test for marking tasks complete. Enhanced the CLI to support granular importance, updating importance, and marking tasks as complete. All tests pass successfully.
+
+# Log Entry 8
+## User Prompt
+Implement dynamic urgency calculation based on dependencies and deadlines. The urgency score for each task should reflect how soon it must be started, considering all downstream dependencies and their deadlines. The calculation must ensure that the first task in a dependency chain is the most urgent, and urgency should decrease as you move down the chain. Integrate this logic into the CLI and ensure strict TDD: every feature must have corresponding unit tests that validate the dependency-aware urgency calculation.
+
+### Copilot's Action
+- Refactored the data model (`TaskItem.cs`) to support dependency chains and urgency attributes.
+- Implemented recursive urgency calculation in `TaskManagerService.cs`, ensuring the first task in a dependency chain is most urgent.
+- Updated the CLI to display urgency and LPSD for all tasks, sorted by urgency.
+- Added and validated unit tests in `TaskManagerServiceTests.cs` to confirm correct urgency ordering for dependency chains.
+- Debugged and iterated on the calculation logic until all tests passed, confirming robust dependency-aware prioritization.

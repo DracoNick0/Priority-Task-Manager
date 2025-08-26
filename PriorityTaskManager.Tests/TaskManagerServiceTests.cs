@@ -8,6 +8,22 @@ namespace PriorityTaskManager.Tests
     public class TaskManagerServiceTests
     {
         [Fact]
+        public void CalculateUrgency_ShouldPrioritizeFirstTaskInDependencyChain()
+        {
+            var service = new TaskManagerService();
+            var taskA = new TaskItem { Title = "A", EstimatedDuration = TimeSpan.FromHours(10), Progress = 0.0, DueDate = DateTime.Today.AddDays(10) };
+            var taskB = new TaskItem { Title = "B", EstimatedDuration = TimeSpan.FromHours(5), Progress = 0.0, DueDate = DateTime.Today.AddDays(10) };
+            var taskC = new TaskItem { Title = "C", EstimatedDuration = TimeSpan.FromHours(2), Progress = 0.0, DueDate = DateTime.Today.AddDays(10) };
+            service.AddTask(taskA);
+            service.AddTask(taskB);
+            service.AddTask(taskC);
+            taskB.Dependencies.Add(taskA.Id);
+            taskC.Dependencies.Add(taskB.Id);
+            service.CalculateUrgencyForAllTasks();
+            Assert.True(taskA.UrgencyScore > taskB.UrgencyScore);
+            Assert.True(taskB.UrgencyScore > taskC.UrgencyScore);
+        }
+        [Fact]
         public void AddTask_ShouldIncreaseTaskCount()
         {
             // Arrange
