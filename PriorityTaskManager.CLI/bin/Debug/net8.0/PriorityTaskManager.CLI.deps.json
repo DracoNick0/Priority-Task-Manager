@@ -1,0 +1,36 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "PriorityTaskManager.CLI/1.0.0": {
+        "dependencies": {
+          "PriorityTaskManager": "1.0.0"
+        },
+        "runtime": {
+          "PriorityTaskManager.CLI.dll": {}
+        }
+      },
+      "PriorityTaskManager/1.0.0": {
+        "runtime": {
+          "PriorityTaskManager.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "PriorityTaskManager.CLI/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "PriorityTaskManager/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

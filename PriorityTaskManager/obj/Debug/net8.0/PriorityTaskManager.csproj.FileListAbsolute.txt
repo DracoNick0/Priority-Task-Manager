@@ -1,0 +1,12 @@
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\bin\Debug\net8.0\PriorityTaskManager.deps.json
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\bin\Debug\net8.0\PriorityTaskManager.dll
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\bin\Debug\net8.0\PriorityTaskManager.pdb
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.GeneratedMSBuildEditorConfig.editorconfig
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.AssemblyInfoInputs.cache
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.AssemblyInfo.cs
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.csproj.CoreCompileInputs.cache
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.sourcelink.json
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.dll
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\refint\PriorityTaskManager.dll
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\PriorityTaskManager.pdb
+e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager\obj\Debug\net8.0\ref\PriorityTaskManager.dll
