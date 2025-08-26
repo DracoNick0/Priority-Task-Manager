@@ -178,3 +178,98 @@ We are performing a major overhaul of the Command-Line Interface to make it sign
     *   **Defaults:** Description (`string.Empty`), Importance (`5`), Estimated Duration (`TimeSpan.FromHours(1)`), Progress (`0.0`), Dependencies (empty list).
 *   **For the Due Date prompt, you will implement a special interactive editor:**
     *   Create a new `private static` helper method: `DateTime HandleInteractiveDateInput(DateTime initialDate)`.
+    *   This method should display the current date and time, allowing the user to increment or decrement the year, month, day, hour, and minute using the arrow keys.
+    *   Pressing Enter should confirm the selected date and time, while Escape should cancel and return to the previous menu.
+
+**Part 3: Revamp the "View All Tasks" Display**
+*   In the `HandleViewAllTasks` method, enhance the output to show the urgency and LPSD for each task, in addition to the existing details.
+*   Ensure that the tasks are sorted by urgency, with the most urgent task displayed first.
+
+**Part 4: Integrate the Date Editor into "Add Task" and "Update Task"**
+*   **Refactor `HandleAddTask` (`Program.cs`):**
+    *   After prompting for all other attributes, add a new prompt: "Press 'd' to edit the due date, or any other key to skip."
+    *   If the user presses 'd', call the `HandleInteractiveDateInput` method.
+    *   Update the new task object with the date returned from the interactive editor.
+*   **Refactor `HandleUpdateTask` (`Program.cs`):**
+    *   After the user has updated the other properties, add a new prompt: "Press 'd' to edit the due date, or any other key to skip."
+    *   If the user presses 'd', call the `HandleInteractiveDateInput` method.
+    *   You must pass the task's *existing* due date (`existingTask.DueDate`) as the `initialDate` argument to the method.
+    *   Update the `updatedTask` object with the new date returned from the interactive editor.
+
+After implementing all of these enhancements, please update the `copilot_log.md` with a new entry for this prompt.
+
+### Copilot's Action
+- Implemented a new command parser in Program.cs, replacing the numeric menu with a command-and-argument system.
+- Overhauled the "Add Task" workflow to use command arguments and interactive prompts with default values.
+- Developed a special interactive date editor for precise date and time input.
+- Revamped the "View All Tasks" display to include urgency and LPSD, sorted by urgency.
+- Integrated the date editor into "Add Task" and "Update Task" workflows for live due date editing.
+- All changes validated by passing unit tests and manual CLI testing.
+
+# Log Entry 10
+## User Prompt
+We are continuing our major overhaul of the CLI. This update will enhance our new interactive date editor with more powerful controls, integrate it into the "update" workflow, and refine our core urgency logic.
+
+**Your Task:**
+
+**Part 1: Refine Core Logic and Tests**
+*   **Modify Urgency Calculation (`TaskManagerService.cs`):**
+    *   In the `CalculateUrgencyForAllTasks` method, add a rule at the very beginning of the logic for each task: If a task's `IsCompleted` property is `true`, its `UrgencyScore` should be immediately set to `0`. The rest of the urgency calculation (LPSD, etc.) should be skipped for that task.
+*   **Update Tests (`TaskManagerServiceTests.cs`):**
+    *   Create a new test method: `CalculateUrgency_ShouldBeZero_ForCompletedTask`.
+    *   This test should create a task, set `IsCompleted` to `true`, run the urgency calculation, and then **Assert** that the task's `UrgencyScore` is `0`.
+
+**Part 2: Create the Advanced Interactive Date Editor**
+*   **Enhance `HandleInteractiveDateInput` (`Program.cs`):**
+    *   Inside this method, introduce a state variable to track the current increment mode (an `enum` for Day, Week, Month, Year is perfect for this).
+    *   **Crucially, initialize this mode variable to `Day` at the beginning of the method.** This ensures the editor always defaults to day-by-day navigation every time it is opened.
+    *   Update the console display within the loop to show the current mode to the user, for example: `[Mode: Day] yyyy-MM-dd dddd`.
+    *   Expand the `switch` statement for `Console.ReadKey(true)` to handle the new mode-switching keys:
+        *   **Case `'d'**: Set the mode to Day.
+        *   **Case `'w'**: Set the mode to Week.
+        *   **Case `'m'**: Set the mode to Month.
+        *   **Case `'y'**: Set the mode to Year.
+    *   Modify the logic for the `LeftArrow` and `RightArrow` keys. They should now check the current mode to determine how much to change the date:
+        *   If mode is Day, add/subtract 1 day.
+        *   If mode is Week, add/subtract 7 days.
+        *   If mode is Month, use `.AddMonths(1)` / `.AddMonths(-1)`.
+        *   If mode is Year, use `.AddYears(1)` / `.AddYears(-1)`.
+    *   Pressing Enter should confirm the selected date and time, while Escape should cancel and return to the previous menu.
+
+**Part 3: Integrate Date Editor into "Update Task" Workflow**
+*   **Refactor `HandleUpdateTask` (`Program.cs`):**
+    *   After the user has updated the other properties, add a new prompt: "Press 'd' to edit the due date, or any other key to skip."
+    *   If the user presses 'd', call the `HandleInteractiveDateInput` method.
+    *   You must pass the task's *existing* due date (`existingTask.DueDate`) as the `initialDate` argument to the method.
+    *   Update the `updatedTask` object with the new date returned from the interactive editor.
+
+After completing these tasks, please update the `copilot_log.md` with a new entry for this prompt.
+
+### Copilot's Action
+- Refined urgency calculation logic to immediately set UrgencyScore to 0 for completed tasks.
+- Enhanced interactive date editor to default to day-by-day navigation, with mode-switching keys for flexible date adjustment.
+- Integrated advanced date editor into "Update Task" workflow for seamless due date editing.
+- All changes validated by passing unit tests and manual CLI testing.
+
+# Log Entry 11
+## User Prompt
+One more thing before we commit.
+
+We need to make a couple of usability improvements to our command handling in the CLI.
+
+**Your Task:**
+
+1.  **Make Commands Case-Insensitive:**
+    *   In `Program.cs`, locate where you read the user's input and split it into a command.
+    *   Before the `switch` statement, convert the extracted command string to lowercase (e.g., using `.ToLower()`). This will ensure that "ADD", "add", and "Add" are all treated as the same command.
+
+2.  **Rename the "update" Command to "edit":**
+    *   In the `switch` statement, change the case from `case "update":` to `case "edit":`.
+    *   In the `help` command's output text, update the description for this command to show `edit <Id>` instead of `update <Id>`.
+
+After making these changes, please update the `copilot_log.md` with a new entry for this prompt.
+
+### Copilot's Action
+- Made all CLI commands case-insensitive for improved usability.
+- Renamed the "update" command to "edit" throughout the CLI and help text.
+- Updated the copilot log to document these usability improvements.

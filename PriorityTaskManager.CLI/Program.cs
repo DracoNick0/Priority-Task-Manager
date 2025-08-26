@@ -16,7 +16,7 @@ namespace PriorityTaskManager.CLI
 				var line = Console.ReadLine();
 				if (string.IsNullOrWhiteSpace(line)) continue;
 				var parts = line.Trim().Split(' ', 2);
-				var command = parts[0].ToLower();
+				var command = parts[0].ToLower(); // Case-insensitive command handling
 				var argString = parts.Length > 1 ? parts[1] : string.Empty;
 				var argsArr = argString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 				switch (command)
@@ -27,10 +27,10 @@ namespace PriorityTaskManager.CLI
 					case "list":
 						HandleViewAllTasks(service);
 						break;
-					case "update":
+					case "edit":
 						if (argsArr.Length > 0 && int.TryParse(argsArr[0], out int upId))
 							HandleUpdateTask(service, upId);
-						else Console.WriteLine("Usage: update <Id>");
+						else Console.WriteLine("Usage: edit <Id>");
 						break;
 					case "delete":
 						if (argsArr.Length > 0 && int.TryParse(argsArr[0], out int delId))
@@ -111,25 +111,51 @@ namespace PriorityTaskManager.CLI
 			DateTime date = initialDate;
 			int left = Console.CursorLeft;
 			int top = Console.CursorTop;
+			IncrementMode mode = IncrementMode.Day;
 			while (true)
 			{
 				Console.SetCursorPosition(left, top);
-				Console.Write($"{date:yyyy-MM-dd dddd}      ");
+				Console.Write($"[Mode: {mode}] {date:yyyy-MM-dd dddd}      ");
 				var key = Console.ReadKey(true);
 				switch (key.Key)
 				{
 					case ConsoleKey.RightArrow:
-						date = date.AddDays(1);
+						switch (mode)
+						{
+							case IncrementMode.Day: date = date.AddDays(1); break;
+							case IncrementMode.Week: date = date.AddDays(7); break;
+							case IncrementMode.Month: date = date.AddMonths(1); break;
+							case IncrementMode.Year: date = date.AddYears(1); break;
+						}
 						break;
 					case ConsoleKey.LeftArrow:
-						date = date.AddDays(-1);
+						switch (mode)
+						{
+							case IncrementMode.Day: date = date.AddDays(-1); break;
+							case IncrementMode.Week: date = date.AddDays(-7); break;
+							case IncrementMode.Month: date = date.AddMonths(-1); break;
+							case IncrementMode.Year: date = date.AddYears(-1); break;
+						}
 						break;
 					case ConsoleKey.Enter:
 						Console.WriteLine();
 						return date;
+					case ConsoleKey.D:
+						mode = IncrementMode.Day;
+						break;
+					case ConsoleKey.W:
+						mode = IncrementMode.Week;
+						break;
+					case ConsoleKey.M:
+						mode = IncrementMode.Month;
+						break;
+					case ConsoleKey.Y:
+						mode = IncrementMode.Year;
+						break;
 				}
 			}
 		}
+		private enum IncrementMode { Day, Week, Month, Year }
 
 	private static void HandleViewAllTasks(TaskManagerService service)
 		{
@@ -185,13 +211,25 @@ namespace PriorityTaskManager.CLI
 						deps.Add(depId);
 				}
 			}
+			var dueDate = existing.DueDate;
+			Console.Write("Press 'd' to edit the due date, or any other key to skip: ");
+			var key = Console.ReadKey(true);
+			if (key.Key == ConsoleKey.D)
+			{
+				Console.WriteLine();
+				dueDate = HandleInteractiveDateInput(existing.DueDate);
+			}
+			else
+			{
+				Console.WriteLine();
+			}
 			var updated = new TaskItem
 			{
 				Id = id,
 				Title = title,
 				Description = description,
 				Importance = importance,
-				DueDate = existing.DueDate,
+				DueDate = dueDate,
 				IsCompleted = existing.IsCompleted,
 				EstimatedDuration = TimeSpan.FromHours(durationHours),
 				Progress = progress / 100.0,
@@ -224,7 +262,7 @@ namespace PriorityTaskManager.CLI
 			Console.WriteLine("\nAvailable commands:");
 			Console.WriteLine("add <Title>         - Add a new task (prompts for details)");
 			Console.WriteLine("list                - List all tasks sorted by urgency");
-			Console.WriteLine("update <Id>         - Update a task by Id");
+			Console.WriteLine("edit <Id>           - Edit a task by Id");
 			Console.WriteLine("delete <Id>         - Delete a task by Id");
 			Console.WriteLine("complete <Id>       - Mark a task as complete");
 			Console.WriteLine("help                - Show this help message");

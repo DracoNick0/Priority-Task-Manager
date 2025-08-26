@@ -67,6 +67,10 @@ namespace PriorityTaskManager.Services
             foreach (var task in _tasks)
             {
                 task.LatestPossibleStartDate = DateTime.MinValue;
+                if (task.IsCompleted)
+                {
+                    task.UrgencyScore = 0;
+                }
             }
 
             var today = DateTime.Today;
@@ -109,7 +113,7 @@ namespace PriorityTaskManager.Services
         private void CalculateLpsdRecursive(TaskItem task, DateTime today, Dictionary<int, List<TaskItem>> successorMap, HashSet<int> visited)
         {
             // If LPSD has already been calculated (memoization), or if we are in a loop, exit.
-            if (task.LatestPossibleStartDate != DateTime.MinValue || visited.Contains(task.Id))
+            if (task.LatestPossibleStartDate != DateTime.MinValue || visited.Contains(task.Id) || task.IsCompleted)
             {
                 return;
             }

@@ -8,6 +8,16 @@ namespace PriorityTaskManager.Tests
     public class TaskManagerServiceTests
     {
         [Fact]
+        public void CalculateUrgency_ShouldBeZero_ForCompletedTask()
+        {
+            var service = new TaskManagerService();
+            var task = new TaskItem { Title = "Done", EstimatedDuration = TimeSpan.FromHours(2), Progress = 1.0, DueDate = DateTime.Today.AddDays(1), IsCompleted = true };
+            service.AddTask(task);
+            service.CalculateUrgencyForAllTasks();
+            Assert.Equal(0, task.UrgencyScore);
+        }
+        
+        [Fact]
         public void CalculateUrgency_ShouldPrioritizeFirstTaskInDependencyChain()
         {
             var service = new TaskManagerService();
@@ -23,6 +33,7 @@ namespace PriorityTaskManager.Tests
             Assert.True(taskA.UrgencyScore > taskB.UrgencyScore);
             Assert.True(taskB.UrgencyScore > taskC.UrgencyScore);
         }
+        
         [Fact]
         public void AddTask_ShouldIncreaseTaskCount()
         {
