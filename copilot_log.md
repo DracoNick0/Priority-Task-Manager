@@ -158,3 +158,23 @@ Implement dynamic urgency calculation based on dependencies and deadlines. The u
 - Updated the CLI to display urgency and LPSD for all tasks, sorted by urgency.
 - Added and validated unit tests in `TaskManagerServiceTests.cs` to confirm correct urgency ordering for dependency chains.
 - Debugged and iterated on the calculation logic until all tests passed, confirming robust dependency-aware prioritization.
+
+# Log Entry 9
+## User Prompt
+We are performing a major overhaul of the Command-Line Interface to make it significantly faster, more intuitive, and more user-friendly. This will involve replacing the numeric menu with a modern command-and-argument system and implementing an advanced, interactive editor for date inputs.
+
+**Your Task:**
+
+**Part 1: Implement a New Command Parser**
+*   In `Program.cs`, remove the main `while` loop that displays a numbered menu.
+*   Replace it with a new loop that reads a full line of user input (e.g., "add My new task").
+*   Split the input into a command (the first word) and an array of arguments (the rest).
+*   Use a `switch` statement on the command string to call the appropriate handler methods.
+
+**Part 2: Overhaul the "Add Task" Workflow**
+*   The new command will be: `add <Title>`. The title is the only required part of the initial command.
+*   Refactor the `HandleAddTask` method to accept the title from the command arguments.
+*   For all other attributes **except the Due Date**, prompt the user individually but allow them to **press Enter (providing an empty input) to accept a default value.**
+    *   **Defaults:** Description (`string.Empty`), Importance (`5`), Estimated Duration (`TimeSpan.FromHours(1)`), Progress (`0.0`), Dependencies (empty list).
+*   **For the Due Date prompt, you will implement a special interactive editor:**
+    *   Create a new `private static` helper method: `DateTime HandleInteractiveDateInput(DateTime initialDate)`.
