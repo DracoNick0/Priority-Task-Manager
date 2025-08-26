@@ -50,7 +50,37 @@ Set up the solution and project structure for Priority Task Manager:
 
 # Log Entry 4
 ## User Prompt
-Please add a CLI console project to your solution and set up a basic entry point?
+Please add a CLI console project to your solution and set up a basic entry point.
 
 ### Copilot's Action
 Created a new CLI console application project (PriorityTaskManager.CLI), added it to the solution, and referenced the core logic project. Updated Program.cs to demonstrate basic usage of TaskManagerService and TaskItem. Ran the CLI app to verify functionality.
+
+# Log Entry 5
+## User Prompt
+Thank you for the setup. Our next goal is to implement the full set of CRUD operations in our `TaskManagerService`. We will follow our test-driven development rule.
+
+**Your Task:**
+
+1.  **Enhance the Model:**
+	*   In `TaskItem.cs`, add a unique identifier property: `public int Id { get; set; }`. This is crucial for finding, updating, and deleting specific tasks.
+
+2.  **Expand the Service:**
+	*   In `TaskManagerService.cs`, add the following public methods:
+		*   `IEnumerable<TaskItem> GetAllTasks()`: Returns a copy of the entire task list.
+		*   `TaskItem GetTaskById(int id)`: Finds and returns a task by its `Id`. Should return `null` if not found.
+		*   `bool UpdateTask(TaskItem updatedTask)`: Finds an existing task by its `Id` and updates its properties. Should return `true` on success and `false` if the task was not found.
+		*   `bool DeleteTask(int id)`: Removes a task from the list by its `Id`. Should return `true` on success and `false` if the task was not found.
+	*   You will also need to add a private field like `private int _nextId = 1;` and logic inside your `AddTask` method to assign and increment the `Id` for each new task.
+
+3.  **Write Corresponding Tests:**
+	*   In `TaskManagerServiceTests.cs`, add new test methods to verify the functionality of each method you just created:
+		*   `GetTaskById_ShouldReturnCorrectTask_WhenTaskExists`
+		*   `GetTaskById_ShouldReturnNull_WhenTaskDoesNotExist`
+		*   `UpdateTask_ShouldChangeTaskProperties_WhenTaskExists`
+		*   `DeleteTask_ShouldRemoveTaskFromList_WhenTaskExists`
+
+4.  **Clean Up:**
+	*   Deleted unused boilerplate files: `PriorityTaskManager/Class1.cs` and `PriorityTaskManager.Tests/UnitTest1.cs`.
+
+### Copilot's Action
+Enhanced the TaskItem model with a unique Id property. Implemented full CRUD operations in TaskManagerService, including GetAllTasks, GetTaskById, UpdateTask, and DeleteTask, with unique Id assignment. Added comprehensive unit tests for all CRUD methods in TaskManagerServiceTests. Removed unused boilerplate files from both projects. All tests passed successfully.
