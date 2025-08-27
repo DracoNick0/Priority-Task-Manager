@@ -36,8 +36,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 DueDate = dueDate,
                 IsCompleted = false,
                 EstimatedDuration = TimeSpan.FromHours(durationHours),
-                Progress = 0.0, // Default value
-                Dependencies = new List<int>() // Default value
+                Progress = 0.0,
+                Dependencies = new List<int>()
             };
             service.AddTask(task);
             Console.WriteLine($"Task added with Id {task.Id}.");
