@@ -3,8 +3,12 @@ using PriorityTaskManager.CLI.Interfaces;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
+    /// <summary>
+    /// Handles the 'help' command, displaying a list of available commands and their descriptions.
+    /// </summary>
     public class HelpHandler : ICommandHandler
     {
+        /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
             Console.WriteLine("\nAvailable commands:");

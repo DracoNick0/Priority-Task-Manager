@@ -3,8 +3,12 @@ using PriorityTaskManager.CLI.Interfaces;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
+    /// <summary>
+    /// Handles the 'list' command, displaying all tasks sorted by urgency.
+    /// </summary>
     public class ListHandler : ICommandHandler
     {
+        /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
             service.CalculateUrgencyForAllTasks();

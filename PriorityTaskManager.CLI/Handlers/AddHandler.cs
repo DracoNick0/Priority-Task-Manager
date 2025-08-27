@@ -5,8 +5,12 @@ using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
+    /// <summary>
+    /// Handles the 'add' command, allowing users to add new tasks to the task manager.
+    /// </summary>
     public class AddHandler : ICommandHandler
     {
+        /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
             if (args.Length == 0)

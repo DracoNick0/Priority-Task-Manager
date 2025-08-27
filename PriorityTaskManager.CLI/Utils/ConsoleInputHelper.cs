@@ -2,8 +2,16 @@ using System;
 
 namespace PriorityTaskManager.CLI.Utils
 {
+    /// <summary>
+    /// Provides shared console input functionality for the CLI application.
+    /// </summary>
     public static class ConsoleInputHelper
     {
+        /// <summary>
+        /// Handles interactive date input, allowing users to adjust and confirm a date.
+        /// </summary>
+        /// <param name="initialDate">The initial date to start the adjustment from.</param>
+        /// <returns>The adjusted and confirmed date.</returns>
         public static DateTime HandleInteractiveDateInput(DateTime initialDate)
         {
             DateTime date = initialDate;
@@ -51,6 +59,9 @@ namespace PriorityTaskManager.CLI.Utils
             }
         }
 
-        public enum IncrementMode { Day, Week, Month, Year }
+        /// <summary>
+        /// Represents the modes for incrementing the date during interactive input.
+        /// </summary>
+        private enum IncrementMode { Day, Week, Month, Year }
     }
 }

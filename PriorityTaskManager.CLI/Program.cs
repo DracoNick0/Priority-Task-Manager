@@ -7,8 +7,15 @@ using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.CLI
 {
+	/// <summary>
+	/// The entry point of the Priority Task Manager CLI application.
+	/// </summary>
 	class Program
 	{
+		/// <summary>
+		/// The main method that initializes the application and processes user commands.
+		/// </summary>
+		/// <param name="args">Command-line arguments passed to the application.</param>
 		static void Main(string[] args)
 		{
 			var service = new TaskManagerService();

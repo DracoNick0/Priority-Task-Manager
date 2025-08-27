@@ -4,8 +4,12 @@ using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
+    /// <summary>
+    /// Handles the 'edit' command, allowing users to modify tasks or specific attributes of tasks.
+    /// </summary>
     public class EditHandler : ICommandHandler
     {
+        /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
             if (args.Length < 1 || !int.TryParse(args[0], out int id))
