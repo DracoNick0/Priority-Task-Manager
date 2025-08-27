@@ -5,8 +5,14 @@ using Xunit;
 
 namespace PriorityTaskManager.Tests
 {
+    /// <summary>
+    /// Contains all unit tests for the TaskManagerService class.
+    /// </summary>
     public class TaskManagerServiceTests
     {
+        /// <summary>
+        /// Verifies that CalculateUrgency sets the urgency score to 0 for completed tasks.
+        /// </summary>
         [Fact]
         public void CalculateUrgency_ShouldBeZero_ForCompletedTask()
         {
@@ -17,6 +23,9 @@ namespace PriorityTaskManager.Tests
             Assert.Equal(0, task.UrgencyScore);
         }
         
+        /// <summary>
+        /// Verifies that CalculateUrgency prioritizes the first task in a dependency chain.
+        /// </summary>
         [Fact]
         public void CalculateUrgency_ShouldPrioritizeFirstTaskInDependencyChain()
         {
@@ -34,6 +43,9 @@ namespace PriorityTaskManager.Tests
             Assert.True(taskB.UrgencyScore > taskC.UrgencyScore);
         }
         
+        /// <summary>
+        /// Verifies that adding a task increases the task count.
+        /// </summary>
         [Fact]
         public void AddTask_ShouldIncreaseTaskCount()
         {
@@ -52,6 +64,9 @@ namespace PriorityTaskManager.Tests
             Assert.Equal(1, service.GetTaskCount());
         }
 
+        /// <summary>
+        /// Verifies that GetTaskById returns the correct task when it exists.
+        /// </summary>
         [Fact]
         public void GetTaskById_ShouldReturnCorrectTask_WhenTaskExists()
         {
@@ -63,6 +78,9 @@ namespace PriorityTaskManager.Tests
             Assert.Equal(task.Title, found.Title);
         }
 
+        /// <summary>
+        /// Verifies that GetTaskById returns null when the requested task ID does not exist.
+        /// </summary>
         [Fact]
         public void GetTaskById_ShouldReturnNull_WhenTaskDoesNotExist()
         {
@@ -71,6 +89,9 @@ namespace PriorityTaskManager.Tests
             Assert.Null(result);
         }
 
+        /// <summary>
+        /// Verifies that UpdateTask changes the properties of a task when it exists.
+        /// </summary>
         [Fact]
         public void UpdateTask_ShouldChangeTaskProperties_WhenTaskExists()
         {
@@ -86,6 +107,9 @@ namespace PriorityTaskManager.Tests
             Assert.Equal(9, found.Importance);
         }
 
+        /// <summary>
+        /// Verifies that DeleteTask removes a task from the list when it exists.
+        /// </summary>
         [Fact]
         public void DeleteTask_ShouldRemoveTaskFromList_WhenTaskExists()
         {
@@ -97,6 +121,9 @@ namespace PriorityTaskManager.Tests
             Assert.Null(service.GetTaskById(task.Id));
         }
 
+        /// <summary>
+        /// Verifies that MarkTaskAsComplete sets the IsCompleted property to true for a task when it exists.
+        /// </summary>
         [Fact]
         public void MarkTaskAsComplete_ShouldSetIsCompletedToTrue_WhenTaskExists()
         {
@@ -110,6 +137,9 @@ namespace PriorityTaskManager.Tests
             Assert.True(found.IsCompleted);
         }
 
+        /// <summary>
+        /// Verifies that MarkTaskAsIncomplete sets the IsCompleted property to false for a task when it exists.
+        /// </summary>
         [Fact]
         public void MarkTaskAsIncomplete_ShouldSetIsCompletedToFalse_WhenTaskExists()
         {
