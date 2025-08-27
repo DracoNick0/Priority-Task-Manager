@@ -1,5 +1,6 @@
 using PriorityTaskManager.Services;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
