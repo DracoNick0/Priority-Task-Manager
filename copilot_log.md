@@ -532,3 +532,73 @@ After these changes, your `Program.cs` file should be significantly smaller and 
 2. Added the necessary `using` statements to access the handlers and interface.
 3. Removed all obsolete methods from `Program.cs`, including `HandleAddTask`, `HandleViewAllTasks`, `HandleUpdateTask`, `HandleTargetedUpdate`, `HandleDeleteTask`, `HandleMarkTaskAsComplete`, `HandleMarkTaskAsIncomplete`, and `PrintHelp`.
 4. Verified the functionality of the refactored CLI by running the application and testing various
+
+# Log Entry 22
+
+## User Prompt
+
+Hello Copilot. We are on the final step of our Command Handler refactoring. We have successfully moved all command logic into dedicated handler classes. However, this has created code duplication: both `AddHandler.cs` and `EditHandler.cs` now contain an identical `HandleInteractiveDateInput` method.
+
+Our goal is to eliminate this duplication by moving the shared logic into a static helper class.
+
+### **Step 1: Create a Console Input Helper Class**
+
+1.  In the `PriorityTaskManager.CLI` project, create a new folder named `Utils`.
+2.  Inside the `Utils` folder, create a new C# class file named `ConsoleInputHelper.cs`.
+3.  Make this a `public static` class.
+
+### **Step 2: Move the Shared Logic**
+
+1.  Go to `AddHandler.cs`. Cut the entire `HandleInteractiveDateInput` method and the `IncrementMode` enum from this file.
+2.  Paste both the method and the enum into the new `ConsoleInputHelper.cs` class.
+3.  In `ConsoleInputHelper.cs`, make the `HandleInteractiveDateInput` method `public static`. The `IncrementMode` enum should also be `public`.
+
+### **Step 3: Update Handlers to Use the Helper**
+
+Now, we need to update the two handlers that relied on this logic.
+
+1.  **Refactor `AddHandler.cs`:**
+    *   The local `HandleInteractiveDateInput` method and `IncrementMode` enum should now be gone.
+    *   Find the line where the date input was called and change it to call the new static method: `ConsoleInputHelper.HandleInteractiveDateInput(...)`.
+    *   Add a `using PriorityTaskManager.CLI.Utils;` statement at the top of the file if needed.
+
+2.  **Refactor `EditHandler.cs`:**
+    *   Delete the private `HandleInteractiveDateInput` method and the `IncrementMode` enum from this file.
+    *   Find the line(s) where the date input was called and change them to call the new static method: `ConsoleInputHelper.HandleInteractiveDateInput(...)`.
+    *   Add a `using PriorityTaskManager.CLI.Utils;` statement at the top of the file if needed.
+
+Once this is complete, our refactoring will be finished. The CLI project will have a clean, scalable, and maintainable architecture with no duplicated code.
+
+### Copilot's Action
+
+1. Created a new `Utils` folder and added the `ConsoleInputHelper.cs` static helper class.
+2. Moved the shared `HandleInteractiveDateInput` method and `IncrementMode` enum into `ConsoleInputHelper.cs` as public static members.
+3. Refactored both `AddHandler.cs` and `EditHandler.cs` to use the new helper method and removed the duplicated code.
+4. Verified that the CLI runs successfully and all commands work as expected.
+
+# Log Entry 23
+
+## User Prompt
+
+Hello Copilot. We are beginning a file-by-file cleanup of our solution. In this step, we will focus exclusively on the **`PriorityTaskManager`** project, which contains our core business logic.
+
+Please open and review each of the following files within the `PriorityTaskManager` project:
+*   `Models/TaskItem.cs`
+*   `Services/TaskManagerService.cs`
+
+For each file, please perform these specific "subtractive" cleanup actions:
+
+1.  **Remove Unused `using` Statements:** Delete any `using` directives at the top of the file that are not required.
+
+2.  **Delete Commented-Out Code:** Remove any lines or blocks of code that have been commented out.
+
+3.  **Remove Placeholder Comments:** Delete any default, template-generated comments.
+
+After you have cleaned these specific files, the task is complete.
+
+### Copilot's Action
+
+1. Reviewed and cleaned `Models/TaskItem.cs` and `Services/TaskManagerService.cs` in the `PriorityTaskManager` project.
+2. Removed unused `using` statements from both files.
+3. Deleted commented-out code and placeholder comments.
+4. Fixed a missing block in `TaskManagerService.cs` after cleanup to ensure code

@@ -1,5 +1,3 @@
-using System;
-
 namespace PriorityTaskManager.Models
 {
     public class TaskItem
@@ -12,7 +10,7 @@ namespace PriorityTaskManager.Models
         public bool IsCompleted { get; set; }
 
         public TimeSpan EstimatedDuration { get; set; }
-        public double Progress { get; set; } // 0.0 to 1.0
+        public double Progress { get; set; }
         public List<int> Dependencies { get; set; } = new List<int>();
 
         public double UrgencyScore { get; set; }
