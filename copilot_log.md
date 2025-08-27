@@ -720,3 +720,28 @@ The objective is to make the code less dense and guide the reader's eye through 
 - Added vertical whitespace to all specified `.cs` files in the PriorityTaskManager.CLI project.
 - Ensured methods are separated by blank lines and logical blocks within methods are visually distinct.
 - Improved code readability and maintainability throughout the CLI project.
+
+# Log Entry 28
+
+## User Prompt
+
+We are on the final step of our readability enhancement phase. The last project to review is **`PriorityTaskManager.Tests`**.
+
+Please open the file `TaskManagerServiceTests.cs` and improve its visual structure.
+
+Your task is to apply two main principles to the file:
+
+1.  **Separate Test Methods:** Ensure there is at least one blank line separating each distinct test method (each method marked with `[Fact]`).
+
+2.  **Structure Tests with "Arrange, Act, Assert" (AAA):** The code in our tests already follows the AAA pattern. Your job is to make this pattern visually explicit. Within each test method, add a blank line between:
+    *   The **Arrange** section (where you set up the service and data).
+    *   The **Act** section (where you call the method being tested).
+    *   The **Assert** section (where you verify the outcome).
+
+This will make the purpose and flow of each test immediately obvious to anyone reading the file.
+
+### Copilot's Action
+
+- Added vertical whitespace to `TaskManagerServiceTests.cs` to separate each test method.
+- Made the "Arrange, Act, Assert" pattern visually explicit within each test by adding blank lines between sections.
+- Improved the clarity and readability of all unit tests
