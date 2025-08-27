@@ -383,3 +383,34 @@ Please update `HandleUpdateTask` to account for the targeted edit as well. Or cr
 
 ### Copilot's Action
 Created a new `HandleTargetedUpdate` method in `Program.cs` to handle targeted edits for specific attributes of a task. This modular approach ensures clean and maintainable code.
+
+# Log Entry 18
+
+## User Prompt
+
+Hello Copilot. We are beginning a multi-part refactoring of our `PriorityTaskManager.CLI` project to implement a Command Handler Pattern. This will improve the structure and scalability of the code.
+
+In this first part, we will create the foundational interface and directory structure.
+
+### **Step 1: Create the Command Handler Interface**
+
+1.  In the `PriorityTaskManager.CLI` project, create a new folder named `Interfaces`.
+2.  Inside this new `Interfaces` folder, create a new C# interface file named `ICommandHandler.cs`.
+3.  Add the following code to the `ICommandHandler.cs` file. This interface defines the contract that all of our future command handler classes will follow.
+
+    ```csharp
+    using PriorityTaskManager.Services;
+
+    namespace PriorityTaskManager.CLI.Interfaces
+    {
+        public interface ICommandHandler
+        {
+            void Execute(TaskManagerService service, string[] args);
+        }
+    }
+    ```
+
+### **Step 2: Create the Handlers Directory**
+
+1.  In the root of the `PriorityTaskManager.CLI` project, create a new, empty folder named `Handlers`. We will populate this directory with our handler classes in the next steps.
+
