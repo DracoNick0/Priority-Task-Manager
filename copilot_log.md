@@ -273,3 +273,35 @@ After making these changes, please update the `copilot_log.md` with a new entry 
 - Made all CLI commands case-insensitive for improved usability.
 - Renamed the "update" command to "edit" throughout the CLI and help text.
 - Updated the copilot log to document these usability improvements.
+
+# Log Entry 12
+## User Prompt
+Great, thanks for doing that!
+The current application is now feature-complete for its initial version, but it lacks data persistence. Our next and most critical task is to save all tasks to a file so that the user's data is not lost when the application is closed. We will use the modern, built-in `System.Text.Json` library for this.
+
+**Your Task:**
+
+1.  **Implement Save/Load Logic in the Service (`TaskManagerService.cs`):**
+    *   Add a `private readonly string _filePath` field to store the path for our data file (e.g., `"tasks.json"`).
+    *   Create a `private void SaveTasks()` method. This method will serialize the `_tasks` list and the `_nextId` field into a JSON file at `_filePath`. To save both, you might want to create a small helper class or use a `Tuple`.
+    *   Create a `private void LoadTasks()` method. This method will check if `_filePath` exists. If it does, it will read the JSON file, deserialize the data, and populate the `_tasks` list and `_nextId` field. It should handle the case where the file does not exist (by simply doing nothing and letting the service start with a fresh, empty list).
+    *   Call `LoadTasks()` at the end of the `TaskManagerService` constructor.
+
+2.  **Integrate Saving into All Modifying Methods:**
+    *   At the end of **every public method** that changes the list of tasks, add a call to `SaveTasks()`. This includes:
+        *   `AddTask`
+        *   `UpdateTask`
+        *   `DeleteTask`
+        *   `MarkTaskAsComplete`
+
+3.  **Perform Project Cleanup:**
+    *   The project structure looks great, but there is an unused boilerplate file. Please delete the `PriorityTaskManager.Tests/UnitTest1.cs` file.
+
+After implementing data persistence, please update the `copilot_log.md` with a new entry for this prompt.
+
+### Copilot's Action
+- Implemented data persistence in `TaskManagerService` using `System.Text.Json`.
+  - Added `SaveTasks` and `LoadTasks` methods.
+  - Integrated `SaveTasks` into all modifying methods (`AddTask`, `UpdateTask`, `DeleteTask`, `MarkTaskAsComplete`).
+  - Ensured tasks are loaded from `tasks.json` during service initialization.
+- Deleted the unused `UnitTest1.cs` file from the test project.

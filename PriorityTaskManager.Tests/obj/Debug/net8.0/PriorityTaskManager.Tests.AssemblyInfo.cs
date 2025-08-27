@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PriorityTaskManager.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c7e576fa95a33f454a288330c8bffd318c6d7f3a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+899d428ee87c086926c872d4e40493dae2cd4805")]
 [assembly: System.Reflection.AssemblyProductAttribute("PriorityTaskManager.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PriorityTaskManager.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

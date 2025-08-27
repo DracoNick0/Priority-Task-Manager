@@ -1,17 +1,51 @@
 using System.Collections.Generic;
+using System.Text.Json;
+using System.IO;
 using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
-        private readonly List<TaskItem> _tasks = new List<TaskItem>();
+        private readonly string _filePath = "tasks.json";
+        private List<TaskItem> _tasks = new List<TaskItem>();
         private int _nextId = 1;
+
+        public TaskManagerService()
+        {
+            LoadTasks();
+        }
+
+        private void SaveTasks()
+        {
+            var data = new
+            {
+                Tasks = _tasks,
+                NextId = _nextId
+            };
+            File.WriteAllText(_filePath, JsonSerializer.Serialize(data));
+        }
+
+        private void LoadTasks()
+        {
+            if (File.Exists(_filePath))
+            {
+                var json = File.ReadAllText(_filePath);
+                var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
+                if (data != null && data.ContainsKey("Tasks") && data.ContainsKey("NextId"))
+                {
+                    _tasks = JsonSerializer.Deserialize<List<TaskItem>>(data["Tasks"].GetRawText()) ?? new List<TaskItem>();
+                    _nextId = data["NextId"].GetInt32();
+                }
+            }
+        }
 
         public void AddTask(TaskItem task)
         {
             task.Id = _nextId++;
             _tasks.Add(task);
+            SaveTasks();
         }
 
         public IEnumerable<TaskItem> GetAllTasks()
@@ -34,6 +68,7 @@ namespace PriorityTaskManager.Services
             existingTask.Importance = updatedTask.Importance;
             existingTask.DueDate = updatedTask.DueDate;
             existingTask.IsCompleted = updatedTask.IsCompleted;
+            SaveTasks();
             return true;
         }
 
@@ -43,6 +78,7 @@ namespace PriorityTaskManager.Services
             if (task == null)
                 return false;
             _tasks.Remove(task);
+            SaveTasks();
             return true;
         }
 
@@ -57,6 +93,7 @@ namespace PriorityTaskManager.Services
             if (task == null)
                 return false;
             task.IsCompleted = true;
+            SaveTasks();
             return true;
         }
 
