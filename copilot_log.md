@@ -414,3 +414,121 @@ In this first part, we will create the foundational interface and directory stru
 
 1.  In the root of the `PriorityTaskManager.CLI` project, create a new, empty folder named `Handlers`. We will populate this directory with our handler classes in the next steps.
 
+# Log Entry 19
+
+## User Prompt
+
+Hello Copilot. We are continuing our refactoring to a Command Handler Pattern. In this step, we will create and implement the handlers for our simpler, self-contained commands: `help`, `delete`, `complete`, and `uncomplete`.
+
+**Important:** You must create new handler classes and move the logic from the existing `Program.cs` methods into them. Do **not** delete the original methods from `Program.cs` yet.
+
+### **Step 1: Implement the `HelpHandler`**
+
+1.  In the `PriorityTaskManager.CLI/Handlers` directory, create a new class file named `HelpHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  Move the entire logic of the `PrintHelp()` method from `Program.cs` into the `Execute` method of this new handler.
+
+### **Step 2: Implement the `DeleteHandler`**
+
+1.  In the `Handlers` directory, create a new class file named `DeleteHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  Move the entire logic of the `HandleDeleteTask(TaskManagerService service, int id)` method from `Program.cs` into the `Execute` method of this new handler, ensuring the `id` is correctly parsed from the `args` array.
+
+### **Step 3: Implement the `CompleteHandler`**
+
+1.  In the `Handlers` directory, create a new class file named `CompleteHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  Move the entire logic of the `HandleMarkTaskAsComplete(TaskManagerService service, int id)` method from `Program.cs` into the `Execute` method of this new handler, ensuring the `id` is correctly parsed from the `args` array.
+
+### **Step 4: Implement the `UncompleteHandler`**
+
+1.  In the `Handlers` directory, create a new class file named `UncompleteHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  Move the entire logic of the `HandleMarkTaskAsIncomplete(TaskManagerService service, int id)` method from `Program.cs` into the `Execute` method of this new handler, ensuring the `id` is correctly parsed from the `args` array.
+
+### Copilot's Action
+
+1. Created `HelpHandler.cs` in the `Handlers` directory and moved the logic from `PrintHelp()` into the `Execute` method.
+2. Created `DeleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleDeleteTask` into the `Execute` method.
+3. Created `CompleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleMarkTaskAsComplete` into the `Execute` method.
+4. Created `UncompleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleMarkTaskAsIncomplete` into the
+
+# Log Entry 20
+
+## User Prompt
+
+Hello Copilot. We are ready for the next stage of our Command Handler refactoring. We will now create handlers for the more complex commands: `list`, `add`, and `edit`.
+
+**Important:** As before, you will only be creating new files and moving/copying logic into them. Do **not** delete the original methods or the private enum from `Program.cs` yet.
+
+### **Step 1: Implement the `ListHandler`**
+
+1.  In the `PriorityTaskManager.CLI/Handlers` directory, create a new class file named `ListHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  Move the entire logic from the `HandleViewAllTasks` method in `Program.cs` into the `Execute` method of this new handler.
+
+### **Step 2: Implement the `AddHandler`**
+
+This handler requires its own private helper method for date input.
+
+1.  In the `Handlers` directory, create a new class file named `AddHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  Move the entire logic from the `HandleAddTask` method in `Program.cs` into the `Execute` method.
+4.  Find the `HandleInteractiveDateInput` method and its private `IncrementMode` enum in `Program.cs`. Move **both** of them into the `AddHandler.cs` file and declare them as `private` members of the `AddHandler` class. The `Execute` method should now call this local private method for date input.
+
+### **Step 3: Implement the `EditHandler`**
+
+This handler is the most complex, as it orchestrates both full and targeted edits and also requires the date input logic.
+
+1.  In the `Handlers` directory, create a new class file named `EditHandler.cs`.
+2.  The class must implement `ICommandHandler`.
+3.  The main `Execute` method's logic should be taken from the `HandleUpdateTask` method in `Program.cs`. This method acts as the entry point, parsing the arguments to decide which type of edit to perform.
+4.  Move the logic from the `HandleTargetedUpdate` method in `Program.cs` into a new `private` method within the `EditHandler` class. The `Execute` method should call this private helper for targeted attribute edits.
+5.  The `EditHandler` also needs the interactive date picker. Copy the `HandleInteractiveDateInput` method and the `IncrementMode` enum from `Program.cs` and place them inside the `EditHandler` class as `private` members.
+
+### Copilot's Action
+
+1. Created `ListHandler.cs` in the `Handlers` directory and moved the logic from `HandleViewAllTasks` into the `Execute` method.
+2. Created `AddHandler.cs` in the `Handlers` directory and moved the logic from `HandleAddTask` into the `Execute` method. Also moved the `HandleInteractiveDateInput` method and `IncrementMode` enum as private members of the `AddHandler` class.
+3. Created `EditHandler.cs` in the `Handlers` directory and moved the logic from `HandleUpdateTask` into the `Execute` method. Added a private `HandleTargetedUpdate` method for targeted edits. Also moved the `HandleInteractiveDateInput` method and `IncrementMode` enum as private members of the `EditHandler
+
+# Log Entry 21
+
+## User Prompt
+
+Hello Copilot. We have successfully created handlers for all our commands. In this crucial step, we will refactor the `Main` method in `Program.cs` to use our new Command Handler Pattern. This will replace the large `switch` statement with a clean, dictionary-based dispatcher.
+
+### **Step 1: Update `Program.cs` to Use Handlers**
+
+1.  Open the `PriorityTaskManager.CLI/Program.cs` file.
+2.  Add the necessary `using` statements at the top of the file to access our new handlers and interface:
+    ```csharp
+    using PriorityTaskManager.CLI.Handlers;
+    using PriorityTaskManager.CLI.Interfaces;
+    using System.Collections.Generic;
+    ```
+3.  Inside the `Main` method, just after the `TaskManagerService` is created, define a `Dictionary` that maps the command strings (e.g., "add", "list") to instances of their corresponding handler classes.
+4.  Replace the entire `while` loop, including the old `switch` statement, with a new loop. This new loop will parse the user's command and use the dictionary to find and `Execute` the correct handler. If the command is "exit", the loop should terminate.
+
+### **Step 2: Remove Obsolete Methods**
+
+1.  Now that the `switch` statement is gone, all of the old `Handle...` and `PrintHelp` methods in `Program.cs` are no longer being called.
+2.  Delete the following methods entirely from `Program.cs`:
+    *   `HandleAddTask`
+    *   `HandleViewAllTasks`
+    *   `HandleUpdateTask`
+    *   `HandleTargetedUpdate`
+    *   `HandleDeleteTask`
+    *   `HandleMarkTaskAsComplete`
+    *   `HandleMarkTaskAsIncomplete`
+    *   `PrintHelp`
+3.  The `HandleInteractiveDateInput` method and its private `IncrementMode` enum should have been moved to the `AddHandler` and `EditHandler` classes in the previous step, so they should already be gone from `Program.cs`. If they are still present, delete them now.
+
+After these changes, your `Program.cs` file should be significantly smaller and contain only the `Main` method with the new handler-dispatching logic.
+
+### Copilot's Action
+
+1. Refactored the `Main` method in `Program.cs` to use the Command Handler Pattern with a dictionary-based dispatcher.
+2. Added the necessary `using` statements to access the handlers and interface.
+3. Removed all obsolete methods from `Program.cs`, including `HandleAddTask`, `HandleViewAllTasks`, `HandleUpdateTask`, `HandleTargetedUpdate`, `HandleDeleteTask`, `HandleMarkTaskAsComplete`, `HandleMarkTaskAsIncomplete`, and `PrintHelp`.
+4. Verified the functionality of the refactored CLI by running the application and testing various
