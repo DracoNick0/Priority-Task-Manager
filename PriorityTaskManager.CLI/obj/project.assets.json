@@ -33,11 +33,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.CLI\\PriorityTaskManager.CLI.csproj",
+      "projectUniqueName": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.CLI\\PriorityTaskManager.CLI.csproj",
       "projectName": "PriorityTaskManager.CLI",
-      "projectPath": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.CLI\\PriorityTaskManager.CLI.csproj",
+      "projectPath": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.CLI\\PriorityTaskManager.CLI.csproj",
       "packagesPath": "C:\\Users\\NiXta\\.nuget\\packages\\",
-      "outputPath": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.CLI\\obj\\",
+      "outputPath": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager.CLI\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -59,8 +59,8 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj": {
-              "projectPath": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj"
+            "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj": {
+              "projectPath": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj"
             }
           }
         }

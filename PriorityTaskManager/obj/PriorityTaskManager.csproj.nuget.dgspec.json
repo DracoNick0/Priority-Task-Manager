@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj": {}
+    "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj": {}
   },
   "projects": {
-    "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj": {
+    "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj",
+        "projectUniqueName": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj",
         "projectName": "PriorityTaskManager",
-        "projectPath": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj",
+        "projectPath": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\PriorityTaskManager.csproj",
         "packagesPath": "C:\\Users\\NiXta\\.nuget\\packages\\",
-        "outputPath": "e:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\obj\\",
+        "outputPath": "E:\\HDD - Desktop\\Priority-Task-Manager\\PriorityTaskManager\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

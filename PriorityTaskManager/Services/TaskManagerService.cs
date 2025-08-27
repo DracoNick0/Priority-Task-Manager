@@ -97,6 +97,16 @@ namespace PriorityTaskManager.Services
             return true;
         }
 
+        public bool MarkTaskAsIncomplete(int id)
+        {
+            var task = _tasks.Find(t => t.Id == id);
+            if (task == null)
+                return false;
+            task.IsCompleted = false;
+            SaveTasks();
+            return true;
+        }
+
         public void CalculateUrgencyForAllTasks()
         {
             // Ensure all tasks have a reset default value before calculation.

@@ -305,3 +305,81 @@ After implementing data persistence, please update the `copilot_log.md` with a n
   - Integrated `SaveTasks` into all modifying methods (`AddTask`, `UpdateTask`, `DeleteTask`, `MarkTaskAsComplete`).
   - Ensured tasks are loaded from `tasks.json` during service initialization.
 - Deleted the unused `UnitTest1.cs` file from the test project.
+
+# Log Entry 13
+## User Prompt
+We are making several user experience improvements to the CLI to streamline common workflows and enhance readability.
+
+**Your Task:**
+
+**Part 1: Streamlining Task Creation (`HandleAddTask`)**
+*   In the `HandleAddTask` method, remove the user prompts for `Progress` and `Dependencies`.
+*   These properties should be set to their default values (0.0 for Progress, and an empty list for Dependencies) automatically when a new `TaskItem` is created.
+
+**Part 2: Enhancing the Task List View (`HandleViewAllTasks`)**
+*   Modify the `foreach` loop that displays the tasks to change the display format.
+*   Instead of showing `Completed: True/False`, display a checkbox at the beginning of the line: `[x]` for completed tasks and `[ ]` for incomplete tasks.
+*   Remove the `Description` from the list view to make it more compact.
+*   The new format should look something like this:
+    `[ ] Id: 2, Title: My new task, Urgency: 0.850, LPSD: 2025-08-28`
+
+**Part 3: Overhauling the `edit` Command (`Program.cs`)**
+*   **A. Simplify Due Date Editing:**
+    *   In `HandleUpdateTask`, remove the prompt that asks the user to press 'd' to edit the due date.
+    *   The interactive date editor (`HandleInteractiveDateInput`) should now be a standard part of the full edit process, appearing automatically after the other prompts.
+
+*   **B. Implement Targeted Attribute Editing:**
+    *   We will modify the `edit` command to accept an optional third argument specifying which attribute to edit.
+    *   Update the logic in the main `switch` statement for the `edit` case to handle this new argument pattern.
+    *   Refactor `HandleUpdateTask` to accept this optional attribute name.
+    *   Inside `HandleUpdateTask`, use a `switch` on the attribute name (passed in as lowercase).
+        *   If an attribute name is provided, prompt the user *only* for that specific attribute's new value.
+        *   If no attribute name is provided, the method should proceed with the full, multi-prompt edit as it does now.
+    *   Support the following attribute names: `title`, `desc`, `importance`, `due`, `progress`, and `duration`.
+
+After implementing all of these UX improvements, please update the `copilot_log.md` with a new entry for this prompt.
+
+### Copilot's Action
+- Streamlined the `HandleAddTask` method by removing prompts for `Progress` and `Dependencies`, setting them to default values.
+- Enhanced the `HandleViewAllTasks` method to display tasks with a checkbox for completion status and removed the `Description` field for a more compact view.
+- Overhauled the `HandleUpdateTask` method to:
+  - Simplify due date editing by making it a standard part of the full edit process.
+  - Support targeted attribute editing with an optional third argument specifying the attribute to edit.
+
+# Log Entry 14
+## User Prompt
+We are making another round of significant user experience enhancements. This task will refine the task list, add a new command, upgrade our date editor, and make the `edit` command more flexible and powerful.
+
+### Copilot's Action
+- **Core Logic & Tests:**
+  - Added `MarkTaskAsIncomplete` to `TaskManagerService` to mark tasks as incomplete.
+  - Created a test `MarkTaskAsIncomplete_ShouldSetIsCompletedToFalse_WhenTaskExists` in `TaskManagerServiceTests`.
+
+- **CLI Enhancements:**
+  - Added the `uncomplete` command with `HandleMarkTaskAsIncomplete`.
+  - Enhanced `HandleInteractiveDateInput` to support arrow key navigation for cycling increment modes.
+  - Updated `PrintHelp` to include the `uncomplete` command and enhanced `edit` syntax.
+
+- **Edit Command:**
+  - Partially implemented targeted attribute edits for `edit`.
+
+# Log Entry 15
+## User Prompt
+Please proceed with the next change I mentioned regarding omitting urgency and LPSD.
+
+### Copilot's Action
+Modified the `HandleViewAllTasks` method in `Program.cs` to omit urgency and LPSD for completed tasks in the task list view. Completed tasks now display in a simplified format.
+
+# Log Entry 16
+## User Prompt
+Great! Next, please make the changes I requested regarding targeted edits.
+
+### Copilot's Action
+Updated the `edit` command in the `Main` method to handle both full edits (`edit <Id>`) and targeted edits (`edit <attribute> <Id>`). This allows users to specify a single attribute for editing.
+
+# Log Entry 17
+## User Prompt
+Please update `HandleUpdateTask` to account for the targeted edit as well. Or create another function to take responsibility.
+
+### Copilot's Action
+Created a new `HandleTargetedUpdate` method in `Program.cs` to handle targeted edits for specific attributes of a task. This modular approach ensures clean and maintainable code.

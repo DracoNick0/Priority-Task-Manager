@@ -112,5 +112,21 @@ namespace PriorityTaskManager.Tests
             Assert.NotNull(found);
             Assert.True(found.IsCompleted);
         }
+
+        [Fact]
+        public void MarkTaskAsIncomplete_ShouldSetIsCompletedToFalse_WhenTaskExists()
+        {
+            // Arrange
+            var service = new TaskManagerService();
+            var task = new TaskItem { Title = "Test Task", IsCompleted = true };
+            service.AddTask(task);
+
+            // Act
+            var result = service.MarkTaskAsIncomplete(task.Id);
+
+            // Assert
+            Assert.True(result);
+            Assert.False(service.GetTaskById(task.Id)?.IsCompleted);
+        }
     }
 }

@@ -28,9 +28,18 @@ namespace PriorityTaskManager.CLI
 						HandleViewAllTasks(service);
 						break;
 					case "edit":
-						if (argsArr.Length > 0 && int.TryParse(argsArr[0], out int upId))
-							HandleUpdateTask(service, upId);
-						else Console.WriteLine("Usage: edit <Id>");
+						if (argsArr.Length == 1 && int.TryParse(argsArr[0], out int editId))
+						{
+							HandleUpdateTask(service, editId);
+						}
+						else if (argsArr.Length == 2 && int.TryParse(argsArr[1], out int targetEditId))
+						{
+							HandleUpdateTask(service, targetEditId, argsArr[0]);
+						}
+						else
+						{
+							Console.WriteLine("Usage: edit <Id> or edit <attribute> <Id>");
+						}
 						break;
 					case "delete":
 						if (argsArr.Length > 0 && int.TryParse(argsArr[0], out int delId))
@@ -41,6 +50,11 @@ namespace PriorityTaskManager.CLI
 						if (argsArr.Length > 0 && int.TryParse(argsArr[0], out int compId))
 							HandleMarkTaskAsComplete(service, compId);
 						else Console.WriteLine("Usage: complete <Id>");
+						break;
+					case "uncomplete":
+						if (argsArr.Length > 0 && int.TryParse(argsArr[0], out int incomId))
+							HandleMarkTaskAsIncomplete(service, incomId);
+						else Console.WriteLine("Usage: uncomplete <Id>");
 						break;
 					case "help":
 						PrintHelp();
@@ -74,21 +88,6 @@ namespace PriorityTaskManager.CLI
 			var durationInput = Console.ReadLine();
 			double durationHours = 1.0;
 			if (!string.IsNullOrWhiteSpace(durationInput) && double.TryParse(durationInput, out double dur) && dur > 0) durationHours = dur;
-			Console.Write($"Progress (0-100, default: 0): ");
-			var progressInput = Console.ReadLine();
-			double progress = 0.0;
-			if (!string.IsNullOrWhiteSpace(progressInput) && double.TryParse(progressInput, out double prog) && prog >= 0 && prog <= 100) progress = prog;
-			Console.Write($"Dependencies (comma-separated task IDs, default: none): ");
-			var depsInput = Console.ReadLine();
-			var deps = new List<int>();
-			if (!string.IsNullOrWhiteSpace(depsInput))
-			{
-				foreach (var part in depsInput.Split(','))
-				{
-					if (int.TryParse(part.Trim(), out int depId))
-						deps.Add(depId);
-				}
-			}
 			Console.WriteLine($"Due Date (use arrow keys to adjust, Enter to confirm):");
 			var dueDate = HandleInteractiveDateInput(DateTime.Today.AddDays(1));
 			var task = new TaskItem
@@ -99,8 +98,8 @@ namespace PriorityTaskManager.CLI
 				DueDate = dueDate,
 				IsCompleted = false,
 				EstimatedDuration = TimeSpan.FromHours(durationHours),
-				Progress = progress / 100.0,
-				Dependencies = deps
+				Progress = 0.0, // Default value
+				Dependencies = new List<int>() // Default value
 			};
 			service.AddTask(task);
 			Console.WriteLine($"Task added with Id {task.Id}.");
@@ -137,21 +136,15 @@ namespace PriorityTaskManager.CLI
 							case IncrementMode.Year: date = date.AddYears(-1); break;
 						}
 						break;
+					case ConsoleKey.UpArrow:
+						mode = (IncrementMode)(((int)mode + 1) % 4);
+						break;
+					case ConsoleKey.DownArrow:
+						mode = (IncrementMode)(((int)mode + 3) % 4);
+						break;
 					case ConsoleKey.Enter:
 						Console.WriteLine();
 						return date;
-					case ConsoleKey.D:
-						mode = IncrementMode.Day;
-						break;
-					case ConsoleKey.W:
-						mode = IncrementMode.Week;
-						break;
-					case ConsoleKey.M:
-						mode = IncrementMode.Month;
-						break;
-					case ConsoleKey.Y:
-						mode = IncrementMode.Year;
-						break;
 				}
 			}
 		}
@@ -169,11 +162,19 @@ namespace PriorityTaskManager.CLI
 			Console.WriteLine("\nAll Tasks (sorted by urgency):");
 			foreach (var task in tasks)
 			{
-				Console.WriteLine($"Id: {task.Id}, Title: {task.Title}, Description: {task.Description}, Completed: {task.IsCompleted}, Urgency: {task.UrgencyScore:F3}, LPSD: {task.LatestPossibleStartDate:yyyy-MM-dd}");
+				var checkbox = task.IsCompleted ? "[x]" : "[ ]";
+				if (task.IsCompleted)
+				{
+					Console.WriteLine($"{checkbox} Id: {task.Id}, Title: {task.Title}");
+				}
+				else
+				{
+					Console.WriteLine($"{checkbox} Id: {task.Id}, Title: {task.Title}, Urgency: {task.UrgencyScore:F3}, LPSD: {task.LatestPossibleStartDate:yyyy-MM-dd}");
+				}
 			}
 		}
 
-		private static void HandleUpdateTask(TaskManagerService service, int id)
+		private static void HandleUpdateTask(TaskManagerService service, int id, string? attribute = null)
 		{
 			var existing = service.GetTaskById(id);
 			if (existing == null)
@@ -181,64 +182,70 @@ namespace PriorityTaskManager.CLI
 				Console.WriteLine("Task not found.");
 				return;
 			}
+
+			if (!string.IsNullOrEmpty(attribute))
+			{
+				HandleTargetedUpdate(service, id, attribute);
+				return;
+			}
+
+			// Full edit process
 			Console.Write($"New Title (default: {existing.Title}): ");
-			var title = Console.ReadLine();
-			if (string.IsNullOrWhiteSpace(title)) title = existing.Title;
+			existing.Title = Console.ReadLine() ?? existing.Title;
 			Console.Write($"New Description (default: {existing.Description}): ");
-			var description = Console.ReadLine();
-			if (string.IsNullOrWhiteSpace(description)) description = existing.Description;
+			existing.Description = Console.ReadLine() ?? existing.Description;
 			Console.Write($"New Importance (1-10, default: {existing.Importance}): ");
-			var importanceInput = Console.ReadLine();
-			int importance = existing.Importance;
-			if (!string.IsNullOrWhiteSpace(importanceInput) && int.TryParse(importanceInput, out int imp) && imp >= 1 && imp <= 10) importance = imp;
+			if (int.TryParse(Console.ReadLine(), out int importance) && importance >= 1 && importance <= 10) existing.Importance = importance;
+			existing.DueDate = HandleInteractiveDateInput(existing.DueDate);
 			Console.Write($"New Estimated Duration (hours, default: {existing.EstimatedDuration.TotalHours}): ");
-			var durationInput = Console.ReadLine();
-			double durationHours = existing.EstimatedDuration.TotalHours;
-			if (!string.IsNullOrWhiteSpace(durationInput) && double.TryParse(durationInput, out double dur) && dur > 0) durationHours = dur;
+			if (double.TryParse(Console.ReadLine(), out double duration) && duration > 0) existing.EstimatedDuration = TimeSpan.FromHours(duration);
 			Console.Write($"New Progress (0-100, default: {existing.Progress * 100.0}): ");
-			var progressInput = Console.ReadLine();
-			double progress = existing.Progress * 100.0;
-			if (!string.IsNullOrWhiteSpace(progressInput) && double.TryParse(progressInput, out double prog) && prog >= 0 && prog <= 100) progress = prog;
-			Console.Write($"New Dependencies (comma-separated task IDs, default: {string.Join(",", existing.Dependencies)}): ");
-			var depsInput = Console.ReadLine();
-			var deps = new List<int>(existing.Dependencies);
-			if (!string.IsNullOrWhiteSpace(depsInput))
+			if (double.TryParse(Console.ReadLine(), out double progress) && progress >= 0 && progress <= 100) existing.Progress = progress / 100.0;
+			service.UpdateTask(existing);
+			Console.WriteLine("Task updated.");
+		}
+
+		private static void HandleTargetedUpdate(TaskManagerService service, int id, string attribute)
+		{
+			var existing = service.GetTaskById(id);
+			if (existing == null)
 			{
-				deps.Clear();
-				foreach (var part in depsInput.Split(','))
-				{
-					if (int.TryParse(part.Trim(), out int depId))
-						deps.Add(depId);
-				}
+				Console.WriteLine("Task not found.");
+				return;
 			}
-			var dueDate = existing.DueDate;
-			Console.Write("Press 'd' to edit the due date, or any other key to skip: ");
-			var key = Console.ReadKey(true);
-			if (key.Key == ConsoleKey.D)
+
+			switch (attribute.ToLower())
 			{
-				Console.WriteLine();
-				dueDate = HandleInteractiveDateInput(existing.DueDate);
+				case "title":
+					Console.Write($"New Title (default: {existing.Title}): ");
+					existing.Title = Console.ReadLine() ?? existing.Title;
+					break;
+				case "desc":
+					Console.Write($"New Description (default: {existing.Description}): ");
+					existing.Description = Console.ReadLine() ?? existing.Description;
+					break;
+				case "importance":
+					Console.Write($"New Importance (1-10, default: {existing.Importance}): ");
+					if (int.TryParse(Console.ReadLine(), out int imp) && imp >= 1 && imp <= 10) existing.Importance = imp;
+					break;
+				case "due":
+					existing.DueDate = HandleInteractiveDateInput(existing.DueDate);
+					break;
+				case "progress":
+					Console.Write($"New Progress (0-100, default: {existing.Progress * 100.0}): ");
+					if (double.TryParse(Console.ReadLine(), out double prog) && prog >= 0 && prog <= 100) existing.Progress = prog / 100.0;
+					break;
+				case "duration":
+					Console.Write($"New Estimated Duration (hours, default: {existing.EstimatedDuration.TotalHours}): ");
+					if (double.TryParse(Console.ReadLine(), out double dur) && dur > 0) existing.EstimatedDuration = TimeSpan.FromHours(dur);
+					break;
+				default:
+					Console.WriteLine("Unknown attribute.");
+					return;
 			}
-			else
-			{
-				Console.WriteLine();
-			}
-			var updated = new TaskItem
-			{
-				Id = id,
-				Title = title,
-				Description = description,
-				Importance = importance,
-				DueDate = dueDate,
-				IsCompleted = existing.IsCompleted,
-				EstimatedDuration = TimeSpan.FromHours(durationHours),
-				Progress = progress / 100.0,
-				Dependencies = deps
-			};
-			if (service.UpdateTask(updated))
-				Console.WriteLine("Task updated successfully.");
-			else
-				Console.WriteLine("Update failed.");
+
+			service.UpdateTask(existing);
+			Console.WriteLine("Task updated.");
 		}
 
 		private static void HandleDeleteTask(TaskManagerService service, int id)
@@ -257,14 +264,28 @@ namespace PriorityTaskManager.CLI
 				Console.WriteLine("Task not found.");
 		}
 
+		private static void HandleMarkTaskAsIncomplete(TaskManagerService service, int id)
+		{
+			if (service.MarkTaskAsIncomplete(id))
+			{
+				Console.WriteLine($"Task {id} marked as incomplete.");
+			}
+			else
+			{
+				Console.WriteLine($"Task {id} not found.");
+			}
+		}
+
 		private static void PrintHelp()
 		{
 			Console.WriteLine("\nAvailable commands:");
 			Console.WriteLine("add <Title>         - Add a new task (prompts for details)");
 			Console.WriteLine("list                - List all tasks sorted by urgency");
 			Console.WriteLine("edit <Id>           - Edit a task by Id");
+			Console.WriteLine("edit <attribute> <Id> - Edit a specific attribute of a task");
 			Console.WriteLine("delete <Id>         - Delete a task by Id");
 			Console.WriteLine("complete <Id>       - Mark a task as complete");
+			Console.WriteLine("uncomplete <Id>     - Mark a task as incomplete");
 			Console.WriteLine("help                - Show this help message");
 			Console.WriteLine("exit                - Exit the application");
 		}
