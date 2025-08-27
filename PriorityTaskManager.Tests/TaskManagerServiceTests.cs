@@ -37,7 +37,6 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void AddTask_ShouldIncreaseTaskCount()
         {
-            // Arrange
             var service = new TaskManagerService();
             var task = new TaskItem
             {
@@ -48,10 +47,8 @@ namespace PriorityTaskManager.Tests
                 IsCompleted = false
             };
 
-            // Act
             service.AddTask(task);
 
-            // Assert
             Assert.Equal(1, service.GetTaskCount());
         }
 
