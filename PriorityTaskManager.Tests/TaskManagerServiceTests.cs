@@ -50,6 +50,12 @@ namespace PriorityTaskManager.Tests
         public void AddTask_ShouldIncreaseTaskCount()
         {
             var service = new TaskManagerService();
+            // Ensure a clean state for this test
+            // Remove all existing tasks
+            foreach (var existing in service.GetAllTasks())
+            {
+                service.DeleteTask(existing.Id);
+            }
             var task = new TaskItem
             {
                 Title = "Test Task",
@@ -155,5 +161,43 @@ namespace PriorityTaskManager.Tests
             Assert.True(result);
             Assert.False(service.GetTaskById(task.Id)?.IsCompleted);
         }
+        
+            /// <summary>
+            /// Verifies that AddTask throws ArgumentException when the title is null, empty, or whitespace.
+            /// </summary>
+            [Theory]
+            [InlineData(null)]
+            [InlineData("")]
+            [InlineData("   ")]
+            public void AddTask_ShouldThrowArgumentException_WhenTitleIsEmpty(string invalidTitle)
+            {
+                var service = new TaskManagerService();
+                // The following should throw ArgumentException due to invalid title
+                Assert.Throws<ArgumentException>(() =>
+                {
+                    var task = new TaskItem { Title = invalidTitle, Description = "desc", Importance = 5, DueDate = DateTime.Now };
+                    service.AddTask(task);
+                });
+            }
+        
+            /// <summary>
+            /// Verifies that UpdateTask throws ArgumentException when the title is null, empty, or whitespace.
+            /// </summary>
+            [Theory]
+            [InlineData(null)]
+            [InlineData("")]
+            [InlineData("   ")]
+            public void UpdateTask_ShouldThrowArgumentException_WhenTitleIsEmpty(string invalidTitle)
+            {
+                var service = new TaskManagerService();
+                var validTask = new TaskItem { Title = "Valid", Description = "desc", Importance = 5, DueDate = DateTime.Now };
+                service.AddTask(validTask);
+                // The following should throw ArgumentException due to invalid title
+                Assert.Throws<ArgumentException>(() =>
+                {
+                    var updatedTask = new TaskItem { Id = validTask.Id, Title = invalidTitle, Description = "desc", Importance = 5, DueDate = DateTime.Now };
+                    service.UpdateTask(updatedTask);
+                });
+            }
     }
 }

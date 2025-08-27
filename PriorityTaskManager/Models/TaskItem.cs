@@ -3,7 +3,17 @@ namespace PriorityTaskManager.Models
     public class TaskItem
     {
         public int Id { get; set; }
-        public string? Title { get; set; }
+        private string _title = string.Empty;
+        public string Title
+        {
+            get => _title;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    throw new ArgumentException("Task title cannot be null, empty, or whitespace.");
+                _title = value;
+            }
+        }
         public string? Description { get; set; }
         public int Importance { get; set; }
         public DateTime DueDate { get; set; }

@@ -31,14 +31,33 @@ namespace PriorityTaskManager.Services
         {
             if (File.Exists(_filePath))
             {
-                var json = File.ReadAllText(_filePath);
-                var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
-
-                if (data != null && data.ContainsKey("Tasks") && data.ContainsKey("NextId"))
+                try
                 {
-                    _tasks = JsonSerializer.Deserialize<List<TaskItem>>(data["Tasks"].GetRawText()) ?? new List<TaskItem>();
+                    var json = File.ReadAllText(_filePath);
+                    var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
 
-                    _nextId = data["NextId"].GetInt32();
+                    if (data != null && data.ContainsKey("Tasks") && data.ContainsKey("NextId"))
+                    {
+                        var rawTasks = data["Tasks"].GetRawText();
+                        var loadedTasks = new List<TaskItem>();
+                        try
+                        {
+                            loadedTasks = JsonSerializer.Deserialize<List<TaskItem>>(rawTasks) ?? new List<TaskItem>();
+                        }
+                        catch (ArgumentException)
+                        {
+                            // Skip all tasks if deserialization fails due to invalid title
+                            loadedTasks = new List<TaskItem>();
+                        }
+                        _tasks = loadedTasks;
+                        _nextId = data["NextId"].GetInt32();
+                    }
+                }
+                catch
+                {
+                    // If any error occurs, skip loading tasks
+                    _tasks = new List<TaskItem>();
+                    _nextId = 1;
                 }
             }
         }
