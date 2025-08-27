@@ -14,6 +14,7 @@ namespace PriorityTaskManager.Services
             LoadTasks();
         }
 
+
         private void SaveTasks()
         {
             var data = new
@@ -21,8 +22,10 @@ namespace PriorityTaskManager.Services
                 Tasks = _tasks,
                 NextId = _nextId
             };
+
             File.WriteAllText(_filePath, JsonSerializer.Serialize(data));
         }
+
 
         private void LoadTasks()
         {
@@ -34,66 +37,89 @@ namespace PriorityTaskManager.Services
                 if (data != null && data.ContainsKey("Tasks") && data.ContainsKey("NextId"))
                 {
                     _tasks = JsonSerializer.Deserialize<List<TaskItem>>(data["Tasks"].GetRawText()) ?? new List<TaskItem>();
+
                     _nextId = data["NextId"].GetInt32();
                 }
             }
         }
 
+
         public void AddTask(TaskItem task)
         {
             task.Id = _nextId++;
+
             _tasks.Add(task);
+
             SaveTasks();
         }
+
 
         public IEnumerable<TaskItem> GetAllTasks()
         {
             return new List<TaskItem>(_tasks);
         }
 
+
         public TaskItem? GetTaskById(int id)
         {
             return _tasks.Find(t => t.Id == id);
         }
 
+
         public bool UpdateTask(TaskItem updatedTask)
         {
             var existingTask = _tasks.Find(t => t.Id == updatedTask.Id);
+
             if (existingTask == null)
                 return false;
+
             existingTask.Title = updatedTask.Title;
             existingTask.Description = updatedTask.Description;
             existingTask.Importance = updatedTask.Importance;
             existingTask.DueDate = updatedTask.DueDate;
             existingTask.IsCompleted = updatedTask.IsCompleted;
+
             SaveTasks();
+
             return true;
         }
+
 
         public bool DeleteTask(int id)
         {
             var task = _tasks.Find(t => t.Id == id);
+
             if (task == null)
                 return false;
+
             _tasks.Remove(task);
+
             SaveTasks();
+
             return true;
         }
+
 
         public int GetTaskCount()
         {
             return _tasks.Count;
         }
 
+
         public bool MarkTaskAsComplete(int id)
         {
             var task = _tasks.Find(t => t.Id == id);
+
             if (task == null)
                 return false;
+
             task.IsCompleted = true;
+
             SaveTasks();
+
             return true;
         }
+
 
         public bool MarkTaskAsIncomplete(int id)
         {
