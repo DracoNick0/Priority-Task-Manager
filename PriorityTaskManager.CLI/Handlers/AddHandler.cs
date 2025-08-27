@@ -1,6 +1,7 @@
 using PriorityTaskManager.Services;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.Models;
+using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
@@ -26,7 +27,7 @@ namespace PriorityTaskManager.CLI.Handlers
             double durationHours = 1.0;
             if (!string.IsNullOrWhiteSpace(durationInput) && double.TryParse(durationInput, out double dur) && dur > 0) durationHours = dur;
             Console.WriteLine($"Due Date (use arrow keys to adjust, Enter to confirm):");
-            var dueDate = HandleInteractiveDateInput(DateTime.Today.AddDays(1));
+            var dueDate = ConsoleInputHelper.HandleInteractiveDateInput(DateTime.Today.AddDays(1));
             var task = new TaskItem
             {
                 Title = title,
@@ -41,51 +42,5 @@ namespace PriorityTaskManager.CLI.Handlers
             service.AddTask(task);
             Console.WriteLine($"Task added with Id {task.Id}.");
         }
-
-        private DateTime HandleInteractiveDateInput(DateTime initialDate)
-        {
-            DateTime date = initialDate;
-            int left = Console.CursorLeft;
-            int top = Console.CursorTop;
-            IncrementMode mode = IncrementMode.Day;
-            while (true)
-            {
-                Console.SetCursorPosition(left, top);
-                Console.Write($"[Mode: {mode}] {date:yyyy-MM-dd dddd}      ");
-                var key = Console.ReadKey(true);
-                switch (key.Key)
-                {
-                    case ConsoleKey.RightArrow:
-                        switch (mode)
-                        {
-                            case IncrementMode.Day: date = date.AddDays(1); break;
-                            case IncrementMode.Week: date = date.AddDays(7); break;
-                            case IncrementMode.Month: date = date.AddMonths(1); break;
-                            case IncrementMode.Year: date = date.AddYears(1); break;
-                        }
-                        break;
-                    case ConsoleKey.LeftArrow:
-                        switch (mode)
-                        {
-                            case IncrementMode.Day: date = date.AddDays(-1); break;
-                            case IncrementMode.Week: date = date.AddDays(-7); break;
-                            case IncrementMode.Month: date = date.AddMonths(-1); break;
-                            case IncrementMode.Year: date = date.AddYears(-1); break;
-                        }
-                        break;
-                    case ConsoleKey.UpArrow:
-                        mode = (IncrementMode)(((int)mode + 1) % 4);
-                        break;
-                    case ConsoleKey.DownArrow:
-                        mode = (IncrementMode)(((int)mode + 3) % 4);
-                        break;
-                    case ConsoleKey.Enter:
-                        Console.WriteLine();
-                        return date;
-                }
-            }
-        }
-
-        private enum IncrementMode { Day, Week, Month, Year }
     }
 }
