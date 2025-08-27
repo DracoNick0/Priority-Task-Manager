@@ -8,6 +8,7 @@ namespace PriorityTaskManager.CLI.Handlers
         public void Execute(TaskManagerService service, string[] args)
         {
             Console.WriteLine("\nAvailable commands:");
+
             Console.WriteLine("add <Title>         - Add a new task (prompts for details)");
             Console.WriteLine("list                - List all tasks sorted by urgency");
             Console.WriteLine("edit <Id>           - Edit a task by Id");

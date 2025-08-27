@@ -14,9 +14,13 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             if (service.MarkTaskAsComplete(id))
+            {
                 Console.WriteLine("Task marked as complete.");
+            }
             else
+            {
                 Console.WriteLine("Task not found.");
+            }
         }
     }
 }

@@ -10,11 +10,14 @@ namespace PriorityTaskManager.CLI.Utils
             int left = Console.CursorLeft;
             int top = Console.CursorTop;
             IncrementMode mode = IncrementMode.Day;
+
             while (true)
             {
                 Console.SetCursorPosition(left, top);
                 Console.Write($"[Mode: {mode}] {date:yyyy-MM-dd dddd}      ");
+
                 var key = Console.ReadKey(true);
+
                 switch (key.Key)
                 {
                     case ConsoleKey.RightArrow:

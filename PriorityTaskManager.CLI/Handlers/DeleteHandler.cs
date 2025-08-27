@@ -14,9 +14,13 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             if (service.DeleteTask(id))
+            {
                 Console.WriteLine("Task deleted successfully.");
+            }
             else
+            {
                 Console.WriteLine("Task not found.");
+            }
         }
     }
 }

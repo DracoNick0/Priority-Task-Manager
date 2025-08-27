@@ -12,6 +12,7 @@ namespace PriorityTaskManager.CLI
 		static void Main(string[] args)
 		{
 			var service = new TaskManagerService();
+
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 
 			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
@@ -28,8 +29,11 @@ namespace PriorityTaskManager.CLI
 			while (true)
 			{
 				Console.Write("\n> ");
+
 				var line = Console.ReadLine();
-				if (string.IsNullOrWhiteSpace(line)) continue;
+
+				if (string.IsNullOrWhiteSpace(line))
+					continue;
 
 				var parts = line.Trim().Split(' ', 2);
 				var command = parts[0];
