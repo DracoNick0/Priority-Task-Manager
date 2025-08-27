@@ -45,3 +45,60 @@ To elevate the application from a simple task list to a comprehensive life plann
     *   Assign high-difficulty tasks during blocks of high energy/focus time.
     *   Suggest easier, low-motivation tasks during periods of low energy.
     *   Account for interruptions and their impact on workflow and task duration.
+
+---
+
+### **Setup Instructions**
+
+**Prerequisites:**
+- .NET SDK 8.0 or higher installed on your system.
+- A terminal or command prompt to run commands.
+
+**Steps to Setup:**
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/DracoNick0/Priority-Task-Manager.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd Priority-Task-Manager
+   ```
+3. Restore dependencies:
+   ```bash
+   dotnet restore
+   ```
+
+**Steps to Run the CLI Application:**
+1. Navigate to the CLI project directory:
+   ```bash
+   cd PriorityTaskManager.CLI
+   ```
+2. Run the application:
+   ```bash
+   dotnet run
+   ```
+
+**Available Commands:**
+- `add <Title>`: Add a new task (prompts for details).
+- `list`: List all tasks sorted by urgency.
+- `edit <Id>`: Edit a task by Id.
+- `delete <Id>`: Delete a task by Id.
+- `complete <Id>`: Mark a task as complete.
+- `help`: Show the help message.
+- `exit`: Exit the application.
+
+---
+
+### **Contributing**
+
+Contributions are welcome! Please follow these steps:
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Commit your changes with clear messages.
+4. Push your branch and create a pull request.
+
+---
+
+### **License**
+
+This project is licensed under the MIT License.
