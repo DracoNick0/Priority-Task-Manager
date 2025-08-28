@@ -30,9 +30,9 @@ namespace PriorityTaskManager.CLI
 				{ "delete", new DeleteHandler() },
 				{ "complete", new CompleteHandler() },
 				{ "uncomplete", new UncompleteHandler() },
-				{ "help", new HelpHandler() }
+				{ "help", new HelpHandler() },
+				{ "depend", new DependHandler() }
 			};
-			handlers.Add("depend", new DependHandler());
 
 			while (true)
 			{

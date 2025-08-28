@@ -5,12 +5,14 @@ namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
-        private readonly string _filePath = "tasks.json";
+    private readonly string _filePath;
         private List<TaskItem> _tasks = new List<TaskItem>();
         private int _nextId = 1;
 
         public TaskManagerService()
         {
+            // Always save tasks.json in the solution root (four levels above bin/Debug/netX.X)
+            _filePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"));
             LoadTasks();
         }
 
