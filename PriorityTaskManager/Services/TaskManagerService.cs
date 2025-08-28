@@ -85,6 +85,42 @@ namespace PriorityTaskManager.Services
         }
 
 
+        /// <summary>
+        /// Checks if adding the given dependencies to the specified task would create a circular dependency.
+        /// </summary>
+        /// <param name="taskId">The ID of the task being updated.</param>
+        /// <param name="newDependencies">The list of proposed new dependencies.</param>
+        /// <returns>True if a cycle would be created; otherwise, false.</returns>
+        private bool WouldCreateCycle(int taskId, List<int> newDependencies)
+        {
+            var visited = new HashSet<int>();
+            foreach (var depId in newDependencies)
+            {
+                if (DetectCycleRecursive(taskId, depId, visited))
+                    return true;
+            }
+            return false;
+        }
+
+        private bool DetectCycleRecursive(int originalTaskId, int currentId, HashSet<int> visited)
+        {
+            if (currentId == originalTaskId)
+                return true;
+            if (visited.Contains(currentId))
+                return false;
+            visited.Add(currentId);
+            var currentTask = _tasks.Find(t => t.Id == currentId);
+            if (currentTask == null)
+                return false;
+            foreach (var depId in currentTask.Dependencies)
+            {
+                if (DetectCycleRecursive(originalTaskId, depId, visited))
+                    return true;
+            }
+            return false;
+        }
+
+
         public bool UpdateTask(TaskItem updatedTask)
         {
             var existingTask = _tasks.Find(t => t.Id == updatedTask.Id);
@@ -92,15 +128,56 @@ namespace PriorityTaskManager.Services
             if (existingTask == null)
                 return false;
 
+            // Check for circular dependencies before updating
+            if (WouldCreateCycle(updatedTask.Id, updatedTask.Dependencies))
+                throw new InvalidOperationException("Circular dependency detected. Cannot update task with dependencies that create a cycle.");
+
             existingTask.Title = updatedTask.Title;
             existingTask.Description = updatedTask.Description;
             existingTask.Importance = updatedTask.Importance;
             existingTask.DueDate = updatedTask.DueDate;
             existingTask.IsCompleted = updatedTask.IsCompleted;
+            existingTask.Dependencies = new List<int>(updatedTask.Dependencies);
 
             SaveTasks();
 
             return true;
+
+        }
+
+        /// <summary>
+        /// Checks if updating a task's dependencies would create a circular dependency.
+        /// </summary>
+        private bool WouldCreateCircularDependency(int taskId, List<int> newDependencies)
+        {
+            var visited = new HashSet<int>();
+            foreach (var depId in newDependencies)
+            {
+                if (HasCycle(taskId, depId, visited))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Recursively checks for cycles in the dependency graph.
+        /// </summary>
+        private bool HasCycle(int originalTaskId, int currentId, HashSet<int> visited)
+        {
+            if (currentId == originalTaskId)
+                return true;
+            if (visited.Contains(currentId))
+                return false;
+            visited.Add(currentId);
+            var currentTask = _tasks.Find(t => t.Id == currentId);
+            if (currentTask == null)
+                return false;
+            foreach (var depId in currentTask.Dependencies)
+            {
+                if (HasCycle(originalTaskId, depId, visited))
+                    return true;
+            }
+            return false;
         }
 
 

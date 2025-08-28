@@ -884,4 +884,43 @@ After implementing this change, run all unit tests again. The two new tests shou
 - Updated the tests to professionally assert the expected exception.
 - Modified the test for task count to ensure a clean state before execution.
 - Updated the service to handle deserialization errors gracefully.
-- Verified that all unit tests now pass, confirming robust enforcement of
+- Verified that all unit tests now pass, confirming robust enforcement of the new business rule.
+
+# Log Entry 34
+
+## User Prompt
+
+We are beginning to implement task dependencies. Our first and most critical task is to prevent users from creating circular dependencies within the `TaskManagerService`. We will use TDD to build this feature, ensuring we cover both direct and multi-level (transitive) cycles.
+
+### **Step 1: Write Failing Tests for Circular Dependencies**
+
+Open the test file `PriorityTaskManager.Tests/TaskManagerServiceTests.cs`. Your task is to add two new unit tests that prove our system is currently vulnerable to circular dependencies. These tests should fail initially.
+
+1.  **Create a test for a DIRECT circular dependency.**
+    *   Name the method `UpdateTask_ShouldThrowInvalidOperationException_WhenDirectCircularDependencyIsCreated`.
+    *   **Arrange:** Create and add two tasks, `taskA` and `taskB`. Make `taskB` depend on `taskA` and update it. Then, attempt to make `taskA` depend on `taskB`.
+    *   **Act & Assert:** Assert that calling `service.UpdateTask(taskA)` throws an `InvalidOperationException`.
+
+2.  **Create a test for a TRANSITIVE circular dependency.**
+    *   Name the method `UpdateTask_ShouldThrowInvalidOperationException_WhenTransitiveCircularDependencyIsCreated`.
+    *   **Arrange:** Create and add three tasks: `taskA`, `taskB`, and `taskC`. Create a dependency chain by making `taskC` depend on `taskB`, and `taskB` depend on `taskA`. Update both tasks. Finally, attempt to make `taskA` depend on `taskC`, which would complete the `A -> C -> B -> A` cycle.
+    *   **Act & Assert:** Assert that calling `service.UpdateTask(taskA)` throws an `InvalidOperationException`.
+
+### **Step 2: Implement the Detection Logic**
+
+Now, modify the service to make both failing tests pass.
+
+1.  **Open `PriorityTaskManager/Services/TaskManagerService.cs`.**
+2.  **Create a private helper method** for detecting cycles. It should take a task object and a list of its proposed new dependencies as input, and return `true` if adding these dependencies would create a cycle.
+3.  **Implement the cycle detection algorithm.** The algorithm must be able to traverse a multi-level dependency graph. Starting from each proposed dependency, recursively trace its dependencies, and its dependencies' dependencies, and so on. If you ever encounter the original task's ID during this traversal, you have found a cycle.
+4.  **Integrate the check into `UpdateTask`**. Before saving the changes to a task, use your new private method to check if the proposed dependencies would create a cycle.
+5.  **Throw the exception.** If the cycle detection method returns `true`, `UpdateTask` must throw a new `InvalidOperationException` with a clear error message. Otherwise, the update can proceed.
+
+After completing these steps, run all unit tests. The two new tests should now pass.
+
+### Copilot's Action
+
+- Added two new failing unit tests to `TaskManagerServiceTests.cs` to verify direct and transitive circular dependency prevention.
+- Implemented a private cycle detection algorithm in `TaskManagerService` to check for circular dependencies before updating a task.
+- Integrated the cycle check into the `UpdateTask` method, throwing an `InvalidOperationException` if a cycle is detected.
+- Verified that all unit tests now pass, confirming robust prevention of circular dependencies.

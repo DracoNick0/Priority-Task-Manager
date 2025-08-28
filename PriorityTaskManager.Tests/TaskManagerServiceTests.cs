@@ -199,5 +199,53 @@ namespace PriorityTaskManager.Tests
                     service.UpdateTask(updatedTask);
                 });
             }
+
+                /// <summary>
+                /// Verifies that UpdateTask throws InvalidOperationException when a direct circular dependency is created.
+                /// </summary>
+                [Fact]
+                public void UpdateTask_ShouldThrowInvalidOperationException_WhenDirectCircularDependencyIsCreated()
+                {
+                    var service = new TaskManagerService();
+
+                    var taskA = new TaskItem { Title = "A", Importance = 1, DueDate = DateTime.Now };
+                    var taskB = new TaskItem { Title = "B", Importance = 1, DueDate = DateTime.Now };
+                    service.AddTask(taskA);
+                    service.AddTask(taskB);
+
+                    // Make B depend on A
+                    taskB.Dependencies.Add(taskA.Id);
+                    service.UpdateTask(taskB);
+
+                    // Attempt to make A depend on B (should throw)
+                    taskA.Dependencies.Add(taskB.Id);
+                    Assert.Throws<InvalidOperationException>(() => service.UpdateTask(taskA));
+                }
+
+                /// <summary>
+                /// Verifies that UpdateTask throws InvalidOperationException when a transitive circular dependency is created.
+                /// </summary>
+                [Fact]
+                public void UpdateTask_ShouldThrowInvalidOperationException_WhenTransitiveCircularDependencyIsCreated()
+                {
+                    var service = new TaskManagerService();
+
+                    var taskA = new TaskItem { Title = "A", Importance = 1, DueDate = DateTime.Now };
+                    var taskB = new TaskItem { Title = "B", Importance = 1, DueDate = DateTime.Now };
+                    var taskC = new TaskItem { Title = "C", Importance = 1, DueDate = DateTime.Now };
+                    service.AddTask(taskA);
+                    service.AddTask(taskB);
+                    service.AddTask(taskC);
+
+                    // Create dependency chain: C -> B -> A
+                    taskC.Dependencies.Add(taskB.Id);
+                    service.UpdateTask(taskC);
+                    taskB.Dependencies.Add(taskA.Id);
+                    service.UpdateTask(taskB);
+
+                    // Attempt to make A depend on C (should throw)
+                    taskA.Dependencies.Add(taskC.Id);
+                    Assert.Throws<InvalidOperationException>(() => service.UpdateTask(taskA));
+                }
     }
 }
