@@ -20,6 +20,8 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine("delete <Id>         - Delete a task by Id");
             Console.WriteLine("complete <Id>       - Mark a task as complete");
             Console.WriteLine("uncomplete <Id>     - Mark a task as incomplete");
+            Console.WriteLine("depend add <childId> <parentId>    - Add a dependency (child depends on parent)");
+            Console.WriteLine("depend remove <childId> <parentId> - Remove a dependency");
         }
     }
 }

@@ -32,6 +32,7 @@ namespace PriorityTaskManager.CLI
 				{ "uncomplete", new UncompleteHandler() },
 				{ "help", new HelpHandler() }
 			};
+			handlers.Add("depend", new DependHandler());
 
 			while (true)
 			{
