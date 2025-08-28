@@ -1068,3 +1068,92 @@ This will consolidate everything into one place and ensure consistent behavior f
 
 - Updated the file path logic in `TaskManagerService.cs` to always save and load `tasks.json` from the solution root directory, three levels above the application's base directory.
 - Ensured consistent data file location regardless of how the application is run.
+
+# Log Entry 38
+
+## User Prompt
+
+Our application needs a way for users to see all the details of a specific task. We will create a new `view <Id>` command to provide this functionality.
+
+### **Step 1: Create the `ViewHandler` Class**
+
+1.  In the `PriorityTaskManager.CLI/Handlers` directory, create a new class file named `ViewHandler.cs`.
+2.  The class must implement the `ICommandHandler` interface.
+
+### **Step 2: Implement the `Execute` Method**
+
+Inside the `Execute` method, you will add the logic to find and display a task.
+
+1.  **Validate Input:** Check the `args` array to ensure it contains exactly one argument. Attempt to parse this argument into an integer (the task ID). If the input is invalid, print a usage message (e.g., "Usage: view <Id>") and return.
+
+2.  **Fetch the Task:** Use the `service.GetTaskById()` method with the parsed ID to retrieve the task.
+
+3.  **Handle "Not Found":** If the returned task is null, print a "Task not found." message and return.
+
+4.  **Display Task Details:** If the task is found, print its properties to the console in a clear, multi-line, human-readable format. At a minimum, display:
+    *   ID
+    *   Title
+    *   Description
+    *   Importance
+    *   Due Date
+    *   Is Completed status
+    *   Estimated Duration
+    *   Progress (as a percentage)
+    *   Dependencies (as a comma-separated list of IDs, or "None")
+    *   Urgency Score (for incomplete tasks)
+    *   Latest Possible Start Date (for incomplete tasks)
+
+### **Step 3: Register the New Handler**
+
+1.  Open `PriorityTaskManager.CLI/Program.cs`.
+2.  In the `commandHandlers` dictionary, add a new entry to register the `ViewHandler` for the "view" command.
+
+### **Step 4: Update the Help Information**
+
+1.  Open `PriorityTaskManager.CLI/Handlers/HelpHandler.cs`.
+2.  Add a new line to the help text to document the `view <Id>` command and briefly explain what it does.
+
+### Copilot's Action
+
+- Created `ViewHandler.cs` in the `Handlers` directory, implementing logic to display all details of a specific task.
+- Registered the new handler in `Program.cs` for the `view` command.
+- Updated the help text in `HelpHandler.cs` to document the new `view <Id>` command.
+
+# Log Entry 39
+
+## User Prompt
+
+We are going to enhance the `edit` command to make it more powerful. Currently, a targeted edit like `edit title 4` prompts the user for a new title. We want to allow the user to provide the new value directly in the command, for example: `edit 4 title My New Task Title`.
+
+### **1. Target Files**
+
+You will need to modify two files:
+1.  `PriorityTaskManager.CLI/Handlers/EditHandler.cs` (for the primary logic).
+2.  `PriorityTaskManager.CLI/Handlers/HelpHandler.cs` (to update the documentation).
+
+### **2. Modify `EditHandler.cs`**
+
+1.  **Update the `Execute` Method's Argument Parsing:**
+    *   Locate the main `if/else if` block that parses the command arguments.
+    *   The condition that checks for a targeted edit (likely `argsArr.Length == 2`) needs to be changed to handle more arguments.
+    *   The logic should now parse the `attribute` from the first argument and the `Id` from the second argument.
+    *   If there are more than two arguments, it should treat all subsequent arguments as the new value. You must join the arguments from index 2 to the end of the array (with spaces in between) to reconstruct the full `newValue` string.
+    *   The private helper method for targeted updates should then be called with this `newValue`. If no value was provided, it should be called with `null`.
+
+2.  **Modify the Private Helper Method for Targeted Updates:**
+    *   This method (likely named `HandleTargetedUpdate` or similar) needs to be updated to accept an additional, optional string parameter for the new value (e.g., `string? directValue = null`).
+    *   Inside this method, for each `case` in the `switch` statement (e.g., "title", "importance"):
+        *   First, check if the `directValue` parameter is not null.
+        *   If it is **not null**, use that value to update the task's property. For numeric properties like "importance" or "progress", you must attempt to parse the string and print an error message if parsing fails.
+        *   If the `directValue` is **null**, keep the existing behavior of prompting the user for input with `Console.Write` and `Console.ReadLine`.
+
+### **3. Update `HelpHandler.cs`**
+
+1.  Open the `HelpHandler.cs` file.
+2.  Find the line that documents the targeted `edit` command.
+3.  Update the text to show the new, optional syntax. For example: `edit <Id> <attr> [new value] - Edit a specific attribute, optionally providing the new value directly.`
+
+### Copilot's Action
+
+- Enhanced the `edit` command in `EditHandler.cs` to support direct value input for targeted edits (e.g., `edit 4 title My New Task Title`).
+- Updated the help text in `HelpHandler.cs` to document the new syntax for the enhanced edit command.
