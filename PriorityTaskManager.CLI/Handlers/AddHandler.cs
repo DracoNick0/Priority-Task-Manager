@@ -41,6 +41,35 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine($"Due Date (use arrow keys to adjust, Enter to confirm):");
             var dueDate = ConsoleInputHelper.HandleInteractiveDateInput(DateTime.Today.AddDays(1));
 
+            // Prompt for dependencies
+            Console.WriteLine("Dependencies (optional): Enter comma-separated IDs of tasks this depends on, or press Enter to skip.");
+            var depInput = Console.ReadLine();
+            var dependencies = new List<int>();
+            if (!string.IsNullOrWhiteSpace(depInput))
+            {
+                var depStrings = depInput.Split(',');
+                foreach (var depStr in depStrings)
+                {
+                    var trimmed = depStr.Trim();
+                    if (int.TryParse(trimmed, out int depId))
+                    {
+                        var depTask = service.GetTaskById(depId);
+                        if (depTask != null)
+                        {
+                            dependencies.Add(depId);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Warning: No task found with ID {depId}. Ignored.");
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(trimmed))
+                    {
+                        Console.WriteLine($"Warning: '{trimmed}' is not a valid ID. Ignored.");
+                    }
+                }
+            }
+
             var task = new TaskItem
             {
                 Title = title,
@@ -50,7 +79,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 IsCompleted = false,
                 EstimatedDuration = TimeSpan.FromHours(durationHours),
                 Progress = 0.0,
-                Dependencies = new List<int>()
+                Dependencies = dependencies
             };
 
             service.AddTask(task);
