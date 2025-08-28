@@ -924,3 +924,147 @@ After completing these steps, run all unit tests. The two new tests should now p
 - Implemented a private cycle detection algorithm in `TaskManagerService` to check for circular dependencies before updating a task.
 - Integrated the cycle check into the `UpdateTask` method, throwing an `InvalidOperationException` if a cycle is detected.
 - Verified that all unit tests now pass, confirming robust prevention of circular dependencies.
+
+# Log Entry 35
+
+## User Prompt
+
+Our core service can now safely handle dependencies. The next step is to update the user-facing 'add' command to allow users to specify dependencies when they create a new task.
+
+### **1. Target File**
+
+Open the command handler for the 'add' command: `PriorityTaskManager.CLI/Handlers/AddHandler.cs`.
+
+### **2. Modify the `Execute` Method**
+
+Inside the `Execute` method, after the last prompt for task details (the interactive date input) and just before the `TaskItem` object is created, you will add the new logic for dependencies.
+
+### **3. Implementation Steps**
+
+1.  **Prompt for Dependencies:**
+    *   Add a `Console.WriteLine` to prompt the user to enter the IDs of the tasks that this new task depends on.
+    *   The prompt must clearly state that the input should be a comma-separated list of numbers (e.g., "1, 5, 12") and that this step is optional (they can press Enter to skip).
+
+2.  **Read and Process Input:**
+    *   Read the user's input with `Console.ReadLine`.
+    *   Check if the input string is null or empty. If it is, the logic is complete and the new task will have no dependencies.
+    *   If the input is not empty, you must parse and validate it.
+
+3.  **Parse and Validate the IDs:**
+    *   Create a new empty `List<int>` to store the validated dependency IDs.
+    *   Split the user's input string by the comma character to get an array of individual ID strings.
+    *   Loop through each string in the array.
+    *   Inside the loop, for each ID string:
+        *   Trim any leading or trailing whitespace.
+        *   Attempt to parse the string into an integer.
+        *   If the parse is successful, use the `service.GetTaskById()` method to check if a task with that ID actually exists.
+        *   If the task exists, add the parsed ID to your `List<int>` of validated dependencies.
+        *   If parsing fails or if `GetTaskById()` returns null, print a warning message to the user that the specific invalid ID is being ignored.
+
+4.  **Assign Dependencies:**
+    *   Locate the section where the new `TaskItem` object is initialized.
+    *   Assign your `List<int>` of validated dependency IDs to its `Dependencies` property.
+
+### Copilot's Action
+
+- Updated the 'add' command handler (`AddHandler.cs`) to prompt users for a comma-separated list of dependency IDs when creating a new task.
+- Implemented parsing and validation logic to ensure only valid, existing task IDs are added as dependencies.
+- Provided user feedback for invalid or non-existent IDs.
+- Assigned the validated dependencies to the new task's `Dependencies` property before creation.
+
+# Log Entry 36
+
+## User Prompt
+
+We have successfully integrated dependency management into the `add` command. The final step is to create a new top-level `depend` command so users can modify dependencies on existing tasks. This will involve creating a new handler and updating our help text.
+
+### **Step 1: Create the `DependHandler` Class**
+
+1.  In the `PriorityTaskManager.CLI/Handlers` directory, create a new class file named `DependHandler.cs`.
+2.  The class must implement the `ICommandHandler` interface.
+3.  The main `Execute` method will act as a router. It should check the first argument provided in the `args` array.
+    *   If the first argument is "add", it should call a private helper method for adding a dependency.
+    *   If the first argument is "remove", it should call a private helper method for removing a dependency.
+    *   If the argument is anything else or is missing, it should print usage instructions.
+
+### **Step 2: Implement the "Add Dependency" Logic**
+
+1.  Create a `private` method inside `DependHandler` that handles the `depend add` subcommand. Its signature should accept the `TaskManagerService` and the `args` array.
+2.  The expected command format is `depend add <childId> <parentId>`. Your method must parse and validate this input.
+3.  **Perform Validation:**
+    *   Check if exactly three arguments are provided (`add`, `<childId>`, `<parentId>`).
+    *   Verify that both IDs can be parsed into integers.
+    *   Use `service.GetTaskById()` to retrieve both the child and parent task objects. Ensure neither is null.
+    *   Check that the child and parent IDs are not the same.
+    *   Check if the child task's `Dependencies` list already contains the parent's ID. If so, inform the user and do nothing.
+4.  **Add the Dependency:**
+    *   Add the parent's ID to the child task's `Dependencies` list.
+    *   Use a `try-catch` block to call `service.UpdateTask(childTask)`.
+    *   In the `try` block, on success, print a confirmation message.
+    *   In the `catch` block for an `InvalidOperationException`, print a user-friendly error message stating that the action would create a circular dependency and was rejected.
+
+### **Step 3: Implement the "Remove Dependency" Logic**
+
+1.  Create another `private` method for the `depend remove` subcommand. The expected format is `depend remove <childId> <parentId>`.
+2.  **Perform Validation:**
+    *   Perform the same initial argument count and ID validation as the "add" logic.
+    *   Retrieve both task objects.
+    *   Check if the child task's `Dependencies` list actually contains the parent's ID. If it doesn't, inform the user and do nothing.
+3.  **Remove the Dependency:**
+    *   Remove the parent's ID from the child task's `Dependencies` list.
+    *   Call `service.UpdateTask(childTask)` and print a confirmation message on success.
+
+### **Step 4: Register the New Handler**
+
+1.  Open `PriorityTaskManager.CLI/Program.cs`.
+2.  In the `commandHandlers` dictionary, add a new entry to register our new handler for the "depend" command.
+
+### **Step 5: Update the Help Information**
+
+1.  Open `PriorityTaskManager.CLI/Handlers/HelpHandler.cs`.
+2.  Add new lines to the help text to document the new commands: `depend add <childId> <parentId>` and `depend remove <childId> <parentId>`, along with a brief explanation of what they do.
+
+### Copilot's Action
+
+- Created `DependHandler.cs` in the `Handlers` directory, implementing logic for adding and removing dependencies between tasks.
+- Registered the new handler in `Program.cs` for the `depend` command.
+- Updated the help text in `HelpHandler.cs` to document the new `depend add` and `depend remove` commands.
+
+
+# Log Entry 37
+
+## User Prompt
+
+We have identified a bug where the `tasks.json` data file is being created in multiple locations depending on how the application is run. We need to fix this by ensuring the file is always saved to a single, consistent location in the root directory of the solution.
+
+### **1. Target File**
+
+Open the core service file: `PriorityTaskManager/Services/TaskManagerService.cs`.
+
+### **2. Locate the File Path Logic**
+
+Find the constructor of the `TaskManagerService` class. Inside it, you will find the line of code where the `_filePath` field is being assigned a simple relative path (e.g., `"tasks.json"`). We will replace this line.
+
+### **3. Implement the New Path Logic**
+
+Modify the constructor to calculate a stable path to the solution's root directory. The path should point to a `tasks.json` file located three levels above the application's base directory (which is typically the `bin/Debug/netX.X` folder).
+
+1.  Delete the old line that assigns the file path.
+2.  Add new logic that combines `AppContext.BaseDirectory` with relative navigation to construct the correct path. The result should be assigned to the `_filePath` field.
+3.  The final logic should be equivalent to creating a path like `Path.Combine(AppContext.BaseDirectory, \"../../../tasks.json\")`. This ensures that no matter where the executable runs, it always navigates up to the solution root to find the data file.
+
+### **Important Final Steps (For You)**
+
+After Copilot has made the code change, you will need to manually clean up the old files to avoid confusion:
+
+1.  **Run the application once** to create the new, correctly placed `tasks.json` file in your main solution folder.
+2.  **Manually delete** the old `tasks.json` file from inside the `PriorityTaskManager.CLI` project folder (likely in its `bin/Debug/...` subdirectory).
+3.  **Manually delete** the old `tasks.json` file that was in the solution root, if it contains old data you don't need.
+4.  If one of the old files has important tasks, copy its contents into the **newly generated** `tasks.json` file.
+
+This will consolidate everything into one place and ensure consistent behavior from now on.
+
+### Copilot's Action
+
+- Updated the file path logic in `TaskManagerService.cs` to always save and load `tasks.json` from the solution root directory, three levels above the application's base directory.
+- Ensured consistent data file location regardless of how the application is run.
