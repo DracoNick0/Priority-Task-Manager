@@ -28,7 +28,13 @@ namespace PriorityTaskManager.CLI.Handlers
 
             if (args.Length > 1)
             {
-                HandleTargetedUpdate(service, id, args[1]);
+                string attribute = args[1];
+                string? directValue = null;
+                if (args.Length > 2)
+                {
+                    directValue = string.Join(" ", args.Skip(2));
+                }
+                HandleTargetedUpdate(service, id, attribute, directValue);
                 return;
             }
 
@@ -54,7 +60,7 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine("Task updated successfully.");
         }
 
-        private void HandleTargetedUpdate(TaskManagerService service, int id, string attribute)
+    private void HandleTargetedUpdate(TaskManagerService service, int id, string attribute, string? directValue = null)
         {
             var task = service.GetTaskById(id);
 
@@ -67,25 +73,58 @@ namespace PriorityTaskManager.CLI.Handlers
             switch (attribute.ToLower())
             {
                 case "title":
-                    Console.Write($"New Title (default: {task.Title}): ");
-                    task.Title = Console.ReadLine() ?? task.Title;
+                    if (directValue != null)
+                        task.Title = directValue;
+                    else
+                    {
+                        Console.Write($"New Title (default: {task.Title}): ");
+                        task.Title = Console.ReadLine() ?? task.Title;
+                    }
                     break;
                 case "description":
-                    Console.Write($"New Description (default: {task.Description}): ");
-                    task.Description = Console.ReadLine() ?? task.Description;
+                    if (directValue != null)
+                        task.Description = directValue;
+                    else
+                    {
+                        Console.Write($"New Description (default: {task.Description}): ");
+                        task.Description = Console.ReadLine() ?? task.Description;
+                    }
                     break;
                 case "importance":
-                    Console.Write($"New Importance (1-10, default: {task.Importance}): ");
-                    if (int.TryParse(Console.ReadLine(), out int importance) && importance >= 1 && importance <= 10)
-                        task.Importance = importance;
+                    if (directValue != null)
+                    {
+                        if (int.TryParse(directValue, out int importance) && importance >= 1 && importance <= 10)
+                            task.Importance = importance;
+                        else
+                            Console.WriteLine("Invalid importance value. Must be an integer between 1 and 10.");
+                    }
+                    else
+                    {
+                        Console.Write($"New Importance (1-10, default: {task.Importance}): ");
+                        if (int.TryParse(Console.ReadLine(), out int importance) && importance >= 1 && importance <= 10)
+                            task.Importance = importance;
+                    }
                     break;
                 case "duedate":
-                    task.DueDate = ConsoleInputHelper.HandleInteractiveDateInput(task.DueDate);
+                    if (directValue != null)
+                        Console.WriteLine("Direct value editing for due date is not supported. Please use interactive editor.");
+                    else
+                        task.DueDate = ConsoleInputHelper.HandleInteractiveDateInput(task.DueDate);
                     break;
                 case "duration":
-                    Console.Write($"New Estimated Duration (hours, default: {task.EstimatedDuration.TotalHours}): ");
-                    if (double.TryParse(Console.ReadLine(), out double duration) && duration > 0)
-                        task.EstimatedDuration = TimeSpan.FromHours(duration);
+                    if (directValue != null)
+                    {
+                        if (double.TryParse(directValue, out double duration) && duration > 0)
+                            task.EstimatedDuration = TimeSpan.FromHours(duration);
+                        else
+                            Console.WriteLine("Invalid duration value. Must be a positive number.");
+                    }
+                    else
+                    {
+                        Console.Write($"New Estimated Duration (hours, default: {task.EstimatedDuration.TotalHours}): ");
+                        if (double.TryParse(Console.ReadLine(), out double duration) && duration > 0)
+                            task.EstimatedDuration = TimeSpan.FromHours(duration);
+                    }
                     break;
                 default:
                     Console.WriteLine("Unknown attribute.");
