@@ -16,5 +16,14 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the sorting option for the task list.
         /// </summary>
         public SortOption SortOption { get; set; }
+
+        /// <summary>
+        /// Initializes a new instance of the TaskList class.
+        /// </summary>
+        public TaskList()
+        {
+            Name = string.Empty;
+            SortOption = SortOption.Default;
+        }
     }
 }
