@@ -1663,3 +1663,46 @@ After this refactoring, every test will run in its own sandbox, creating and del
 3. Refactored `TaskManagerServiceTests` to use temporary files for test isolation.
 4. Implemented `IDisposable` in the test class to ensure cleanup of temporary files after each test.
 5. Updated all test methods to use the class-level `_service` field, ensuring complete isolation between tests.
+
+# Log Entry 52
+
+## User Prompt
+
+Our test file, `TaskManagerServiceTests.cs`, has grown too large and now covers multiple areas of responsibility. We need to refactor it by splitting it into two separate, more focused test classes: one for task-related logic and one for list-related logic.
+
+### **Step 1: Create the New `ListManagementTests` Class**
+
+1.  In the `PriorityTaskManager.Tests` project, create a new C# class file named `ListManagementTests.cs`.
+2.  Set up this new class to be a fully isolated test environment, just as we did before:
+    *   Implement the `IDisposable` interface.
+    *   Add private fields for the `_service`, `_testTasksFile`, and `_testListsFile`.
+    *   Create a **Constructor** that deletes the old test files and initializes the `_service` with the test file paths.
+    *   Create a `Dispose()` method that cleans up the test files after each test.
+
+### **Step 2: Move All List-Related Tests**
+
+1.  Open the original `TaskManagerServiceTests.cs` file.
+2.  Find every test method that primarily deals with **list functionality**. This includes all the tests we recently wrote. The method names will be similar to:
+    *   `TaskManagerService_ShouldCreateDefaultGeneralList_OnFirstLoad`
+    *   `AddList_ShouldIncreaseListCount`
+    *   `AddList_ShouldThrowInvalidOperationException_ForDuplicateName`
+    *   `GetAllTasks_ShouldOnlyReturnTasksFromSpecifiedList`
+    *   `DeleteList_ShouldRemoveListAndAllAssociatedTasks`
+    *   `UpdateList_ShouldChangeSortOption`
+3.  **Cut** all of these methods from `TaskManagerServiceTests.cs` and **paste** them into the new `ListManagementTests.cs` file.
+
+### **Step 3: Rename and Clean Up the Original Test Class**
+
+1.  The original `TaskManagerServiceTests.cs` file should now only contain tests related to core task operations (adding, deleting, updating, and urgency calculations).
+2.  To reflect its new, more focused role, rename the file from `TaskManagerServiceTests.cs` to `TaskFunctionalityTests.cs`.
+3.  Also, rename the class itself inside the file from `TaskManagerServiceTests` to `TaskFunctionalityTests`.
+
+After this refactoring, you will have two smaller, well-organized test files, each responsible for a distinct part of the `TaskManagerService`'s functionality.
+
+### Copilot's Action
+
+- Created a new `ListManagementTests.cs` file in the `PriorityTaskManager.Tests` project.
+- Implemented the `IDisposable` interface in `ListManagementTests` and set up isolated test environments with `_service`, `_testTasksFile`, and `_testListsFile`.
+- Moved all list-related tests from `TaskManagerServiceTests.cs` to `ListManagementTests.cs`.
+- Renamed `TaskManagerServiceTests.cs` to `TaskFunctionalityTests.cs` and updated the class name to `TaskFunctionalityTests`.
+- Verified the refactoring by running all tests, ensuring they passed
