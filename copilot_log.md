@@ -1563,3 +1563,103 @@ This is the final step. Once complete, the multi-list feature is fully implement
 
 1. Updated the `Execute` method in `HelpHandler` to replace the old `list` command description with detailed documentation for the new `list` subcommands.
 2. Added entries for `list view`, `list all`, `list create`, `list switch`, `list sort`, and `list delete` to the help text.
+
+# Log Entry 50
+
+## User Prompt
+
+We have added significant new functionality for multi-list management to the `TaskManagerService`, and we need to ensure it is thoroughly tested.
+
+Your task is to add a new suite of unit tests to the `PriorityTaskManager.Tests/TaskManagerServiceTests.cs` file.
+
+Please add the following test methods, ensuring each one is clearly named and follows the Arrange-Act-Assert pattern.
+
+### **1. Tests for Default List Creation**
+
+*   Create a test named `TaskManagerService_ShouldCreateDefaultGeneralList_OnFirstLoad`.
+*   **Arrange:** Instantiate a new `TaskManagerService`.
+*   **Act:** Call `service.GetAllLists()`.
+*   **Assert:** Verify that the returned collection contains exactly one list, and its name is "General".
+
+### **2. Tests for List Creation and Uniqueness**
+
+*   Create a test named `AddList_ShouldIncreaseListCount`. This should successfully add a new, unique list.
+*   Create a test named `AddList_ShouldThrowInvalidOperationException_ForDuplicateName`. This should confirm that adding a list with a name that already exists (case-insensitive) throws the correct exception.
+
+### **3. Tests for Task and List Association**
+
+*   Create a test named `GetAllTasks_ShouldOnlyReturnTasksFromSpecifiedList`.
+*   **Arrange:** Create two lists (e.g., "Work" and "Home"). Add tasks specifically to each list by setting their `ListName` property before calling `service.AddTask()`.
+*   **Act:** Call `service.GetAllTasks("Work")`.
+*   **Assert:** Verify that the returned tasks are only the ones belonging to the "Work" list, and that none of the "Home" tasks are present.
+
+### **4. Tests for List Deletion and Cascade Behavior**
+
+*   Create a test named `DeleteList_ShouldRemoveListAndAllAssociatedTasks`.
+*   **Arrange:** Create two lists ("ToDelete" and "ToKeep"). Add tasks to both.
+*   **Act:** Call `service.DeleteList("ToDelete")`.
+*   **Assert:**
+    *   Verify that `service.GetListByName("ToDelete")` returns null.
+    *   Verify that `service.GetAllTasks("ToDelete")` returns an empty collection.
+    *   Verify that the "ToKeep" list and all of its tasks still exist.
+
+### **5. Tests for Updating a List**
+
+*   Create a test named `UpdateList_ShouldChangeSortOption`.
+*   **Arrange:** Create and add a new list; its default `SortOption` will be `Default`.
+*   **Act:** Get the list object, change its `SortOption` property to `SortOption.Alphabetical`, and then call `service.UpdateList()` with the modified object.
+*   **Assert:** Get the list again using `service.GetListByName()` and verify that its `SortOption` property is now `Alphabetical`.
+
+### Copilot's Action
+
+1. Added a suite of unit tests to `TaskManagerServiceTests.cs` to validate multi-list management functionality.
+2. Implemented tests for default list creation, list creation and uniqueness, task and list association, list deletion with cascading behavior, and updating a list's sort option.
+3. Ensured all tests followed the Arrange-Act-Assert pattern for clarity and maintainability.
+
+---
+
+# Log Entry 51
+
+## User Prompt
+
+We need to perform a critical refactoring of our test suite to ensure that our tests are fully isolated from both user data and each other. We will modify our service to allow for custom data file paths and then update our test class to use temporary files that are cleaned up automatically.
+
+### **Part 1: Refactor `TaskManagerService` for Dependency Injection**
+
+The first step is to allow the file paths to be injected into our service.
+
+1.  **Open `PriorityTaskManager/Services/TaskManagerService.cs`.**
+2.  **Create a new, overloaded constructor.** This new constructor will accept two string parameters: `tasksFilePath` and `listsFilePath`.
+3.  The logic that builds the full, absolute path should remain, but it should use these incoming filenames instead of the hardcoded `"tasks.json"` and `"lists.json"`.
+4.  **Modify the original, parameterless constructor.** It should now simply call the new constructor, passing in the default file names (`"tasks.json"` and `"lists.json"`). This ensures our main CLI application continues to work without any changes.
+
+### **Part 2: Refactor `TaskManagerServiceTests` for Complete Isolation**
+
+Now we will overhaul the test class to manage its own clean environment for every single test.
+
+1.  **Open `PriorityTaskManager.Tests/TaskManagerServiceTests.cs`.**
+2.  **Add Class-Level Fields:**
+    *   At the top of the class, add a private `TaskManagerService` field named `_service`.
+    *   Add two `private readonly string` fields for our test file names, for example `_testTasksFile = "test_tasks.json";` and `_testListsFile = "test_lists.json";`.
+3.  **Implement `IDisposable`:** Modify the class signature to implement the `IDisposable` interface.
+4.  **Create the Constructor (Test Setup):**
+    *   Create a public constructor for the `TaskManagerServiceTests` class. This constructor code will run **before** each test.
+    *   Inside the constructor, use `File.Delete()` on both `_testTasksFile` and `_testListsFile` to ensure a clean slate.
+    *   Then, instantiate our class-level `_service` field by calling the **new, overloaded constructor** of `TaskManagerService`, passing in your two test file name variables.
+5.  **Implement the `Dispose` Method (Test Teardown):**
+    *   Implement the `Dispose()` method required by the `IDisposable` interface. This code will run **after** each test.
+    *   Inside this method, use `File.Delete()` on both `_testTasksFile` and `_testListsFile` again to clean up the files that were created during the test.
+6.  **Update All Existing Test Methods:**
+    *   Go through every single test method in the file.
+    *   Find and **delete** the line that declares and instantiates a local `service` variable (e.g., `var service = new TaskManagerService();`).
+    *   Ensure that every test now uses the class-level `_service` field that was initialized in the constructor.
+
+After this refactoring, every test will run in its own sandbox, creating and deleting its own data files, making our test suite safe, robust, and reliable.
+
+### Copilot's Action
+
+1. Refactored `TaskManagerService` to support dependency injection for file paths by adding an overloaded constructor.
+2. Updated the default constructor to call the new constructor with default file paths, ensuring backward compatibility.
+3. Refactored `TaskManagerServiceTests` to use temporary files for test isolation.
+4. Implemented `IDisposable` in the test class to ensure cleanup of temporary files after each test.
+5. Updated all test methods to use the class-level `_service` field, ensuring complete isolation between tests.

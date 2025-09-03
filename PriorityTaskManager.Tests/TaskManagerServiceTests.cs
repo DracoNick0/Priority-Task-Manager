@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 using Xunit;
@@ -8,18 +10,34 @@ namespace PriorityTaskManager.Tests
     /// <summary>
     /// Contains all unit tests for the TaskManagerService class.
     /// </summary>
-    public class TaskManagerServiceTests
+    public class TaskManagerServiceTests : IDisposable
     {
+        private readonly TaskManagerService _service;
+        private readonly string _testTasksFile = "test_tasks.json";
+        private readonly string _testListsFile = "test_lists.json";
+
+        public TaskManagerServiceTests()
+        {
+            File.Delete(_testTasksFile);
+            File.Delete(_testListsFile);
+            _service = new TaskManagerService(_testTasksFile, _testListsFile);
+        }
+
+        public void Dispose()
+        {
+            File.Delete(_testTasksFile);
+            File.Delete(_testListsFile);
+        }
+
         /// <summary>
         /// Verifies that CalculateUrgency sets the urgency score to 0 for completed tasks.
         /// </summary>
         [Fact]
         public void CalculateUrgency_ShouldBeZero_ForCompletedTask()
         {
-            var service = new TaskManagerService();
             var task = new TaskItem { Title = "Done", EstimatedDuration = TimeSpan.FromHours(2), Progress = 1.0, DueDate = DateTime.Today.AddDays(1), IsCompleted = true };
-            service.AddTask(task);
-            service.CalculateUrgencyForAllTasks();
+            _service.AddTask(task);
+            _service.CalculateUrgencyForAllTasks();
             Assert.Equal(0, task.UrgencyScore);
         }
         
@@ -29,16 +47,15 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void CalculateUrgency_ShouldPrioritizeFirstTaskInDependencyChain()
         {
-            var service = new TaskManagerService();
             var taskA = new TaskItem { Title = "A", EstimatedDuration = TimeSpan.FromHours(10), Progress = 0.0, DueDate = DateTime.Today.AddDays(10) };
             var taskB = new TaskItem { Title = "B", EstimatedDuration = TimeSpan.FromHours(5), Progress = 0.0, DueDate = DateTime.Today.AddDays(10) };
             var taskC = new TaskItem { Title = "C", EstimatedDuration = TimeSpan.FromHours(2), Progress = 0.0, DueDate = DateTime.Today.AddDays(10) };
-            service.AddTask(taskA);
-            service.AddTask(taskB);
-            service.AddTask(taskC);
+            _service.AddTask(taskA);
+            _service.AddTask(taskB);
+            _service.AddTask(taskC);
             taskB.Dependencies.Add(taskA.Id);
             taskC.Dependencies.Add(taskB.Id);
-            service.CalculateUrgencyForAllTasks();
+            _service.CalculateUrgencyForAllTasks();
             Assert.True(taskA.UrgencyScore > taskB.UrgencyScore);
             Assert.True(taskB.UrgencyScore > taskC.UrgencyScore);
         }
@@ -49,12 +66,11 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void AddTask_ShouldIncreaseTaskCount()
         {
-            var service = new TaskManagerService();
             // Ensure a clean state for this test
             // Remove all existing tasks
-            foreach (var existing in service.GetAllTasks())
+            foreach (var existing in _service.GetAllTasks("General")) // Specify the default list name
             {
-                service.DeleteTask(existing.Id);
+                _service.DeleteTask(existing.Id);
             }
             var task = new TaskItem
             {
@@ -62,12 +78,13 @@ namespace PriorityTaskManager.Tests
                 Description = "Test Description",
                 Importance = 8,
                 DueDate = DateTime.Now.AddDays(1),
-                IsCompleted = false
+                IsCompleted = false,
+                ListName = "General" // Assign the default list name
             };
 
-            service.AddTask(task);
+            _service.AddTask(task);
 
-            Assert.Equal(1, service.GetTaskCount());
+            Assert.Equal(1, _service.GetAllTasks("General").Count()); // Verify against the default list
         }
 
         /// <summary>
@@ -76,10 +93,9 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void GetTaskById_ShouldReturnCorrectTask_WhenTaskExists()
         {
-            var service = new TaskManagerService();
             var task = new TaskItem { Title = "A", Description = "B", Importance = 2, DueDate = DateTime.Now, IsCompleted = false };
-            service.AddTask(task);
-            var found = service.GetTaskById(task.Id);
+            _service.AddTask(task);
+            var found = _service.GetTaskById(task.Id);
             Assert.NotNull(found);
             Assert.Equal(task.Title, found.Title);
         }
@@ -90,8 +106,7 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void GetTaskById_ShouldReturnNull_WhenTaskDoesNotExist()
         {
-            var service = new TaskManagerService();
-            var result = service.GetTaskById(999);
+            var result = _service.GetTaskById(999);
             Assert.Null(result);
         }
 
@@ -101,13 +116,12 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void UpdateTask_ShouldChangeTaskProperties_WhenTaskExists()
         {
-            var service = new TaskManagerService();
             var task = new TaskItem { Title = "Old", Description = "Old", Importance = 2, DueDate = DateTime.Now, IsCompleted = false };
-            service.AddTask(task);
+            _service.AddTask(task);
             var updated = new TaskItem { Id = task.Id, Title = "New", Description = "New", Importance = 9, DueDate = DateTime.Now.AddDays(1), IsCompleted = true };
-            var result = service.UpdateTask(updated);
+            var result = _service.UpdateTask(updated);
             Assert.True(result);
-            var found = service.GetTaskById(task.Id);
+            var found = _service.GetTaskById(task.Id);
             Assert.NotNull(found);
             Assert.Equal("New", found.Title);
             Assert.Equal(9, found.Importance);
@@ -119,12 +133,11 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void DeleteTask_ShouldRemoveTaskFromList_WhenTaskExists()
         {
-            var service = new TaskManagerService();
             var task = new TaskItem { Title = "Delete", Description = "Delete", Importance = 5, DueDate = DateTime.Now, IsCompleted = false };
-            service.AddTask(task);
-            var result = service.DeleteTask(task.Id);
+            _service.AddTask(task);
+            var result = _service.DeleteTask(task.Id);
             Assert.True(result);
-            Assert.Null(service.GetTaskById(task.Id));
+            Assert.Null(_service.GetTaskById(task.Id));
         }
 
         /// <summary>
@@ -133,12 +146,11 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void MarkTaskAsComplete_ShouldSetIsCompletedToTrue_WhenTaskExists()
         {
-            var service = new TaskManagerService();
             var task = new TaskItem { Title = "Complete", Description = "Complete", Importance = 7, DueDate = DateTime.Now, IsCompleted = false };
-            service.AddTask(task);
-            var result = service.MarkTaskAsComplete(task.Id);
+            _service.AddTask(task);
+            var result = _service.MarkTaskAsComplete(task.Id);
             Assert.True(result);
-            var found = service.GetTaskById(task.Id);
+            var found = _service.GetTaskById(task.Id);
             Assert.NotNull(found);
             Assert.True(found.IsCompleted);
         }
@@ -150,16 +162,15 @@ namespace PriorityTaskManager.Tests
         public void MarkTaskAsIncomplete_ShouldSetIsCompletedToFalse_WhenTaskExists()
         {
             // Arrange
-            var service = new TaskManagerService();
             var task = new TaskItem { Title = "Test Task", IsCompleted = true };
-            service.AddTask(task);
+            _service.AddTask(task);
 
             // Act
-            var result = service.MarkTaskAsIncomplete(task.Id);
+            var result = _service.MarkTaskAsIncomplete(task.Id);
 
             // Assert
             Assert.True(result);
-            Assert.False(service.GetTaskById(task.Id)?.IsCompleted);
+            Assert.False(_service.GetTaskById(task.Id)?.IsCompleted);
         }
         
             /// <summary>
@@ -171,12 +182,11 @@ namespace PriorityTaskManager.Tests
             [InlineData("   ")]
             public void AddTask_ShouldThrowArgumentException_WhenTitleIsEmpty(string invalidTitle)
             {
-                var service = new TaskManagerService();
                 // The following should throw ArgumentException due to invalid title
                 Assert.Throws<ArgumentException>(() =>
                 {
                     var task = new TaskItem { Title = invalidTitle, Description = "desc", Importance = 5, DueDate = DateTime.Now };
-                    service.AddTask(task);
+                    _service.AddTask(task);
                 });
             }
         
@@ -189,14 +199,13 @@ namespace PriorityTaskManager.Tests
             [InlineData("   ")]
             public void UpdateTask_ShouldThrowArgumentException_WhenTitleIsEmpty(string invalidTitle)
             {
-                var service = new TaskManagerService();
                 var validTask = new TaskItem { Title = "Valid", Description = "desc", Importance = 5, DueDate = DateTime.Now };
-                service.AddTask(validTask);
+                _service.AddTask(validTask);
                 // The following should throw ArgumentException due to invalid title
                 Assert.Throws<ArgumentException>(() =>
                 {
                     var updatedTask = new TaskItem { Id = validTask.Id, Title = invalidTitle, Description = "desc", Importance = 5, DueDate = DateTime.Now };
-                    service.UpdateTask(updatedTask);
+                    _service.UpdateTask(updatedTask);
                 });
             }
 
@@ -206,20 +215,18 @@ namespace PriorityTaskManager.Tests
                 [Fact]
                 public void UpdateTask_ShouldThrowInvalidOperationException_WhenDirectCircularDependencyIsCreated()
                 {
-                    var service = new TaskManagerService();
-
                     var taskA = new TaskItem { Title = "A", Importance = 1, DueDate = DateTime.Now };
                     var taskB = new TaskItem { Title = "B", Importance = 1, DueDate = DateTime.Now };
-                    service.AddTask(taskA);
-                    service.AddTask(taskB);
+                    _service.AddTask(taskA);
+                    _service.AddTask(taskB);
 
                     // Make B depend on A
                     taskB.Dependencies.Add(taskA.Id);
-                    service.UpdateTask(taskB);
+                    _service.UpdateTask(taskB);
 
                     // Attempt to make A depend on B (should throw)
                     taskA.Dependencies.Add(taskB.Id);
-                    Assert.Throws<InvalidOperationException>(() => service.UpdateTask(taskA));
+                    Assert.Throws<InvalidOperationException>(() => _service.UpdateTask(taskA));
                 }
 
                 /// <summary>
@@ -228,24 +235,119 @@ namespace PriorityTaskManager.Tests
                 [Fact]
                 public void UpdateTask_ShouldThrowInvalidOperationException_WhenTransitiveCircularDependencyIsCreated()
                 {
-                    var service = new TaskManagerService();
-
                     var taskA = new TaskItem { Title = "A", Importance = 1, DueDate = DateTime.Now };
                     var taskB = new TaskItem { Title = "B", Importance = 1, DueDate = DateTime.Now };
                     var taskC = new TaskItem { Title = "C", Importance = 1, DueDate = DateTime.Now };
-                    service.AddTask(taskA);
-                    service.AddTask(taskB);
-                    service.AddTask(taskC);
+                    _service.AddTask(taskA);
+                    _service.AddTask(taskB);
+                    _service.AddTask(taskC);
 
                     // Create dependency chain: C -> B -> A
                     taskC.Dependencies.Add(taskB.Id);
-                    service.UpdateTask(taskC);
+                    _service.UpdateTask(taskC);
                     taskB.Dependencies.Add(taskA.Id);
-                    service.UpdateTask(taskB);
+                    _service.UpdateTask(taskB);
 
                     // Attempt to make A depend on C (should throw)
                     taskA.Dependencies.Add(taskC.Id);
-                    Assert.Throws<InvalidOperationException>(() => service.UpdateTask(taskA));
+                    Assert.Throws<InvalidOperationException>(() => _service.UpdateTask(taskA));
                 }
+
+        /// <summary>
+        /// Verifies that TaskManagerService creates a default "General" list on first load.
+        /// </summary>
+        [Fact]
+        public void TaskManagerService_ShouldCreateDefaultGeneralList_OnFirstLoad()
+        {
+            var lists = _service.GetAllLists();
+
+            Assert.Single(lists);
+            Assert.Equal("General", lists.First().Name);
+        }
+
+        /// <summary>
+        /// Verifies that AddList increases the list count.
+        /// </summary>
+        [Fact]
+        public void AddList_ShouldIncreaseListCount()
+        {
+            var newList = new TaskList { Name = "Work" };
+            _service.AddList(newList);
+
+            Assert.Contains(newList, _service.GetAllLists());
+        }
+
+        /// <summary>
+        /// Verifies that AddList throws InvalidOperationException for a duplicate name.
+        /// </summary>
+        [Fact]
+        public void AddList_ShouldThrowInvalidOperationException_ForDuplicateName()
+        {
+            var newList = new TaskList { Name = "Work" };
+            _service.AddList(newList);
+
+            Assert.Throws<InvalidOperationException>(() => _service.AddList(new TaskList { Name = "work" }));
+        }
+
+        /// <summary>
+        /// Verifies that GetAllTasks returns only the tasks from the specified list.
+        /// </summary>
+        [Fact]
+        public void GetAllTasks_ShouldOnlyReturnTasksFromSpecifiedList()
+        {
+            var workList = new TaskList { Name = "Work" };
+            var homeList = new TaskList { Name = "Home" };
+            _service.AddList(workList);
+            _service.AddList(homeList);
+
+            var workTask = new TaskItem { Title = "Work Task", ListName = "Work" };
+            var homeTask = new TaskItem { Title = "Home Task", ListName = "Home" };
+            _service.AddTask(workTask);
+            _service.AddTask(homeTask);
+
+            var workTasks = _service.GetAllTasks("Work");
+
+            Assert.Contains(workTask, workTasks);
+            Assert.DoesNotContain(homeTask, workTasks);
+        }
+
+        /// <summary>
+        /// Verifies that DeleteList removes the list and all associated tasks.
+        /// </summary>
+        [Fact]
+        public void DeleteList_ShouldRemoveListAndAllAssociatedTasks()
+        {
+            var toDeleteList = new TaskList { Name = "ToDelete" };
+            var toKeepList = new TaskList { Name = "ToKeep" };
+            _service.AddList(toDeleteList);
+            _service.AddList(toKeepList);
+
+            var task1 = new TaskItem { Title = "Task 1", ListName = "ToDelete" };
+            var task2 = new TaskItem { Title = "Task 2", ListName = "ToKeep" };
+            _service.AddTask(task1);
+            _service.AddTask(task2);
+
+            _service.DeleteList("ToDelete");
+
+            Assert.Null(_service.GetListByName("ToDelete"));
+            Assert.Empty(_service.GetAllTasks("ToDelete"));
+            Assert.Contains(task2, _service.GetAllTasks("ToKeep"));
+        }
+
+        /// <summary>
+        /// Verifies that UpdateList changes the sort option.
+        /// </summary>
+        [Fact]
+        public void UpdateList_ShouldChangeSortOption()
+        {
+            var list = new TaskList { Name = "Work", SortOption = SortOption.Default };
+            _service.AddList(list);
+
+            list.SortOption = SortOption.Alphabetical;
+            _service.UpdateList(list);
+
+            var updatedList = _service.GetListByName("Work");
+            Assert.Equal(SortOption.Alphabetical, updatedList.SortOption);
+        }
     }
 }

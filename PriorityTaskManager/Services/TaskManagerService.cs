@@ -11,13 +11,18 @@ namespace PriorityTaskManager.Services
         private List<TaskList> _lists = new List<TaskList>();
         private int _nextId = 1;
 
-        public TaskManagerService()
+        public TaskManagerService(string tasksFilePath, string listsFilePath)
         {
-            // Always save tasks.json in the solution root (four levels above bin/Debug/netX.X)
-            _filePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"));
-            _listFilePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"));
+            _filePath = Path.GetFullPath(tasksFilePath);
+            _listFilePath = Path.GetFullPath(listsFilePath);
             LoadTasks();
             LoadLists();
+        }
+
+        public TaskManagerService() : this(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
+        {
         }
 
 
