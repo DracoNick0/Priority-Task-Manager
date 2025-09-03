@@ -1,5 +1,6 @@
 using PriorityTaskManager.Services;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
@@ -11,19 +12,24 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
-            if (args.Length < 1 || !int.TryParse(args[0], out int id))
+            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args);
+
+            if (validTaskIds.Count == 0)
             {
-                Console.WriteLine("Invalid arguments. Please provide a valid task ID.");
+                Console.WriteLine("Usage: delete <Id>,<Id2>,...");
                 return;
             }
 
-            if (service.DeleteTask(id))
+            foreach (var id in validTaskIds)
             {
-                Console.WriteLine("Task deleted successfully.");
-            }
-            else
-            {
-                Console.WriteLine("Task not found.");
+                if (service.DeleteTask(id))
+                {
+                    Console.WriteLine($"Task {id} deleted successfully.");
+                }
+                else
+                {
+                    Console.WriteLine($"Task {id} not found.");
+                }
             }
         }
     }

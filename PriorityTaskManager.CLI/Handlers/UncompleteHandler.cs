@@ -1,5 +1,6 @@
 using PriorityTaskManager.Services;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
@@ -7,19 +8,24 @@ namespace PriorityTaskManager.CLI.Handlers
     {
         public void Execute(TaskManagerService service, string[] args)
         {
-            if (args.Length < 1 || !int.TryParse(args[0], out int id))
+            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args);
+
+            if (validTaskIds.Count == 0)
             {
-                Console.WriteLine("Invalid arguments. Please provide a valid task ID.");
+                Console.WriteLine("Usage: uncomplete <Id>,<Id2>,...");
                 return;
             }
 
-            if (service.MarkTaskAsIncomplete(id))
+            foreach (var id in validTaskIds)
             {
-                Console.WriteLine($"Task {id} marked as incomplete.");
-            }
-            else
-            {
-                Console.WriteLine($"Task {id} not found.");
+                if (service.MarkTaskAsIncomplete(id))
+                {
+                    Console.WriteLine($"Task {id} marked as incomplete.");
+                }
+                else
+                {
+                    Console.WriteLine($"Task {id} not found.");
+                }
             }
         }
     }
