@@ -1157,3 +1157,41 @@ You will need to modify two files:
 
 - Enhanced the `edit` command in `EditHandler.cs` to support direct value input for targeted edits (e.g., `edit 4 title My New Task Title`).
 - Updated the help text in `HelpHandler.cs` to document the new syntax for the enhanced edit command.
+
+# Log Entry 40
+
+## User Prompt
+
+We are adding a new feature to allow users to apply commands to multiple tasks at once (e.g., 'delete 5,6,7'). To avoid code duplication, we will start by creating a central, reusable utility method to handle the parsing and validation of the task IDs.
+
+### **1. Target File**
+
+Open the utility class file: `PriorityTaskManager.CLI/Utils/ConsoleInputHelper.cs`.
+
+### **2. Create a New Static Method**
+
+Your task is to create a new `public static` method inside this class.
+
+*   **Name:** The method should be named `ParseAndValidateTaskIds`.
+*   **Parameters:** It must accept two parameters: the `TaskManagerService` instance and the user's command-line arguments (`string[] args`).
+*   **Return Type:** It must return a `List<int>` containing the valid, existing task IDs.
+
+### **3. Implement the Method Logic**
+
+Inside the `ParseAndValidateTaskIds` method, implement the following logic:
+
+1.  Create an empty `List<int>` to hold the results.
+2.  If the `args` array is empty, immediately return the empty list.
+3.  The user's input might be a single string like "5,6,7". Join the `args` array into a single string, then split that string by the comma character to get an array of individual ID strings.
+4.  Iterate through each potential ID string from the split array.
+5.  Inside the loop, for each string:
+    *   Trim any leading or trailing whitespace.
+    *   Attempt to parse the string into an integer.
+    *   If parsing is successful, use the `service.GetTaskById()` method to check if a task with that ID actually exists.
+    *   If the task exists, add the ID to your results list.
+    *   If parsing fails or if the task does not exist, print a user-friendly warning message to the console indicating that the specific ID is invalid and is being skipped.
+6.  After the loop finishes, return the final list of valid IDs.
+
+### Copilot's Action
+
+Added a new static method `ParseAndValidateTaskIds` to the `ConsoleInputHelper` class. This method parses and validates task IDs from user input, ensuring only valid IDs are returned. It handles input parsing, validation, and user feedback for invalid or non-

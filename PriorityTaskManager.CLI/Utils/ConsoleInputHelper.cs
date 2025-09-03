@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace PriorityTaskManager.CLI.Utils
 {
@@ -57,6 +58,48 @@ namespace PriorityTaskManager.CLI.Utils
                         return date;
                 }
             }
+        }
+
+        /// <summary>
+        /// Parses and validates task IDs from user input.
+        /// </summary>
+        /// <param name="service">The TaskManagerService instance to validate task existence.</param>
+        /// <param name="args">The command-line arguments containing task IDs.</param>
+        /// <returns>A list of valid task IDs.</returns>
+        public static List<int> ParseAndValidateTaskIds(TaskManagerService service, string[] args)
+        {
+            var validTaskIds = new List<int>();
+
+            if (args == null || args.Length == 0)
+            {
+                return validTaskIds;
+            }
+
+            string input = string.Join("", args);
+            string[] potentialIds = input.Split(',');
+
+            foreach (var idString in potentialIds)
+            {
+                string trimmedId = idString.Trim();
+
+                if (int.TryParse(trimmedId, out int taskId))
+                {
+                    if (service.GetTaskById(taskId) != null)
+                    {
+                        validTaskIds.Add(taskId);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: Task ID {taskId} does not exist and will be skipped.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: '{trimmedId}' is not a valid task ID and will be skipped.");
+                }
+            }
+
+            return validTaskIds;
         }
 
         /// <summary>
