@@ -1493,3 +1493,73 @@ Now, create the logic for changing a list's sort order.
 2. Implemented the `HandleViewTasksInActiveList` method in `ListHandler` to fetch, sort, and display tasks based on the active list's `SortOption`.
 3. Added the `HandleSetSortOption` method in `ListHandler` to allow users to change the sort order of the active list.
 4. Updated the `Execute` method in `ListHandler` to include the `list sort <option>` subcommand.
+
+# Log Entry 48
+
+## User Prompt
+
+Our `list` command is now fully list-aware, but our other commands are not. In this step, we will connect the `add` command to the "active list" system and improve the `view` command to provide more context.
+
+### **Step 1: Decouple the `TaskManagerService`**
+
+First, we need to make a small but important change to the service layer. The service should not be responsible for deciding which list a task belongs to.
+
+1.  Open `PriorityTaskManager/Services/TaskManagerService.cs`.
+2.  Locate the `AddTask` method.
+3.  Find and **delete** the line that hardcodes the list name (e.g., `task.ListName = "General";`). The service will now trust that the `TaskItem` it receives already has the correct `ListName` set by the caller.
+
+### **Step 2: Update the `AddHandler`**
+
+This is the core of the change. We will make the `add` command aware of the active list.
+
+1.  Open `PriorityTaskManager.CLI/Handlers/AddHandler.cs`.
+2.  Locate the `Execute` method. Find the section where the new `TaskItem` object is initialized.
+3.  Add a new line to this object initializer to set the `ListName` property.
+4.  The value for this property must come from our static state variable: `Program.ActiveListName`.
+
+### **Step 3: Update the `ViewHandler`**
+
+When a user views a task, they should know which list it belongs to.
+
+1.  Open `PriorityTaskManager.CLI/Handlers/ViewHandler.cs`.
+2.  Locate the `Execute` method. Find the section where you are printing the task's details.
+3.  Add a new line to the output that displays the value of the task's `ListName` property. Label it clearly (e.g., "List: Home").
+
+### Copilot's Action
+
+1. Removed the hardcoded assignment of the `ListName` property in the `AddTask` method of `TaskManagerService`.
+2. Updated the `AddHandler` to set the `ListName` property of the new task to the active list (`Program.ActiveListName`).
+3. Updated the `ViewHandler` to display the `ListName` of the task being viewed.
+
+# Log Entry 49
+
+## User Prompt
+
+We have successfully implemented the entire multi-list feature. The final step is to update the main help text to document all the new `list` subcommands that are now available to the user.
+
+### **1. Target File**
+
+Open the command handler file for the 'help' command: `PriorityTaskManager.CLI/Handlers/HelpHandler.cs`.
+
+### **2. Modify the `Execute` Method**
+
+You will be replacing the old, simple description of the `list` command with a more detailed, multi-line explanation of its new capabilities.
+
+1.  **Remove Old `list` Command:** Find the single `Console.WriteLine` that describes the old `list` command and delete it.
+
+2.  **Add New `list` Subcommands:** In its place, add a new block of `Console.WriteLine` statements to document the new `list` command hub. Use formatting to make it clear these are subcommands.
+
+Your new documentation should include entries for:
+*   `list` or `list view`: Explain that this displays tasks in the current active list.
+*   `list all`: Explain that this shows all available lists.
+*   `list create <ListName>`: Explain that this creates a new task list.
+*   `list switch <ListName>`: Explain that this sets the active task list.
+*   `list sort <option>`: Explain that this changes the sort order for the active list and list the valid options (`Default`, `Alphabetical`, `DueDate`, `Id`).
+*   `list delete <ListName>`: Explain that this deletes a list and all of its tasks.
+
+This is the final step. Once complete, the multi-list feature is fully implemented and documented.
+
+### Copilot's Action
+
+1. Updated the `Execute` method in `HelpHandler` to replace the old `list` command description with detailed documentation for the new `list` subcommands.
+2. Added entries for `list view`, `list all`, `list create`, `list switch`, `list sort`, and `list delete` to the help text.

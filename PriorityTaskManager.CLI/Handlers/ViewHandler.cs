@@ -26,6 +26,7 @@ public class ViewHandler : ICommandHandler
         }
 
         Console.WriteLine($"\nTask Details (Id: {task.Id})");
+        Console.WriteLine($"List: {task.ListName}");
         Console.WriteLine($"Title: {task.Title}");
         Console.WriteLine($"Description: {task.Description}");
         Console.WriteLine($"Importance: {task.Importance}");
@@ -34,7 +35,6 @@ public class ViewHandler : ICommandHandler
         Console.WriteLine($"Estimated Duration: {task.EstimatedDuration.TotalHours} hours");
         Console.WriteLine($"Progress: {task.Progress * 100:F1}%");
         Console.WriteLine($"Dependencies: {(task.Dependencies != null && task.Dependencies.Any() ? string.Join(", ", task.Dependencies) : "None")}");
-        Console.WriteLine($"List: {task.ListName}");
 
         if (!task.IsCompleted)
         {
