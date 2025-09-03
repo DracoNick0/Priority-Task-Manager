@@ -1332,3 +1332,46 @@ Add the following three new `public` methods to the class. These will be the pri
   - `AddList` to add a new list, ensuring unique names.
   - `GetListByName` to retrieve a list by its name.
   - `GetAllLists` to retrieve all lists.
+
+  # Log Entry 45
+
+## User Prompt
+
+We have successfully implemented persistence for our lists. The final backend step is to modify our existing task management methods to recognize and interact with these lists. This will connect our two data models.
+
+### **1. Target File**
+
+Open the core service file: `PriorityTaskManager/Services/TaskManagerService.cs`.
+
+### **2. Modify the `GetAllTasks` Method**
+
+1.  Locate the existing `public IEnumerable<TaskItem> GetAllTasks()` method.
+2.  Change its signature to `public IEnumerable<TaskItem> GetAllTasks(string listName)`.
+3.  Modify the implementation. Instead of returning the entire `_tasks` list, it must now use a LINQ `Where` clause to filter and return only the tasks where the `ListName` property matches the `listName` parameter (case-insensitive).
+
+### **3. Modify the `AddTask` Method**
+
+1.  Locate the `public void AddTask(TaskItem task)` method.
+2.  Before the new task is added to the `_tasks` list, you must set its `ListName` property.
+3.  For now, to ensure data integrity, hardcode this value. Add the following line: `task.ListName = "General";`. (We will make this dynamic in a later step when we introduce the concept of an "active list" in the CLI).
+
+### **4. Create the `DeleteList` Method**
+
+Create a new `public` method to handle deleting a list and all its associated tasks.
+
+1.  **Name:** `public void DeleteList(string listName)`
+2.  **Implementation:**
+    *   Find the list to delete from the `_lists` field based on the `listName` (case-insensitive). If the list doesn't exist, simply return.
+    *   Remove the found list from the `_lists` collection.
+    *   Use the `_tasks.RemoveAll()` method with a predicate to find and delete every task from the master task list where the `ListName` property matches the `listName` you are deleting.
+    *   Call `SaveLists()` to persist the change to the lists.
+    *   Call `SaveTasks()` to persist the changes to the tasks, ensuring the orphaned tasks are removed from the file.
+
+### Copilot's Action
+
+- Modified the `GetAllTasks` method to filter tasks by the `ListName` property, returning only tasks associated with the specified list.
+- Updated the `AddTask` method to assign new tasks to the default "General" list by setting the `ListName` property.
+- Implemented the `DeleteList` method to remove a list and all tasks associated with it. This includes:
+  - Removing the list from the `_lists` collection.
+  - Deleting tasks from the `_tasks` list where the `ListName` matches the deleted list.
+  - Persisting changes to both lists and tasks by calling `SaveLists` and `SaveTasks`.

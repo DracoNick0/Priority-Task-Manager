@@ -98,6 +98,7 @@ namespace PriorityTaskManager.Services
         public void AddTask(TaskItem task)
         {
             task.Id = _nextId++;
+            task.ListName = "General"; // Default list for now
 
             _tasks.Add(task);
 
@@ -105,9 +106,9 @@ namespace PriorityTaskManager.Services
         }
 
 
-        public IEnumerable<TaskItem> GetAllTasks()
+        public IEnumerable<TaskItem> GetAllTasks(string listName)
         {
-            return new List<TaskItem>(_tasks);
+            return _tasks.Where(task => task.ListName.Equals(listName, StringComparison.OrdinalIgnoreCase));
         }
 
 
@@ -363,6 +364,22 @@ namespace PriorityTaskManager.Services
         public IEnumerable<TaskList> GetAllLists()
         {
             return new List<TaskList>(_lists);
+        }
+
+        public void DeleteList(string listName)
+        {
+            var listToDelete = _lists.FirstOrDefault(list => list.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
+
+            if (listToDelete == null)
+            {
+                return;
+            }
+
+            _lists.Remove(listToDelete);
+            _tasks.RemoveAll(task => task.ListName.Equals(listName, StringComparison.OrdinalIgnoreCase));
+
+            SaveLists();
+            SaveTasks();
         }
     }
 }
