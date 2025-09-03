@@ -79,7 +79,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 IsCompleted = false,
                 EstimatedDuration = TimeSpan.FromHours(durationHours),
                 Progress = 0.0,
-                Dependencies = dependencies
+                Dependencies = dependencies,
+                ListName = Program.ActiveListName // Set the task's list to the active list
             };
 
             service.AddTask(task);
