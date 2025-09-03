@@ -1280,3 +1280,55 @@ We are beginning a major feature: multi-list management. This first step is to c
 - Created the `SortOption` enum in `PriorityTaskManager/Models/SortOption.cs` with values `Default`, `Alphabetical`, `DueDate`, and `Id`.
 - Created the `TaskList` model in `PriorityTaskManager/Models/TaskList.cs` with `Name` and `SortOption` properties.
 - Updated the `TaskItem` model in `PriorityTaskManager/Models/TaskItem.cs` to include a new `ListName` property for associating tasks with specific lists.
+
+# Log Entry 44
+
+## User Prompt
+
+Thanks! We have created our data models for lists. Now, we will upgrade the `TaskManagerService` to handle the persistence of these lists.
+
+### **1. Target File**
+
+Open the core service file: `PriorityTaskManager/Services/TaskManagerService.cs`.
+
+### **2. Add New Fields and Update Constructor**
+
+1.  Add two new private fields to the top of the class:
+    *   One `string` field to store the file path for `lists.json`. Name it `_listFilePath`.
+    *   One `List<TaskList>` field to store the lists in memory. Name it `_lists`.
+2.  Update the `TaskManagerService` constructor:
+    *   Initialize the new `_listFilePath` field using the same path-building logic as the existing `_filePath`, but targeting `lists.json`.
+    *   Initialize the new `_lists` field to an empty list.
+    *   Add a call to a new method we are about to create: `LoadLists()`.
+
+### **3. Implement `LoadLists` and `SaveLists`**
+
+1.  **Create a `private void LoadLists()` method.**
+    *   This method should read and deserialize the JSON from the `_listFilePath`.
+    *   **Crucially:** It must check if the file exists. If the file does **not** exist, it should create a default list, add it to the `_lists` field, and then immediately call the `SaveLists()` method. The default list should be a new `TaskList` object with its `Name` set to "General" and its `SortOption` set to `SortOption.Default`.
+2.  **Create a `private void SaveLists()` method.**
+    *   This method should serialize the in-memory `_lists` field to JSON and write it to the `_listFilePath`.
+
+### **4. Create New Public Methods for List Management**
+
+Add the following three new `public` methods to the class. These will be the primary ways we interact with lists.
+
+1.  `public void AddList(TaskList list)`:
+    *   Before adding, check if a list with the same `Name` already exists in the `_lists` field (case-insensitive). If it does, throw an `InvalidOperationException` with a clear error message.
+    *   If the name is unique, add the new list to the `_lists` field and call `SaveLists()`.
+2.  `public TaskList? GetListByName(string listName)`:
+    *   Searches the `_lists` field for a list whose `Name` matches the provided `listName` (case-insensitive).
+    *   Returns the found `TaskList` object or `null` if no match is found.
+3.  `public IEnumerable<TaskList> GetAllLists()`:
+    *   Returns the entire `_lists` field.
+
+### Copilot's Action
+
+- Added two new private fields to `TaskManagerService`: `_listFilePath` for the `lists.json` file path and `_lists` for in-memory storage of task lists.
+- Updated the constructor to initialize these fields and call the new `LoadLists` method.
+- Implemented the `LoadLists` method to load lists from `lists.json` or create a default "General" list if the file does not exist.
+- Implemented the `SaveLists` method to persist the `_lists` field to `lists.json`.
+- Added three new public methods for list management:
+  - `AddList` to add a new list, ensuring unique names.
+  - `GetListByName` to retrieve a list by its name.
+  - `GetAllLists` to retrieve all lists.

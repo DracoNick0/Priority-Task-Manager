@@ -5,15 +5,19 @@ namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
-    private readonly string _filePath;
+        private readonly string _filePath;
+        private readonly string _listFilePath;
         private List<TaskItem> _tasks = new List<TaskItem>();
+        private List<TaskList> _lists = new List<TaskList>();
         private int _nextId = 1;
 
         public TaskManagerService()
         {
             // Always save tasks.json in the solution root (four levels above bin/Debug/netX.X)
             _filePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"));
+            _listFilePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"));
             LoadTasks();
+            LoadLists();
         }
 
 
@@ -64,6 +68,32 @@ namespace PriorityTaskManager.Services
             }
         }
 
+        private void LoadLists()
+        {
+            if (File.Exists(_listFilePath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(_listFilePath);
+                    _lists = JsonSerializer.Deserialize<List<TaskList>>(json) ?? new List<TaskList>();
+                }
+                catch
+                {
+                    _lists = new List<TaskList>();
+                }
+            }
+            else
+            {
+                var defaultList = new TaskList { Name = "General", SortOption = SortOption.Default };
+                _lists.Add(defaultList);
+                SaveLists();
+            }
+        }
+
+        private void SaveLists()
+        {
+            File.WriteAllText(_listFilePath, JsonSerializer.Serialize(_lists));
+        }
 
         public void AddTask(TaskItem task)
         {
@@ -312,6 +342,27 @@ namespace PriorityTaskManager.Services
             
             // We are done with this path, so we can remove it from the visited set for the current recursive stack.
             visited.Remove(task.Id);
+        }
+
+        public void AddList(TaskList list)
+        {
+            if (_lists.Any(l => l.Name.Equals(list.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException($"A list with the name '{list.Name}' already exists.");
+            }
+
+            _lists.Add(list);
+            SaveLists();
+        }
+
+        public TaskList? GetListByName(string listName)
+        {
+            return _lists.FirstOrDefault(l => l.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public IEnumerable<TaskList> GetAllLists()
+        {
+            return new List<TaskList>(_lists);
         }
     }
 }
