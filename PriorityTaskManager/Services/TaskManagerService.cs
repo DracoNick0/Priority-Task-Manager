@@ -98,7 +98,6 @@ namespace PriorityTaskManager.Services
         public void AddTask(TaskItem task)
         {
             task.Id = _nextId++;
-            task.ListName = "General"; // Default list for now
 
             _tasks.Add(task);
 
