@@ -381,5 +381,15 @@ namespace PriorityTaskManager.Services
             SaveLists();
             SaveTasks();
         }
+
+        public void UpdateList(TaskList updatedList)
+        {
+            var existingList = _lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingList != null)
+            {
+                existingList.SortOption = updatedList.SortOption;
+                SaveLists();
+            }
+        }
     }
 }

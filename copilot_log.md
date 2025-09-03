@@ -1437,3 +1437,59 @@ Create the following new private methods inside `ListHandler.cs`.
 1. Introduced the `ActiveListName` static property in `Program.cs` to manage the application's active list state.
 2. Refactored `ListHandler` to act as a subcommand router for managing lists.
 3. Added methods for handling subcommands: `HandleViewTasksInActiveList`, `HandleViewAllLists`, `HandleCreateList`, `HandleSwitchList`, and `HandleDeleteList`.
+
+# Log Entry 47
+
+## User Prompt
+
+We have successfully refactored the `ListHandler` into a subcommand hub. Now we need to implement the core logic for viewing and sorting tasks, and give the user control over the sort order.
+
+### **Step 1: Create an `UpdateList` Method in the Service**
+
+First, we need a way to save changes to a list (like changing its sort order).
+
+1.  Open `PriorityTaskManager/Services/TaskManagerService.cs`.
+2.  Create a new `public void UpdateList(TaskList updatedList)` method.
+3.  Inside this method, find the existing list in the `_lists` collection by matching the `Name`.
+4.  If found, update its properties (specifically the `SortOption`).
+5.  Call `SaveLists()` to persist the change.
+
+### **Step 2: Implement the `HandleViewTasksInActiveList` Method**
+
+Open `PriorityTaskManager.CLI/Handlers/ListHandler.cs`. It's time to replace the placeholder logic in the task viewing method.
+
+1.  Locate the `private void HandleViewTasksInActiveList()` method. Delete the placeholder message inside it.
+2.  **Fetch Data:**
+    *   Get the active list's name from `Program.ActiveListName`.
+    *   Use `service.GetListByName()` to get the full `TaskList` object. If it's null, print an error and return.
+    *   Use `service.GetAllTasks()` with the active list name to get all associated tasks.
+3.  **Sort Tasks:**
+    *   Create a `switch` statement that checks the `SortOption` property of the `TaskList` object you just fetched.
+    *   **Case `SortOption.Default`:** First, call `service.CalculateUrgencyForAllTasks()`. Then, sort the tasks by `UrgencyScore` in descending order.
+    *   **Case `SortOption.Alphabetical`:** Sort the tasks by their `Title` property in alphabetical order.
+    *   **Case `SortOption.DueDate`:** Sort the tasks by their `DueDate` property in ascending order.
+    *   **Case `SortOption.Id`:** Sort the tasks by their `Id` property in ascending order.
+4.  **Display Tasks:**
+    *   After sorting, check if the list of tasks is empty. If so, print a message like "No tasks found in this list."
+    *   If there are tasks, loop through the sorted collection and display them using the same format as the old `list` command (e.g., showing the checkbox, ID, Title, and Urgency/LPSD when sorted by Default).
+
+### **Step 3: Implement the `list sort` Subcommand**
+
+Now, create the logic for changing a list's sort order.
+
+1.  **Create a `private void HandleSetSortOption()` method** inside `ListHandler.cs`. This method will handle the `list sort <option>` command.
+2.  **Parse Input:** The method should expect the sort option as the next argument (e.g., `args[1]`). Use `Enum.TryParse<SortOption>(...)` (with `ignoreCase = true`) to parse the user's input into a valid `SortOption`.
+3.  **Handle Invalid Input:** If parsing fails, print an error message to the user that lists the valid options (`Default`, `Alphabetical`, `DueDate`, `Id`).
+4.  **Update the List:** If parsing is successful, get the active `TaskList` object using `service.GetListByName(Program.ActiveListName)`. Update its `SortOption` property to the new value, and then call our new `service.UpdateList()` method to save the change. Print a success message.
+
+### **Step 4: Update the Command Router and Help Text**
+
+1.  In the main `Execute` method of `ListHandler`, add a new case to the router. If the first argument is "sort", it should call your new `HandleSetSortOption()` method.
+2.  Update the usage message that your router prints for invalid commands to include the new `list sort <option>` command.
+
+### Copilot's Action
+
+1. Added the `UpdateList` method in `TaskManagerService` to update a `TaskList`'s properties and persist changes.
+2. Implemented the `HandleViewTasksInActiveList` method in `ListHandler` to fetch, sort, and display tasks based on the active list's `SortOption`.
+3. Added the `HandleSetSortOption` method in `ListHandler` to allow users to change the sort order of the active list.
+4. Updated the `Execute` method in `ListHandler` to include the `list sort <option>` subcommand.
