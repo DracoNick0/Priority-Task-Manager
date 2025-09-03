@@ -6,24 +6,31 @@ namespace PriorityTaskManager.Models
     public class TaskItem
     {
         /// <summary>
+        /// Initializes a new instance of the TaskItem class.
+        /// </summary>
+        public TaskItem()
+        {
+            Title = string.Empty;
+            Description = string.Empty;
+            DueDate = DateTime.MinValue;
+            EstimatedDuration = TimeSpan.Zero;
+            Importance = 0;
+            Progress = 0.0;
+            IsCompleted = false;
+            ListName = string.Empty;
+            Dependencies = new List<int>();
+            UrgencyScore = 0;
+        }
+
+        /// <summary>
         /// Gets or sets the unique identifier for the task.
         /// </summary>
         public int Id { get; set; }
 
-        private string _title = string.Empty;
         /// <summary>
         /// Gets or sets the title of the task.
         /// </summary>
-        public string Title
-        {
-            get => _title;
-            set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                    throw new ArgumentException("Task title cannot be null, empty, or whitespace.");
-                _title = value;
-            }
-        }
+        public string? Title { get; set; }
 
         /// <summary>
         /// Gets or sets the description of the task.
@@ -74,22 +81,5 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the name of the list to which the task belongs.
         /// </summary>
         public string ListName { get; set; }
-
-        /// <summary>
-        /// Initializes a new instance of the TaskItem class.
-        /// </summary>
-        public TaskItem()
-        {
-            Title = string.Empty;
-            Description = string.Empty;
-            DueDate = DateTime.MinValue;
-            EstimatedDuration = TimeSpan.Zero;
-            Importance = 0;
-            Progress = 0.0;
-            IsCompleted = false;
-            ListName = string.Empty;
-            Dependencies = new List<int>();
-            UrgencyScore = 0;
-        }
     }
 }

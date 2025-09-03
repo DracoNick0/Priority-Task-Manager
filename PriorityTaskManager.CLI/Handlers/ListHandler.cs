@@ -167,7 +167,13 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             Console.Write("Are you sure you want to delete this list and all its tasks? (y/n): ");
-            var confirmation = Console.ReadLine();
+            string? confirmation = null;
+
+            while (string.IsNullOrWhiteSpace(confirmation))
+            {
+                confirmation = Console.ReadLine();
+            }
+
             if (!confirmation.Equals("y", StringComparison.OrdinalIgnoreCase))
             {
                 Console.WriteLine("Deletion cancelled.");
@@ -213,7 +219,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleInteractiveSwitch(TaskManagerService service)
         {
-            var lists = service.GetAllLists().ToList(); // Convert to List<TaskList>
+            var lists = service.GetAllLists().ToList();
             if (!lists.Any())
             {
                 Console.WriteLine("No lists available to switch.");
@@ -224,6 +230,11 @@ namespace PriorityTaskManager.CLI.Handlers
             if (selectedIndex == -1) selectedIndex = 0;
 
             int initialTop = Console.CursorTop;
+            int maxTop = Console.BufferHeight - lists.Count - 1;
+            if (initialTop > maxTop)
+            {
+                initialTop = maxTop > 0 ? maxTop : 0;
+            }
 
             while (true)
             {
@@ -253,12 +264,16 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void DrawListMenu(List<TaskList> lists, int selectedIndex, int initialTop)
         {
-            Console.SetCursorPosition(0, initialTop);
             for (int i = 0; i < lists.Count; i++)
             {
+                Console.SetCursorPosition(0, initialTop + i);
                 var prefix = i == selectedIndex ? "> " : "  ";
-                Console.WriteLine((prefix + lists[i].Name).PadRight(Console.WindowWidth));
+
+                // Write and pad with spaces to clear leftovers
+                string line = (prefix + lists[i].Name).PadRight(Console.WindowWidth - 1);
+                Console.Write(line);
             }
         }
+
     }
 }

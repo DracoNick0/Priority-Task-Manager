@@ -8,6 +8,15 @@ namespace PriorityTaskManager.Models
     public class TaskList
     {
         /// <summary>
+        /// Initializes a new instance of the TaskList class.
+        /// </summary>
+        public TaskList()
+        {
+            Name = string.Empty;
+            SortOption = SortOption.Default;
+        }
+
+        /// <summary>
         /// Gets or sets the name of the task list.
         /// </summary>
         public string Name { get; set; }
@@ -17,13 +26,5 @@ namespace PriorityTaskManager.Models
         /// </summary>
         public SortOption SortOption { get; set; }
 
-        /// <summary>
-        /// Initializes a new instance of the TaskList class.
-        /// </summary>
-        public TaskList()
-        {
-            Name = string.Empty;
-            SortOption = SortOption.Default;
-        }
     }
 }
