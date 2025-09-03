@@ -1375,3 +1375,65 @@ Create a new `public` method to handle deleting a list and all its associated ta
   - Removing the list from the `_lists` collection.
   - Deleting tasks from the `_tasks` list where the `ListName` matches the deleted list.
   - Persisting changes to both lists and tasks by calling `SaveLists` and `SaveTasks`.
+
+# Log Entry 46
+
+## User Prompt
+
+The backend now supports lists, but the user has no way to interact with them. In this step, we will introduce the concept of an "active list" and transform the `ListHandler` into a subcommand router for managing lists.
+
+### **Step 1: Introduce the "Active List" State**
+
+1.  Open `PriorityTaskManager.CLI/Program.cs`.
+2.  At the top of the `Program` class, add a new `public static string` property to hold the application's state.
+3.  Name it `ActiveListName` and initialize its value to "General". This will be the default list.
+
+### **Step 2: Refactor `ListHandler` into a Subcommand Router**
+
+Open `PriorityTaskManager.CLI/Handlers/ListHandler.cs`. We will completely replace its current logic.
+
+1.  **The `Execute` Method:** This method will now act as a router.
+    *   Delete the existing code inside `Execute`.
+    *   The new logic should check the first element of the `args` array.
+    *   If `args` is empty or the first argument is "view", it should call a new private method named `HandleViewTasksInActiveList()`.
+    *   If the first argument is "all", it should call `HandleViewAllLists()`.
+    *   If it is "create", call `HandleCreateList()`.
+    *   If it is "switch", call `HandleSwitchList()`.
+    *   If it is "delete", call `HandleDeleteList()`.
+    *   For any other input, print a new usage message that explains these subcommands.
+
+2.  **Create Placeholder for Task Viewing:**
+    *   Create the `private void HandleViewTasksInActiveList()` method. For now, just add a single line inside it: `Console.WriteLine("Task viewing logic will be implemented in the next step.");` We will build this out in the next prompt.
+
+### **Step 3: Implement the List Management Subcommands**
+
+Create the following new private methods inside `ListHandler.cs`.
+
+1.  **`HandleViewAllLists()`:**
+    *   Call `service.GetAllLists()` to get all the lists.
+    *   Loop through the lists and print each one's `Name`.
+    *   For the list whose name matches `Program.ActiveListName`, add a visual indicator next to its name (e.g., `* General (Active)`).
+
+2.  **`HandleCreateList()`:**
+    *   This subcommand expects a name (e.g., `list create My New List`). Join the arguments after "create" to form the list name.
+    *   Create a new `TaskList` object with the provided name.
+    *   Use a `try-catch` block. In the `try` block, call `service.AddList()` and print a success message. In the `catch` block for `InvalidOperationException`, print a user-friendly error that the list name already exists.
+
+3.  **`HandleSwitchList()`:**
+    *   This subcommand expects a list name (e.g., `list switch Work`).
+    *   Use `service.GetListByName()` to check if the list exists.
+    *   If it exists, update `Program.ActiveListName` to the new name and print a confirmation message.
+    *   If it does not exist, print an error message.
+
+4.  **`HandleDeleteList()`:**
+    *   This subcommand expects a list name (e.g., `list delete Shopping`).
+    *   Check if the user is trying to delete the "General" list. If so, print an error and refuse the action; the "General" list cannot be deleted.
+    *   Provide a confirmation prompt: "Are you sure you want to delete this list and all its tasks? (y/n)".
+    *   If the user confirms, check if the list they are deleting is the currently active list. If it is, first switch the active list back to "General" by setting `Program.ActiveListName = "General";`.
+    *   Finally, call `service.DeleteList()` with the provided name and print a success message.
+
+### Copilot's Action
+
+1. Introduced the `ActiveListName` static property in `Program.cs` to manage the application's active list state.
+2. Refactored `ListHandler` to act as a subcommand router for managing lists.
+3. Added methods for handling subcommands: `HandleViewTasksInActiveList`, `HandleViewAllLists`, `HandleCreateList`, `HandleSwitchList`, and `HandleDeleteList`.

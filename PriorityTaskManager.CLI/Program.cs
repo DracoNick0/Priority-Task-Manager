@@ -13,6 +13,11 @@ namespace PriorityTaskManager.CLI
 	class Program
 	{
 		/// <summary>
+		/// Holds the name of the currently active list.
+		/// </summary>
+		public static string ActiveListName { get; set; } = "General";
+
+		/// <summary>
 		/// The main method that initializes the application and processes user commands.
 		/// </summary>
 		/// <param name="args">Command-line arguments passed to the application.</param>
