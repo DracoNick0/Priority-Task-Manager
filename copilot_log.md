@@ -1194,4 +1194,89 @@ Inside the `ParseAndValidateTaskIds` method, implement the following logic:
 
 ### Copilot's Action
 
-Added a new static method `ParseAndValidateTaskIds` to the `ConsoleInputHelper` class. This method parses and validates task IDs from user input, ensuring only valid IDs are returned. It handles input parsing, validation, and user feedback for invalid or non-
+Added a new static method `ParseAndValidateTaskIds` to the `ConsoleInputHelper` class. This method parses and validates task IDs from user input, ensuring only valid IDs are returned. It handles input parsing, validation, and user feedback for invalid or non-existent task IDs.
+
+# Log Entry 41
+
+## User Prompt
+
+We have successfully created the `ParseAndValidateTaskIds` utility. Now, we will refactor the `delete`, `complete`, and `uncomplete` command handlers to use this new functionality, allowing them to operate on multiple tasks at once.
+
+### **1. Target Files**
+
+You will need to modify the `Execute` method in each of the following three files:
+*   `PriorityTaskManager.CLI/Handlers/DeleteHandler.cs`
+*   `PriorityTaskManager.CLI/Handlers/CompleteHandler.cs`
+*   `PriorityTaskManager.CLI/Handlers/UncompleteHandler.cs`
+
+### **2. Refactoring Steps for Each Handler**
+
+Apply the following logic to the `Execute` method within each of the three handlers:
+
+1.  **Remove Old Logic:** Delete the existing code that parses a single task ID.
+
+2.  **Call the Utility:** Make a single call to our new utility method: `ConsoleInputHelper.ParseAndValidateTaskIds(service, args)`. Store the returned `List<int>` in a local variable.
+
+3.  **Check for Valid IDs:** Check if the returned list is empty. If it is, this means no valid tasks were specified. In this case, print a usage message (e.g., "Usage: delete <Id>,<Id2>...") and exit the method.
+
+4.  **Loop and Execute:** Iterate through each `id` in the list of valid task IDs.
+    *   Inside the loop, call the corresponding `TaskManagerService` method for that handler (e.g., `service.DeleteTask(id)`, `service.MarkTaskAsComplete(id)`, etc.).
+    *   After each successful call, print a specific confirmation message to the user that includes the ID of the task that was just affected (e.g., "Task 5 deleted.", "Task 7 marked as complete.").
+
+This new implementation will be cleaner and far more powerful than the original.
+
+### Copilot's Action
+
+- Refactored the `Execute` methods in `DeleteHandler`, `CompleteHandler`, and `UncompleteHandler` to use the `ConsoleInputHelper.ParseAndValidateTaskIds` utility method.
+- Removed old logic for parsing single task IDs and replaced it with the new utility method.
+- Updated each handler to process multiple task IDs, iterating through the list of valid IDs and performing the corresponding action for each.
+- Ensured user-friendly messages are displayed for each operation, including warnings for invalid or non-existent task IDs.
+
+# Log Entry 42
+
+## User Prompt
+
+It seems like the using statements are not up to date and is causing issues. Please also search for other issues with the new changes you made.
+
+Please run the cli app and use professional methods to fix the issues.
+
+### Copilot's Action
+
+- Identified build errors caused by missing `using` directives for `ConsoleInputHelper` in `DeleteHandler` and `UncompleteHandler`.
+- Added the missing `using PriorityTaskManager.CLI.Utils;` directive to both files.
+- Corrected method usage to ensure proper invocation of `ConsoleInputHelper.ParseAndValidateTaskIds`.
+- Re-ran the CLI application to verify functionality.
+- Confirmed that the application runs successfully, and all commands are functioning as expected.
+
+# Log Entry 43
+
+## User Prompt
+
+We are beginning a major feature: multi-list management. This first step is to create all the necessary data structures for this feature. We will not be implementing any logic yet.
+
+### **Step 1: Create the `SortOption` Enum**
+
+1.  In the `PriorityTaskManager/Models` directory, create a new C# enum file named `SortOption.cs`.
+2.  Define the public `SortOption` enum with the following four values:
+    *   `Default`
+    *   `Alphabetical`
+    *   `DueDate`
+    *   `Id`
+
+### **Step 2: Create the `TaskList` Model**
+
+1.  In the `PriorityTaskManager/Models` directory, create a new C# class file named `TaskList.cs`.
+2.  Inside this class, add the following two public properties:
+    *   A `string` property named `Name`.
+    *   A `SortOption` property named `SortOption`.
+
+### **Step 3: Update the `TaskItem` Model**
+
+1.  Open the existing model file: `PriorityTaskManager/Models/TaskItem.cs`.
+2.  Add a new `public string` property to this class named `ListName`.
+
+### Copilot's Action
+
+- Created the `SortOption` enum in `PriorityTaskManager/Models/SortOption.cs` with values `Default`, `Alphabetical`, `DueDate`, and `Id`.
+- Created the `TaskList` model in `PriorityTaskManager/Models/TaskList.cs` with `Name` and `SortOption` properties.
+- Updated the `TaskItem` model in `PriorityTaskManager/Models/TaskItem.cs` to include a new `ListName` property for associating tasks with specific lists.

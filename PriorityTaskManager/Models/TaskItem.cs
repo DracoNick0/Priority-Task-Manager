@@ -25,5 +25,7 @@ namespace PriorityTaskManager.Models
 
         public double UrgencyScore { get; set; }
         public DateTime LatestPossibleStartDate { get; set; }
+
+        public string ListName { get; set; }
     }
 }
