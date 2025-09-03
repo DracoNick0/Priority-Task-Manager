@@ -1758,3 +1758,64 @@ You will be replacing the entire block of `Console.WriteLine` statements inside 
 - Refactored the `Execute` method in `HelpHandler` to organize commands into logical groups with clear headings.
 - Removed the redundant `list view` command.
 - Improved readability by adding blank lines between groups and ensuring concise descriptions.
+
+# Log Entry 54
+
+## User Prompt
+
+We are going to dramatically improve the user experience of switching lists by implementing an interactive, flicker-free menu that can be navigated with the arrow keys.
+
+**Important:** The key to avoiding the blinking effect is to **never call `Console.Clear()`**. We will instead control the cursor's position to redraw the menu in place.
+
+### **1. Target File**
+
+Open the command handler for the list command: `PriorityTaskManager.CLI/Handlers/ListHandler.cs`.
+
+### **2. Update the Command Router (`Execute` method)**
+
+1.  Locate the `Execute` method, which acts as the subcommand router.
+2.  Find the `case` for "switch".
+3.  Modify its logic:
+    *   If the user provides a list name (e.g., `args.Length > 1`), it should keep the current behavior of calling `HandleSwitchList()`.
+    *   If the user just types `list switch`, it should call a new private method named `HandleInteractiveSwitch()`.
+
+### **3. Implement the `HandleInteractiveSwitch` Method**
+
+This will be a new private method that contains the core logic for the interactive menu.
+
+1.  **Fetch Data:** Get the full list of `TaskList` objects from the service.
+2.  **Initialize State:**
+    *   Create an integer variable `selectedIndex`. Find the index of the active list and assign it to `selectedIndex`.
+    *   **Crucially**, before starting the loop, capture the current cursor position: `int initialTop = Console.CursorTop;`.
+3.  **Create the Main Loop:** Start a `while (true)` loop.
+4.  **Inside the Loop:**
+    *   Call a new helper method, `DrawListMenu(lists, selectedIndex, initialTop)`.
+    *   Read a single key from the user using `Console.ReadKey(true)`.
+    *   Use a `switch` on the `key.Key`.
+    *   **Cases `DownArrow` and `UpArrow`:** Update the `selectedIndex` value, wrapping around if necessary.
+    *   **Case `Enter`:**
+        *   Update `Program.ActiveListName` with the name of the list at `selectedIndex`.
+        *   Use `Console.SetCursorPosition(0, initialTop + lists.Count);` to move the cursor below the menu.
+        *   Print a final confirmation message and `return`.
+    *   **Case `Escape`:**
+        *   Move the cursor below the menu as with 'Enter'.
+        *   Print a "Switch cancelled." message and `return`.
+
+### **4. Implement the `DrawListMenu` Helper Method**
+
+Create a new `private` method named `DrawListMenu` that accepts the `List<TaskList>`, the `selectedIndex`, and the `initialTop` position. This method is responsible for the flicker-free rendering.
+
+1.  **Set Cursor Position:** The very first line of this method must be `Console.SetCursorPosition(0, initialTop);`. This moves the cursor back to the start of the menu area on every redraw, allowing us to overwrite the old menu instead of clearing the screen.
+2.  **Iterate and Draw:** Loop through the `TaskList` objects using a `for` loop.
+3.  **Highlight and Pad:** Inside the loop, check if the current index `i` is the `selectedIndex`.
+    *   If it is, print a line with an indicator, like `> List Name`.
+    *   If it is not, print a line with a different indicator, like `  List Name`.
+    *   **Important:** To prevent old text from showing through if a list name is shorter than a previous one, pad the output with spaces to the right to ensure it overwrites the entire line (e.g., using `PadRight`).
+
+### Copilot's Action
+
+- Updated the `Execute` method to call `HandleInteractiveSwitch` when no list name is provided for the `list switch` command.
+- Implemented the `HandleInteractiveSwitch` method to provide an interactive, flicker-free menu for switching lists using arrow keys.
+- Added the `DrawListMenu` helper method to handle rendering the menu in place without clearing the console.
+- Ensured the menu logic avoids blinking by redrawing only the necessary parts of the console.
+- Addressed runtime issues and warnings by converting `IEnumerable<TaskList>` to `List<TaskList>` and ensuring proper null handling for `Program.ActiveListName`.

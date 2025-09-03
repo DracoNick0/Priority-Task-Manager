@@ -12,6 +12,8 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
+            Program.ActiveListName ??= "General"; // Default to 'General' if null
+
             if (args.Length == 0 || args[0].Equals("view", StringComparison.OrdinalIgnoreCase))
             {
                 HandleViewTasksInActiveList(service);
@@ -26,7 +28,14 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             else if (args[0].Equals("switch", StringComparison.OrdinalIgnoreCase))
             {
-                HandleSwitchList(service, args.Skip(1).ToArray());
+                if (args.Length > 1)
+                {
+                    HandleSwitchList(service, args.Skip(1).ToArray());
+                }
+                else
+                {
+                    HandleInteractiveSwitch(service);
+                }
             }
             else if (args[0].Equals("delete", StringComparison.OrdinalIgnoreCase))
             {
@@ -45,6 +54,12 @@ namespace PriorityTaskManager.CLI.Handlers
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
             var activeListName = Program.ActiveListName;
+            if (activeListName == null)
+            {
+                Console.WriteLine("Error: No active list is set.");
+                return;
+            }
+
             var activeList = service.GetListByName(activeListName);
 
             if (activeList == null)
@@ -194,6 +209,56 @@ namespace PriorityTaskManager.CLI.Handlers
             activeList.SortOption = sortOption;
             service.UpdateList(activeList);
             Console.WriteLine($"Sort option for list '{activeListName}' updated to {sortOption}.");
+        }
+
+        private void HandleInteractiveSwitch(TaskManagerService service)
+        {
+            var lists = service.GetAllLists().ToList(); // Convert to List<TaskList>
+            if (!lists.Any())
+            {
+                Console.WriteLine("No lists available to switch.");
+                return;
+            }
+
+            int selectedIndex = lists.FindIndex(l => l.Name.Equals(Program.ActiveListName, StringComparison.OrdinalIgnoreCase));
+            if (selectedIndex == -1) selectedIndex = 0;
+
+            int initialTop = Console.CursorTop;
+
+            while (true)
+            {
+                DrawListMenu(lists, selectedIndex, initialTop);
+
+                var key = Console.ReadKey(true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = (selectedIndex + 1) % lists.Count;
+                        break;
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = (selectedIndex - 1 + lists.Count) % lists.Count;
+                        break;
+                    case ConsoleKey.Enter:
+                        Program.ActiveListName = lists[selectedIndex].Name;
+                        Console.SetCursorPosition(0, initialTop + lists.Count);
+                        Console.WriteLine($"Switched to list '{Program.ActiveListName}'.");
+                        return;
+                    case ConsoleKey.Escape:
+                        Console.SetCursorPosition(0, initialTop + lists.Count);
+                        Console.WriteLine("Switch cancelled.");
+                        return;
+                }
+            }
+        }
+
+        private void DrawListMenu(List<TaskList> lists, int selectedIndex, int initialTop)
+        {
+            Console.SetCursorPosition(0, initialTop);
+            for (int i = 0; i < lists.Count; i++)
+            {
+                var prefix = i == selectedIndex ? "> " : "  ";
+                Console.WriteLine((prefix + lists[i].Name).PadRight(Console.WindowWidth));
+            }
         }
     }
 }
