@@ -13,21 +13,33 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             Console.WriteLine("\nAvailable commands:");
 
+            // Task Commands
+            Console.WriteLine("\nTask Commands:");
             Console.WriteLine("add <Title>         - Add a new task (prompts for details)");
-            Console.WriteLine("list view           - Display tasks in the current active list");
+            Console.WriteLine("view <Id>           - View all details of a specific task");
+            Console.WriteLine("edit <Id> ...       - Edit a task by Id or specific attributes");
+            Console.WriteLine("delete <Id1,Id2,...> - Delete tasks by Id");
+            Console.WriteLine("complete <Id1,Id2,...> - Mark tasks as complete");
+            Console.WriteLine("uncomplete <Id1,Id2,...> - Mark tasks as incomplete");
+
+            // List Commands
+            Console.WriteLine("\nList Commands:");
+            Console.WriteLine("list                - Display tasks in the current active list");
             Console.WriteLine("list all            - Show all available lists");
             Console.WriteLine("list create <Name>  - Create a new task list");
             Console.WriteLine("list switch <Name>  - Set the active task list");
-            Console.WriteLine("list sort <option>  - Change the sort order for the active list (options: Default, Alphabetical, DueDate, Id)");
+            Console.WriteLine("list sort <Option>  - Change the sort order for the active list (options: Default, Alphabetical, DueDate, Id)");
             Console.WriteLine("list delete <Name>  - Delete a list and all its tasks");
-            Console.WriteLine("edit <Id>           - Edit a task by Id");
-            Console.WriteLine("edit <Id> <attribute> [new value] - Edit a specific attribute, optionally providing the new value directly.");
-            Console.WriteLine("delete <Id>         - Delete a task by Id");
-            Console.WriteLine("complete <Id>       - Mark a task as complete");
-            Console.WriteLine("uncomplete <Id>     - Mark a task as incomplete");
+
+            // Dependency Commands
+            Console.WriteLine("\nDependency Commands:");
             Console.WriteLine("depend add <childId> <parentId>    - Add a dependency (child depends on parent)");
             Console.WriteLine("depend remove <childId> <parentId> - Remove a dependency");
-            Console.WriteLine("view <Id>           - View all details of a specific task");
+
+            // General Commands
+            Console.WriteLine("\nGeneral Commands:");
+            Console.WriteLine("help                - Display this help text");
+            Console.WriteLine("exit                - Exit the application");
         }
     }
 }
