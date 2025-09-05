@@ -323,7 +323,7 @@ We are making several user experience improvements to the CLI to streamline comm
 *   The new format should look something like this:
     `[ ] Id: 2, Title: My new task, Urgency: 0.850, LPSD: 2025-08-28`
 
-**Part 3: Overhauling the `edit` Command (`Program.cs`)**
+**Part 3: Overhaul the `edit` Command (`Program.cs`)**
 *   **A. Simplify Due Date Editing:**
     *   In `HandleUpdateTask`, remove the prompt that asks the user to press 'd' to edit the due date.
     *   The interactive date editor (`HandleInteractiveDateInput`) should now be a standard part of the full edit process, appearing automatically after the other prompts.
@@ -337,7 +337,18 @@ We are making several user experience improvements to the CLI to streamline comm
         *   If no attribute name is provided, the method should proceed with the full, multi-prompt edit as it does now.
     *   Support the following attribute names: `title`, `desc`, `importance`, `due`, `progress`, and `duration`.
 
-After implementing all of these UX improvements, please update the `copilot_log.md` with a new entry for this prompt.
+**Part 4: Integrate the Date Editor into "Add Task" and "Update Task"**
+*   **Refactor `HandleAddTask` (`Program.cs`):**
+    *   After prompting for all other attributes, add a new prompt: "Press 'd' to edit the due date, or any other key to skip."
+    *   If the user presses 'd', call the `HandleInteractiveDateInput` method.
+    *   Update the new task object with the date returned from the interactive editor.
+*   **Refactor `HandleUpdateTask` (`Program.cs`):**
+    *   After the user has updated the other properties, add a new prompt: "Press 'd' to edit the due date, or any other key to skip."
+    *   If the user presses 'd', call the `HandleInteractiveDateInput` method.
+    *   You must pass the task's *existing* due date (`existingTask.DueDate`) as the `initialDate` argument to the method.
+    *   Update the `updatedTask` object with the new date returned from the interactive editor.
+
+After implementing all of these enhancements, please update the `copilot_log.md` with a new entry for this prompt.
 
 ### Copilot's Action
 - Streamlined the `HandleAddTask` method by removing prompts for `Progress` and `Dependencies`, setting them to default values.
@@ -451,7 +462,7 @@ Hello Copilot. We are continuing our refactoring to a Command Handler Pattern. I
 1. Created `HelpHandler.cs` in the `Handlers` directory and moved the logic from `PrintHelp()` into the `Execute` method.
 2. Created `DeleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleDeleteTask` into the `Execute` method.
 3. Created `CompleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleMarkTaskAsComplete` into the `Execute` method.
-4. Created `UncompleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleMarkTaskAsIncomplete` into the
+4. Created `UncompleteHandler.cs` in the `Handlers` directory and moved the logic from `HandleMarkTaskAsIncomplete` into the `Execute` method.
 
 # Log Entry 20
 
@@ -483,14 +494,14 @@ This handler is the most complex, as it orchestrates both full and targeted edit
 1.  In the `Handlers` directory, create a new class file named `EditHandler.cs`.
 2.  The class must implement `ICommandHandler`.
 3.  The main `Execute` method's logic should be taken from the `HandleUpdateTask` method in `Program.cs`. This method acts as the entry point, parsing the arguments to decide which type of edit to perform.
-4.  Move the logic from the `HandleTargetedUpdate` method in `Program.cs` into a new `private` method within the `EditHandler` class. The `Execute` method should call this private helper for targeted attribute edits.
+4.  Move the logic from the `HandleTargetedUpdate` method in `Program.cs` into a new `private` method within the `EditHandler` class. The `Execute` method should call this private helper for targeted edits.
 5.  The `EditHandler` also needs the interactive date picker. Copy the `HandleInteractiveDateInput` method and the `IncrementMode` enum from `Program.cs` and place them inside the `EditHandler` class as `private` members.
 
 ### Copilot's Action
 
 1. Created `ListHandler.cs` in the `Handlers` directory and moved the logic from `HandleViewAllTasks` into the `Execute` method.
 2. Created `AddHandler.cs` in the `Handlers` directory and moved the logic from `HandleAddTask` into the `Execute` method. Also moved the `HandleInteractiveDateInput` method and `IncrementMode` enum as private members of the `AddHandler` class.
-3. Created `EditHandler.cs` in the `Handlers` directory and moved the logic from `HandleUpdateTask` into the `Execute` method. Added a private `HandleTargetedUpdate` method for targeted edits. Also moved the `HandleInteractiveDateInput` method and `IncrementMode` enum as private members of the `EditHandler
+3. Created `EditHandler.cs` in the `Handlers` directory and moved the logic from `HandleUpdateTask` into the `Execute` method. Added a private `HandleTargetedUpdate` method for targeted edits. Also moved the `HandleInteractiveDateInput` method and `IncrementMode` enum as private members of the `EditHandler` class.
 
 # Log Entry 21
 
@@ -759,7 +770,6 @@ Updated the `Priority-Task-Manager.sln` file to correct the project file path fo
 # Log Entry 30
 
 ## User Prompt
-
 We are continuing the documentation phase. Your task is now to add XML documentation comments (`///`) to all public types and members in the **`PriorityTaskManager.CLI`** project.
 
 ### **1. Document the Command Handler Interface**
@@ -975,7 +985,6 @@ Inside the `Execute` method, after the last prompt for task details (the interac
 # Log Entry 36
 
 ## User Prompt
-
 We have successfully integrated dependency management into the `add` command. The final step is to create a new top-level `depend` command so users can modify dependencies on existing tasks. This will involve creating a new handler and updating our help text.
 
 ### **Step 1: Create the `DependHandler` Class**
@@ -1361,7 +1370,7 @@ Create a new `public` method to handle deleting a list and all its associated ta
 
 1.  **Name:** `public void DeleteList(string listName)`
 2.  **Implementation:**
-    *   Find the list to delete from the `_lists` field based on the `listName` (case-insensitive). If the list doesn't exist, simply return.
+    *   Find the list to delete from the `_lists` collection based on the `listName` (case-insensitive). If the list doesn't exist, simply return.
     *   Remove the found list from the `_lists` collection.
     *   Use the `_tasks.RemoveAll()` method with a predicate to find and delete every task from the master task list where the `ListName` property matches the `listName` you are deleting.
     *   Call `SaveLists()` to persist the change to the lists.
@@ -1498,71 +1507,113 @@ Now, create the logic for changing a list's sort order.
 
 ## User Prompt
 
-Our `list` command is now fully list-aware, but our other commands are not. In this step, we will connect the `add` command to the "active list" system and improve the `view` command to provide more context.
+We have successfully refactored the `ListHandler` into a subcommand hub. Now we need to implement the core logic for viewing and sorting tasks, and give the user control over the sort order.
 
-### **Step 1: Decouple the `TaskManagerService`**
+### **Step 1: Create an `UpdateList` Method in the Service**
 
-First, we need to make a small but important change to the service layer. The service should not be responsible for deciding which list a task belongs to.
+First, we need a way to save changes to a list (like changing its sort order).
 
 1.  Open `PriorityTaskManager/Services/TaskManagerService.cs`.
-2.  Locate the `AddTask` method.
-3.  Find and **delete** the line that hardcodes the list name (e.g., `task.ListName = "General";`). The service will now trust that the `TaskItem` it receives already has the correct `ListName` set by the caller.
+2.  Create a new `public void UpdateList(TaskList updatedList)` method.
+3.  Inside this method, find the existing list in the `_lists` collection by matching the `Name`.
+4.  If found, update its properties (specifically the `SortOption`).
+5.  Call `SaveLists()` to persist the change.
 
-### **Step 2: Update the `AddHandler`**
+### **Step 2: Implement the `HandleViewTasksInActiveList` Method**
 
-This is the core of the change. We will make the `add` command aware of the active list.
+Open `PriorityTaskManager.CLI/Handlers/ListHandler.cs`. It's time to replace the placeholder logic in the task viewing method.
 
-1.  Open `PriorityTaskManager.CLI/Handlers/AddHandler.cs`.
-2.  Locate the `Execute` method. Find the section where the new `TaskItem` object is initialized.
-3.  Add a new line to this object initializer to set the `ListName` property.
-4.  The value for this property must come from our static state variable: `Program.ActiveListName`.
+1.  Locate the `private void HandleViewTasksInActiveList()` method. Delete the placeholder message inside it.
+2.  **Fetch Data:**
+    *   Get the active list's name from `Program.ActiveListName`.
+    *   Use `service.GetListByName()` to get the full `TaskList` object. If it's null, print an error and return.
+    *   Use `service.GetAllTasks()` with the active list name to get all associated tasks.
+3.  **Sort Tasks:**
+    *   Create a `switch` statement that checks the `SortOption` property of the `TaskList` object you just fetched.
+    *   **Case `SortOption.Default`:** First, call `service.CalculateUrgencyForAllTasks()`. Then, sort the tasks by `UrgencyScore` in descending order.
+    *   **Case `SortOption.Alphabetical`:** Sort the tasks by their `Title` property in alphabetical order.
+    *   **Case `SortOption.DueDate`:** Sort the tasks by their `DueDate` property in ascending order.
+    *   **Case `SortOption.Id`:** Sort the tasks by their `Id` property in ascending order.
+4.  **Display Tasks:**
+    *   After sorting, check if the list of tasks is empty. If so, print a message like "No tasks found in this list."
+    *   If there are tasks, loop through the sorted collection and display them using the same format as the old `list` command (e.g., showing the checkbox, ID, Title, and Urgency/LPSD when sorted by Default).
 
-### **Step 3: Update the `ViewHandler`**
+### **Step 3: Implement the `list sort` Subcommand**
 
-When a user views a task, they should know which list it belongs to.
+Now, create the logic for changing a list's sort order.
 
-1.  Open `PriorityTaskManager.CLI/Handlers/ViewHandler.cs`.
-2.  Locate the `Execute` method. Find the section where you are printing the task's details.
-3.  Add a new line to the output that displays the value of the task's `ListName` property. Label it clearly (e.g., "List: Home").
+1.  **Create a `private void HandleSetSortOption()` method** inside `ListHandler.cs`. This method will handle the `list sort <option>` command.
+2.  **Parse Input:** The method should expect the sort option as the next argument (e.g., `args[1]`). Use `Enum.TryParse<SortOption>(...)` (with `ignoreCase = true`) to parse the user's input into a valid `SortOption`.
+3.  **Handle Invalid Input:** If parsing fails, print an error message to the user that lists the valid options (`Default`, `Alphabetical`, `DueDate`, `Id`).
+4.  **Update the List:** If parsing is successful, get the active `TaskList` object using `service.GetListByName(Program.ActiveListName)`. Update its `SortOption` property to the new value, and then call our new `service.UpdateList()` method to save the change. Print a success message.
+
+### **Step 4: Update the Command Router and Help Text**
+
+1.  In the main `Execute` method of `ListHandler`, add a new case to the router. If the first argument is "sort", it should call your new `HandleSetSortOption()` method.
+2.  Update the usage message that your router prints for invalid commands to include the new `list sort <option>` command.
 
 ### Copilot's Action
 
-1. Removed the hardcoded assignment of the `ListName` property in the `AddTask` method of `TaskManagerService`.
-2. Updated the `AddHandler` to set the `ListName` property of the new task to the active list (`Program.ActiveListName`).
-3. Updated the `ViewHandler` to display the `ListName` of the task being viewed.
+1. Added the `UpdateList` method in `TaskManagerService` to update a `TaskList`'s properties and persist changes.
+2. Implemented the `HandleViewTasksInActiveList` method in `ListHandler` to fetch, sort, and display tasks based on the active list's `SortOption`.
+3. Added the `HandleSetSortOption` method in `ListHandler` to allow users to change the sort order of the active list.
+4. Updated the `Execute` method in `ListHandler` to include the `list sort <option>` subcommand.
 
 # Log Entry 49
 
 ## User Prompt
 
-We have successfully implemented the entire multi-list feature. The final step is to update the main help text to document all the new `list` subcommands that are now available to the user.
+We have successfully refactored the `ListHandler` into a subcommand hub. Now we need to implement the core logic for viewing and sorting tasks, and give the user control over the sort order.
 
-### **1. Target File**
+### **Step 1: Create an `UpdateList` Method in the Service**
 
-Open the command handler file for the 'help' command: `PriorityTaskManager.CLI/Handlers/HelpHandler.cs`.
+First, we need a way to save changes to a list (like changing its sort order).
 
-### **2. Modify the `Execute` Method**
+1.  Open `PriorityTaskManager/Services/TaskManagerService.cs`.
+2.  Create a new `public void UpdateList(TaskList updatedList)` method.
+3.  Inside this method, find the existing list in the `_lists` collection by matching the `Name`.
+4.  If found, update its properties (specifically the `SortOption`).
+5.  Call `SaveLists()` to persist the change.
 
-You will be replacing the old, simple description of the `list` command with a more detailed, multi-line explanation of its new capabilities.
+### **Step 2: Implement the `HandleViewTasksInActiveList` Method**
 
-1.  **Remove Old `list` Command:** Find the single `Console.WriteLine` that describes the old `list` command and delete it.
+Open `PriorityTaskManager.CLI/Handlers/ListHandler.cs`. It's time to replace the placeholder logic in the task viewing method.
 
-2.  **Add New `list` Subcommands:** In its place, add a new block of `Console.WriteLine` statements to document the new `list` command hub. Use formatting to make it clear these are subcommands.
+1.  Locate the `private void HandleViewTasksInActiveList()` method. Delete the placeholder message inside it.
+2.  **Fetch Data:**
+    *   Get the active list's name from `Program.ActiveListName`.
+    *   Use `service.GetListByName()` to get the full `TaskList` object. If it's null, print an error and return.
+    *   Use `service.GetAllTasks()` with the active list name to get all associated tasks.
+3.  **Sort Tasks:**
+    *   Create a `switch` statement that checks the `SortOption` property of the `TaskList` object you just fetched.
+    *   **Case `SortOption.Default`:** First, call `service.CalculateUrgencyForAllTasks()`. Then, sort the tasks by `UrgencyScore` in descending order.
+    *   **Case `SortOption.Alphabetical`:** Sort the tasks by their `Title` property in alphabetical order.
+    *   **Case `SortOption.DueDate`:** Sort the tasks by their `DueDate` property in ascending order.
+    *   **Case `SortOption.Id`:** Sort the tasks by their `Id` property in ascending order.
+4.  **Display Tasks:**
+    *   After sorting, check if the list of tasks is empty. If so, print a message like "No tasks found in this list."
+    *   If there are tasks, loop through the sorted collection and display them using the same format as the old `list` command (e.g., showing the checkbox, ID, Title, and Urgency/LPSD when sorted by Default).
 
-Your new documentation should include entries for:
-*   `list` or `list view`: Explain that this displays tasks in the current active list.
-*   `list all`: Explain that this shows all available lists.
-*   `list create <ListName>`: Explain that this creates a new task list.
-*   `list switch <ListName>`: Explain that this sets the active task list.
-*   `list sort <option>`: Explain that this changes the sort order for the active list and list the valid options (`Default`, `Alphabetical`, `DueDate`, `Id`).
-*   `list delete <ListName>`: Explain that this deletes a list and all of its tasks.
+### **Step 3: Implement the `list sort` Subcommand**
 
-This is the final step. Once complete, the multi-list feature is fully implemented and documented.
+Now, create the logic for changing a list's sort order.
+
+1.  **Create a `private void HandleSetSortOption()` method** inside `ListHandler.cs`. This method will handle the `list sort <option>` command.
+2.  **Parse Input:** The method should expect the sort option as the next argument (e.g., `args[1]`). Use `Enum.TryParse<SortOption>(...)` (with `ignoreCase = true`) to parse the user's input into a valid `SortOption`.
+3.  **Handle Invalid Input:** If parsing fails, print an error message to the user that lists the valid options (`Default`, `Alphabetical`, `DueDate`, `Id`).
+4.  **Update the List:** If parsing is successful, get the active `TaskList` object using `service.GetListByName(Program.ActiveListName)`. Update its `SortOption` property to the new value, and then call our new `service.UpdateList()` method to save the change. Print a success message.
+
+### **Step 4: Update the Command Router and Help Text**
+
+1.  In the main `Execute` method of `ListHandler`, add a new case to the router. If the first argument is "sort", it should call your new `HandleSetSortOption()` method.
+2.  Update the usage message that your router prints for invalid commands to include the new `list sort <option>` command.
 
 ### Copilot's Action
 
-1. Updated the `Execute` method in `HelpHandler` to replace the old `list` command description with detailed documentation for the new `list` subcommands.
-2. Added entries for `list view`, `list all`, `list create`, `list switch`, `list sort`, and `list delete` to the help text.
+1. Added the `UpdateList` method in `TaskManagerService` to update a `TaskList`'s properties and persist changes.
+2. Implemented the `HandleViewTasksInActiveList` method in `ListHandler` to fetch, sort, and display tasks based on the active list's `SortOption`.
+3. Added the `HandleSetSortOption` method in `ListHandler` to allow users to change the sort order of the active list.
+4. Updated the `Execute` method in `ListHandler` to include the `list sort <option>` subcommand.
 
 # Log Entry 50
 
