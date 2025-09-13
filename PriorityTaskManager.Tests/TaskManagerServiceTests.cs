@@ -30,6 +30,37 @@ namespace PriorityTaskManager.Tests
         }
 
         /// <summary>
+        /// Verifies that CalculateUrgency sets the urgency score to 0 for completed tasks.
+        /// </summary>
+        [Fact]
+        public void CalculateUrgency_ShouldBeZero_ForCompletedTask()
+        {
+            var task = new TaskItem { Title = "Done", EstimatedDuration = TimeSpan.FromHours(2), Progress = 1.0, DueDate = DateTime.Today.AddDays(1), IsCompleted = true, ListName = "General" };
+            _service.AddTask(task);
+            _service.CalculateUrgencyForAllTasks();
+            Assert.Equal(0, task.UrgencyScore);
+        }
+        
+        /// <summary>
+        /// Verifies that CalculateUrgency prioritizes the first task in a dependency chain.
+        /// </summary>
+        [Fact]
+        public void CalculateUrgency_ShouldPrioritizeFirstTaskInDependencyChain()
+        {
+            var taskA = new TaskItem { Title = "A", EstimatedDuration = TimeSpan.FromHours(10), Progress = 0.0, DueDate = DateTime.Today.AddDays(10), ListName = "General" };
+            var taskB = new TaskItem { Title = "B", EstimatedDuration = TimeSpan.FromHours(5), Progress = 0.0, DueDate = DateTime.Today.AddDays(10), ListName = "General" };
+            var taskC = new TaskItem { Title = "C", EstimatedDuration = TimeSpan.FromHours(2), Progress = 0.0, DueDate = DateTime.Today.AddDays(10), ListName = "General" };
+            _service.AddTask(taskA);
+            _service.AddTask(taskB);
+            _service.AddTask(taskC);
+            taskB.Dependencies.Add(taskA.Id);
+            taskC.Dependencies.Add(taskB.Id);
+            _service.CalculateUrgencyForAllTasks();
+            Assert.True(taskA.UrgencyScore > taskB.UrgencyScore);
+            Assert.True(taskB.UrgencyScore > taskC.UrgencyScore);
+        }
+        
+        /// <summary>
         /// Verifies that adding a task increases the task count.
         /// </summary>
         [Fact]

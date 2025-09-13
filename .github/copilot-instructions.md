@@ -38,8 +38,11 @@ dotnet run
 ### Running Tests
 To validate changes, run all tests:
 ```powershell
-dotnet test "e:\HDD - Desktop\Priority-Task-Manager\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj"
+cd PriorityTaskManager.Tests; dotnet test
 ```
+
+### Debugging
+Use the `dotnet` CLI or an IDE like Visual Studio to debug. Set breakpoints in the `Handlers` or `Services` directories for CLI or core logic issues.
 
 ## Project-Specific Conventions
 - **Command Handlers**: Each CLI command has a corresponding handler in `PriorityTaskManager.CLI/Handlers`. Handlers implement the `ICommandHandler` interface.
@@ -73,7 +76,7 @@ Follow the steps in the `README_v2.md` under the "Contributing" section. Use cle
 
 For every major code change request, Copilot will provide a log entry in markdown format. The log will follow this structure:
 
-```
+```markdown
 # Log Entry [Next Log Number]
 
 ## User Prompt
@@ -84,5 +87,3 @@ For every major code change request, Copilot will provide a log entry in markdow
 
 [A concise summary of the changes made.]
 ```
-
-Note: Copilot will provide the log entry directly to the user instead of editing `copilot_log.md`.
