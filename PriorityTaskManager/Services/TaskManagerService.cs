@@ -5,13 +5,13 @@ namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
-    private readonly string _filePath;
-    private readonly string _listFilePath;
-    private List<TaskItem> _tasks = new List<TaskItem>();
-    private List<TaskList> _lists = new List<TaskList>();
-    private int _nextId = 1;
-    private int _nextListId = 1;
-    private readonly IUrgencyService _urgencyService;
+        private readonly string _filePath;
+        private readonly string _listFilePath;
+        private List<TaskItem> _tasks = new List<TaskItem>();
+        private List<TaskList> _lists = new List<TaskList>();
+        private int _nextId = 1;
+        private int _nextListId = 1;
+        private readonly IUrgencyService _urgencyService;
 
         public TaskManagerService(IUrgencyService urgencyService, string tasksFilePath, string listsFilePath)
         {
@@ -20,9 +20,6 @@ namespace PriorityTaskManager.Services
             _listFilePath = Path.GetFullPath(listsFilePath);
             LoadTasks();
             LoadLists();
-            MigrateTaskListNameToListId();
-            SaveTasks();
-            SaveLists();
         }
 
         public TaskManagerService(IUrgencyService urgencyService)
@@ -30,39 +27,6 @@ namespace PriorityTaskManager.Services
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
         {
-        }
-
-        /// <summary>
-        /// Migrates tasks from using ListName to ListId, assigning the correct list ID or falling back to General.
-        /// </summary>
-        private void MigrateTaskListNameToListId()
-        {
-            // Ensure there is a "General" list to fall back to
-            var generalList = _lists.FirstOrDefault(l => l.Name.Equals("General", StringComparison.OrdinalIgnoreCase));
-            if (generalList == null)
-                throw new InvalidOperationException("General list not found during migration.");
-
-            int generalListId = generalList.Id;
-
-            // Create a lookup dictionary for list name to list ID
-            var listNameToId = _lists.ToDictionary(l => l.Name, l => l.Id, StringComparer.OrdinalIgnoreCase);
-
-            foreach (var task in _tasks)
-            {
-                // Only migrate tasks where ListId is 0 (not yet migrated)
-                if (task.ListId == 0)
-                {
-                    if (listNameToId.TryGetValue(task.ListName, out int listId))
-                    {
-                        task.ListId = listId;
-                    }
-                    else
-                    {
-                        // Orphaned task, assign to General list
-                        task.ListId = generalListId;
-                    }
-                }
-            }
         }
 
         public void CalculateUrgencyForAllTasks()
@@ -251,7 +215,6 @@ namespace PriorityTaskManager.Services
             if (existingTask == null)
                 return false;
 
-            // Check for circular dependencies before updating
             if (WouldCreateCycle(updatedTask.Id, updatedTask.Dependencies))
                 throw new InvalidOperationException("Circular dependency detected. Cannot update task with dependencies that create a cycle.");
 
@@ -349,8 +312,6 @@ namespace PriorityTaskManager.Services
             SaveTasks();
             return true;
         }
-
-        // ...existing code...
 
         public void AddList(TaskList list)
         {

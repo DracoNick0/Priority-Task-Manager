@@ -22,10 +22,11 @@ namespace PriorityTaskManager.Models
             Dependencies = new List<int>();
             UrgencyScore = 0;
         }
-    /// <summary>
-    /// Gets or sets the effective importance used for urgency calculation.
-    /// </summary>
-    public int EffectiveImportance { get; set; }
+
+        /// <summary>
+        /// Gets or sets the effective importance used for urgency calculation.
+        /// </summary>
+        public int EffectiveImportance { get; set; }
 
         /// <summary>
         /// Gets or sets the unique identifier for the task.
@@ -86,11 +87,6 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the numeric ID of the list to which the task belongs.
         /// </summary>
         public int ListId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the name of the list to which the task belongs.
-    /// </summary>
-    [Obsolete("Use ListId instead. This property is for data migration purposes only.")]
-    public string ListName { get; set; }
+        
     }
 }

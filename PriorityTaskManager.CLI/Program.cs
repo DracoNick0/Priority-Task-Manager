@@ -12,10 +12,10 @@ namespace PriorityTaskManager.CLI
 	/// </summary>
 	class Program
 	{
-	/// <summary>
-	/// Holds the ID of the currently active list.
-	/// </summary>
-	public static int ActiveListId { get; set; } = 1;
+		/// <summary>
+		/// Holds the ID of the currently active list.
+		/// </summary>
+		public static int ActiveListId { get; set; } = 1;
 
 		/// <summary>
 		/// The main method that initializes the application and processes user commands.

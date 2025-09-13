@@ -40,13 +40,12 @@ namespace PriorityTaskManager.Services
                 }
             }
 
-            // Step 2: Recursively calculate LPSD for all tasks.
-            // A visited set prevents infinite loops in case of circular dependencies.
             foreach (var task in tasks)
             {
                 // Reset EffectiveImportance before calculation
                 task.EffectiveImportance = task.Importance;
             }
+
             var visited = new HashSet<int>();
             foreach (var task in tasks)
             {
@@ -92,6 +91,7 @@ namespace PriorityTaskManager.Services
             int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);
             task.EffectiveImportance = effectiveImportance;
             task.UrgencyScore = effectiveImportance / (slackTime + 1.0);
+            
             // We are done with this path, so we can remove it from the visited set for the current recursive stack.
             visited.Remove(task.Id);
             return effectiveImportance;
