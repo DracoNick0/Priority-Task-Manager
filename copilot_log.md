@@ -2116,3 +2116,116 @@ We are completing the refactoring. `TaskManagerService` must now use the new `IU
 ### Copilot's Action
 
 Refactored `TaskManagerService` to use constructor injection for `IUrgencyService`, delegated urgency calculation, and updated all instantiations in CLI and test files to inject the dependency.
+
+# Log Entry 65
+
+## User Prompt
+
+We are starting a new architectural improvement to make the relationship between tasks and lists more robust. We will be transitioning from using a string-based `ListName` to a numeric `ListId`.
+
+**Task 1: Update the `TaskList` Model**
+
+1.  Navigate to `TaskList.cs` in the `PriorityTaskManager/Models` directory.
+2.  Add a new public integer property to the class:
+    ```csharp
+    public int Id { get; set; }
+    ```
+
+**Task 2: Update the `TaskItem` Model**
+
+1.  Navigate to `TaskItem.cs`.
+2.  Add a new public integer property to the class to serve as the foreign key:
+    ```csharp
+    public int ListId { get; set; }
+    ```
+
+**Task 3: Update `TaskManagerService` to Assign List IDs**
+
+1.  Navigate to `TaskManagerService.cs`.
+2.  Just like you have a `_nextId` for tasks, add a new private integer field to track the next ID for lists:
+    `private int _nextListId = 1;`
+3.  Modify the `AddList` method. When a new `TaskList` is created, it must be assigned the current value of `_nextListId`, and then `_nextListId` should be incremented.
+4.  Modify the `LoadLists` method. After loading, if there are any existing lists, you must ensure `_nextListId` is set to a value higher than any existing list ID to prevent collisions. A simple way is to set it to `_lists.Max(l => l.Id) + 1;` if the list is not empty.
+5.  Modify the `SaveLists` and `LoadLists` methods to also persist and load the `_nextListId` value, just as is done for `_nextId` with tasks. The JSON structure for `lists.json` should be updated to include this value. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Added `Id` property to `TaskList`, `ListId` property to `TaskItem`, and updated `TaskManagerService` to assign and persist list IDs.
+
+
+# Log Entry 66
+
+## User Prompt
+
+We are continuing the transition from `ListName` to `ListId`. Now we need to implement a migration routine to update existing tasks when the application starts.
+
+**Task 1: Create the Migration Method**
+
+1.  Navigate to `TaskManagerService.cs`.
+2.  Create a new private method with the following signature:
+    `private void MigrateTaskListNameToListId()`
+
+**Task 2: Implement the Migration Logic**
+
+Inside the new `MigrateTaskListNameToListId` method, implement the following logic:
+
+1.  First, ensure there is a "General" list to fall back to. Find the default "General" list from the `_lists` collection and get its ID. If for some reason it doesn't exist, throw an `InvalidOperationException`.
+2.  Create a lookup dictionary to easily find a list's ID by its name. The key should be the list name (string) and the value should be the list ID (int). Populate it by iterating through the `_lists` collection.
+3.  Iterate through every task in the `_tasks` collection.
+4.  Inside the loop, add a condition: only perform the migration for tasks where `ListId` is `0` (the default value, indicating it's an old task that hasn't been migrated yet).
+5.  For each of these tasks, use the `ListName` property to look up the corresponding ID from your dictionary.
+6.  If a matching list is found in the dictionary, assign its ID to the task's `ListId` property.
+7.  If no matching list is found (an orphaned task), assign the ID of the "General" list as a fallback.
+
+**Task 3: Execute the Migration**
+
+1.  Locate the `TaskManagerService` constructor.
+2.  Find the lines where `LoadLists()` and `LoadTasks()` are called.
+3.  Immediately **after** both of these methods have finished, add a call to your new `MigrateTaskListNameToListId()` method.
+4.  Finally, after the migration runs, call `SaveTasks()` and `SaveLists()` to persist the newly updated data immediately. This ensures the migration only runs once. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Created and implemented `MigrateTaskListNameToListId` in `TaskManagerService`, called after loading tasks/lists, and persisted changes.
+
+
+# Log Entry 67
+
+## User Prompt
+
+This is the final step in our refactoring from `ListName` to `ListId`. We need to update all relevant parts of the application to use the new ID-based system.
+
+**Task 1: Update the `TaskManagerService`**
+
+1.  Find the `GetAllTasks(string listName)` method. This is a critical change.
+2.  Modify its signature to accept an integer: `public IEnumerable<TaskItem> GetAllTasks(int listId)`.
+3.  Update the filtering logic inside the method to use the `ListId` property for comparison: `_tasks.Where(t => t.ListId == listId)`.
+4.  Review the `AddTask(TaskItem task)` method. The `TaskItem` object passed to this method should now already have its `ListId` set by the CLI layer. Ensure this method no longer sets the `ListName` property.
+
+**Task 2: Update the CLI Handlers**
+
+This is the most significant part of the change. The concept of an "active list" must now refer to an ID, not a name.
+
+1.  **`ListHandler.cs`:**
+    *   Find the logic for the `list switch` command. It will need to find the list by the user-provided name, but instead of just storing the name, it must now store the `Id` of that list as the "active list."
+    *   Find the logic for the main `list` view command. It must now retrieve the active list's **ID** and pass that ID to the `_taskManagerService.GetAllTasks(activeListId)` method.
+2.  **`AddHandler.cs`:**
+    *   When creating a new `TaskItem`, the handler must get the currently active list **ID** and assign it to the new task's `ListId` property. It should no longer set the `ListName` property.
+3.  **Review Other Handlers:**
+    *   Briefly check `EditHandler`, `DeleteHandler`, and any other handlers. If they rely on filtering tasks by the active list, ensure they are updated to use the ID-based `GetAllTasks` method.
+
+**Task 3: Mark the Old Property as Obsolete**
+
+To prevent the old `ListName` from being used in new code and to make it clear that it only exists for data migration, we will mark it.
+
+1.  Navigate to `TaskItem.cs`.
+2.  Find the `public string ListName { get; set; }` property.
+3.  Add the `[Obsolete]` attribute to it:
+    ```csharp
+    [Obsolete("Use ListId instead. This property is for data migration purposes only.")]
+    public string ListName { get; set; }
+    ``` (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Refactored `TaskManagerService.GetAllTasks` to use `listId`, updated CLI handlers to use active list ID, and marked `ListName` as `[Obsolete]` in `TaskItem`.
