@@ -96,7 +96,7 @@ namespace PriorityTaskManager.CLI.Handlers
             foreach (var task in tasks)
             {
                 var checkbox = task.IsCompleted ? "[x]" : "[ ]";
-                Console.WriteLine($"{checkbox} Id: {task.Id}, Title: {task.Title}");
+                Console.WriteLine($"{checkbox} Id: {task.Id}, Title: {task.Title}, Urgency: {task.UrgencyScore:F2}");
             }
         }
 

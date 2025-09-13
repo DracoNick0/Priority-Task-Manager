@@ -1883,3 +1883,136 @@ After completing these steps, please confirm that the two tests in `UrgencyServi
 3. Created a new test class `UrgencyServiceTests.cs` in the `PriorityTaskManager.Tests` project.
 4. Moved the urgency-related tests from `TaskManagerServiceTests.cs` to `UrgencyServiceTests.cs` and updated them to use the `UrgencyService`.
 5. Verified that the tests fail as expected due to the empty implementation of `CalculateAndApplyUrgency`.
+
+# Log Entry 57
+
+## User Prompt
+
+Using a Test-Driven Development (TDD) approach, I need to fix a failing test. The test `AddTask_ShouldThrowArgumentException_WhenTitleIsEmpty` expects an `ArgumentException` to be thrown when a task with a null, empty, or whitespace title is added, but no exception is currently being thrown.
+
+Follow these steps to fix the issue:
+
+1.  Navigate to the TaskManagerService.cs file.
+2.  Locate the `AddTask(TaskItem task)` method.
+3.  At the very beginning of this method, add a validation check for the `Title` property of the incoming `task` object.
+4.  If the `Title` is null, empty, or consists only of white-space characters, you must throw a new `ArgumentException`. Include a descriptive message, such as "Task title cannot be empty."
+5.  Ensure that the existing logic for adding the task and saving it only runs if this validation check passes. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Added validation to `AddTask` in TaskManagerService.cs to throw an `ArgumentException` if the task title is null, empty, or whitespace.
+
+# Log Entry 58
+
+## User Prompt
+
+I am continuing with a Test-Driven Development (TDD) workflow to fix another set of failing tests. The tests `UpdateTask_ShouldThrowArgumentException_WhenTitleIsEmpty` are failing because the method that updates a task is not throwing an `ArgumentException` when a null, empty, or whitespace title is provided.
+
+Please implement the fix by following these steps:
+
+1.  Navigate to the TaskManagerService.cs file.
+2.  Locate the method responsible for updating an existing task. Based on the tests, this is likely named `UpdateTask` or something similar. It will probably accept a `TaskItem` object as a parameter.
+3.  Just as you did for the `AddTask` method, add a validation check at the very beginning of this method.
+4.  The check should verify if the `Title` property of the incoming task object is null, empty, or consists only of white-space characters.
+5.  If the title is invalid, throw a new `ArgumentException` with a clear message like "Task title cannot be empty."
+6.  The existing logic for finding and updating the task in the collection should only execute if the validation passes. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Added validation to `UpdateTask` in TaskManagerService.cs to throw an `ArgumentException` if the updated task title is null, empty, or whitespace.
+
+# Log Entry 59
+
+## User Prompt
+
+We need to refactor our urgency calculation to use a "max importance propagation" model. This will be done by modifying the `CalculateLpsdRecursive` method in TaskManagerService.cs so it can determine the effective importance to use for its calculations.
+
+**Step 1: Change the Recursive Method's Return Type**
+1.  Locate the `CalculateLpsdRecursive` method.
+2.  Change its return type from `void` to `int`. This method will now calculate LPSD and Urgency, and then *return the effective importance* of the branch it just processed.
+
+**Step 2: Modify the Recursive Logic**
+1.  Inside `CalculateLpsdRecursive`, the first part of the logic that calculates the `lpsd` and `slackTime` can remain largely the same, as it correctly determines the task's timeline.
+2.  After calculating the LPSD for the current `task`, but before calculating its `UrgencyScore`, you need to determine its *effective importance*.
+3.  Initialize a variable `int maxSuccessorImportance = 0;`.
+4.  If the task has successors (`successors.Count > 0`), iterate through them. For each `successor`, find the highest importance value among them. A simple way is: `maxSuccessorImportance = successors.Max(s => s.Importance);`
+5.  Determine the `effectiveImportance` for the current task: `int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);`
+6.  Now, calculate the `UrgencyScore` using this new `effectiveImportance`: `task.UrgencyScore = effectiveImportance / (slackTime + 1.0);`
+7.  At the very end of the method, `return effectiveImportance;`
+
+**Step 3: Refine the Logic for Deep Chains (Correction to Step 2)**
+The above logic only looks one level deep. To make it work for long chains, we need to leverage the recursion.
+
+Let's refine Step 2:
+1.  The recursive calls to `CalculateLpsdRecursive(successor, ...)` now return an integer (the effective importance of that successor's branch).
+2.  You will need to capture these return values. Modify your loop that calls the successors:
+    ```csharp
+    var successorImportances = new List<int>();
+    foreach (var successor in successors)
+    {
+        successorImportances.Add(CalculateLpsdRecursive(successor, today, successorMap, visited));
+    }
+    ```
+3.  Now, find the maximum importance from that list. If the list is empty, the max is 0.
+    `int maxSuccessorImportance = successorImportances.Any() ? successorImportances.Max() : 0;`
+4.  Determine the `effectiveImportance` for the current task: `int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);`
+5.  Calculate the `UrgencyScore` using `effectiveImportance`: `task.UrgencyScore = effectiveImportance / (slackTime + 1.0);`
+6.  Finally, `return effectiveImportance;`
+
+**Step 4: Update the Calling Method**
+The `CalculateUrgencyForAllTasks` method's loop that calls `CalculateLpsdRecursive` does not need to store the returned integer. Its purpose is simply to kick off the recursive process which sets the `UrgencyScore` property on each task object internally. The existing structure of this method is likely sufficient.
+
+### Copilot's Action
+
+Changed `CalculateLpsdRecursive` to return the effective importance, propagate it recursively, and use it for urgency calculation.
+
+# Log Entry 60
+
+## User Prompt
+
+I need to add a new property to the core data model to support our urgency calculation.
+
+1.  Navigate to the TaskItem.cs file in the PriorityTaskManager project.
+2.  Add a new public integer property called `EffectiveImportance`.
+3.  In the TaskManagerService.cs file, find the constructor and any method that adds a new task. When a task is created, its `EffectiveImportance` should be initialized to the same value as its `Importance`. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Added `EffectiveImportance` to TaskItem.cs and initialized it in the constructor, `AddTask`, and after deserialization in `LoadTasks`.
+
+# Log Entry 61
+
+## User Prompt
+
+We are fixing a bug in the urgency calculation. The current recursive logic does not correctly propagate importance values if tasks are processed out of order. We will use the new `EffectiveImportance` property to fix this.
+
+Navigate to TaskManagerService.cs and follow these steps:
+
+1.  **Modify the Reset Logic:** In the `CalculateUrgencyForAllTasks` method, at the top, where you loop through tasks to reset their state, also reset the `EffectiveImportance`. Set each task's `EffectiveImportance` back to its base `Importance`.
+    ```csharp
+    foreach (var task in _tasks)
+    {
+        // ... existing resets
+        task.EffectiveImportance = task.Importance; // Add this line
+    }
+    ```
+
+2.  **Modify `CalculateLpsdRecursive`:**
+    *   Find the early-exit `if` condition at the top of the method. Change the return value from `task.Importance` to the stored value:
+        ```csharp
+        // BEFORE
+        // return task.Importance;
+
+        // AFTER
+        return task.EffectiveImportance;
+        ```
+    *   Find the line where `effectiveImportance` is calculated near the end of the method: `int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);`
+    *   Immediately after that line, **store the result** back into the task object before you return it:
+        ```csharp
+        task.EffectiveImportance = effectiveImportance;
+        ```
+    *   The rest of the method, including the `UrgencyScore` calculation and the final `return effectiveImportance;`, should remain the same. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Reset `EffectiveImportance` in `CalculateUrgencyForAllTasks` and updated `CalculateLpsdRecursive` to use and propagate `EffectiveImportance`.

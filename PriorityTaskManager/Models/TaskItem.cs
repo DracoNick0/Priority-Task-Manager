@@ -12,15 +12,20 @@ namespace PriorityTaskManager.Models
         {
             Title = string.Empty;
             Description = string.Empty;
-            DueDate = DateTime.MinValue;
-            EstimatedDuration = TimeSpan.Zero;
-            Importance = 0;
+            DueDate = DateTime.Today.AddDays(1);
+            EstimatedDuration = TimeSpan.FromHours(1);
+            Importance = 5;
+            EffectiveImportance = 0;
             Progress = 0.0;
             IsCompleted = false;
-            ListName = string.Empty;
+            ListName = "General";
             Dependencies = new List<int>();
             UrgencyScore = 0;
         }
+    /// <summary>
+    /// Gets or sets the effective importance used for urgency calculation.
+    /// </summary>
+    public int EffectiveImportance { get; set; }
 
         /// <summary>
         /// Gets or sets the unique identifier for the task.

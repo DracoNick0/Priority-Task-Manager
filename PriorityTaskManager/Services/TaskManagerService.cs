@@ -60,6 +60,11 @@ namespace PriorityTaskManager.Services
                             // Skip all tasks if deserialization fails due to invalid title
                             loadedTasks = new List<TaskItem>();
                         }
+                        // Initialize EffectiveImportance for loaded tasks
+                        foreach (var t in loadedTasks)
+                        {
+                            t.EffectiveImportance = t.Importance;
+                        }
                         _tasks = loadedTasks;
                         _nextId = data["NextId"].GetInt32();
                     }
@@ -102,10 +107,13 @@ namespace PriorityTaskManager.Services
 
         public void AddTask(TaskItem task)
         {
+            if (string.IsNullOrWhiteSpace(task.Title))
+            {
+                throw new ArgumentException("Task title cannot be empty.");
+            }
             task.Id = _nextId++;
-
+            task.EffectiveImportance = task.Importance;
             _tasks.Add(task);
-
             SaveTasks();
         }
 
@@ -160,6 +168,10 @@ namespace PriorityTaskManager.Services
 
         public bool UpdateTask(TaskItem updatedTask)
         {
+            if (string.IsNullOrWhiteSpace(updatedTask.Title))
+            {
+                throw new ArgumentException("Task title cannot be empty.");
+            }
             var existingTask = _tasks.Find(t => t.Id == updatedTask.Id);
 
             if (existingTask == null)
@@ -300,6 +312,11 @@ namespace PriorityTaskManager.Services
 
             // Step 2: Recursively calculate LPSD for all tasks.
             // A visited set prevents infinite loops in case of circular dependencies.
+            foreach (var task in _tasks)
+            {
+                // Reset EffectiveImportance before calculation
+                task.EffectiveImportance = task.Importance;
+            }
             var visited = new HashSet<int>();
             foreach (var task in _tasks)
             {
@@ -307,11 +324,11 @@ namespace PriorityTaskManager.Services
             }
         }
 
-        private void CalculateLpsdRecursive(TaskItem task, DateTime today, Dictionary<int, List<TaskItem>> successorMap, HashSet<int> visited)
+    private int CalculateLpsdRecursive(TaskItem task, DateTime today, Dictionary<int, List<TaskItem>> successorMap, HashSet<int> visited)
         {
             if (task.LatestPossibleStartDate != DateTime.MinValue || visited.Contains(task.Id) || task.IsCompleted)
             {
-                return;
+                return task.EffectiveImportance;
             }
 
             visited.Add(task.Id);
@@ -321,18 +338,19 @@ namespace PriorityTaskManager.Services
 
             var successors = successorMap[task.Id];
             DateTime lpsd;
-
+            int maxSuccessorImportance = 0;
             if (successors.Count == 0)
             {
                 lpsd = task.DueDate.AddDays(-remainingWork);
             }
             else
             {
+                var successorImportances = new List<int>();
                 foreach (var successor in successors)
                 {
-                    CalculateLpsdRecursive(successor, today, successorMap, visited);
+                    successorImportances.Add(CalculateLpsdRecursive(successor, today, successorMap, visited));
                 }
-
+                maxSuccessorImportance = successorImportances.Any() ? successorImportances.Max() : 0;
                 DateTime minSuccessorLpsd = successors.Min(s => s.LatestPossibleStartDate);
                 lpsd = minSuccessorLpsd.AddDays(-remainingWork);
             }
@@ -340,13 +358,13 @@ namespace PriorityTaskManager.Services
             // Store the calculated values back in the task object.
             task.LatestPossibleStartDate = lpsd;
             double slackTime = (lpsd - today).TotalDays;
-
             if (slackTime < 0) slackTime = 0;
-
-            task.UrgencyScore = task.Importance / (slackTime + 1.0);
-            
+            int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);
+            task.EffectiveImportance = effectiveImportance;
+            task.UrgencyScore = effectiveImportance / (slackTime + 1.0);
             // We are done with this path, so we can remove it from the visited set for the current recursive stack.
             visited.Remove(task.Id);
+            return effectiveImportance;
         }
 
         public void AddList(TaskList list)
