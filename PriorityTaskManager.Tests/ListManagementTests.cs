@@ -17,7 +17,8 @@ namespace PriorityTaskManager.Tests
         {
             File.Delete(TestTasksFile);
             File.Delete(TestListsFile);
-            _service = new TaskManagerService(TestTasksFile, TestListsFile);
+            var urgencyService = new UrgencyService();
+            _service = new TaskManagerService(urgencyService, TestTasksFile, TestListsFile);
         }
 
         public void Dispose()

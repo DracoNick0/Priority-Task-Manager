@@ -5,24 +5,31 @@ namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
-        private readonly string _filePath;
-        private readonly string _listFilePath;
-        private List<TaskItem> _tasks = new List<TaskItem>();
-        private List<TaskList> _lists = new List<TaskList>();
-        private int _nextId = 1;
+    private readonly string _filePath;
+    private readonly string _listFilePath;
+    private List<TaskItem> _tasks = new List<TaskItem>();
+    private List<TaskList> _lists = new List<TaskList>();
+    private int _nextId = 1;
+    private readonly IUrgencyService _urgencyService;
 
-        public TaskManagerService(string tasksFilePath, string listsFilePath)
+        public TaskManagerService(IUrgencyService urgencyService, string tasksFilePath, string listsFilePath)
         {
+            _urgencyService = urgencyService;
             _filePath = Path.GetFullPath(tasksFilePath);
             _listFilePath = Path.GetFullPath(listsFilePath);
             LoadTasks();
             LoadLists();
         }
 
-        public TaskManagerService() : this(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
+        public TaskManagerService(IUrgencyService urgencyService)
+            : this(urgencyService,
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
         {
+        }
+        public void CalculateUrgencyForAllTasks()
+        {
+            _urgencyService.CalculateUrgencyForAllTasks(_tasks);
         }
 
 
@@ -276,96 +283,7 @@ namespace PriorityTaskManager.Services
             return true;
         }
 
-        public void CalculateUrgencyForAllTasks()
-        {
-            foreach (var task in _tasks)
-            {
-                task.LatestPossibleStartDate = DateTime.MinValue;
-                if (task.IsCompleted)
-                {
-                    task.UrgencyScore = 0;
-                }
-            }
-
-            var today = DateTime.Today;
-            var successorMap = new Dictionary<int, List<TaskItem>>();
-            foreach (var task in _tasks)
-            {
-                if (!successorMap.ContainsKey(task.Id))
-                {
-                    successorMap[task.Id] = new List<TaskItem>();
-                }
-
-                foreach (var depId in task.Dependencies)
-                {
-                    var depTask = _tasks.FirstOrDefault(t => t.Id == depId);
-                    if (depTask != null)
-                    {
-                        if (!successorMap.ContainsKey(depTask.Id))
-                        {
-                            successorMap[depTask.Id] = new List<TaskItem>();
-                        }
-                        successorMap[depTask.Id].Add(task);
-                    }
-                }
-            }
-
-            // Step 2: Recursively calculate LPSD for all tasks.
-            // A visited set prevents infinite loops in case of circular dependencies.
-            foreach (var task in _tasks)
-            {
-                // Reset EffectiveImportance before calculation
-                task.EffectiveImportance = task.Importance;
-            }
-            var visited = new HashSet<int>();
-            foreach (var task in _tasks)
-            {
-                CalculateLpsdRecursive(task, today, successorMap, visited);
-            }
-        }
-
-    private int CalculateLpsdRecursive(TaskItem task, DateTime today, Dictionary<int, List<TaskItem>> successorMap, HashSet<int> visited)
-        {
-            if (task.LatestPossibleStartDate != DateTime.MinValue || visited.Contains(task.Id) || task.IsCompleted)
-            {
-                return task.EffectiveImportance;
-            }
-
-            visited.Add(task.Id);
-
-            // Calculate the actual work remaining on this task.
-            double remainingWork = task.EstimatedDuration.TotalDays * (1 - task.Progress);
-
-            var successors = successorMap[task.Id];
-            DateTime lpsd;
-            int maxSuccessorImportance = 0;
-            if (successors.Count == 0)
-            {
-                lpsd = task.DueDate.AddDays(-remainingWork);
-            }
-            else
-            {
-                var successorImportances = new List<int>();
-                foreach (var successor in successors)
-                {
-                    successorImportances.Add(CalculateLpsdRecursive(successor, today, successorMap, visited));
-                }
-                maxSuccessorImportance = successorImportances.Any() ? successorImportances.Max() : 0;
-                DateTime minSuccessorLpsd = successors.Min(s => s.LatestPossibleStartDate);
-                lpsd = minSuccessorLpsd.AddDays(-remainingWork);
-            }
-
-            // Store the calculated values back in the task object.
-            task.LatestPossibleStartDate = lpsd;
-            double slackTime = (lpsd - today).TotalDays;
-            if (slackTime < 0) slackTime = 0;
-            int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);
-            task.EffectiveImportance = effectiveImportance;
-            task.UrgencyScore = effectiveImportance / (slackTime + 1.0);
-            // We are done with this path, so we can remove it from the visited set for the current recursive stack.
-            visited.Remove(task.Id);
-            return effectiveImportance;
-        }
+        // ...existing code...
 
         public void AddList(TaskList list)
         {
