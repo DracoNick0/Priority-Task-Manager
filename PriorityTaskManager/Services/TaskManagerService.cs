@@ -13,6 +13,12 @@ namespace PriorityTaskManager.Services
         private int _nextListId = 1;
         private readonly IUrgencyService _urgencyService;
 
+        /// <summary>
+        /// Initializes a new instance of the TaskManagerService class with specified file paths.
+        /// </summary>
+        /// <param name="urgencyService">The urgency service used to calculate task urgency.</param>
+        /// <param name="tasksFilePath">The file path for storing tasks.</param>
+        /// <param name="listsFilePath">The file path for storing lists.</param>
         public TaskManagerService(IUrgencyService urgencyService, string tasksFilePath, string listsFilePath)
         {
             _urgencyService = urgencyService;
@@ -22,6 +28,10 @@ namespace PriorityTaskManager.Services
             LoadLists();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the TaskManagerService class with default file paths.
+        /// </summary>
+        /// <param name="urgencyService">The urgency service used to calculate task urgency.</param>
         public TaskManagerService(IUrgencyService urgencyService)
             : this(urgencyService,
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
@@ -29,11 +39,13 @@ namespace PriorityTaskManager.Services
         {
         }
 
+        /// <summary>
+        /// Calculates urgency for all tasks using the urgency service.
+        /// </summary>
         public void CalculateUrgencyForAllTasks()
         {
             _urgencyService.CalculateUrgencyForAllTasks(_tasks);
         }
-
 
         private void SaveTasks()
         {
@@ -45,7 +57,6 @@ namespace PriorityTaskManager.Services
 
             File.WriteAllText(_filePath, JsonSerializer.Serialize(data));
         }
-
 
         private void LoadTasks()
         {
@@ -142,6 +153,10 @@ namespace PriorityTaskManager.Services
             File.WriteAllText(_listFilePath, JsonSerializer.Serialize(data));
         }
 
+        /// <summary>
+        /// Adds a new task to the collection and saves the changes.
+        /// </summary>
+        /// <param name="task">The TaskItem object to add.</param>
         public void AddTask(TaskItem task)
         {
             if (string.IsNullOrWhiteSpace(task.Title))
@@ -155,18 +170,25 @@ namespace PriorityTaskManager.Services
             SaveTasks();
         }
 
-
+        /// <summary>
+        /// Retrieves all tasks associated with a specific list ID.
+        /// </summary>
+        /// <param name="listId">The ID of the list.</param>
+        /// <returns>An enumerable collection of tasks.</returns>
         public IEnumerable<TaskItem> GetAllTasks(int listId)
         {
             return _tasks.Where(task => task.ListId == listId);
         }
 
-
+        /// <summary>
+        /// Retrieves a task by its unique ID.
+        /// </summary>
+        /// <param name="id">The unique ID of the task.</param>
+        /// <returns>The task if found; otherwise, null.</returns>
         public TaskItem? GetTaskById(int id)
         {
             return _tasks.Find(t => t.Id == id);
         }
-
 
         /// <summary>
         /// Checks if adding the given dependencies to the specified task would create a circular dependency.
@@ -203,7 +225,11 @@ namespace PriorityTaskManager.Services
             return false;
         }
 
-
+        /// <summary>
+        /// Updates an existing task with new details.
+        /// </summary>
+        /// <param name="updatedTask">The updated task object.</param>
+        /// <returns>True if the task was updated successfully; otherwise, false.</returns>
         public bool UpdateTask(TaskItem updatedTask)
         {
             if (string.IsNullOrWhiteSpace(updatedTask.Title))
@@ -228,7 +254,6 @@ namespace PriorityTaskManager.Services
             SaveTasks();
 
             return true;
-
         }
 
         /// <summary>
@@ -266,7 +291,11 @@ namespace PriorityTaskManager.Services
             return false;
         }
 
-
+        /// <summary>
+        /// Deletes a task by its unique ID.
+        /// </summary>
+        /// <param name="id">The unique ID of the task to delete.</param>
+        /// <returns>True if the task was deleted successfully; otherwise, false.</returns>
         public bool DeleteTask(int id)
         {
             var task = _tasks.Find(t => t.Id == id);
@@ -281,13 +310,20 @@ namespace PriorityTaskManager.Services
             return true;
         }
 
-
+        /// <summary>
+        /// Retrieves the total count of tasks.
+        /// </summary>
+        /// <returns>The total number of tasks.</returns>
         public int GetTaskCount()
         {
             return _tasks.Count;
         }
 
-
+        /// <summary>
+        /// Marks a task as complete by its unique ID.
+        /// </summary>
+        /// <param name="id">The unique ID of the task to mark as complete.</param>
+        /// <returns>True if the task was marked as complete; otherwise, false.</returns>
         public bool MarkTaskAsComplete(int id)
         {
             var task = _tasks.Find(t => t.Id == id);
@@ -302,7 +338,11 @@ namespace PriorityTaskManager.Services
             return true;
         }
 
-
+        /// <summary>
+        /// Marks a task as incomplete by its unique ID.
+        /// </summary>
+        /// <param name="id">The unique ID of the task to mark as incomplete.</param>
+        /// <returns>True if the task was marked as incomplete; otherwise, false.</returns>
         public bool MarkTaskAsIncomplete(int id)
         {
             var task = _tasks.Find(t => t.Id == id);
@@ -313,6 +353,10 @@ namespace PriorityTaskManager.Services
             return true;
         }
 
+        /// <summary>
+        /// Adds a new task list to the collection and saves the changes.
+        /// </summary>
+        /// <param name="list">The TaskList object to add.</param>
         public void AddList(TaskList list)
         {
             if (_lists.Any(l => l.Name.Equals(list.Name, StringComparison.OrdinalIgnoreCase)))
@@ -324,16 +368,29 @@ namespace PriorityTaskManager.Services
             SaveLists();
         }
 
+        /// <summary>
+        /// Retrieves a task list by its name.
+        /// </summary>
+        /// <param name="listName">The name of the task list.</param>
+        /// <returns>The task list if found; otherwise, null.</returns>
         public TaskList? GetListByName(string listName)
         {
             return _lists.FirstOrDefault(l => l.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>
+        /// Retrieves all task lists.
+        /// </summary>
+        /// <returns>An enumerable collection of task lists.</returns>
         public IEnumerable<TaskList> GetAllLists()
         {
             return new List<TaskList>(_lists);
         }
 
+        /// <summary>
+        /// Deletes a task list by its name and removes associated tasks.
+        /// </summary>
+        /// <param name="listName">The name of the task list to delete.</param>
         public void DeleteList(string listName)
         {
             var listToDelete = _lists.FirstOrDefault(list => list.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
@@ -350,6 +407,10 @@ namespace PriorityTaskManager.Services
             SaveTasks();
         }
 
+        /// <summary>
+        /// Updates an existing task list with new details.
+        /// </summary>
+        /// <param name="updatedList">The updated task list object.</param>
         public void UpdateList(TaskList updatedList)
         {
             var existingList = _lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
@@ -359,6 +420,5 @@ namespace PriorityTaskManager.Services
                 SaveLists();
             }
         }
-        
     }
 }
