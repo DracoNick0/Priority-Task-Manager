@@ -2016,3 +2016,103 @@ Navigate to TaskManagerService.cs and follow these steps:
 ### Copilot's Action
 
 Reset `EffectiveImportance` in `CalculateUrgencyForAllTasks` and updated `CalculateLpsdRecursive` to use and propagate `EffectiveImportance`.
+
+# Log Entry 62
+
+## User Prompt
+
+We are beginning an architectural refactoring to improve the separation of concerns in our application. Our goal is to extract the complex urgency calculation logic from `TaskManagerService` into a new, dedicated service.
+
+**Task 1: Create the Interface**
+
+1.  In the `PriorityTaskManager` project, navigate to the `Services` directory.
+2.  Create a new C# interface file named `IUrgencyService.cs`.
+3.  Define a single method signature within this interface: `void CalculateUrgencyForAllTasks(List<TaskItem> tasks);`. This method will accept a list of tasks and is expected to modify their `UrgencyScore` and related properties directly.
+
+**Task 2: Create the Implementation Class**
+
+1.  In the same `Services` directory, create a new C# class file named `UrgencyService.cs`.
+2.  Make this class implement the `IUrgencyService` interface.
+3.  Implement the `CalculateUrgencyForAllTasks` method. For now, leave the method body empty or have it throw a `NotImplementedException`. We will move the actual logic in the next step. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Created `IUrgencyService.cs` interface and `UrgencyService.cs` implementation in the `Services` directory, defining the required method signature and stub implementation.
+
+# Log Entry 63
+
+## User Prompt
+
+We are continuing our refactoring. The next step is to move the urgency calculation logic from `TaskManagerService` into the new `UrgencyService`.
+
+**Task 1: Move the Methods**
+
+1.  Navigate to `TaskManagerService.cs`.
+2.  Locate and **cut** the entire `CalculateUrgencyForAllTasks()` method.
+3.  Locate and **cut** the entire `CalculateLpsdRecursive()` helper method.
+4.  Navigate to the new `UrgencyService.cs` file.
+5.  **Paste** both methods into the `UrgencyService` class.
+6.  Change the access modifier of the `CalculateUrgencyForAllTasks` method from `public` (or its previous state) to `public` to correctly implement the `IUrgencyService` interface.
+7.  Ensure the `CalculateLpsdRecursive` helper method is `private`.
+8.  Resolve any minor syntax errors. For example, the methods may have referred to a class-level `_tasks` field. You must change the `CalculateUrgencyForAllTasks` method to operate on the `tasks` list that is passed in as a parameter. The recursive method will also need access to this list, so you may need to pass it through the recursive calls.
+
+**Task 2: Update `CalculateLpsdRecursive`'s Signature**
+
+1.  The `CalculateLpsdRecursive` method relies on the full list of tasks to find dependencies. You need to update its signature to accept this list.
+2.  Change its signature from `private int CalculateLpsdRecursive(TaskItem task, ...)` to `private int CalculateLpsdRecursive(TaskItem task, List<TaskItem> allTasks, ...)`.
+3.  Update the recursive calls inside the method to pass the `allTasks` list along.
+4.  Update the `successorMap` creation logic inside `CalculateUrgencyForAllTasks` to use the passed-in `tasks` list instead of a private field. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Moved the urgency calculation methods from `TaskManagerService` to `UrgencyService`, refactored them to operate on the passed-in list, and updated the recursive method signature and calls.
+
+# Log Entry 64
+
+## User Prompt
+
+We are completing the refactoring. `TaskManagerService` must now use the new `IUrgencyService` to perform urgency calculations. We will use constructor injection to provide this dependency.
+
+**Task 1: Update `TaskManagerService` Fields and Constructor**
+
+1.  Navigate to `TaskManagerService.cs`.
+2.  Add a new private, readonly field of type `IUrgencyService`:
+    `private readonly IUrgencyService _urgencyService;`
+3.  Modify the `TaskManagerService` constructor to accept an `IUrgencyService` as a parameter.
+4.  Inside the constructor, assign the parameter to the `_urgencyService` field. If the `TaskManagerService` constructor did not exist, you will need to create it.
+    ```csharp
+    public TaskManagerService(IUrgencyService urgencyService)
+    {
+        _urgencyService = urgencyService;
+        // ... existing constructor logic like LoadTasks() ...
+    }
+    ```
+
+**Task 2: Delegate the Calculation**
+
+1.  Create a new, empty `public void CalculateUrgencyForAllTasks()` method in `TaskManagerService.cs` to replace the one we removed. This is the method that other parts of the service will call.
+2.  Inside this new method, delegate the call to the `_urgencyService`, passing the service's internal `_tasks` list to it:
+    ```csharp
+    public void CalculateUrgencyForAllTasks()
+    {
+        _urgencyService.CalculateUrgencyForAllTasks(_tasks);
+    }
+    ```
+
+**Task 3: Update Service Instantiation**
+
+1.  The code that creates the `TaskManagerService` (likely in `Program.cs` in the CLI project, and also in your xUnit test files) will now have a compile error because the constructor has changed.
+2.  In each place where a `TaskManagerService` is instantiated, you must first create an instance of our concrete `UrgencyService` and pass it into the `TaskManagerService` constructor.
+    ```csharp
+    // BEFORE
+    // var taskManagerService = new TaskManagerService();
+
+    // AFTER
+    var urgencyService = new UrgencyService(); // Create the dependency
+    var taskManagerService = new TaskManagerService(urgencyService); // Inject it
+    ```
+3.  Ensure you update this in `Program.cs` and in every test file that creates an instance of `TaskManagerService`. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+### Copilot's Action
+
+Refactored `TaskManagerService` to use constructor injection for `IUrgencyService`, delegated urgency calculation, and updated all instantiations in CLI and test files to inject the dependency.
