@@ -83,8 +83,14 @@ namespace PriorityTaskManager.Models
         public DateTime LatestPossibleStartDate { get; set; }
 
         /// <summary>
-        /// Gets or sets the name of the list to which the task belongs.
+        /// Gets or sets the numeric ID of the list to which the task belongs.
         /// </summary>
-        public string ListName { get; set; }
+        public int ListId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the list to which the task belongs.
+    /// </summary>
+    [Obsolete("Use ListId instead. This property is for data migration purposes only.")]
+    public string ListName { get; set; }
     }
 }

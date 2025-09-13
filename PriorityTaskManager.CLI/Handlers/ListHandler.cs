@@ -12,7 +12,14 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
-            Program.ActiveListName ??= "General"; // Default to 'General' if null
+            if (Program.ActiveListId == 0)
+            {
+                var generalList = service.GetListByName("General");
+                if (generalList != null)
+                    Program.ActiveListId = generalList.Id;
+                else
+                    Program.ActiveListId = 1;
+            }
 
             if (args.Length == 0 || args[0].Equals("view", StringComparison.OrdinalIgnoreCase))
             {
@@ -53,22 +60,13 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
-            var activeListName = Program.ActiveListName;
-            if (activeListName == null)
-            {
-                Console.WriteLine("Error: No active list is set.");
-                return;
-            }
-
-            var activeList = service.GetListByName(activeListName);
-
+            var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == Program.ActiveListId);
             if (activeList == null)
             {
-                Console.WriteLine($"Error: Active list '{activeListName}' does not exist.");
+                Console.WriteLine($"Error: Active list ID '{Program.ActiveListId}' does not exist.");
                 return;
             }
-
-            var tasks = service.GetAllTasks(activeListName).ToList();
+            var tasks = service.GetAllTasks(Program.ActiveListId).ToList();
 
             switch (activeList.SortOption)
             {
@@ -105,7 +103,7 @@ namespace PriorityTaskManager.CLI.Handlers
             var lists = service.GetAllLists();
             foreach (var list in lists)
             {
-                var activeIndicator = list.Name.Equals(Program.ActiveListName, StringComparison.OrdinalIgnoreCase) ? " (Active)" : string.Empty;
+                var activeIndicator = list.Id == Program.ActiveListId ? " (Active)" : string.Empty;
                 Console.WriteLine($"- {list.Name}{activeIndicator}");
             }
         }
@@ -142,7 +140,7 @@ namespace PriorityTaskManager.CLI.Handlers
             var list = service.GetListByName(listName);
             if (list != null)
             {
-                Program.ActiveListName = listName;
+                Program.ActiveListId = list.Id;
                 Console.WriteLine($"Switched to list '{listName}'.");
             }
             else
@@ -180,11 +178,13 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            if (listName.Equals(Program.ActiveListName, StringComparison.OrdinalIgnoreCase))
+            var listToDelete = service.GetListByName(listName);
+            if (listToDelete != null && listToDelete.Id == Program.ActiveListId)
             {
-                Program.ActiveListName = "General";
+                // If deleting the active list, switch to General
+                var generalList = service.GetListByName("General");
+                Program.ActiveListId = generalList != null ? generalList.Id : 1;
             }
-
             service.DeleteList(listName);
             Console.WriteLine($"List '{listName}' deleted successfully.");
         }
@@ -203,18 +203,15 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            var activeListName = Program.ActiveListName;
-            var activeList = service.GetListByName(activeListName);
-
+            var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == Program.ActiveListId);
             if (activeList == null)
             {
-                Console.WriteLine($"Error: Active list '{activeListName}' does not exist.");
+                Console.WriteLine($"Error: Active list ID '{Program.ActiveListId}' does not exist.");
                 return;
             }
-
             activeList.SortOption = sortOption;
             service.UpdateList(activeList);
-            Console.WriteLine($"Sort option for list '{activeListName}' updated to {sortOption}.");
+            Console.WriteLine($"Sort option for list '{activeList.Name}' updated to {sortOption}.");
         }
 
         private void HandleInteractiveSwitch(TaskManagerService service)
@@ -226,7 +223,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            int selectedIndex = lists.FindIndex(l => l.Name.Equals(Program.ActiveListName, StringComparison.OrdinalIgnoreCase));
+            int selectedIndex = lists.FindIndex(l => l.Id == Program.ActiveListId);
             if (selectedIndex == -1) selectedIndex = 0;
 
             int initialTop = Console.CursorTop;
@@ -250,9 +247,9 @@ namespace PriorityTaskManager.CLI.Handlers
                         selectedIndex = (selectedIndex - 1 + lists.Count) % lists.Count;
                         break;
                     case ConsoleKey.Enter:
-                        Program.ActiveListName = lists[selectedIndex].Name;
+                        Program.ActiveListId = lists[selectedIndex].Id;
                         Console.SetCursorPosition(0, initialTop + lists.Count);
-                        Console.WriteLine($"Switched to list '{Program.ActiveListName}'.");
+                        Console.WriteLine($"Switched to list '{lists[selectedIndex].Name}'.");
                         return;
                     case ConsoleKey.Escape:
                         Console.SetCursorPosition(0, initialTop + lists.Count);

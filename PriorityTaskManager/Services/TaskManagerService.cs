@@ -10,6 +10,7 @@ namespace PriorityTaskManager.Services
     private List<TaskItem> _tasks = new List<TaskItem>();
     private List<TaskList> _lists = new List<TaskList>();
     private int _nextId = 1;
+    private int _nextListId = 1;
     private readonly IUrgencyService _urgencyService;
 
         public TaskManagerService(IUrgencyService urgencyService, string tasksFilePath, string listsFilePath)
@@ -19,6 +20,9 @@ namespace PriorityTaskManager.Services
             _listFilePath = Path.GetFullPath(listsFilePath);
             LoadTasks();
             LoadLists();
+            MigrateTaskListNameToListId();
+            SaveTasks();
+            SaveLists();
         }
 
         public TaskManagerService(IUrgencyService urgencyService)
@@ -27,6 +31,40 @@ namespace PriorityTaskManager.Services
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
         {
         }
+
+        /// <summary>
+        /// Migrates tasks from using ListName to ListId, assigning the correct list ID or falling back to General.
+        /// </summary>
+        private void MigrateTaskListNameToListId()
+        {
+            // Ensure there is a "General" list to fall back to
+            var generalList = _lists.FirstOrDefault(l => l.Name.Equals("General", StringComparison.OrdinalIgnoreCase));
+            if (generalList == null)
+                throw new InvalidOperationException("General list not found during migration.");
+
+            int generalListId = generalList.Id;
+
+            // Create a lookup dictionary for list name to list ID
+            var listNameToId = _lists.ToDictionary(l => l.Name, l => l.Id, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var task in _tasks)
+            {
+                // Only migrate tasks where ListId is 0 (not yet migrated)
+                if (task.ListId == 0)
+                {
+                    if (listNameToId.TryGetValue(task.ListName, out int listId))
+                    {
+                        task.ListId = listId;
+                    }
+                    else
+                    {
+                        // Orphaned task, assign to General list
+                        task.ListId = generalListId;
+                    }
+                }
+            }
+        }
+
         public void CalculateUrgencyForAllTasks()
         {
             _urgencyService.CalculateUrgencyForAllTasks(_tasks);
@@ -92,16 +130,39 @@ namespace PriorityTaskManager.Services
                 try
                 {
                     var json = File.ReadAllText(_listFilePath);
-                    _lists = JsonSerializer.Deserialize<List<TaskList>>(json) ?? new List<TaskList>();
+                    var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                    if (data != null && data.ContainsKey("Lists"))
+                    {
+                        var rawLists = data["Lists"].GetRawText();
+                        _lists = JsonSerializer.Deserialize<List<TaskList>>(rawLists) ?? new List<TaskList>();
+                        if (_lists.Count > 0)
+                        {
+                            _nextListId = _lists.Max(l => l.Id) + 1;
+                        }
+                        else
+                        {
+                            _nextListId = 1;
+                        }
+                        if (data.ContainsKey("NextListId"))
+                        {
+                            _nextListId = Math.Max(_nextListId, data["NextListId"].GetInt32());
+                        }
+                    }
+                    else
+                    {
+                        _lists = new List<TaskList>();
+                        _nextListId = 1;
+                    }
                 }
                 catch
                 {
                     _lists = new List<TaskList>();
+                    _nextListId = 1;
                 }
             }
             else
             {
-                var defaultList = new TaskList { Name = "General", SortOption = SortOption.Default };
+                var defaultList = new TaskList { Id = _nextListId++, Name = "General", SortOption = SortOption.Default };
                 _lists.Add(defaultList);
                 SaveLists();
             }
@@ -109,7 +170,12 @@ namespace PriorityTaskManager.Services
 
         private void SaveLists()
         {
-            File.WriteAllText(_listFilePath, JsonSerializer.Serialize(_lists));
+            var data = new
+            {
+                Lists = _lists,
+                NextListId = _nextListId
+            };
+            File.WriteAllText(_listFilePath, JsonSerializer.Serialize(data));
         }
 
         public void AddTask(TaskItem task)
@@ -120,14 +186,15 @@ namespace PriorityTaskManager.Services
             }
             task.Id = _nextId++;
             task.EffectiveImportance = task.Importance;
+            // ListId should already be set by CLI layer. Do not set ListName here.
             _tasks.Add(task);
             SaveTasks();
         }
 
 
-        public IEnumerable<TaskItem> GetAllTasks(string listName)
+        public IEnumerable<TaskItem> GetAllTasks(int listId)
         {
-            return _tasks.Where(task => task.ListName.Equals(listName, StringComparison.OrdinalIgnoreCase));
+            return _tasks.Where(task => task.ListId == listId);
         }
 
 
@@ -291,7 +358,7 @@ namespace PriorityTaskManager.Services
             {
                 throw new InvalidOperationException($"A list with the name '{list.Name}' already exists.");
             }
-
+            list.Id = _nextListId++;
             _lists.Add(list);
             SaveLists();
         }
@@ -331,5 +398,6 @@ namespace PriorityTaskManager.Services
                 SaveLists();
             }
         }
+        
     }
 }
