@@ -24,6 +24,11 @@ namespace PriorityTaskManager.Models
         }
 
         /// <summary>
+        /// The name of the list this task belongs to.
+        /// </summary>
+        public string ListName { get; set; }
+
+        /// <summary>
         /// Gets or sets the effective importance used for urgency calculation.
         /// </summary>
         public int EffectiveImportance { get; set; }

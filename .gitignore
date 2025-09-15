@@ -4,3 +4,4 @@ obj/
 
 # Ignore user task data file
 tasks.json
+lists.json
