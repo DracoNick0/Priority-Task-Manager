@@ -64,6 +64,7 @@ The primary long-term goal is to evolve the application into a modern, interacti
     ```
 4.  Run the application:
     ```bash
+    dotnet build
     dotnet run
     ```
 
@@ -103,17 +104,6 @@ The primary long-term goal is to evolve the application into a modern, interacti
 | :--- | :--- |
 | `help` | Show this help message. |
 | `exit` | Exit the application. |
-
----
-
-### Contributing
-
-Contributions are welcome! Please follow these steps:
-1.  Fork the repository.
-2.  Create a new branch for your feature or bug fix (`git checkout -b feature/AmazingFeature`).
-3.  Commit your changes with clear, conventional messages (`git commit -m 'feat: Add some AmazingFeature'`).
-4.  Push to the branch (`git push origin feature/AmazingFeature`).
-5.  Open a Pull Request.
 
 ---
 
