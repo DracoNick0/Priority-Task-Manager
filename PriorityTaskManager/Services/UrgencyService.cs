@@ -90,7 +90,7 @@ namespace PriorityTaskManager.Services
             if (slackTime < 0) slackTime = 0;
             int effectiveImportance = Math.Max(task.Importance, maxSuccessorImportance);
             task.EffectiveImportance = effectiveImportance;
-            task.UrgencyScore = effectiveImportance / (slackTime + 1.0);
+            task.UrgencyScore = effectiveImportance * Math.Pow(1.0 / 4.0, slackTime - task.EstimatedDuration.TotalDays / 2.0);
             
             // We are done with this path, so we can remove it from the visited set for the current recursive stack.
             visited.Remove(task.Id);
