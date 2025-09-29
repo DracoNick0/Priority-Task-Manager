@@ -1,6 +1,7 @@
 using System;
 using PriorityTaskManager.MCP;
 using PriorityTaskManager.Services;
+using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 {

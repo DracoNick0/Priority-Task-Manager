@@ -38,7 +38,8 @@ namespace PriorityTaskManager.CLI
 				{ "uncomplete", new UncompleteHandler() },
 				{ "help", new HelpHandler() },
 				{ "depend", new DependHandler() },
-				{ "view", new ViewHandler() }
+				{ "view", new ViewHandler() },
+				{ "cleanup", new CleanupHandler(service) }
 			};
 
 			while (true)

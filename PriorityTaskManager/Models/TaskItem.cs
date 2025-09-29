@@ -92,6 +92,10 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the numeric ID of the list to which the task belongs.
         /// </summary>
         public int ListId { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the display ID of the task, used for identification in the UI.
+        /// </summary>
+        public int DisplayId { get; set; }
     }
 }

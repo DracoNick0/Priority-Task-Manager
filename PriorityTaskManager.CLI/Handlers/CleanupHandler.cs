@@ -1,6 +1,9 @@
 using System;
-using PriorityTaskManager.Interfaces;
+using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.Services;
+using PriorityTaskManager.MCP;
+using PriorityTaskManager.CLI.MCP.Agents.Cleanup;
+using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
@@ -37,7 +40,7 @@ namespace PriorityTaskManager.CLI.Handlers
             var initialContext = new MCPContext();
             initialContext.History.Add("Cleanup command initiated by user.");
 
-            var finalContext = MCP.Coordinate(agentChain, initialContext);
+            var finalContext = PriorityTaskManager.MCP.MCP.Coordinate(agentChain, initialContext);
 
             if (finalContext.LastError != null)
             {
@@ -55,6 +58,11 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 Console.WriteLine("Cleanup complete.");
             }
+        }
+
+        public void Execute(TaskManagerService taskManagerService, string[] args)
+        {
+            Handle(args);
         }
     }
 }
