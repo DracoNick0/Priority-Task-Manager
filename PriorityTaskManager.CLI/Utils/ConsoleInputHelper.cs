@@ -66,41 +66,45 @@ namespace PriorityTaskManager.CLI.Utils
         /// </summary>
         /// <param name="service">The TaskManagerService instance to validate task existence.</param>
         /// <param name="args">The command-line arguments containing task IDs.</param>
+        /// <param name="activeListId">The ID of the active task list.</param>
         /// <returns>A list of valid task IDs.</returns>
-        public static List<int> ParseAndValidateTaskIds(TaskManagerService service, string[] args)
+        public static List<int> ParseAndValidateTaskIds(TaskManagerService service, string[] args, int activeListId)
         {
-            var validTaskIds = new List<int>();
+            var realIds = new List<int>();
 
             if (args == null || args.Length == 0)
             {
-                return validTaskIds;
+                return realIds;
             }
 
             string input = string.Join("", args);
-            string[] potentialIds = input.Split(',');
+            string[] potentialDisplayIds = input.Split(',');
 
-            foreach (var idString in potentialIds)
+            foreach (var idString in potentialDisplayIds)
             {
                 string trimmedId = idString.Trim();
 
-                if (int.TryParse(trimmedId, out int taskId))
+                if (int.TryParse(trimmedId, out int displayId))
                 {
-                    if (service.GetTaskById(taskId) != null)
+                    var task = service.GetTaskByDisplayId(displayId, activeListId);
+
+                    if (task != null)
                     {
-                        validTaskIds.Add(taskId);
+                        realIds.Add(task.Id);
                     }
                     else
                     {
-                        Console.WriteLine($"Warning: Task ID {taskId} does not exist and will be skipped.");
+                        Console.WriteLine($"Error: Task with Display ID {displayId} not found in the current list.");
+                        return new List<int>();
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Warning: '{trimmedId}' is not a valid task ID and will be skipped.");
+                    Console.WriteLine($"Warning: '{trimmedId}' is not a valid Display ID and will be skipped.");
                 }
             }
 
-            return validTaskIds;
+            return realIds;
         }
 
         /// <summary>

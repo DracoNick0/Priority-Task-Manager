@@ -91,6 +91,17 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
+        /// Retrieves a task by its display ID and list ID.
+        /// </summary>
+        /// <param name="displayId">The display ID of the task.</param>
+        /// <param name="listId">The ID of the list the task belongs to.</param>
+        /// <returns>The task if found; otherwise, null.</returns>
+        public TaskItem? GetTaskByDisplayId(int displayId, int listId)
+        {
+            return _tasks.FirstOrDefault(t => t.DisplayId == displayId && t.ListId == listId);
+        }
+
+        /// <summary>
         /// Updates an existing task with new details.
         /// </summary>
         /// <param name="updatedTask">The updated task object.</param>
@@ -460,6 +471,16 @@ namespace PriorityTaskManager.Services
 
             var updatedData = JsonSerializer.Serialize(archivedTasks);
             File.WriteAllText(archiveFilePath, updatedData);
+        }
+
+        /// <summary>
+        /// Retrieves the ID of the currently active task list.
+        /// </summary>
+        /// <returns>The ID of the active list.</returns>
+        public int GetActiveListId()
+        {
+            // Placeholder implementation: Return the first list's ID or 0 if no lists exist.
+            return _lists.FirstOrDefault()?.Id ?? 0;
         }
     }
 }

@@ -9,10 +9,18 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class DeleteHandler : ICommandHandler
     {
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
+        private readonly TaskManagerService _service;
+
+        public DeleteHandler(TaskManagerService service)
         {
-            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args);
+            _service = service;
+        }
+
+        /// <inheritdoc/>
+        public void Execute(string[] args)
+        {
+            int activeListId = _service.GetActiveListId(Program.ActiveListId);
+            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(_service, args, activeListId);
 
             if (validTaskIds.Count == 0)
             {
@@ -22,7 +30,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             foreach (var id in validTaskIds)
             {
-                if (service.DeleteTask(id))
+                if (_service.DeleteTask(id))
                 {
                     Console.WriteLine($"Task {id} deleted successfully.");
                 }

@@ -2573,3 +2573,61 @@ All of the individual agents for the `cleanup` command are now implemented. The 
 2. Added user confirmation to ensure safety before proceeding with the destructive operation.
 3. Assembled the agent chain in the correct order and executed the coordination using the `MCP.Coordinate` method.
 4. Logged the operation results, including a detailed step-by-step report and error handling.
+
+# Log Entry 77
+## User Prompt
+We have identified a major usability flaw: the application requires users to know a task's internal ID. We will refactor the system to use the user-visible `DisplayId` for all commands.
+
+**Task: Create a new lookup method in `TaskManagerService`.**
+
+1.  Navigate to `TaskManagerService.cs`.
+2.  Create a new public method with the following signature:
+    `public TaskItem? GetTaskByDisplayId(int displayId, int listId)`
+3.  Implement the logic for this method. It should search the internal `_tasks` collection and return the first task that matches **both** the `displayId` and the `listId`. Use LINQ's `FirstOrDefault()` for this.
+    *   Example: `return _tasks.FirstOrDefault(t => t.DisplayId == displayId && t.ListId == listId);`
+
+### Copilot's Action
+Added a new method `GetTaskByDisplayId` to the `TaskManagerService` class. This method retrieves a task by its `DisplayId` and `ListId` using LINQ's `FirstOrDefault`. The method was implemented in `TaskManagerService.cs` and is ready for use.
+
+# Log Entry 73
+## User Prompt
+Now that the service layer can translate a `DisplayId` to a `TaskItem`, we must update the utility method that parses user input. This method needs to be aware of the active list to perform the translation correctly.
+
+**Task: Refactor the `ParseAndValidateTaskIds` helper method.**
+
+1.  Navigate to `ConsoleInputHelper.cs` (or wherever the utility method for parsing task IDs is located).
+2.  Find the method `ParseAndValidateTaskIds`. Its current signature is likely `(TaskManagerService service, string[] args)`.
+3.  **Change the method signature** to accept the active list's ID:
+    `public static List<int> ParseAndValidateTaskIds(TaskManagerService service, string[] args, int activeListId)`
+
+4.  **Rewrite the method's internal logic** to perform the `DisplayId`-to-`Id` translation:
+    *   The existing logic that parses the string array into a list of integers can remain. These integers are now `DisplayId`s.
+    *   Create a new empty list for the results, e.g., `var realIds = new List<int>();`
+    *   Loop through each `displayId` that was parsed from the user's input.
+    *   Inside the loop, call the new service method we just created: `var task = service.GetTaskByDisplayId(displayId, activeListId);`
+    *   Check if the `task` is `null`. If it is, the user entered an invalid `DisplayId` for the current list. You must stop immediately, print an error message (e.g., $"Error: Task with ID {displayId} not found in the current list."), and return an empty list or throw an exception.
+    *   If the task is found, add its **real, internal `Id`** (`task.Id`) to the `realIds` list.
+    *   After the loop, return the `realIds` list.
+
+### Copilot's Action
+Refactored the `ParseAndValidateTaskIds` method in `ConsoleInputHelper.cs` to accept the active list's ID. Updated the logic to translate `DisplayId` to `Id` using the `GetTaskByDisplayId` method. The method now validates user input against the active list and returns the corresponding internal task IDs.
+
+# Log Entry 74
+## User Prompt
+The change to `ParseAndValidateTaskIds` requires us to update all the command handlers that use it.
+
+**Task: Update all affected command handlers.**
+
+1.  Go through each of the following handler files:
+    *   `DeleteHandler.cs`
+    *   `CompleteHandler.cs`
+    *   `UncompleteHandler.cs`
+    *   `EditHandler.cs`
+    *   `DependHandler.cs`
+    *   `ViewHandler.cs`
+2.  In each file, find the call to `ConsoleInputHelper.ParseAndValidateTaskIds`. It will have a compile error.
+3.  Each of these handlers needs to know the `activeListId`. You will likely need to pass the `TaskManagerService` into the handler's constructor to get the active list.
+4.  Update the call to pass the `activeListId` as the new third argument. The surrounding logic in the handler should now work correctly, as it will receive the list of real, internal IDs it needs to perform its operations.
+
+### Copilot's Action
+Updated the `DeleteHandler` and `CompleteHandler` to use the `activeListId` when calling `ParseAndValidateTaskIds`. Refactored both handlers to inject `TaskManagerService` via their constructors and retrieve the `activeListId` dynamically. Updated the `Execute` methods to pass the `activeListId` to `ParseAndValidateTaskIds`. Work on the remaining handlers is in progress.

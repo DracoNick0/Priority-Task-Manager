@@ -8,7 +8,7 @@ namespace PriorityTaskManager.CLI.Handlers
     {
         public void Execute(TaskManagerService service, string[] args)
         {
-            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args);
+            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args, Program.ActiveListId);
 
             if (validTaskIds.Count == 0)
             {
