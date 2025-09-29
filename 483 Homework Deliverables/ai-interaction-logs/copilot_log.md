@@ -2334,3 +2334,40 @@ We are continuing to build the MCP framework. The next step is to create the sta
 
 1. Created the `MCP.cs` file in the `PriorityTaskManager/MCP` directory.
 2. Implemented the `Coordinate` method in the `MCP` class to orchestrate the execution of agent chains, following the specified logic.
+
+# Log Entry 71
+
+## User Prompt
+
+The MCP framework is in place. We will now create the structure for our new `cleanup` command. This involves creating the main command handler that the user will trigger and the empty agent classes that will perform the actual work.
+
+**Task 1: Create the Main Command Handler**
+
+1.  In the `PriorityTaskManager.CLI/Handlers` directory, create a new C# class file named `CleanupHandler.cs`.
+2.  Make the `CleanupHandler` class implement the `ICommandHandler` interface.
+3.  Add a private readonly field for `TaskManagerService` and a constructor to initialize it via dependency injection.
+4.  Implement the `Handle(string[] args)` method. For now, leave its body empty. We will wire it up to the MCP at the very end.
+
+**Task 2: Create a New Directory for the Cleanup Agents**
+
+1.  In the `PriorityTaskManager.CLI` project, create a new folder path: `MCP/Agents/Cleanup`. This is where all the agents specific to the `cleanup` command will reside.
+
+**Task 3: Create the Agent Class Skeletons**
+
+1.  Inside the new `PriorityTaskManager.CLI/MCP/Agents/Cleanup` directory, create the following five new C# class files:
+    *   `FindCompletedTasksAgent.cs`
+    *   `ArchiveTasksAgent.cs`
+    *   `DeleteTasksAgent.cs`
+    *   `ReIndexTasksAgent.cs`
+    *   `UpdateDependenciesAgent.cs`
+
+2.  For **each** of these five new classes:
+    *   Make the class implement the `IAgent` interface.
+    *   Add a public `Act(MCPContext context)` method as required by the interface. For now, just have the method `return context;` without any other logic.
+    *   If the agent will need to interact with the `TaskManagerService` (which all of them will), add a private readonly field for it and a constructor to initialize it.
+
+### Copilot's Action
+
+1. Created the `CleanupHandler.cs` file in the `PriorityTaskManager.CLI/Handlers` directory, implementing the `ICommandHandler` interface with dependency injection for `TaskManagerService`.
+2. Created the `PriorityTaskManager.CLI/MCP/Agents/Cleanup` directory for cleanup agents.
+3. Added five agent class skeletons (`FindCompletedTasksAgent`, `ArchiveTasksAgent`, `DeleteTasksAgent`, `ReIndexTasksAgent`, `UpdateDependenciesAgent`) in the `PriorityTaskManager.CLI/MCP/Agents/Cleanup` directory, each implementing the `IAgent` interface with empty `Act` methods and dependency injection for `TaskManagerService`.
