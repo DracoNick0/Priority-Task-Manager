@@ -2414,3 +2414,34 @@ We will now implement the logic for the first two agents in the `cleanup` comman
 1. Implemented the `Act` method in `FindCompletedTasksAgent.cs` to identify completed tasks, log the process, and store the results in the context's shared state.
 2. Added the `ArchiveTasks` method to `TaskManagerService.cs` to handle archiving tasks to `archive.json`.
 3. Implemented the `Act` method in `ArchiveTasksAgent.cs` to archive tasks using the `TaskManagerService` and log the process.
+
+# Log Entry 73
+
+## User Prompt
+
+We will now implement the agent responsible for deleting the completed tasks from the main task list. This follows the archiving step to ensure data is saved before it is removed.
+
+**Task 1: Add a `DeleteTasks` Method to the Service**
+
+1.  Navigate to `TaskManagerService.cs`.
+2.  Create a new public method with the signature: `void DeleteTasks(IEnumerable<TaskItem> tasksToDelete)`. This method is responsible for batch-deleting tasks.
+3.  Inside this method, implement the following logic:
+    *   Create a `HashSet<int>` of the IDs from the `tasksToDelete` list for efficient lookups.
+    *   Use the `_tasks.RemoveAll()` method to remove all tasks whose ID is present in the HashSet.
+    *   After removing the tasks, call the `SaveTasks()` method to persist the changes to `tasks.json`.
+
+**Task 2: Implement the `DeleteTasksAgent`**
+
+1.  Open the `DeleteTasksAgent.cs` file.
+2.  Inside the `Act(MCPContext context)` method, implement the following logic:
+    *   Retrieve the list of completed tasks from the context's shared state: `var tasksToDelete = context.SharedState["CompletedTasks"] as List<TaskItem>;`
+    *   Perform a safety check: if the list is null or empty, log a message like "No tasks to delete." and return the `context` without taking any action.
+    *   If tasks are present, log the action to the context's history: `context.History.Add($"Deleting {tasksToDelete.Count} tasks from the active list...");`
+    *   Call the new `_taskManagerService.DeleteTasks(tasksToDelete)` method.
+    *   Log a success message to the history confirming that the tasks were deleted.
+    *   Return the modified `context`.
+
+### Copilot's Action
+
+1. Added the `DeleteTasks` method to `TaskManagerService.cs` to handle batch-deleting tasks from the task list and persisting changes.
+2. Implemented the `Act` method in `DeleteTasksAgent.cs` to delete tasks using the `TaskManagerService` and log the process.

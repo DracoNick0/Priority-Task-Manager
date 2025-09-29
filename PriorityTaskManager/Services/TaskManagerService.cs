@@ -135,6 +135,19 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
+        /// Deletes tasks in bulk.
+        /// </summary>
+        /// <param name="tasksToDelete">The collection of TaskItem objects to delete.</param>
+        public void DeleteTasks(IEnumerable<TaskItem> tasksToDelete)
+        {
+            var taskIdsToDelete = new HashSet<int>(tasksToDelete.Select(task => task.Id));
+
+            _tasks.RemoveAll(task => taskIdsToDelete.Contains(task.Id));
+
+            SaveTasks();
+        }
+
+        /// <summary>
         /// Retrieves the total count of tasks.
         /// </summary>
         /// <returns>The total number of tasks.</returns>

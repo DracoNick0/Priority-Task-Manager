@@ -15,6 +15,18 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 
         public MCPContext Act(MCPContext context)
         {
+            var tasksToDelete = context.SharedState["CompletedTasks"] as List<TaskItem>;
+
+            if (tasksToDelete == null || !tasksToDelete.Any())
+            {
+                context.History.Add("No tasks to delete.");
+                return context;
+            }
+
+            context.History.Add($"Deleting {tasksToDelete.Count} tasks from the active list...");
+            _taskManagerService.DeleteTasks(tasksToDelete);
+            context.History.Add("Tasks successfully deleted from the active list.");
+
             return context;
         }
     }
