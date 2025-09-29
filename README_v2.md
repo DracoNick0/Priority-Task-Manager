@@ -6,6 +6,40 @@ It is designed for developers, project managers, and students who need a powerfu
 
 ---
 
+# Architectural Deep Dive: The `cleanup` Command and MCP
+
+The `cleanup` command is a powerful utility designed to maintain the health and usability of the task database. It performs a complex, multi-step operation that includes archiving and deleting completed tasks, re-indexing the remaining tasks, and updating all dependency relationships to ensure data integrity.
+
+Given the destructive and intricate nature of this operation, it was architected using the **Model Context Protocol (MCP)** to ensure the process is robust, transparent, and safe.
+
+## The MCP Framework
+
+The core of the implementation is a generic MCP framework that can orchestrate any multi-agent workflow. It consists of three main components:
+
+*   **`IAgent.cs`**: An interface defining the contract for any agent. Each agent is a self-contained component with a single responsibility, receiving an `MCPContext` and returning a modified version of it.
+*   **`MCPContext.cs`**: The central data object that acts as the "shared memory" for the entire operation. It holds the shared state (data passed between agents), a running history log of all actions taken, and error-handling flags (`LastError`, `ShouldTerminate`).
+*   **`MCP.cs`**: A static coordinator with a `Coordinate` method that executes a given chain of agents in sequence. It is responsible for passing the context from one agent to the next and for halting the process if an agent signals an error.
+
+## The `cleanup` Command as an MCP Workflow
+
+The `cleanup` command is implemented as a sequential pipeline of five distinct agents, each with a single responsibility:
+
+1.  **`FindCompletedTasksAgent`**: Identifies all tasks marked as "completed" and adds them to the `MCPContext`.
+2.  **`ArchiveTasksAgent`**: Takes the completed tasks from the context and archives them to a separate `archive.json` file for historical record-keeping.
+3.  **`DeleteTasksAgent`**: Deletes the archived tasks from the active `tasks.json` database.
+4.  **`ReIndexTasksAgent`**: Sorts the remaining tasks by urgency and assigns them new, sequential `DisplayId`s (1, 2, 3...). It crucially creates an "ID Map" of the old IDs to the new IDs and stores it in the context.
+5.  **`UpdateDependenciesAgent`**: Reads the "ID Map" from the context and iterates through all tasks, updating their dependency lists to use the new IDs. This step is critical for maintaining data integrity.
+
+### Architectural Benefits of Using MCP
+
+Choosing MCP for this feature was a deliberate technical decision that provides significant benefits over a monolithic, direct-call implementation:
+
+*   **Safety and Atomicity**: The protocol ensures that the operation can be safely aborted. If the `ReIndexTasksAgent` were to fail, the `UpdateDependenciesAgent` would never run, preventing the database from being left in a corrupted state with broken dependency links.
+*   **Transparency and Auditing**: The `MCPContext.History` log provides a complete, step-by-step audit trail of the entire operation. This is invaluable for debugging and gives the user clear feedback on the actions performed.
+*   **Modularity and Extensibility**: Each step of the cleanup process is a self-contained agent. This makes the system easy to maintain and extend. For example, a new agent could be added to the chain to notify the user via email, without modifying any of the existing agents.
+
+---
+
 ## The Core Philosophy: "Upstream Urgency"
 
 The foundation of this application is that true urgency flows backward from the final deadline of a project. The deadline of the last task in a dependency chain dictates the schedule for all preceding tasks. The system's core calculation is the **Latest Possible Start Date (LPSD)**—the absolute last moment a task can begin without causing a project-wide delay.
