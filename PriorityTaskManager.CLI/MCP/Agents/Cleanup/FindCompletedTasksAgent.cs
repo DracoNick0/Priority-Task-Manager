@@ -15,6 +15,14 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 
         public MCPContext Act(MCPContext context)
         {
+            context.History.Add("Finding all completed tasks...");
+
+            var allTasks = _taskManagerService.GetAllTasks();
+            var completedTasks = allTasks.Where(task => task.IsCompleted).ToList();
+
+            context.SharedState["CompletedTasks"] = completedTasks;
+            context.History.Add($"Found {completedTasks.Count} completed tasks to process.");
+
             return context;
         }
     }

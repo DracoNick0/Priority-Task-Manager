@@ -2371,3 +2371,46 @@ The MCP framework is in place. We will now create the structure for our new `cle
 1. Created the `CleanupHandler.cs` file in the `PriorityTaskManager.CLI/Handlers` directory, implementing the `ICommandHandler` interface with dependency injection for `TaskManagerService`.
 2. Created the `PriorityTaskManager.CLI/MCP/Agents/Cleanup` directory for cleanup agents.
 3. Added five agent class skeletons (`FindCompletedTasksAgent`, `ArchiveTasksAgent`, `DeleteTasksAgent`, `ReIndexTasksAgent`, `UpdateDependenciesAgent`) in the `PriorityTaskManager.CLI/MCP/Agents/Cleanup` directory, each implementing the `IAgent` interface with empty `Act` methods and dependency injection for `TaskManagerService`.
+
+# Log Entry 72
+
+## User Prompt
+
+We will now implement the logic for the first two agents in the `cleanup` command's MCP chain. This step focuses on identifying the completed tasks and safely archiving them to a separate file.
+
+**Task 1: Implement the `FindCompletedTasksAgent`**
+
+1.  Open the `FindCompletedTasksAgent.cs` file.
+2.  Inside the `Act(MCPContext context)` method, implement the following logic:
+    *   Log the start of the action to the context: `context.History.Add("Finding all completed tasks...");`
+    *   Call a method on the `_taskManagerService` to get all tasks (e.g., `GetAllTasks()`).
+    *   Use LINQ to filter this list down to only the tasks where `IsCompleted` is `true`.
+    *   Store the resulting list of completed tasks in the context's shared state: `context.SharedState["CompletedTasks"] = completedTasks;`
+    *   Log the result: `context.History.Add($"Found {completedTasks.Count} completed tasks to process.");`
+    *   Return the modified `context`.
+
+**Task 2: Add an `ArchiveTasks` Method to the Service**
+
+1.  Open `TaskManagerService.cs`.
+2.  Create a new public method `void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)`.
+3.  Inside this method, implement the logic to append the provided tasks to an `archive.json` file.
+    *   It should first check if `archive.json` exists. If it does, it should load the existing archived tasks from it.
+    *   It should then add the `tasksToArchive` to that list.
+    *   Finally, it should save the combined list back to `archive.json`.
+
+**Task 3: Implement the `ArchiveTasksAgent`**
+
+1.  Open the `ArchiveTasksAgent.cs` file.
+2.  Inside its `Act(MCPContext context)` method:
+    *   Retrieve the list of tasks from the context: `var tasksToArchive = context.SharedState["CompletedTasks"] as List<TaskItem>;`
+    *   Check if the list is null or empty. If it is, log a message like "No tasks to archive." and return the context immediately.
+    *   If there are tasks to archive, log the action: `context.History.Add($"Archiving {tasksToArchive.Count} tasks...");`
+    *   Call the new `_taskManagerService.ArchiveTasks(tasksToArchive)` method.
+    *   Log a success message to the history.
+    *   Return the `context`.
+
+### Copilot's Action
+
+1. Implemented the `Act` method in `FindCompletedTasksAgent.cs` to identify completed tasks, log the process, and store the results in the context's shared state.
+2. Added the `ArchiveTasks` method to `TaskManagerService.cs` to handle archiving tasks to `archive.json`.
+3. Implemented the `Act` method in `ArchiveTasksAgent.cs` to archive tasks using the `TaskManagerService` and log the process.
