@@ -2528,3 +2528,48 @@ This is the final agent in our MCP chain. Its purpose is to fix the dependency l
 2. Updated task dependencies, removing references to deleted tasks and mapping old IDs to new `DisplayId`s.
 3. Logged the process and the number of updated dependencies in the context's history.
 4. Saved the updated tasks to persist the changes.
+
+# Log Entry 76
+
+## User Prompt
+
+All of the individual agents for the `cleanup` command are now implemented. The final task is to wire everything together in the main `CleanupHandler`. This handler will be responsible for creating the agent chain, setting up the initial context, and executing the coordination.
+
+**Task: Implement the `CleanupHandler` Orchestration**
+
+1.  Open the `CleanupHandler.cs` file.
+2.  Inside the `Handle(string[] args)` method, implement the following logic:
+
+    *   **Step 1: User Confirmation (Safety Feature)**
+        *   This is a destructive operation, so we must ask the user for confirmation.
+        *   Print a warning message to the console, for example: "WARNING: This will permanently delete all completed tasks and re-index all remaining task IDs. This action cannot be undone."
+        *   Ask the user to type "confirm" to proceed.
+        *   Read the user's input. If it is not exactly "confirm" (case-insensitive), print an "Operation cancelled." message and `return` immediately.
+
+    *   **Step 2: Assemble the Agent Chain**
+        *   If the user confirmed, create a new `List<IAgent>` named `agentChain`.
+        *   Instantiate each of our five agents (passing the `_taskManagerService` to their constructors) and add them to the `agentChain` list **in the correct order**:
+            1.  `FindCompletedTasksAgent`
+            2.  `ArchiveTasksAgent`
+            3.  `DeleteTasksAgent`
+            4.  `ReIndexTasksAgent`
+            5.  `UpdateDependenciesAgent`
+
+    *   **Step 3: Initialize and Run the Coordination**
+        *   Create a new `MCPContext` object named `initialContext`.
+        *   Log the start of the operation in the context: `initialContext.History.Add("Cleanup command initiated by user.");`
+        *   Call the static `MCP.Coordinate` method, passing the `agentChain` and `initialContext` to it. Store the result in a `finalContext` variable.
+
+    *   **Step 4: Display the Results**
+        *   After the coordination is complete, check if `finalContext.LastError` is not null.
+            *   If there was an error, print an error message to the console.
+        *   Regardless of whether there was an error, print a "Cleanup Operation Log:" header.
+        *   Iterate through the `finalContext.History` list and print each entry to the console so the user can see a step-by-step report of what happened.
+        *   Finally, print a "Cleanup complete." message if there were no errors.
+
+### Copilot's Action
+
+1. Implemented the `Handle` method in `CleanupHandler.cs` to orchestrate the cleanup command using the MCP framework.
+2. Added user confirmation to ensure safety before proceeding with the destructive operation.
+3. Assembled the agent chain in the correct order and executed the coordination using the `MCP.Coordinate` method.
+4. Logged the operation results, including a detailed step-by-step report and error handling.
