@@ -15,6 +15,42 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 
         public MCPContext Act(MCPContext context)
         {
+            context.History.Add("Updating dependency references...");
+
+            var idMap = context.SharedState["IdMap"] as Dictionary<int, int>;
+
+            if (idMap == null || idMap.Count == 0)
+            {
+                context.History.Add("No ID mapping found; skipping dependency updates.");
+                return context;
+            }
+
+            var allTasks = _taskManagerService.GetAllTasks();
+            int updatedCount = 0;
+
+            foreach (var task in allTasks)
+            {
+                var newDependencies = new List<int>();
+
+                foreach (var dependencyId in task.Dependencies)
+                {
+                    if (idMap.TryGetValue(dependencyId, out var newId))
+                    {
+                        newDependencies.Add(newId);
+                    }
+                }
+
+                if (!newDependencies.SequenceEqual(task.Dependencies))
+                {
+                    task.Dependencies = newDependencies;
+                    updatedCount++;
+                }
+            }
+
+            _taskManagerService.SaveTasks();
+
+            context.History.Add($"Scanned all tasks and updated {updatedCount} dependency references.");
+
             return context;
         }
     }

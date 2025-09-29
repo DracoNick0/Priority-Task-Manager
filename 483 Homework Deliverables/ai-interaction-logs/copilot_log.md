@@ -2487,3 +2487,44 @@ The completed tasks have been removed. Now we must implement the core logic of t
 2. Sorted tasks by urgency and updated their `DisplayId` properties.
 3. Stored the mapping of old `Id` to new `DisplayId` in the context's shared state.
 4. Logged the process in the context's history.
+
+# Log Entry 75
+
+## User Prompt
+
+This is the final agent in our MCP chain. Its purpose is to fix the dependency links that were broken by the re-indexing process.
+
+**Task: Implement the `UpdateDependenciesAgent`**
+
+1.  Open the `UpdateDependenciesAgent.cs` file.
+2.  Inside the `Act(MCPContext context)` method, implement the following logic:
+
+    *   **Step 1: Retrieve Data from Context**
+        *   Log the start of the process: `context.History.Add("Updating dependency references...");`
+        *   Retrieve the ID map from the shared state: `var idMap = context.SharedState["IdMap"] as Dictionary<int, int>;`
+        *   Perform a safety check: If `idMap` is null or empty, log a message like "No ID mapping found; skipping dependency updates." and return the `context`.
+
+    *   **Step 2: Get All Tasks**
+        *   Call the `_taskManagerService` to get a fresh copy of all remaining tasks.
+
+    *   **Step 3: Update Dependencies**
+        *   Create a variable to count how many dependencies were updated, e.g., `int updatedCount = 0;`
+        *   Loop through each `task` in the list of all tasks.
+        *   Inside this loop, create a new list for the updated dependencies: `var newDependencies = new List<int>();`
+        *   Loop through each `dependencyId` in the current `task.Dependencies` list.
+        *   For each `dependencyId`, check if it exists as a key in the `idMap`.
+            *   If it does, it means this dependency still exists. Look up its new `DisplayId` from the map (`idMap[dependencyId]`) and add this new ID to the `newDependencies` list.
+            *   If it does not exist as a key, it means the dependency was a completed task that has been deleted. Do nothing (effectively removing it from the list).
+        *   After iterating through all of a task's old dependencies, check if the `newDependencies` list is different from the original `task.Dependencies` list. If it is, update the task's property: `task.Dependencies = newDependencies;` and increment `updatedCount`.
+
+    *   **Step 4: Save and Finalize**
+        *   Call a method on the `_taskManagerService` to save the final changes to all tasks.
+        *   Log a summary of the operation: `context.History.Add($"Scanned all tasks and updated {updatedCount} dependency references.");`
+        *   Return the `context`.
+
+### Copilot's Action
+
+1. Implemented the `Act` method in `UpdateDependenciesAgent.cs` to update dependency references based on the re-indexing ID map.
+2. Updated task dependencies, removing references to deleted tasks and mapping old IDs to new `DisplayId`s.
+3. Logged the process and the number of updated dependencies in the context's history.
+4. Saved the updated tasks to persist the changes.
