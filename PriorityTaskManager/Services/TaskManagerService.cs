@@ -10,6 +10,7 @@ namespace PriorityTaskManager.Services
         private List<TaskItem> _tasks = new List<TaskItem>();
         private List<TaskList> _lists = new List<TaskList>();
         private int _nextId = 1;
+        private int _nextDisplayId = 1;
         private int _nextListId = 1;
         private readonly IUrgencyService _urgencyService;
 
@@ -59,6 +60,8 @@ namespace PriorityTaskManager.Services
             }
             task.Id = _nextId++;
             task.EffectiveImportance = task.Importance;
+            task.DisplayId = _nextDisplayId++;
+
             // ListId should already be set by CLI layer. Do not set ListName here.
             _tasks.Add(task);
             SaveTasks();
@@ -304,6 +307,7 @@ namespace PriorityTaskManager.Services
                         }
                         _tasks = loadedTasks;
                         _nextId = data["NextId"].GetInt32();
+                        _nextDisplayId = data["NextDisplayId"].GetInt32();
                     }
                 }
                 catch
@@ -311,6 +315,7 @@ namespace PriorityTaskManager.Services
                     // If any error occurs, skip loading tasks
                     _tasks = new List<TaskItem>();
                     _nextId = 1;
+                    _nextDisplayId = 1;
                 }
             }
         }
@@ -320,7 +325,8 @@ namespace PriorityTaskManager.Services
             var data = new
             {
                 Tasks = _tasks,
-                NextId = _nextId
+                NextId = _nextId,
+                NextDisplayId = _nextDisplayId
             };
 
             File.WriteAllText(_filePath, JsonSerializer.Serialize(data));

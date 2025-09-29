@@ -9,18 +9,13 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class CompleteHandler : ICommandHandler
     {
-        private readonly TaskManagerService _service;
-
-        public CompleteHandler(TaskManagerService service)
-        {
-            _service = service;
-        }
+        public CompleteHandler() { }
 
         /// <inheritdoc/>
-        public void Execute(string[] args)
+        public void Execute(TaskManagerService service, string[] args)
         {
-            int activeListId = _service.GetActiveListId();
-            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(_service, args, activeListId);
+            int activeListId = service.GetActiveListId();
+            var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args, activeListId);
 
             if (validTaskIds.Count == 0)
             {
@@ -30,7 +25,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             foreach (var id in validTaskIds)
             {
-                if (_service.MarkTaskAsComplete(id))
+                if (service.MarkTaskAsComplete(id))
                 {
                     Console.WriteLine($"Task {id} marked as complete.");
                 }
