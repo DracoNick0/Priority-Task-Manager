@@ -2445,3 +2445,45 @@ We will now implement the agent responsible for deleting the completed tasks fro
 
 1. Added the `DeleteTasks` method to `TaskManagerService.cs` to handle batch-deleting tasks from the task list and persisting changes.
 2. Implemented the `Act` method in `DeleteTasksAgent.cs` to delete tasks using the `TaskManagerService` and log the process.
+
+# Log Entry 74
+
+## User Prompt
+
+The completed tasks have been removed. Now we must implement the core logic of the `cleanup` command: re-indexing the remaining tasks to have clean, sequential `DisplayId`s.
+
+**Task: Implement the `ReIndexTasksAgent`**
+
+1.  Open the `ReIndexTasksAgent.cs` file.
+2.  Inside the `Act(MCPContext context)` method, implement the following logic:
+
+    *   **Step 1: Get Remaining Tasks**
+        *   Log the start of the process: `context.History.Add("Re-indexing remaining tasks...");`
+        *   Call the `_taskManagerService` to get all *currently remaining* tasks.
+
+    *   **Step 2: Sort Tasks by Urgency**
+        *   Before re-indexing, you must sort the tasks so that the most urgent task gets `DisplayId = 1`.
+        *   Call the `_taskManagerService.CalculateUrgencyForAllTasks()` method to ensure all urgency scores are up-to-date.
+        *   Sort the list of remaining tasks in descending order based on their `UrgencyScore`.
+
+    *   **Step 3: Re-Index and Create ID Map**
+        *   Initialize a new `Dictionary<int, int>` named `idMap`. This will store the mapping from the old `Id` to the new `DisplayId`.
+        *   Initialize a counter variable `newDisplayId` to `1`.
+        *   Loop through the sorted list of tasks. In each iteration:
+            *   Get the task's old, unique `Id`.
+            *   Add an entry to your `idMap`: `idMap[task.Id] = newDisplayId;`
+            *   Update the task's `DisplayId` property: `task.DisplayId = newDisplayId;`
+            *   Increment the `newDisplayId` counter.
+
+    *   **Step 4: Save Changes and Update Context**
+        *   Call a method on the `_taskManagerService` to save all the changes made to the tasks (e.g., a method that calls `SaveTasks()`).
+        *   Store the crucial `idMap` in the context's shared state so the next agent can use it: `context.SharedState["IdMap"] = idMap;`
+        *   Log a summary of the operation: `context.History.Add($"Successfully re-indexed {idMap.Count} tasks.");`
+        *   Return the `context`.
+
+### Copilot's Action
+
+1. Implemented the `Act` method in `ReIndexTasksAgent.cs` to re-index remaining tasks with sequential `DisplayId`s.
+2. Sorted tasks by urgency and updated their `DisplayId` properties.
+3. Stored the mapping of old `Id` to new `DisplayId` in the context's shared state.
+4. Logged the process in the context's history.
