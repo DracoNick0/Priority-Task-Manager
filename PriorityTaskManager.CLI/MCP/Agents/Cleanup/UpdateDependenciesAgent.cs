@@ -25,7 +25,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
                 return context;
             }
 
-            var allTasks = _taskManagerService.GetAllTasks();
+            var allTasks = _taskManagerService.GetAllTasks(Program.ActiveListId);
             int updatedCount = 0;
 
             foreach (var task in allTasks)

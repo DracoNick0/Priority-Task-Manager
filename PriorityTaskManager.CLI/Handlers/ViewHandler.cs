@@ -25,7 +25,7 @@ public class ViewHandler : ICommandHandler
             return;
         }
 
-        Console.WriteLine($"\nTask Details (Id: {task.Id})");
+        Console.WriteLine($"\nTask Details (Id: {task.DisplayId})");
         Console.WriteLine($"List: {task.ListName}");
         Console.WriteLine($"Title: {task.Title}");
         Console.WriteLine($"Description: {task.Description}");

@@ -19,7 +19,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
         {
             context.History.Add("Re-indexing remaining tasks...");
 
-            var remainingTasks = _taskManagerService.GetAllTasks();
+            var remainingTasks = _taskManagerService.GetAllTasks(Program.ActiveListId);
 
             _taskManagerService.CalculateUrgencyForAllTasks();
             remainingTasks = remainingTasks.OrderByDescending(task => task.UrgencyScore).ToList();

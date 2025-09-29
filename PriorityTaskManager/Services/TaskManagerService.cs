@@ -306,7 +306,13 @@ namespace PriorityTaskManager.Services
 
         public void SaveTasks()
         {
-            // Proper implementation to save tasks
+            var data = new
+            {
+                Tasks = _tasks,
+                NextId = _nextId
+            };
+
+            File.WriteAllText(_filePath, JsonSerializer.Serialize(data));
         }
 
         private void LoadLists()
