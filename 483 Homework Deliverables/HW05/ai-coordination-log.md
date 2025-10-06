@@ -109,3 +109,60 @@ I generated a comprehensive `risk-assessment-matrix.md` file. The document inclu
 
 ---
 
+# Log Entry 14: (Claude Sonnet 4.5 new chat) 
+## User Prompt
+Please review the following documents and determine if they are aligned with each other and if there is anything that should be changed or added.
+
+(Attached a project proposal, risk assessment, and images relating to software architecture.)
+
+### Action
+Identified major alignment issues in the project proposal and risk assessment. Highlighted track mismatch, missing GoalAlignmentAgent, risk gaps, and unrealistic timeline. Recommended clarifications, risk additions, and timeline adjustments.
+
+# Log Entry 15: (Claude Sonnet 4.5)
+## User Prompt
+Please revise the project proposal and risk assessment to fix these concerns. Also, regarding the track specialization there are only four tracks we can align with: video game dev, mobile dev, data science/ML, and web dev. So, with the given, what would you do? Please also provide an ideal realistic timeline.
+
+### Action
+Revised both documents, repositioning the project under Mobile Development. Integrated the GoalAlignmentAgent into the core timeline, expanded risk matrix, extended timeline to 8 weeks, and added data validation and recovery sections.
+
+# Log Entry 16: (Claude Sonnet 4.5)
+## User Prompt
+The project timeline must be kept to 7 weeks. Please just change the relevant sections.
+
+### Action
+Condensed the plan to 7 weeks while acknowledging feasibility risks. Adjusted timeline distribution, revised feasibility analysis, updated risk matrix, and introduced scope reduction triggers to handle compressed scheduling.
+
+# Log Entry 17: (Claude Sonnet 4.5)
+## User Prompt
+How can we alter the hours of work a week to around 6. Assuming that I can use any ai's to help.
+
+### Action
+Performed workload analysis showing 6 hours/week insufficient for current scope. Presented four options: reduce scope, extend timeline, increase weekly hours, or hybrid plan. Recommended Option 1 (reduced scope) as most viable for 6 hours/week.
+
+# Log Entry 18: (Claude Sonnet 4.5)
+## User Prompt
+Thank you for your insight, lets do option 1. Thank you.
+
+### Action
+Revised all documents to reflect Option 1. Reduced scope to a 3-agent system, simplified validation/testing, rebalanced timeline for 6 hrs/week, updated risk matrix, and added new timeline analysis artifact ensuring feasibility and 85% success likelihood.
+
+---
+
+# Log Entry 19: (Gemini 2.5 Pro)
+## User Prompt
+Please review the project proposal and identify where it does not follow the assignment requirements, or where I may miss points. Do not take into account the other required deliverables.
+
+(Provided a complete, multi-page project proposal titled "Project Proposal: Priority Task Manager with Multi-Agent Coordination" and the full text for a course assignment, "Homework Assignment 5: Project Proposal - Foundation Phase Capstone".)
+
+
+### Action
+I conducted a detailed review of the user's project proposal, comparing it section-by-section against the provided assignment requirements. I identified several key areas of non-compliance and potential point loss, including: an incorrect project timeline format (Week 1-7 instead of the required Week 8-11 sprint structure), failure to use the specified checkbox format for track selection, missing specific sub-headers required by the assignment (e.g., "Demonstration Value," "Assignment 1 Connection"), and the absence of several required supplementary files mentioned in the assignment instructions (like `risk-assessment-matrix.md` and `timeline-visualization.png`). I then compiled these findings into a structured critique with actionable recommendations for each point to help the user align their document with the assignment's rubric.
+
+# Log Entry 20: (Gemini 2.5 Pro)
+## User Prompt
+Please revise the project proposal to adhere to the assignment. Please also don't concern yourself about the missing deliverables.
+
+### Action
+I edited the original project proposal text to incorporate the feedback from the previous review. Specifically, I reformatted the entire "Project Timeline" section to match the required "Week 8" through "Week 11" sprint structure. I added the required checkbox format to the "Track Specialization Identification" section and marked "Mobile Development Track" as selected. I also restructured several sections and added specific subheadings (e.g., "Demonstration Value," "Assignment 1 Connection," "Assignment 2 Evolution," etc.) to ensure the proposal's structure directly mirrored the requirements laid out in the assignment document. The revision focused exclusively on modifying the text of the proposal itself, as requested.
+
+---

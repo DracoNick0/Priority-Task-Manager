@@ -1,6 +1,6 @@
 # **Project Proposal: Priority Task Manager with Multi-Agent Coordination**
 
-**Author:** Gemini (AI Project Strategist)
+**Author:** Nicholas Santos
 **Date:** October 6, 2025
 
 ---
@@ -11,27 +11,26 @@
     *   1.1 Project Overview
     *   1.2 Vision of Success
     *   1.3 Primary Users & Use Cases
-    *   1.4 Real-World Relevance & Career Alignment
-    *   1.5 Track Specialization: Mobile Development
+    *   1.4 Portfolio Positioning
+    *   1.5 Track Specialization Identification
 
 2.  **Part 2: Technical Architecture & Multi-Agent Design**
     *   2.1 System Workflow Diagram
-    *   2.2 Multi-Agent System Design
+    *   2.2 Agent Architecture Design
     *   2.3 Agent Communication & Coordination
     *   2.4 Technical Specifications
     *   2.5 Data Storage & Persistence
-    *   2.6 Quality Assurance & Standards
+    *   2.6 Professional Practices: Data Validation & Error Recovery
+    *   2.7 Professional Practices: Quality Assurance & Standards
 
 3.  **Part 3: Individual Project Management & Development Plan**
-    *   3.1 Project Timeline: A 7-Week Plan
-    *   3.2 Personal Responsibilities & Workflow
-    *   3.3 Scope Definition
-    *   3.4 Feasibility Analysis
+    *   3.1 Timeline & Sprint Planning
+    *   3.2 Individual Development Plan
+    *   3.3 Scope & Feasibility Analysis
 
 4.  **Part 4: Foundation Phase Integration & Reflection**
-    *   4.1 Building on Previous Assignments
-    *   4.2 Integration of Core Concepts
-    *   4.3 Reflection on Skill Growth
+    *   4.1 Concept Integration
+    *   4.2 Professional Growth Demonstration
 
 ---
 
@@ -41,7 +40,7 @@
 
 Standard to-do list applications function as passive, "dumb" lists, requiring users to manually assess priorities and decide what to work on next. This manual process often leads to decision fatigue, procrastination on high-impact tasks, and a disconnect between daily actions and long-term goals. The core problem is that these applications lack context; they do not understand the user's current environment, energy levels, or overarching objectives. This project, the Priority Task Manager, aims to solve this problem by transforming a simple command-line task manager into an intelligent productivity assistant through the implementation of a multi-agent coordination system.
 
-Instead of relying on a single, rigid algorithm, the system will employ a team of cooperating software agents, each specializing in a different aspect of prioritization. A `TaskAnalyzerAgent` will evaluate task properties like deadlines and complexity, a `UserContextAgent` will consider user-defined preferences and time of day, and a `GoalAlignmentAgent` will assess how tasks contribute to larger goals. These agents will coordinate their findings through a Model Context Protocol (MCP), allowing a final `PrioritizationAgent` to synthesize their distributed intelligence into a dynamic, context-aware, and highly relevant task list.
+Instead of relying on a single, rigid algorithm, the system will employ a team of three cooperating software agents, each specializing in a different aspect of prioritization. A `TaskAnalyzerAgent` will evaluate task properties like deadlines and complexity, a `UserContextAgent` will consider time of day to match tasks with energy levels, and a `PrioritizationAgent` will synthesize their distributed intelligence into a dynamic, context-aware, and highly relevant task list through a Model Context Protocol (MCP).
 
 The primary value of this multi-agent approach lies in its adaptability and decision quality. Unlike static solutions, the Priority Task Manager will provide recommendations that are tailored to the user's immediate situation, reducing cognitive load and promoting focus on what is truly important. The project will include the ability to toggle between a "single-agent" (the existing rule-based engine) and "multi-agent" mode, allowing for a direct comparison and clear demonstration of the benefits of distributed intelligence in everyday productivity software.
 
@@ -56,28 +55,28 @@ The vision of success for this project is to create a command-line application t
     *   **Students & Researchers:** Users who need to balance long-term research goals with short-term deadlines and assignments.
     *   **Productivity Enthusiasts:** Individuals interested in leveraging advanced tools and methodologies to optimize their daily workflows.
 
-*   **Use Cases:**
+*   **Core Use Cases:**
     1.  **Daily Work Planning:** A developer starts their day by running the application. The multi-agent system considers that it's morning (a high-energy time for this user), that a major project deadline is approaching, and recommends focusing on a complex coding task that aligns with that project's goal.
     2.  **Adapting to Shifting Contexts:** In the afternoon, the user's context has changed. The `UserContextAgent` knows this is a lower-energy time. When the user asks for their priority list again, the system de-prioritizes complex coding tasks and instead suggests a series of smaller, less demanding tasks like writing documentation or responding to emails.
     3.  **Long-Term Goal Alignment:** A student has a long-term goal of "Complete Thesis." When adding tasks, they can tag tasks related to this goal. The `GoalAlignmentAgent` ensures that these tasks receive a consistent priority boost, preventing them from being perpetually overlooked in favor of more urgent but less important daily assignments.
     4.  **Direct Prioritization Comparison:** A user is unsure if the multi-agent system is working for them. They switch to "single-agent" mode, which uses a simple deadline-based algorithm. They notice that the list is less intuitive and doesn't align with their current focus, so they switch back, validating the effectiveness of the multi-agent approach.
 
-### **1.4 Real-World Relevance & Career Alignment**
+### **1.4 Portfolio Positioning**
 
-The concept of using multiple, specialized agents to solve a complex problem is a foundational pattern in modern AI and distributed systems. This approach is directly relevant to real-world applications such as supply chain optimization, financial fraud detection, and autonomous vehicle navigation, where no single algorithm can account for all variables. This project serves as a practical, small-scale implementation of this powerful paradigm.
+*   **Career Relevance:** The concept of using multiple, specialized agents to solve a complex problem is a foundational pattern in modern AI and distributed systems. This approach is directly relevant to real-world applications such as supply chain optimization, financial fraud detection, and autonomous vehicle navigation. My career goal is to work as a Software Engineer specializing in backend systems and application architecture. This project directly supports that goal by providing deep, hands-on experience in Advanced Architectural Patterns (MCP), AI Integration, and System Design.
 
-My career goal is to work as a Software Engineer specializing in backend systems and application architecture. This project directly supports that goal by providing deep, hands-on experience in:
-*   **Advanced Architectural Patterns:** Implementing a sophisticated pattern like MCP to manage complexity.
-*   **AI Integration:** Moving beyond using AI as a coding assistant to designing systems where AI components are a core part of the application logic.
-*   **System Design:** Making critical decisions about how software components communicate, handle errors, and scale.
+*   **Demonstration Value:** The most impressive feature for a potential employer will be the live, direct comparison between the "single-agent" and "multi-agent" modes. This feature provides undeniable proof of concept; it's not just a theoretical improvement but a tangible demonstration of how a sophisticated multi-agent architecture produces superior, context-aware results compared to a traditional monolithic algorithm. This clearly showcases an ability to design, build, and deploy advanced, intelligent systems.
 
-### **1.5 Track Specialization: Data Science/ML**
+### **1.5 Track Specialization Identification**
 
-This project is most directly aligned with the **Data Science/ML Track**. While it does not implement a traditional machine learning model, its core architecture is fundamentally that of a **multi-agent data processing pipeline**, a key concept in the Data Science field. The justification is as follows:
+**Primary Track Focus:**
+☐ **Game Development Track**
+☐ **Web Development Track**
+☐ **Data Science/ML Track**
+☒ **Mobile Development Track**
+☐ **Other Track**: _________________________________________________
 
-*   **Data Pipeline Architecture:** The system's primary function is to process raw input data (task properties, user profiles, goals) through a sequential pipeline of analytical agents. Each agent transforms and enriches the data, which is then synthesized into a final, value-added output (the prioritized task list). This is the exact workflow of a data science pipeline designed to produce actionable insights.
-*   **Data-Driven Agent System:** The project is a clear example of a data-driven agent system. The behavior and output of each agent are entirely determined by the data it receives from the shared `MCPContext`. The agents perform a series of micro-analyses on the data to inform a complex, synthesized decision.
-*   **Focus on Analytics over UI:** Unlike the other tracks, which are heavily focused on the user interface and platform-specific technologies (Web, Mobile, Game), this project's primary innovation is in its backend analytical engine. The core challenge is not in how the information is presented, but in how the data is processed to generate an intelligent result, which is the central focus of the Data Science/ML track.
+**Track Integration Justification**: This project aligns with the **Mobile Development Track** because it focuses on the core competencies required for building robust, professional applications on any platform. The architectural patterns (Strategy Pattern, dependency injection), state management techniques (MCPContext as a state container), and offline-first design (local JSON files) are all fundamental principles directly transferable to building sophisticated mobile applications with frameworks like .NET MAUI.
 
 ---
 
@@ -85,7 +84,7 @@ This project is most directly aligned with the **Data Science/ML Track**. While 
 
 ### **2.1 System Workflow Diagram**
 
-The following diagram illustrates the data flow when the user requests a prioritized task list in "multi-agent" mode.
+The following diagram illustrates the data flow when the user requests a prioritized task list in "multi-agent" mode. A formal version of this diagram is included in the `architecture-diagrams/` directory.
 
 ```
 [User Input: `list`] --> [CLI: ListHandler]
@@ -117,157 +116,151 @@ The following diagram illustrates the data flow when the user requests a priorit
 [TaskManagerService] --> [CLI: ListHandler] --> [Formatted Output to User]
 ```
 
-### **2.2 Multi-Agent System Design**
+### **2.2 Agent Architecture Design**
 
-The multi-agent system is designed as a cooperative, sequential workflow. Each agent enriches a shared `MCPContext` object with its analysis, building upon the work of the previous agents.
+The multi-agent system is designed as a cooperative, sequential workflow.
 
-| Agent | Role | Input (from Context) | Output (to Context) | Failure Handling |
-| :--- | :--- | :--- | :--- | :--- |
-| **`TaskAnalyzerAgent`** | Evaluates objective task properties. | The initial list of all tasks. | Adds a `Dictionary<int, AnalysisData>` to `SharedState`, containing scores for complexity and deadline proximity for each task ID. | Logs an error to `History` and terminates if the task list is missing or invalid. |
-| **`UserContextAgent`** | Considers the user's environment and preferences. | The analysis from the previous agent. A `UserProfile` object loaded from `user_profile.json`. | Adds a `Dictionary<int, ContextScores>` to `SharedState`, containing scores based on time of day and user preferences. | Logs a warning if the user profile is missing but continues the operation with default values. |
-| **`GoalAlignmentAgent`** | Assesses how tasks align with the user's long-term goals. | The analyses from previous agents. | Adds a `Dictionary<int, GoalScores>` to `SharedState`, containing scores for tasks that match the user's active goal. | Logs a warning if no active goal is set but continues the operation. |
-| **`PrioritizationAgent`** | Synthesizes all analyses into a final priority score. | All scores from the previous three agents. | Iterates through each task, calculates a final `UrgencyScore` using a weighted formula, and updates the task objects directly. | Logs an error and terminates if the input score dictionaries are malformed or missing. |
+**Agent Specifications:**
+```
+Agent Name: TaskAnalyzerAgent
+Primary Responsibility: Evaluates objective task properties like complexity and deadlines.
+Input: The initial list of all tasks from the MCPContext.
+Output: Adds a dictionary of analysis scores (complexity, deadline proximity) to the MCPContext.
+Coordination Pattern: Sequential enrichment of the shared MCPContext.
+Failure Handling: Logs an error to the MCP History and terminates coordination if the task list is invalid.
+```
+```
+Agent Name: UserContextAgent
+Primary Responsibility: Considers the user's environment and preferences (e.g., time of day).
+Input: Analysis from the previous agent and a UserProfile object from the MCPContext.
+Output: Adds a dictionary of context-based scores to the MCPContext.
+Coordination Pattern: Sequential enrichment of the shared MCPContext.
+Failure Handling: Logs a warning and uses a default profile if the user profile is missing or corrupt, allowing the system to continue.
+```
+```
+Agent Name: GoalAlignmentAgent
+Primary Responsibility: Assesses how tasks align with the user's defined long-term goals.
+Input: Analyses from previous agents and active goals from the MCPContext.
+Output: Adds a dictionary of goal alignment scores to the MCPContext.
+Coordination Pattern: Sequential enrichment of the shared MCPContext.
+Failure Handling: Logs a warning and proceeds with zero scores if no active goal is set.
+```
+```
+Agent Name: PrioritizationAgent
+Primary Responsibility: Synthesizes all analyses from previous agents into a final priority score.
+Input: All score dictionaries from the previous three agents in the MCPContext.
+Output: Updates each task object in the context with a final, calculated UrgencyScore.
+Coordination Pattern: Final aggregation and resolution of data from the shared MCPContext.
+Failure Handling: Logs an error and triggers a fallback to the single-agent mode if input scores are missing or malformed.
+```
 
-### **2.3 Agent Communication & Coordination**
+**System Coordination Pattern**:
+*   **Communication Protocol:** Communication is indirect and asynchronous, mediated by the `MCPContext` object. Agents do not communicate directly.
+*   **Conflict Resolution:** Conflicts are resolved by design. The final `PrioritizationAgent` acts as the sole arbiter, synthesizing all inputs into a final score using a weighted formula.
+*   **Scalability Considerations:** The architecture is scalable. A new agent (e.g., `LocationAgent`) can be added to the coordination chain in the `MCP.Coordinate` call without modifying any existing agents.
 
-*   **Communication Method:** All communication between agents is indirect and asynchronous, mediated by the `MCPContext` object. An agent never calls another agent directly. It reads data from the context's `SharedState`, performs its analysis, and writes its results back to the `SharedState` for subsequent agents to consume.
-*   **Coordination:** The `MCP.Coordinate` function provides the primary coordination mechanism, ensuring that the agents are executed in a predefined, logical sequence.
-*   **Conflict Resolution:** In this cooperative system, conflicts are minimal by design. Since no two agents are responsible for writing the same piece of data, there are no race conditions. The final `PrioritizationAgent` is the sole arbiter responsible for resolving the "conflict" of competing priorities by synthesizing all inputs into a final score.
-*   **Scalability:** The architecture is highly scalable from a feature perspective. Adding a new factor to the prioritization—for example, a `LocationAgent` that considers the user's physical location—would simply require creating a new agent and adding it to the coordination chain, without modifying any existing agents.
+### **2.3 Technology Stack & MCP Integration**
 
-### **2.4 Technical Specifications**
+*   **Programming Languages:** C# on .NET 8.
+*   **MCP Implementation:** The system will use the custom-built MCP framework (`IAgent`, `MCPContext`, `MCP.cs`) to orchestrate the agent sequence.
+*   **External APIs/Services:** None. The project is self-contained.
+*   **Database/Storage:** Data persistence is handled via local JSON files (`tasks.json`, `user_profile.json`).
+*   **Testing Strategy:** Unit tests for each agent will be written using xUnit. Integration tests will verify the end-to-end coordination process.
 
-*   **Language:** C#
-*   **Platform:** .NET 8
-*   **Core APIs:** No external APIs are required. The project relies on the .NET Base Class Library for file I/O, collections, and JSON serialization.
-*   **MCP Integration:** The system will leverage the custom-built MCP framework (`IAgent`, `MCPContext`, `MCP.cs`) developed in Assignment 4.
+### **2.4 Professional Practices Integration**
 
-### **2.5 Data Storage & Persistence**
-
-*   **Task Data:** Stored in a local `tasks.json` file.
-*   **List Data:** Stored in a local `lists.json` file.
-*   **User Profile Data:** A new `user_profile.json` file will be created to store user-specific context, such as preferred work times and active goals.
-*   **Archived Data:** Stored in `archive.json` via the `cleanup` command.
-
-### **2.6 Quality Assurance & Standards**
-
-*   **Testing:** All new business logic within the agents and services will be developed using a Test-Driven Development (TDD) approach. The xUnit framework will be used to write unit tests for each agent, ensuring its logic is correct in isolation.
-*   **Monitoring:** For this command-line application, monitoring consists of the rich logging provided by the MCP `History` trail, which can be output to the console to debug any prioritization decision.
-*   **Documentation:** All public methods and classes will be documented using standard C# XML comments. The project `README.md` will be updated with a comprehensive guide to the multi-agent architecture.
+*   **Error Handling:** The system uses graceful degradation. If the multi-agent coordination fails, it automatically falls back to the simpler, reliable single-agent mode.
+*   **Monitoring & Logging:** All agent actions, successes, and failures are logged to the MCP `History` trail, which can be output to the console for debugging.
+*   **Documentation Standards:** All public methods and classes will use standard C# XML comments. The project `README.md` will be updated with a guide to the multi-agent architecture.
+*   **Code Quality:** The project will adhere to standard C# coding conventions and leverage design patterns (Strategy, Dependency Injection) for maintainability.
 
 ---
 
-## **Part 3: Individual Project Management & Development Plan**
+## **Part 3: Individual Project Management & Development Planning**
 
-### **3.1 Project Timeline: A 7-Week Plan**
+### **3.1 Timeline & Sprint Planning**
 
-This project will be developed over a seven-week period, following an iterative approach. Each week is treated as a mini-sprint with a clear goal and a set of defined deliverables, ensuring steady progress and allowing for adjustments as needed.
+This project will be developed over 7 weeks, structured into the following four sprints.
 
-**Week 1: [Sprint 1: Foundational Refactoring]**
-- [ ] Define and create the `IUrgencyStrategy.cs` interface to abstract the prioritization logic.
-- [ ] Refactor the existing `UrgencyService.cs` to correctly implement the new `IUrgencyStrategy` interface.
-- [ ] Create the initial class file for the new `MultiAgentUrgencyStrategy.cs`, ensuring it also implements the interface.
-- [ ] Update `TaskManagerService` to accept an `IUrgencyStrategy` via dependency injection, decoupling it from a single implementation.
+**Week 8: [Sprint 1: Foundational Architecture & Agent Scaffolding]**
+- [ ] Define and implement `IUrgencyStrategy` interface to abstract prioritization logic.
+- [ ] Refactor existing logic into `SingleAgentStrategy.cs`.
+- [ ] Create class files for `MultiAgentUrgencyStrategy.cs` and all four agents (`TaskAnalyzer`, `UserContext`, `GoalAlignment`, `Prioritization`).
+- [ ] Update `TaskManagerService` to use dependency injection for the strategy.
+- [ ] Define the `UserProfile.cs` model and implement the service to load/save `user_profile.json`.
+- [ ] Implement data backup and JSON validation systems.
+- [ ] All existing tests must pass after refactoring.
 
-**Week 2: [Sprint 2: Multi-Agent Scaffolding]**
-- [ ] Define the C# model for the `user_profile.json` file (e.g., `UserProfile.cs`).
-- [ ] Implement the service-layer logic to load and save the user profile.
-- [ ] Create all the necessary agent class files (`TaskAnalyzerAgent.cs`, `UserContextAgent.cs`, `PrioritizationAgent.cs`).
-- [ ] Ensure all new agent classes are correctly scaffolded, implementing the `IAgent` interface and ready for logic implementation.
+**Week 9: [Sprint 2: Core Agent Implementation]**
+- [ ] Implement the full analysis logic within `TaskAnalyzerAgent.cs`.
+- [ ] Write comprehensive xUnit tests for `TaskAnalyzerAgent`.
+- [ ] Implement time-of-day and user preference logic in `UserContextAgent.cs`.
+- [ ] Implement the CLI `config` command for users to set preferences.
+- [ ] Implement `GoalAlignmentAgent.cs` to score tasks based on goal alignment.
+- [ ] Implement CLI commands for goal management (`goal add`, `goal set-active`).
+- [ ] Write unit tests for user context and goal alignment logic.
 
-**Week 3: [Sprint 3: Core Agent Implementation]**
-- [ ] Implement the full analysis logic within `TaskAnalyzerAgent.cs` to score tasks based on complexity and deadlines.
-- [ ] Implement the initial synthesis logic within `PrioritizationAgent.cs` to calculate a final score from agent inputs.
-- [ ] Write a comprehensive suite of xUnit tests to validate the logic of both the `TaskAnalyzerAgent` and `PrioritizationAgent`.
+**Week 10: [Sprint 3: System Integration & Final Agent Logic]**
+- [ ] Implement the synthesis and weighting formula logic within `PrioritizationAgent.cs`.
+- [ ] Implement failure detection and the fallback mechanism to single-agent mode.
+- [ ] Implement the `mode <strategy>` command to switch between modes and persist the choice.
+- [ ] Begin end-to-end integration testing with all agents working together in the MCP chain.
+- [ ] Fix critical bugs discovered during integration.
 
-**Week 4: [Sprint 4: User Context Implementation, Part 1]**
-- [ ] Implement the logic for the `UserContextAgent.cs` to analyze and score tasks based on the current time of day.
-- [ ] Implement the necessary CLI commands (e.g., `config set-preference`) to allow a user to define their work preferences in the `user_profile.json` file.
-- [ ] Write unit tests for the time-of-day analysis portion of the `UserContextAgent`.
+**Week 11: [Sprint 4 & Final Presentation]**
+- [ ] Final integration and testing of the complete system in both modes.
+- [ ] Complete all project documentation, including the comprehensive `README.md` update.
+- [ ] Add inline code comments and XML documentation to all public APIs.
+- [ ] Create a user guide for all new commands and features.
+- [ ] Record and edit the final demo video, focusing on the single-agent vs. multi-agent comparison.
+- [ ] Prepare the final project for submission.
 
-**Week 5: [Sprint 5: User Context Implementation, Part 2]**
-- [ ] Enhance the `UserContextAgent.cs` to incorporate the user-defined preferences from `user_profile.json` into its scoring.
-- [ ] Perform integration testing to ensure the `config` command correctly updates the profile and the agent uses the new data.
-- [ ] Write a final set of unit tests to validate the preference-based scoring logic of the `UserContextAgent`.
+### **3.2 Individual Development Plan**
 
-**Week 6: [Sprint 6: Mode Switching & Integration]**
-- [ ] Implement the new `mode <strategy>` command in the CLI to allow the user to switch between "single-agent" and "multi-agent" modes.
-- [ ] Update the main `ListHandler` to select and use the appropriate `IUrgencyStrategy` implementation based on the current mode.
-- [ ] Conduct full end-to-end testing of the entire application in both modes to ensure a seamless user experience.
+*   **Personal Role & Responsibilities:** As the sole developer, I am responsible for all aspects of the project: design, implementation, testing, and documentation.
+*   **Development Tools & Workflow:** I will use Visual Studio Code, C# on .NET 8, and Git for version control on a public GitHub repository. A `develop` branch will be used for new features, merged into `main` after testing. Copilot and Gemini will be used as AI assistants.
+*   **Development Methodology:** I will follow a personal agile methodology. The 4-sprint plan serves as the project backlog. Each week, I will break down the sprint goals into a detailed checklist. Test-Driven Development (TDD) will be used for new business logic.
 
-**Week 7: [Sprint 7: Finalization & Submission]**
-- [ ] Complete all project documentation, including the final `README.md` with the multi-agent architecture details.
-- [ ] Record and edit the final demo video, showcasing the "single-agent" vs. "multi-agent" comparison.
-- [ ] Write the final reflection paper and prepare the entire project for submission.
-
-### **3.2 Personal Responsibilities & Workflow**
-
-As the sole developer on this project, I am responsible for all aspects of its lifecycle, including design, implementation, testing, and documentation. My workflow will be structured and disciplined to ensure success.
-
-*   **Development Tools:**
-    *   **IDE:** Visual Studio Code
-    *   **Language/Platform:** C# on .NET 8
-    *   **Version Control:** Git, with regular commits to a private GitHub repository. A `develop` branch will be used for new features, which will be merged into `main` only after testing is complete.
-    *   **AI Pair Programming:** Copilot will be used for code generation and completing boilerplate tasks, directed by prompts engineered with Gemini.
-
-*   **Development Process (Agile/Individual):**
-    I will follow a personal agile methodology. The 7-week plan serves as the project backlog. Each week's goals are the "sprint backlog." I will start each week by breaking down the high-level goals into a detailed checklist of smaller, actionable tasks in a `TODO.md` file. This approach provides the flexibility of an agile process while maintaining the structure needed for an individual project. TDD will be a core part of the process, ensuring that every new piece of logic is accompanied by a corresponding test.
-
-### **3.3 Scope Definition**
-
-To ensure the project is completed successfully within the timeline, the scope is clearly defined.
+### **3.3 Scope & Feasibility Analysis**
 
 *   **Core Features (Must-Have):**
-    1.  A fully functional "multi-agent" prioritization mode that uses at least three distinct analysis agents.
-    2.  Implementation of the `IUrgencyStrategy` to allow for runtime switching between "single-agent" and "multi-agent" modes.
-    3.  A new `mode` command for the user to switch between prioritization strategies.
-    4.  A `user_profile.json` file to store at least one user preference (e.g., preferred work times).
-    5.  Comprehensive unit test coverage for all new agent logic.
-    6.  Updated README documentation explaining the new architecture.
+    1.  A functional "multi-agent" mode using all four agents.
+    2.  Runtime switching between "single-agent" and "multi-agent" modes via the `mode` command.
+    3.  A `user_profile.json` file to store user preferences and goals.
+    4.  Goal management commands (`goal add`, `goal set-active`).
+    5.  Data validation, backup/recovery, and graceful degradation on failure.
+    6.  Comprehensive unit test coverage for all new agent logic.
 
 *   **Stretch Goals (Nice-to-Have):**
-    *   Implement the `GoalAlignmentAgent` and the corresponding CLI commands to manage goals.
-    *   Add a `config` command to allow the user to change their preferences directly from the CLI.
-    *   Develop a more sophisticated weighting formula in the `PrioritizationAgent` that can be configured by the user.
+    *   Allowing users to customize the agent weighting formula via the `config` command.
+    *   Export/import functionality for user profiles.
 
-*   **Out-of-Scope:**
-    *   A graphical user interface (GUI). The project will remain a command-line application.
-    *   Integration with any external calendar or to-do list APIs (e.g., Google Calendar, Todoist).
-    *   User accounts or cloud synchronization. The application will remain a local, single-user experience.
+*   **Scope Boundaries (Out-of-Scope):**
+    *   A graphical user interface (GUI).
+    *   Integration with external APIs (e.g., Google Calendar).
+    *   User accounts or cloud synchronization.
 
-### **3.4 Feasibility Analysis**
-
-The successful completion of this project within the 7-week timeframe is highly feasible for several key reasons:
-
-1.  **Strong Foundation:** The project is not being built from scratch. It builds upon a stable, well-architected codebase with a robust MCP framework, a clean service layer, and a suite of existing unit tests.
-2.  **Modular Design:** The multi-agent architecture inherently lends itself to incremental development. Each agent is a self-contained unit that can be built, tested, and completed independently, minimizing risk and complexity.
-3.  **Clear Scope:** The scope has been tightly defined, with a clear distinction between essential features and non-essential stretch goals. This provides a clear path to a "minimum viable product" and prevents scope creep.
-4.  **Efficient Workflow:** The use of AI-assisted development tools (Copilot and Gemini) and a disciplined TDD process will significantly accelerate the implementation and validation phases, allowing more time to be spent on design and testing.
+*   **Feasibility Validation:** The 7-week timeline requires a consistent commitment of possibly over 6 hours per week. The plan is achievable because it builds upon a stable existing codebase and leverages a pre-validated architectural pattern (MCP). The primary risks are time compression and lack of buffer for unexpected issues. Mitigation involves ruthless prioritization: if a sprint's core goals are at risk, stretch goals will be abandoned, and test coverage targets may be slightly reduced to ensure core functionality is delivered.
 
 ---
 
 ## **Part 4: Foundation Phase Integration & Reflection**
 
-### **4.1 Building on Previous Assignments**
+### **4.1 Concept Integration**
 
-The Priority Task Manager project was an active development effort prior to the start of this course, with a foundational architecture and a clear vision for creating an intelligent task prioritization system. The assignments in the Foundation Phase did not serve to create this project, but rather to validate its existing workflow, enhance its architecture with formal patterns, and provide the critical mechanism to realize its ultimate vision.
+This project represents a synthesis of all concepts from the Foundation Phase.
 
-The project was already in alignment with the principles of **Assignments 1 and 2**, which focused on AI-assisted programming and AI architecture design. From its inception, I utilized an AI pair programmer (Copilot) for code generation, and the project's core architectural goal was to move beyond a simple algorithm into a more intelligent, multi-faceted system. These assignments provided a structured framework to formalize and reflect on this existing AI-augmented development process, reinforcing best practices in prompt engineering and system design.
+*   **Assignment 1 Connection:** This proposal was developed by leveraging the AI tool ecosystem explored in Assignment 1. Copilot was used for boilerplate code generation, while Gemini was used for higher-level architectural reasoning and documentation refinement, demonstrating an effective coordination of AI assistants.
+*   **Assignment 2 Evolution:** The project advances the track-specific system architecture designed in Assignment 2. The initial design was enhanced with a more sophisticated multi-agent approach, moving from a simple service architecture to a coordinated, intelligent system.
+*   **Assignment 3 Advancement:** This project expands significantly on the multi-agent coordination prototype from Assignment 3. Instead of a simple prototype, it implements a production-ready system with multiple, specialized agents that handle complex, real-world data and user context.
+*   **Assignment 4 Enhancement:** The project builds directly upon the MCP-integrated expertise from Assignment 4. The same MCP framework validated with the `cleanup` command is now elevated to become the core engine of the application's primary feature, demonstrating a deep and versatile application of the pattern.
+*   **Track-Specific Integration:** The project showcases advanced competency in the Mobile Development track by implementing platform-agnostic, professional-grade architectural patterns. Specific examples include:
+    *   **The Strategy Pattern:** The `IUrgencyStrategy` interface allows for swapping prioritization logic at runtime, a key pattern for building extensible and maintainable mobile apps.
+    *   **State Management:** The `MCPContext` object functions as a robust, transactional state container, mirroring state management challenges and solutions in mobile frameworks like Redux or React Context.
+    *   **Offline-First Design:** The application's reliance on local JSON files mirrors the critical offline-first design philosophy essential for reliable mobile user experiences.
 
-The most significant impact came from **Assignments 3 and 4**, which introduced the Model Context Protocol (MCP). The existing `cleanup` command was a planned feature, but its implementation was a perfect opportunity to integrate this new, formal pattern. Rather than building a monolithic and risky function, I implemented the MCP framework as a direct result of the course material. This assignment tangibly improved the project by adding a robust, modular, and fail-safe workflow, demonstrating a direct application of learned concepts to enhance the existing codebase.
+### **4.2 Professional Growth Demonstration**
 
-### **4.2 Integration of Core Concepts**
-
-This proposal represents a synthesis of the project's original vision with the powerful architectural patterns learned and validated during the course.
-
-*   **MCP Integration:** The successful integration of MCP for the `cleanup` command in Assignment 4 validated its power for creating transactional, auditable workflows. This proposal now elevates that pattern from a utility function to the absolute core of the application's intelligence. The very same `MCP.Coordinate` framework will be used to orchestrate the new decision-making agents, demonstrating a deep and versatile application of the concept beyond the initial assignment's requirements.
-
-*   **Multi-Agent Coordination:** The project's founding vision was to create a prioritization engine that was more intelligent than a simple, rule-based calculator. The concept of multi-agent coordination, formalized in the course, provided the ideal architectural solution to achieve this. MCP became the enabling technology—the "negotiation table"—that allows specialized agents to cooperate and contribute their unique insights, fulfilling the project's original goal in a way that is far more robust and scalable than a complex, monolithic algorithm.
-
-*   **Track-Specific Specialization (Mobile/Desktop):** The project continues to demonstrate best practices in application development. The proposed refactoring—separating the prioritization logic into swappable `IUrgencyStrategy` implementations—is a classic example of the Strategy design pattern, a cornerstone of building maintainable and extensible applications. This focus on decoupled, testable, and robust architecture is central to professional desktop and mobile development.
-
-### **4.3 Reflection on Skill Growth**
-
-My journey through the Foundation Phase has been one of enhancing a well-designed system with a more powerful architectural paradigm. My initial vision for the Priority Task Manager was always built on a foundation of sound engineering principles; the separation of concerns and a service-oriented architecture ensured the application was inherently testable and extensible. My initial plan for the intelligent prioritization engine, for example, was a modular service that could be expanded over time. However, this design had a ceiling; it was well-suited for adding more rules to a single decision-making process, but not for orchestrating multiple, distinct decision-making *components*.
-
-Assignment 4 and the introduction of the Model Context Protocol provided the key to breaking through that ceiling. MCP wasn't just a replacement for a bad design; it was an upgrade to a good one. It provided the formal structure needed to coordinate a system of cooperating agents, allowing the application's intelligence to grow in a way that was far more sophisticated than my original idea. Learning and implementing MCP enabled a crucial shift from designing a single, complex algorithm to orchestrating a symphony of simpler, specialized components. This unlocked a new level of potential for the project, allowing it to evolve from a smart task manager into a truly intelligent, multi-faceted assistant.
+*   **Skill Progression:** This project showcases a clear progression from Week 1 to Week 7. My initial vision for the project was sound but lacked the formal architectural pattern needed for true multi-agent coordination. The introduction of MCP in Assignment 4 provided the key to unlocking the project's full potential, enabling a shift from designing a single complex algorithm to orchestrating a system of simpler, specialized components.
+*   **Professional Practices:** The project will implement several industry patterns from Week 6, including **Graceful Degradation** (falling back to single-agent mode on failure) and robust **Monitoring & Logging** via the MCP History trail.
+*   **Quality Standards:** The project demonstrates professional-level development through its commitment to Test-Driven Development (TDD), comprehensive documentation (XML comments and README), and the use of established design patterns, resulting in a maintainable, extensible, and portfolio-worthy application. design patterns, resulting in a maintainable, extensible, and portfolio-worthy application.
