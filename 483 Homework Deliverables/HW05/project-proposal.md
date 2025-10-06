@@ -163,15 +163,42 @@ The multi-agent system is designed as a cooperative, sequential workflow. Each a
 
 This project will be developed over a seven-week period, following an iterative approach. Each week is treated as a mini-sprint with a clear goal and a set of defined deliverables, ensuring steady progress and allowing for adjustments as needed.
 
-| Week | Goal | Key Deliverables |
-| :--- | :--- | :--- |
-| **1** | **Foundational Refactoring & Scaffolding** | Create the `IUrgencyStrategy` interface. Refactor the existing `UrgencyService` to implement this interface. Create the new `MultiAgentUrgencyStrategy` class. Scaffold the class files for all new intelligent agents (`TaskAnalyzer`, `UserContext`, etc.) and define the models for `user_profile.json`. |
-| **2** | **Implement Task Analysis & Prioritization Agents** | Implement the full logic for the `TaskAnalyzerAgent` (scoring complexity/deadlines). Implement the final `PrioritizationAgent`, initially using a simple formula to synthesize scores. Write comprehensive unit tests for both agents. |
-| **3** | **Implement User Context Agent** | Create the `user_profile.json` file and loading logic. Implement the full logic for the `UserContextAgent` to score tasks based on time of day and user preferences. |
-| **4** | **Integrate Mode Switching** | Implement the `mode` command to switch between "single-agent" and "multi-agent" strategies. Update the `ListHandler` to use the selected strategy. Perform end-to-end integration testing. |
-| **5** | **Stretch Goal: Goal Alignment Agent** | *If time permits.* Add a `Goal` property to the `TaskItem` model. Implement the `GoalAlignmentAgent`. Create CLI commands for the user to set and view their active goal. |
-| **6** | **Documentation, Testing & Refinement** | Write the complete `README.md` documentation for the new architecture. Add XML comments to all public-facing code. Refine the prioritization formula based on testing. Ensure all unit tests are passing. |
-| **7** | **Final Demo Preparation & Project Submission** | Create the demo video script. Record and edit the final demo video. Write the final reflection paper. Prepare the project for submission. |
+**Week 1: [Sprint 1: Foundational Refactoring]**
+- [ ] Define and create the `IUrgencyStrategy.cs` interface to abstract the prioritization logic.
+- [ ] Refactor the existing `UrgencyService.cs` to correctly implement the new `IUrgencyStrategy` interface.
+- [ ] Create the initial class file for the new `MultiAgentUrgencyStrategy.cs`, ensuring it also implements the interface.
+- [ ] Update `TaskManagerService` to accept an `IUrgencyStrategy` via dependency injection, decoupling it from a single implementation.
+
+**Week 2: [Sprint 2: Multi-Agent Scaffolding]**
+- [ ] Define the C# model for the `user_profile.json` file (e.g., `UserProfile.cs`).
+- [ ] Implement the service-layer logic to load and save the user profile.
+- [ ] Create all the necessary agent class files (`TaskAnalyzerAgent.cs`, `UserContextAgent.cs`, `PrioritizationAgent.cs`).
+- [ ] Ensure all new agent classes are correctly scaffolded, implementing the `IAgent` interface and ready for logic implementation.
+
+**Week 3: [Sprint 3: Core Agent Implementation]**
+- [ ] Implement the full analysis logic within `TaskAnalyzerAgent.cs` to score tasks based on complexity and deadlines.
+- [ ] Implement the initial synthesis logic within `PrioritizationAgent.cs` to calculate a final score from agent inputs.
+- [ ] Write a comprehensive suite of xUnit tests to validate the logic of both the `TaskAnalyzerAgent` and `PrioritizationAgent`.
+
+**Week 4: [Sprint 4: User Context Implementation, Part 1]**
+- [ ] Implement the logic for the `UserContextAgent.cs` to analyze and score tasks based on the current time of day.
+- [ ] Implement the necessary CLI commands (e.g., `config set-preference`) to allow a user to define their work preferences in the `user_profile.json` file.
+- [ ] Write unit tests for the time-of-day analysis portion of the `UserContextAgent`.
+
+**Week 5: [Sprint 5: User Context Implementation, Part 2]**
+- [ ] Enhance the `UserContextAgent.cs` to incorporate the user-defined preferences from `user_profile.json` into its scoring.
+- [ ] Perform integration testing to ensure the `config` command correctly updates the profile and the agent uses the new data.
+- [ ] Write a final set of unit tests to validate the preference-based scoring logic of the `UserContextAgent`.
+
+**Week 6: [Sprint 6: Mode Switching & Integration]**
+- [ ] Implement the new `mode <strategy>` command in the CLI to allow the user to switch between "single-agent" and "multi-agent" modes.
+- [ ] Update the main `ListHandler` to select and use the appropriate `IUrgencyStrategy` implementation based on the current mode.
+- [ ] Conduct full end-to-end testing of the entire application in both modes to ensure a seamless user experience.
+
+**Week 7: [Sprint 7: Finalization & Submission]**
+- [ ] Complete all project documentation, including the final `README.md` with the multi-agent architecture details.
+- [ ] Record and edit the final demo video, showcasing the "single-agent" vs. "multi-agent" comparison.
+- [ ] Write the final reflection paper and prepare the entire project for submission.
 
 ### **3.2 Personal Responsibilities & Workflow**
 
