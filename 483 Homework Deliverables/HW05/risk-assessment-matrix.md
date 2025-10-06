@@ -1,8 +1,8 @@
-# **Risk Assessment Matrix: Priority Task Manager (Reduced Scope)**
+# **Risk Assessment Matrix: Priority Task Manager**
 
 ## **1. Introduction**
 
-This document outlines the potential risks identified for the 7-week project to implement a **three-agent** prioritization system in the Priority Task Manager at 6 hours per week. The purpose of this matrix is to proactively identify, analyze, and prepare mitigation and contingency strategies to ensure the project's successful and timely completion. The reduced scope significantly lowers overall project risk compared to the original four-agent proposal.
+This document outlines the potential risks identified for the 7-week project to implement a **three-agent** prioritization system in the Priority Task Manager at 6 hours per week. The purpose of this matrix is to proactively identify, analyze, and prepare mitigation and contingency strategies to ensure the project's successful and timely completion.
 
 ## **2. Risk Matrix**
 
@@ -54,85 +54,3 @@ This document outlines the potential risks identified for the 7-week project to 
 | **Week 5** | Multi-agent mode works and improves on single-agent | 3 integration tests (can do 2) |
 | **Week 6** | Mode switching functional, system stable | Performance optimization |
 | **Week 7** | README complete, video recorded, submission ready | Comprehensive API docs |
-
-## **6. Why This Scope is Lower Risk**
-
-Compared to the original proposal, this reduced scope significantly lowers risk:
-
-1. **50% Less Agent Complexity:** 3 agents instead of 4 (no GoalAlignment)
-2. **No External Configuration:** No user_profile.json, config commands, or goal management
-3. **Simpler Data Management:** No backup system needed—reduces failure points
-4. **Reduced Test Burden:** 50% coverage target vs 80%, fewer edge cases
-5. **Time Buffer Built In:** 42 hours of work spread across 7 weeks allows for minor overruns
-6. **AI Assistance Effective:** Simpler code means AI tools more reliable for generation
-7. **Clear Success Path:** Three working agents = successful project, no ambiguity
-
-**Overall Risk Assessment:** Low to Medium
-
-This project has a high probability of success (~85%) given the focused scope, realistic time allocation, and strong foundation. The key to success is disciplined adherence to the simplified scope and immediate adjustment if any week overruns by more than 2 hours.
-
-## **2. Risk Matrix**
-
-| ID | Risk Description | Likelihood | Impact | Risk Level | Mitigation Strategy | Contingency Plan |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **T1** | **Algorithm Complexity**<br>The prioritization formula in the `PrioritizationAgent` is difficult to balance, resulting in unintuitive or illogical task ordering that doesn't meet the project's core goal. | High | High | **Critical** | **TDD with Key Scenarios:** Develop specific unit tests for common use cases (e.g., "urgent but low-complexity" vs. "non-urgent but high-complexity").<br>**Start Simple:** Begin with a transparent, additive formula and iteratively add complexity.<br>**Configurable Weights:** Keep the weights for each agent's score in an easily accessible configuration spot for rapid tuning.<br>**Real-World Testing:** Test with actual task lists weekly to verify intuitive results. | Revert to a simpler, more predictable formula for the final deliverable. The "single-agent" mode serves as a built-in fallback to guarantee a functional, if less intelligent, prioritization engine. |
-| **T2** | **Refactoring Failure**<br>The foundational refactoring in Week 1 to introduce the `IUrgencyStrategy` interface introduces critical bugs that break existing, stable functionality. | Medium | High | **High** | **Comprehensive Test Coverage:** Rely on the existing xUnit test suite to serve as a safety net. All existing tests must pass before the refactoring is considered complete.<br>**Version Control:** Perform all refactoring on a dedicated Git branch to allow for easy review and the ability to revert completely if the changes are unstable.<br>**Incremental Changes:** Make small, testable changes rather than one large refactoring. | Revert the branch using Git. Re-approach the refactoring with a less invasive method, potentially using an adapter pattern to wrap existing code, or accept tighter coupling as a temporary trade-off to maintain the schedule. |
-| **T3** | **Unforeseen Critical Bugs**<br>A significant bug appears late in the development cycle (e.g., Week 6-7) that is difficult to diagnose and threatens a core feature, such as the mode-switching logic or agent coordination. | Medium | High | **High** | **Incremental Integration:** The weekly sprint plan is designed to integrate features as they are built, reducing the likelihood of a "big bang" integration failure at the end.<br>**Clean Code Practices:** Adherence to SOLID principles and the modular agent design makes the codebase easier to debug.<br>**Weekly Integration Tests:** Run full end-to-end tests at the end of each sprint to catch integration issues early. | Isolate the buggy feature and disable it if a fix cannot be found within 2-3 days. Deliver a functional project with the feature explicitly noted as "in-progress" rather than delivering a broken application. The buffer week (Week 8) provides time to address late-discovered bugs. |
-| **T4** | **Agent Coordination Failures**<br>The MCP coordination system produces inconsistent state, with agents receiving corrupted data or the `MCPContext` becoming invalid mid-execution. | Medium | High | **High** | **Context Validation:** Implement strict validation at each agent execution step to verify required data exists and is well-formed.<br>**Immutable Context Sections:** Design the context so completed agent outputs cannot be overwritten by subsequent agents.<br>**Audit Trail:** Use MCP's History feature extensively to track state transitions and identify where corruption occurs.<br>**Unit Tests:** Create specific tests that simulate context corruption scenarios. | Implement automatic fallback to single-agent mode when context validation fails. Log detailed diagnostic information to help identify the root cause. The single-agent mode serves as a safety net ensuring users always get a prioritized list. |
-| **D1** | **Data Integrity & File Corruption**<br>One or more JSON files (`tasks.json`, `lists.json`, `user_profile.json`) become corrupted or invalid, causing application crashes or data loss. | Medium | High | **High** | **Automatic Backups:** Implement automatic timestamped backups before every write operation. Retain the 5 most recent backups.<br>**Schema Validation:** Validate all loaded JSON against expected schemas before use.<br>**Atomic Writes:** Use temp files and atomic rename operations to prevent partial writes during crashes.<br>**Defensive Parsing:** Use try-catch blocks with detailed error messages when parsing JSON. | If corruption is detected: 1) Attempt to load the most recent backup, 2) If all backups are corrupt, initialize with empty/default data and notify the user with clear recovery instructions, 3) Preserve corrupt files in a `corrupted/` directory for potential manual recovery. |
-| **T5** | **Test Coverage Inadequacy**<br>Unit tests don't cover critical edge cases or real-world scenarios, leading to bugs that only appear during actual use, discovered too late to fix easily. | Medium | Medium | **Medium** | **Coverage Metrics:** Use code coverage tools to ensure minimum 80% coverage for all new agent code.<br>**Edge Case Documentation:** Maintain a checklist of edge cases (no deadline, past due, empty lists, no goals set, missing profiles) and ensure each has a test.<br>**Real-World Scenario Tests:** Create integration tests based on actual use cases described in the proposal.<br>**Weekly Manual Testing:** Manually test the application with realistic task lists each week. | If gaps are discovered late: prioritize fixing the most critical bugs and document known issues in the README. Use the buffer week (Week 8) to address any gaps. Accept that some edge cases may need to be handled in a future version post-submission. |
-| **PM1**| **Scope Creep**<br>The desire to add features beyond the defined core scope (e.g., trying to implement all stretch goals) jeopardizes the 8-week timeline. | Medium | High | **High** | **Strict Adherence to Plan:** Rigorously follow the defined weekly sprints and core feature list.<br>**Backlog Management:** Document all new ideas or feature requests in a separate "Post-Launch" list to avoid distraction.<br>**Weekly Review:** At the start of each week, review the goals to ensure they align with the core scope.<br>**Definition of Done:** Clearly define what "done" means for each sprint and resist adding "just one more thing." | If a new feature is deemed absolutely essential, formally de-scope a core feature of equivalent effort. The primary goal is a finished, polished product within the timeframe. Stretch goals remain strictly optional and only attempted if time permits after all core features are complete. |
-| **PM2**| **Schedule Slippage**<br>A sprint's deliverables take longer than the allotted week, causing a domino effect on the rest of the schedule. | **Very High** | **Critical** | **CRITICAL** | **Granular Task Breakdown:** Break each weekly goal into a checklist of small, daily tasks with hour estimates.<br>**Front-Load Complexity:** The project plan intentionally places the most complex refactoring and agent logic in the earlier weeks (Weeks 1-3).<br>**Daily Progress Tracking:** Review progress daily. If >4 hours behind by Friday, trigger immediate scope reduction.<br>**No Buffer Week:** Unlike 8-week plans, there is zero margin for error. Every delay must be addressed immediately.<br>**Efficient Tooling:** Leverage AI development tools to accelerate boilerplate and common code patterns.<br>**Pre-Defined Cut Points:** Week 4 checkpoint determines if GoalAlignment stays or goes. | **Immediate Scope Reduction Protocol:**<br>- Day 2 behind: Work 4-6 extra hours over weekend to catch up<br>- Day 3+ behind: Cut test coverage targets from 70% to 60%<br>- Week 3 misses deadline: Move GoalAlignmentAgent to stretch goal permanently<br>- Week 5 misses deadline: Simplify PrioritizationAgent formula to basic weighted sum<br>- Week 6 misses deadline: Reduce documentation requirements to bare minimum<br>**Accept that missing deadlines = reduced scope, not working longer hours indefinitely.** |
-| **PM3**| **Tool Dependency**<br>The AI code generation tools (Copilot, Gemini) are unavailable or produce low-quality code, slowing down the development pace. | Low | Medium | **Low** | **Manual Proficiency:** Maintain proficiency in writing all code manually. The AI tools are accelerators, not crutches.<br>**Critical Review:** All AI-generated code must be thoroughly reviewed and understood before being committed to the codebase.<br>**Fallback Ready:** Be prepared to switch to fully manual development at any time without panic. | Revert to a fully manual coding workflow. The timeline has buffer built in, but non-essential tasks (like extensive documentation beyond core requirements) might be simplified to compensate for the reduced velocity. Focus on core functionality over polish if time becomes tight. |
-| **PM4**| **Personal Factors**<br>Unexpected personal circumstances (illness, family emergency, other coursework conflicts) disrupt the development schedule. | Medium | High | **High** | **Front-Loading:** Schedule the most critical and complex work in the first 6 weeks when disruption is less costly.<br>**Buffer Week:** Week 8 provides cushion for unexpected delays.<br>**Modular Design:** Because agents are independent, partial completion of a sprint still provides value.<br>**Regular Backups:** Git commits ensure no work is ever lost if development must pause. | If significant disruption occurs: 1) Immediately reassess scope and prioritize absolutely essential features, 2) Communicate with instructor about potential extension if needed, 3) Lean heavily on the single-agent fallback—even if multi-agent isn't fully polished, a working application can be delivered, 4) Use the buffer week to catch up after disruption resolves. |
-
-## **3. Risk Mitigation Timeline**
-
-To proactively manage risks throughout the project lifecycle, specific risk mitigation activities are scheduled:
-
-| Week | Risk Mitigation Activities |
-| :--- | :--- |
-| **Week 1** | - Complete all refactoring on a feature branch with full test validation before merging<br>- Establish backup system for all JSON files<br>- Set up daily progress tracking system<br>- **CRITICAL: Must complete on time - no week 8 buffer exists** |
-| **Week 2** | - Implement and test JSON validation and error recovery<br>- Verify backup/restore functionality works correctly<br>- **CHECKPOINT: If Week 1 slipped, reduce test count targets for all agents** |
-| **Week 3** | - Conduct first real-world testing session with actual task lists<br>- Evaluate test coverage metrics (target 70% minimum)<br>- **CHECKPOINT: If TaskAnalyzer incomplete, move GoalAlignment to stretch goal** |
-| **Week 4** | - **CRITICAL MID-PROJECT CHECKPOINT:** Assess overall progress<br>- If >2 days behind schedule, immediately cut GoalAlignmentAgent<br>- Test graceful degradation scenarios<br>- Make formal go/no-go decision on goal features |
-| **Week 5** | - Integration testing of completed agents<br>- If PrioritizationAgent formula proves complex, simplify immediately<br>- **CHECKPOINT: If behind, reduce integration test count from 5 to 3** |
-| **Week 6** | - Mode switching must be completed by Wednesday<br>- Thursday-Friday reserved for critical bug fixes only<br>- **CHECKPOINT: Feature freeze - no new features, bugs only** |
-| **Week 7** | - Monday-Wednesday: Final bug fixes<br>- Thursday-Sunday: Documentation and video<br>- **NO FEATURE WORK - Submission prep only** |
-
-## **4. Risk Response Decision Matrix**
-
-This matrix provides quick decision guidance when risks materialize:
-
-| Situation | Response |
-| :--- | :--- |
-| A sprint is 1-2 days behind | Work extra hours for 2-3 days, simplify non-critical tasks in current sprint |
-| A sprint is 3+ days behind | De-scope a lower-priority feature from next sprint, move to stretch goals |
-| Critical bug found in Week 6-7 | Allocate up to 3 days to fix; if unfixable, disable feature and document |
-| Test coverage below 70% | Stop new feature development, write tests until >80% before proceeding |
-| Data corruption detected | Must be fixed immediately before any other work; triggers use of buffer time |
-| Multi-agent coordination unstable | Simplify formula, reduce agent complexity, or deliver with single-agent as primary mode |
-| Behind schedule in Week 7 | Immediately move all stretch goals to post-submission; focus only on core features |
-| Personal emergency | Pause development, communicate with instructor, use buffer week for recovery |
-
-## **5. Success Criteria & Quality Gates**
-
-Each week has defined quality gates that must be met before proceeding to the next sprint. **In a 7-week timeline, missing any gate by >2 days requires immediate scope reduction.**
-
-- **Week 1:** All existing tests pass, no regressions introduced, backup system functional
-- **Week 2:** JSON validation works, backup/restore tested successfully, all agents scaffolded  
-- **Week 3:** TaskAnalyzerAgent has >70% test coverage and produces logical scores, UserContext time logic working
-- **Week 4:** UserContextAgent complete with preference handling, goal commands functional (or GoalAlignment cut from scope)
-- **Week 5:** PrioritizationAgent produces better results than single-agent in >3 test scenarios, all agents integrated
-- **Week 6:** Mode switching works correctly, all critical bugs fixed, system stable
-- **Week 7:** Documentation complete to minimum standards, demo video recorded, submission ready
-
-## **6. Lessons Learned & Continuous Improvement**
-
-Throughout the project, maintain a `LESSONS.md` file documenting:
-- What risks materialized and how they were handled
-- Which mitigation strategies were most effective
-- What unexpected challenges arose
-- What would be done differently in future projects
-
-This continuous learning approach ensures that even if risks materialize, they provide valuable experience for future work.
