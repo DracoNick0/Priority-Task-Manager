@@ -1,1 +1,0 @@
-"Complete record of coordination decisions and rationale"
