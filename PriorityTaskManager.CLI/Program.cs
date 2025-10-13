@@ -23,8 +23,8 @@ namespace PriorityTaskManager.CLI
 		/// <param name="args">Command-line arguments passed to the application.</param>
 		static void Main(string[] args)
 		{
-			var urgencyService = new SingleAgentStrategy();
-			var service = new TaskManagerService(urgencyService);
+			var urgencyStrategy = new SingleAgentStrategy();
+			var service = new TaskManagerService(urgencyStrategy);
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 

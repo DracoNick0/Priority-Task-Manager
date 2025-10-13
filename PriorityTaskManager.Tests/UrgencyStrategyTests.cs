@@ -15,5 +15,15 @@ namespace PriorityTaskManager.Tests
             // Act & Assert
             Assert.IsAssignableFrom<IUrgencyStrategy>(urgencyService);
         }
+
+        [Fact]
+        public void MultiAgentUrgencyStrategy_Should_ImplementIUrgencyStrategy()
+        {
+            // Arrange
+            var multiAgentStrategy = new MultiAgentUrgencyStrategy();
+
+            // Act & Assert
+            Assert.IsAssignableFrom<IUrgencyStrategy>(multiAgentStrategy);
+        }
     }
 }

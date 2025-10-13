@@ -45,7 +45,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         public void CalculateUrgencyForAllTasks()
         {
-            _urgencyStrategy.CalculateUrgency(_tasks);
+            _tasks = _urgencyStrategy.CalculateUrgency(_tasks);
         }
 
         /// <summary>
