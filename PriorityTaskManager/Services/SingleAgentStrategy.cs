@@ -4,9 +4,9 @@ using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.Services
 {
-    public class UrgencyService : IUrgencyService
+    public class SingleAgentStrategy : IUrgencyStrategy
     {
-        public void CalculateUrgencyForAllTasks(List<TaskItem> tasks)
+        public List<TaskItem> CalculateUrgency(List<TaskItem> tasks)
         {
             foreach (var task in tasks)
             {
@@ -51,6 +51,8 @@ namespace PriorityTaskManager.Services
             {
                 CalculateLpsdRecursive(task, tasks, today, successorMap, visited);
             }
+
+            return tasks;
         }
 
         private int CalculateLpsdRecursive(TaskItem task, List<TaskItem> allTasks, DateTime today, Dictionary<int, List<TaskItem>> successorMap, HashSet<int> visited)

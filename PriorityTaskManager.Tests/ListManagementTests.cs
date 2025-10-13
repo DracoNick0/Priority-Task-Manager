@@ -18,8 +18,8 @@ namespace PriorityTaskManager.Tests
         {
             File.Delete(TestTasksFile);
             File.Delete(TestListsFile);
-            var urgencyService = new UrgencyService();
-            _service = new TaskManagerService(urgencyService, TestTasksFile, TestListsFile);
+            var urgencyStrategy = new UrgencyService(); // Updated to use IUrgencyStrategy
+            _service = new TaskManagerService(urgencyStrategy, TestTasksFile, TestListsFile);
         }
 
         public void Dispose()
@@ -104,6 +104,7 @@ namespace PriorityTaskManager.Tests
             _service.UpdateList(list);
 
             var updatedList = _service.GetListByName("Work");
+            Assert.NotNull(updatedList); // Ensure updatedList is not null
             Assert.Equal(SortOption.Alphabetical, updatedList.SortOption);
         }
     }

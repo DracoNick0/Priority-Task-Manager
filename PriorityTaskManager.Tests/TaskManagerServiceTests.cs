@@ -20,8 +20,8 @@ namespace PriorityTaskManager.Tests
         {
             File.Delete(TestTasksFile);
             File.Delete(TestListsFile);
-            var urgencyService = new UrgencyService();
-            _service = new TaskManagerService(urgencyService, TestTasksFile, TestListsFile);
+            var urgencyStrategy = new UrgencyService();
+            _service = new TaskManagerService(urgencyStrategy, TestTasksFile, TestListsFile);
         }
 
         public void Dispose()
@@ -85,7 +85,7 @@ namespace PriorityTaskManager.Tests
 
             _service.AddTask(task);
 
-            Assert.Equal(1, _service.GetAllTasks(1).Count()); // Verify against the default list ID
+            Assert.Single(_service.GetAllTasks(1)); // Verify against the default list ID
         }
 
         /// <summary>

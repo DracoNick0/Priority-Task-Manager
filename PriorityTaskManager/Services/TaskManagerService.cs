@@ -12,17 +12,17 @@ namespace PriorityTaskManager.Services
         private int _nextId = 1;
         private int _nextDisplayId = 1;
         private int _nextListId = 1;
-        private readonly IUrgencyService _urgencyService;
+        private readonly IUrgencyStrategy _urgencyStrategy;
 
         /// <summary>
         /// Initializes a new instance of the TaskManagerService class with specified file paths.
         /// </summary>
-        /// <param name="urgencyService">The urgency service used to calculate task urgency.</param>
+        /// <param name="urgencyStrategy">The urgency strategy used to calculate task urgency.</param>
         /// <param name="tasksFilePath">The file path for storing tasks.</param>
         /// <param name="listsFilePath">The file path for storing lists.</param>
-        public TaskManagerService(IUrgencyService urgencyService, string tasksFilePath, string listsFilePath)
+        public TaskManagerService(IUrgencyStrategy urgencyStrategy, string tasksFilePath, string listsFilePath)
         {
-            _urgencyService = urgencyService;
+            _urgencyStrategy = urgencyStrategy;
             _filePath = Path.GetFullPath(tasksFilePath);
             _listFilePath = Path.GetFullPath(listsFilePath);
             LoadTasks();
@@ -32,20 +32,20 @@ namespace PriorityTaskManager.Services
         /// <summary>
         /// Initializes a new instance of the TaskManagerService class with default file paths.
         /// </summary>
-        /// <param name="urgencyService">The urgency service used to calculate task urgency.</param>
-        public TaskManagerService(IUrgencyService urgencyService)
-            : this(urgencyService,
+        /// <param name="urgencyStrategy">The urgency strategy used to calculate task urgency.</param>
+        public TaskManagerService(IUrgencyStrategy urgencyStrategy)
+            : this(urgencyStrategy,
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
         {
         }
 
         /// <summary>
-        /// Calculates urgency for all tasks using the urgency service.
+        /// Calculates urgency for all tasks using the urgency strategy.
         /// </summary>
         public void CalculateUrgencyForAllTasks()
         {
-            _urgencyService.CalculateUrgencyForAllTasks(_tasks);
+            _urgencyStrategy.CalculateUrgency(_tasks);
         }
 
         /// <summary>
