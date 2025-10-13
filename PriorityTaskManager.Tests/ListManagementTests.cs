@@ -18,7 +18,7 @@ namespace PriorityTaskManager.Tests
         {
             File.Delete(TestTasksFile);
             File.Delete(TestListsFile);
-            var urgencyStrategy = new UrgencyService(); // Updated to use IUrgencyStrategy
+            var urgencyStrategy = new SingleAgentStrategy(); // Updated to use IUrgencyStrategy
             _service = new TaskManagerService(urgencyStrategy, TestTasksFile, TestListsFile);
         }
 

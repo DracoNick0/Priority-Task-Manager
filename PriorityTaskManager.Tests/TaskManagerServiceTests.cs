@@ -20,7 +20,7 @@ namespace PriorityTaskManager.Tests
         {
             File.Delete(TestTasksFile);
             File.Delete(TestListsFile);
-            var urgencyStrategy = new UrgencyService();
+            var urgencyStrategy = new SingleAgentStrategy();
             _service = new TaskManagerService(urgencyStrategy, TestTasksFile, TestListsFile);
         }
 

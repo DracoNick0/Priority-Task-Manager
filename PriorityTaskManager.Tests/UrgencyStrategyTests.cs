@@ -7,10 +7,10 @@ namespace PriorityTaskManager.Tests
     public class UrgencyStrategyTests
     {
         [Fact]
-        public void UrgencyService_Should_ImplementIUrgencyStrategy()
+        public void SingleAgentStrategy_Should_ImplementIUrgencyStrategy()
         {
             // Arrange
-            var urgencyService = new UrgencyService();
+            var urgencyService = new SingleAgentStrategy();
 
             // Act & Assert
             Assert.IsAssignableFrom<IUrgencyStrategy>(urgencyService);
