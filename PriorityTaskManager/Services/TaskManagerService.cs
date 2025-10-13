@@ -258,7 +258,7 @@ namespace PriorityTaskManager.Services
             }
 
             _lists.Remove(listToDelete);
-            _tasks.RemoveAll(task => task.ListName.Equals(listName, StringComparison.OrdinalIgnoreCase));
+            _tasks.RemoveAll(task => task.ListId == listToDelete.Id);
 
             SaveLists();
             SaveTasks();

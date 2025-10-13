@@ -69,7 +69,7 @@ namespace PriorityTaskManager.Tests
         {
             // Ensure a clean state for this test
             // Remove all existing tasks
-            foreach (var existing in _service.GetAllTasks("General")) // Specify the default list name
+            foreach (var existing in _service.GetAllTasks(1)) // Specify the default list ID
             {
                 _service.DeleteTask(existing.Id);
             }
@@ -80,12 +80,12 @@ namespace PriorityTaskManager.Tests
                 Importance = 8,
                 DueDate = DateTime.Now.AddDays(1),
                 IsCompleted = false,
-                ListName = "General" // Assign the default list name
+                ListId = 1 // Assign the default list ID
             };
 
             _service.AddTask(task);
 
-            Assert.Equal(1, _service.GetAllTasks("General").Count()); // Verify against the default list
+            Assert.Equal(1, _service.GetAllTasks(1).Count()); // Verify against the default list ID
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace PriorityTaskManager.Tests
         [Fact]
         public void GetTaskById_ShouldReturnCorrectTask_WhenTaskExists()
         {
-            var task = new TaskItem { Title = "A", Description = "B", Importance = 2, DueDate = DateTime.Now, IsCompleted = false };
+            var task = new TaskItem { Title = "A", Description = "B", Importance = 2, DueDate = DateTime.Now, IsCompleted = false, ListId = 1 };
             _service.AddTask(task);
             var found = _service.GetTaskById(task.Id);
             Assert.NotNull(found);
