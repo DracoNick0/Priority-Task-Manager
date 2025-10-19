@@ -7,12 +7,15 @@ namespace PriorityTaskManager.Services
     {
         private readonly string _filePath;
         private readonly string _listFilePath;
+        private readonly string _userProfileFilePath = "user_profile.json";
         private List<TaskItem> _tasks = new List<TaskItem>();
         private List<TaskList> _lists = new List<TaskList>();
         private int _nextId = 1;
         private int _nextDisplayId = 1;
         private int _nextListId = 1;
         private readonly IUrgencyStrategy _urgencyStrategy;
+    private UserProfile? _userProfile;
+    public UserProfile UserProfile => _userProfile!;
 
         /// <summary>
         /// Initializes a new instance of the TaskManagerService class with specified file paths.
@@ -27,6 +30,7 @@ namespace PriorityTaskManager.Services
             _listFilePath = Path.GetFullPath(listsFilePath);
             LoadTasks();
             LoadLists();
+            LoadUserProfile();
         }
 
         /// <summary>
@@ -38,6 +42,34 @@ namespace PriorityTaskManager.Services
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
         {
+        }
+
+        private void SaveUserProfile()
+        {
+            var json = JsonSerializer.Serialize(_userProfile);
+            File.WriteAllText(_userProfileFilePath, json);
+        }
+
+        private void LoadUserProfile()
+        {
+            if (File.Exists(_userProfileFilePath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(_userProfileFilePath);
+                    _userProfile = JsonSerializer.Deserialize<UserProfile>(json) ?? new UserProfile();
+                }
+                catch
+                {
+                    _userProfile = new UserProfile();
+                    SaveUserProfile();
+                }
+            }
+            else
+            {
+                _userProfile = new UserProfile();
+                SaveUserProfile();
+            }
         }
 
         /// <summary>
