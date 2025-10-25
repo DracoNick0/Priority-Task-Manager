@@ -7,3 +7,6 @@ tasks.json
 lists.json
 archive.json
 user_profile.json
+
+# Ignore ai interaction logs
+ai-interaction-log.md
