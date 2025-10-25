@@ -21,7 +21,51 @@ namespace PriorityTaskManager.Models
             ListName = "General";
             Dependencies = new List<int>();
             UrgencyScore = 0;
+            
+            // Advanced scheduling defaults
+            IsPinned = false;
+            Complexity = 1.0;
+            Points = 0.0;
+            BeforePadding = null;
+            AfterPadding = null;
+            ScheduledStartTime = null;
+            ScheduledEndTime = null;
         }
+
+        /// <summary>
+        /// Gets or sets whether the task is pinned and should not be rescheduled automatically.
+        /// </summary>
+        public bool IsPinned { get; set; }
+
+        /// <summary>
+        /// Gets or sets the complexity of the task (arbitrary scale, default 1.0).
+        /// </summary>
+        public double Complexity { get; set; }
+
+        /// <summary>
+        /// Gets or sets the point value of the task (for gamification or effort tracking).
+        /// </summary>
+        public double Points { get; set; }
+
+        /// <summary>
+        /// Gets or sets the required padding before the task (e.g., setup time).
+        /// </summary>
+        public TimeSpan? BeforePadding { get; set; }
+
+        /// <summary>
+        /// Gets or sets the required padding after the task (e.g., cooldown time).
+        /// </summary>
+        public TimeSpan? AfterPadding { get; set; }
+
+        /// <summary>
+        /// Gets or sets the scheduled start time for the task (if assigned).
+        /// </summary>
+        public DateTime? ScheduledStartTime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the scheduled end time for the task (if assigned).
+        /// </summary>
+        public DateTime? ScheduledEndTime { get; set; }
 
         /// <summary>
         /// The name of the list this task belongs to.
