@@ -12,22 +12,14 @@ namespace PriorityTaskManager.Tests
     public class TaskFunctionalityTests : IDisposable
     {
         private readonly TaskManagerService _service;
-        private readonly string _uniqueTestId = Guid.NewGuid().ToString();
-        private string TestTasksFile => $"test_tasks_{_uniqueTestId}.json";
-        private string TestListsFile => $"test_lists_{_uniqueTestId}.json";
 
         public TaskFunctionalityTests()
         {
-            File.Delete(TestTasksFile);
-            File.Delete(TestListsFile);
-            _service = new TaskManagerService(new SingleAgentStrategy(), TestTasksFile, TestListsFile);
+            var mockPersistence = new MockPersistenceService();
+            _service = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
         }
 
-        public void Dispose()
-        {
-            File.Delete(TestTasksFile);
-            File.Delete(TestListsFile);
-        }
+        public void Dispose() { }
 
         /// <summary>
         /// Verifies that CalculateUrgency sets the urgency score to 0 for completed tasks.

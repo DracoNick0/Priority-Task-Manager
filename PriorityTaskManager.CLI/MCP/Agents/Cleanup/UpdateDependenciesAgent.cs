@@ -47,7 +47,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
                 }
             }
 
-            _taskManagerService.SaveTasks();
+            _taskManagerService.SaveAll();
 
             context.History.Add($"Scanned all tasks and updated {updatedCount} dependency references.");
 

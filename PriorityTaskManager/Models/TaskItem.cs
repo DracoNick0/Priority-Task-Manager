@@ -6,6 +6,38 @@ namespace PriorityTaskManager.Models
     public class TaskItem
     {
         /// <summary>
+        /// Creates a deep copy of this TaskItem.
+        /// </summary>
+        public TaskItem Clone()
+        {
+            return new TaskItem
+            {
+                Id = this.Id,
+                Title = this.Title,
+                Description = this.Description,
+                Importance = this.Importance,
+                EffectiveImportance = this.EffectiveImportance,
+                DueDate = this.DueDate,
+                IsCompleted = this.IsCompleted,
+                EstimatedDuration = this.EstimatedDuration,
+                Progress = this.Progress,
+                ListName = this.ListName,
+                Dependencies = new List<int>(this.Dependencies),
+                UrgencyScore = this.UrgencyScore,
+                LatestPossibleStartDate = this.LatestPossibleStartDate,
+                ListId = this.ListId,
+                DisplayId = this.DisplayId,
+                // Advanced scheduling
+                IsPinned = this.IsPinned,
+                Complexity = this.Complexity,
+                Points = this.Points,
+                BeforePadding = this.BeforePadding,
+                AfterPadding = this.AfterPadding,
+                ScheduledStartTime = this.ScheduledStartTime,
+                ScheduledEndTime = this.ScheduledEndTime
+            };
+        }
+        /// <summary>
         /// Initializes a new instance of the TaskItem class.
         /// </summary>
         public TaskItem()

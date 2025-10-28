@@ -23,8 +23,14 @@ namespace PriorityTaskManager.CLI
 		/// <param name="args">Command-line arguments passed to the application.</param>
 		static void Main(string[] args)
 		{
+
 			var urgencyStrategy = new SingleAgentStrategy();
-			var service = new TaskManagerService(urgencyStrategy);
+			// Set up file paths relative to the CLI project directory
+			var tasksFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tasks.json");
+			var listsFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "lists.json");
+			var userProfileFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "user_profile.json");
+			var persistenceService = new PersistenceService(tasksFilePath, listsFilePath, userProfileFilePath);
+			var service = new TaskManagerService(urgencyStrategy, persistenceService);
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 

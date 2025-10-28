@@ -9,14 +9,13 @@ namespace PriorityTaskManager.Tests
 {
     public class TaskModelPersistenceTests
     {
-        [Fact(Skip = "File locking issue.")]
+        [Fact]
         public void NewTaskItemProperties_ArePersistedCorrectly()
         {
             // Arrange
-            var tempFile = Path.GetTempFileName();
-            var tempListFile = Path.GetTempFileName();
             var strategy = new SingleAgentStrategy();
-            var service = new TaskManagerService(strategy, tempFile, tempListFile);
+            var mockPersistence = new MockPersistenceService();
+            var service = new TaskManagerService(strategy, mockPersistence);
 
             var now = DateTime.UtcNow;
             var task = new TaskItem
@@ -33,8 +32,8 @@ namespace PriorityTaskManager.Tests
 
             // Act
             service.AddTask(task);
-            // Reload service to force deserialization
-            var serviceReloaded = new TaskManagerService(strategy, tempFile, tempListFile);
+            // Simulate reload by creating a new service with the same mockPersistence
+            var serviceReloaded = new TaskManagerService(strategy, mockPersistence);
             var loadedTask = serviceReloaded.GetTaskById(1);
 
             // Assert
@@ -46,10 +45,6 @@ namespace PriorityTaskManager.Tests
             Assert.Equal(task.AfterPadding, loadedTask.AfterPadding);
             Assert.Equal(task.ScheduledStartTime, loadedTask.ScheduledStartTime);
             Assert.Equal(task.ScheduledEndTime, loadedTask.ScheduledEndTime);
-
-            // Cleanup
-            File.Delete(tempFile);
-            File.Delete(tempListFile);
         }
     }
 }

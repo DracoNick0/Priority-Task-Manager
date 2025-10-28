@@ -9,55 +9,27 @@ namespace PriorityTaskManager.Tests
 {
     public class UserProfileTests : IDisposable
     {
-        private readonly string _profileFilePath = "user_profile.json";
+        public UserProfileTests() { }
+        public void Dispose() { }
 
-        public UserProfileTests()
+        [Fact]
+        public void TaskManagerService_ShouldCreateDefaultProfile_WhenNoProfileExists()
         {
-            // Cleanup before each test
-            if (File.Exists(_profileFilePath))
-                File.Delete(_profileFilePath);
-        }
-
-        public void Dispose()
-        {
-            // Cleanup after each test
-            if (File.Exists(_profileFilePath))
-                File.Delete(_profileFilePath);
+            var mockPersistence = new MockPersistenceService();
+            var service = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
+            var profile = service.UserProfile;
+            Assert.NotNull(profile);
+            Assert.Equal(UrgencyMode.SingleAgent, profile.ActiveUrgencyMode);
         }
 
         [Fact]
-        public void TaskManagerService_ShouldCreateDefaultProfile_WhenFileDoesNotExist()
+        public void TaskManagerService_ShouldLoadExistingProfile_WhenProfileExists()
         {
-            // Arrange
-            Assert.False(File.Exists(_profileFilePath));
-
-            // Act
-            var service = new TaskManagerService(new SingleAgentStrategy());
-
-            // Assert
-            Assert.True(File.Exists(_profileFilePath));
-            var json = File.ReadAllText(_profileFilePath);
-            var profile = JsonSerializer.Deserialize<UserProfile>(json);
-            Assert.NotNull(profile);
-            Assert.Equal(UrgencyMode.SingleAgent, profile!.ActiveUrgencyMode);
-        }
-
-        [Fact(Skip = "This passes when run by a user, but fails when run through copilot - file locking issue.")]
-        public void TaskManagerService_ShouldLoadExistingProfile_WhenFileExists()
-        {
-            // Arrange
-            var profile = new UserProfile { ActiveUrgencyMode = UrgencyMode.MultiAgent };
-            var json = JsonSerializer.Serialize(profile);
-            File.WriteAllText(_profileFilePath, json);
-
-            // Act
-            var service = new TaskManagerService(new SingleAgentStrategy());
-
-            // Assert
+            var initialData = new DataContainer { UserProfile = new UserProfile { ActiveUrgencyMode = UrgencyMode.MultiAgent } };
+            var mockPersistence = new MockPersistenceService(initialData);
+            var service = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
             var loadedProfile = service.UserProfile;
             Assert.Equal(UrgencyMode.MultiAgent, loadedProfile.ActiveUrgencyMode);
         }
-
-    // No longer needed: public getter is now available.
     }
 }

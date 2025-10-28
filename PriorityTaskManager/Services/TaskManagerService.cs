@@ -5,79 +5,48 @@ namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
-        private readonly string _filePath;
-        private readonly string _listFilePath;
-        private readonly string _userProfileFilePath = "user_profile.json";
-        private List<TaskItem> _tasks = new List<TaskItem>();
-        private List<TaskList> _lists = new List<TaskList>();
-        private int _nextId = 1;
-        private int _nextDisplayId = 1;
-        private int _nextListId = 1;
         private readonly IUrgencyStrategy _urgencyStrategy;
-    private UserProfile? _userProfile;
-    public UserProfile UserProfile => _userProfile!;
+        private readonly IPersistenceService _persistenceService;
+        private DataContainer _data;
+        public UserProfile UserProfile => _data.UserProfile;
 
         /// <summary>
-        /// Initializes a new instance of the TaskManagerService class with specified file paths.
+        /// Saves all current data to persistent storage.
+        /// </summary>
+        public void SaveAll()
+        {
+            SaveData();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the TaskManagerService class with the given persistence and urgency strategies.
         /// </summary>
         /// <param name="urgencyStrategy">The urgency strategy used to calculate task urgency.</param>
-        /// <param name="tasksFilePath">The file path for storing tasks.</param>
-        /// <param name="listsFilePath">The file path for storing lists.</param>
-        public TaskManagerService(IUrgencyStrategy urgencyStrategy, string tasksFilePath, string listsFilePath)
+        /// <param name="persistenceService">The persistence service for loading and saving data.</param>
+        public TaskManagerService(IUrgencyStrategy urgencyStrategy, IPersistenceService persistenceService)
         {
             _urgencyStrategy = urgencyStrategy;
-            _filePath = Path.GetFullPath(tasksFilePath);
-            _listFilePath = Path.GetFullPath(listsFilePath);
-            LoadTasks();
-            LoadLists();
-            LoadUserProfile();
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the TaskManagerService class with default file paths.
-        /// </summary>
-        /// <param name="urgencyStrategy">The urgency strategy used to calculate task urgency.</param>
-        public TaskManagerService(IUrgencyStrategy urgencyStrategy)
-            : this(urgencyStrategy,
-                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "tasks.json"),
-                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "lists.json"))
-        {
-        }
-
-        private void SaveUserProfile()
-        {
-            var json = JsonSerializer.Serialize(_userProfile);
-            File.WriteAllText(_userProfileFilePath, json);
-        }
-
-        private void LoadUserProfile()
-        {
-            if (File.Exists(_userProfileFilePath))
+            _persistenceService = persistenceService;
+            _data = _persistenceService.LoadData();
+            // Ensure at least one default list exists
+            if (_data.Lists == null || _data.Lists.Count == 0)
             {
-                try
+                _data.Lists = new List<TaskList>
                 {
-                    var json = File.ReadAllText(_userProfileFilePath);
-                    _userProfile = JsonSerializer.Deserialize<UserProfile>(json) ?? new UserProfile();
-                }
-                catch
-                {
-                    _userProfile = new UserProfile();
-                    SaveUserProfile();
-                }
-            }
-            else
-            {
-                _userProfile = new UserProfile();
-                SaveUserProfile();
+                    new TaskList { Id = 1, Name = "General", SortOption = SortOption.Default }
+                };
+                _data.NextListId = 2;
             }
         }
+
+        private void SaveData() => _persistenceService.SaveData(_data);
 
         /// <summary>
         /// Calculates urgency for all tasks using the urgency strategy.
         /// </summary>
         public void CalculateUrgencyForAllTasks()
         {
-            _tasks = _urgencyStrategy.CalculateUrgency(_tasks);
+            _data.Tasks = _urgencyStrategy.CalculateUrgency(_data.Tasks);
         }
 
         /// <summary>
@@ -90,13 +59,11 @@ namespace PriorityTaskManager.Services
             {
                 throw new ArgumentException("Task title cannot be empty.");
             }
-            task.Id = _nextId++;
+            task.Id = _data.NextTaskId++;
             task.EffectiveImportance = task.Importance;
-            task.DisplayId = _nextDisplayId++;
-
-            // ListId should already be set by CLI layer. Do not set ListName here.
-            _tasks.Add(task);
-            SaveTasks();
+            task.DisplayId = _data.NextDisplayId++;
+            _data.Tasks.Add(task);
+            SaveData();
         }
 
         /// <summary>
@@ -106,13 +73,12 @@ namespace PriorityTaskManager.Services
         /// <returns>An enumerable collection of tasks.</returns>
         public IEnumerable<TaskItem> GetAllTasks(int listId)
         {
-            return _tasks.Where(task => task.ListId == listId);
+            return _data.Tasks.Where(task => task.ListId == listId);
         }
 
         public List<TaskItem> GetAllTasks()
         {
-            // Placeholder implementation
-            return new List<TaskItem>();
+            return new List<TaskItem>(_data.Tasks);
         }
 
         /// <summary>
@@ -122,7 +88,7 @@ namespace PriorityTaskManager.Services
         /// <returns>The task if found; otherwise, null.</returns>
         public TaskItem? GetTaskById(int id)
         {
-            return _tasks.Find(t => t.Id == id);
+            return _data.Tasks.Find(t => t.Id == id);
         }
 
         /// <summary>
@@ -133,7 +99,7 @@ namespace PriorityTaskManager.Services
         /// <returns>The task if found; otherwise, null.</returns>
         public TaskItem? GetTaskByDisplayId(int displayId, int listId)
         {
-            return _tasks.FirstOrDefault(t => t.DisplayId == displayId && t.ListId == listId);
+            return _data.Tasks.FirstOrDefault(t => t.DisplayId == displayId && t.ListId == listId);
         }
 
         /// <summary>
@@ -147,7 +113,7 @@ namespace PriorityTaskManager.Services
             {
                 throw new ArgumentException("Task title cannot be empty.");
             }
-            var existingTask = _tasks.Find(t => t.Id == updatedTask.Id);
+            var existingTask = _data.Tasks.Find(t => t.Id == updatedTask.Id);
 
             if (existingTask == null)
                 return false;
@@ -162,7 +128,7 @@ namespace PriorityTaskManager.Services
             existingTask.IsCompleted = updatedTask.IsCompleted;
             existingTask.Dependencies = new List<int>(updatedTask.Dependencies);
 
-            SaveTasks();
+            SaveData();
 
             return true;
         }
@@ -174,15 +140,11 @@ namespace PriorityTaskManager.Services
         /// <returns>True if the task was deleted successfully; otherwise, false.</returns>
         public bool DeleteTask(int id)
         {
-            var task = _tasks.Find(t => t.Id == id);
-
+            var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
                 return false;
-
-            _tasks.Remove(task);
-
-            SaveTasks();
-
+            _data.Tasks.Remove(task);
+            SaveData();
             return true;
         }
 
@@ -193,10 +155,8 @@ namespace PriorityTaskManager.Services
         public void DeleteTasks(IEnumerable<TaskItem> tasksToDelete)
         {
             var taskIdsToDelete = new HashSet<int>(tasksToDelete.Select(task => task.Id));
-
-            _tasks.RemoveAll(task => taskIdsToDelete.Contains(task.Id));
-
-            SaveTasks();
+            _data.Tasks.RemoveAll(task => taskIdsToDelete.Contains(task.Id));
+            SaveData();
         }
 
         /// <summary>
@@ -205,7 +165,7 @@ namespace PriorityTaskManager.Services
         /// <returns>The total number of tasks.</returns>
         public int GetTaskCount()
         {
-            return _tasks.Count;
+            return _data.Tasks.Count;
         }
 
         /// <summary>
@@ -215,15 +175,11 @@ namespace PriorityTaskManager.Services
         /// <returns>True if the task was marked as complete; otherwise, false.</returns>
         public bool MarkTaskAsComplete(int id)
         {
-            var task = _tasks.Find(t => t.Id == id);
-
+            var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
                 return false;
-
             task.IsCompleted = true;
-
-            SaveTasks();
-
+            SaveData();
             return true;
         }
 
@@ -234,11 +190,11 @@ namespace PriorityTaskManager.Services
         /// <returns>True if the task was marked as incomplete; otherwise, false.</returns>
         public bool MarkTaskAsIncomplete(int id)
         {
-            var task = _tasks.Find(t => t.Id == id);
+            var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
                 return false;
             task.IsCompleted = false;
-            SaveTasks();
+            SaveData();
             return true;
         }
 
@@ -248,13 +204,13 @@ namespace PriorityTaskManager.Services
         /// <param name="list">The TaskList object to add.</param>
         public void AddList(TaskList list)
         {
-            if (_lists.Any(l => l.Name.Equals(list.Name, StringComparison.OrdinalIgnoreCase)))
+            if (_data.Lists.Any(l => l.Name.Equals(list.Name, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException($"A list with the name '{list.Name}' already exists.");
             }
-            list.Id = _nextListId++;
-            _lists.Add(list);
-            SaveLists();
+            list.Id = _data.NextListId++;
+            _data.Lists.Add(list);
+            SaveData();
         }
 
         /// <summary>
@@ -264,7 +220,7 @@ namespace PriorityTaskManager.Services
         /// <returns>The task list if found; otherwise, null.</returns>
         public TaskList? GetListByName(string listName)
         {
-            return _lists.FirstOrDefault(l => l.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
+            return _data.Lists.FirstOrDefault(l => l.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -273,7 +229,7 @@ namespace PriorityTaskManager.Services
         /// <returns>An enumerable collection of task lists.</returns>
         public IEnumerable<TaskList> GetAllLists()
         {
-            return new List<TaskList>(_lists);
+            return new List<TaskList>(_data.Lists);
         }
 
         /// <summary>
@@ -282,18 +238,14 @@ namespace PriorityTaskManager.Services
         /// <param name="listName">The name of the task list to delete.</param>
         public void DeleteList(string listName)
         {
-            var listToDelete = _lists.FirstOrDefault(list => list.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
-
+            var listToDelete = _data.Lists.FirstOrDefault(list => list.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
             if (listToDelete == null)
             {
                 return;
             }
-
-            _lists.Remove(listToDelete);
-            _tasks.RemoveAll(task => task.ListId == listToDelete.Id);
-
-            SaveLists();
-            SaveTasks();
+            _data.Lists.Remove(listToDelete);
+            _data.Tasks.RemoveAll(task => task.ListId == listToDelete.Id);
+            SaveData();
         }
 
         /// <summary>
@@ -302,122 +254,15 @@ namespace PriorityTaskManager.Services
         /// <param name="updatedList">The updated task list object.</param>
         public void UpdateList(TaskList updatedList)
         {
-            var existingList = _lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
+            var existingList = _data.Lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
             if (existingList != null)
             {
                 existingList.SortOption = updatedList.SortOption;
-                SaveLists();
+                SaveData();
             }
         }
 
-        private void LoadTasks()
-        {
-            if (File.Exists(_filePath))
-            {
-                try
-                {
-                    var json = File.ReadAllText(_filePath);
-                    var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
-
-                    if (data != null && data.ContainsKey("Tasks") && data.ContainsKey("NextId"))
-                    {
-                        var rawTasks = data["Tasks"].GetRawText();
-                        var loadedTasks = new List<TaskItem>();
-                        try
-                        {
-                            loadedTasks = JsonSerializer.Deserialize<List<TaskItem>>(rawTasks) ?? new List<TaskItem>();
-                        }
-                        catch (ArgumentException)
-                        {
-                            // Skip all tasks if deserialization fails due to invalid title
-                            loadedTasks = new List<TaskItem>();
-                        }
-                        // Initialize EffectiveImportance for loaded tasks
-                        foreach (var t in loadedTasks)
-                        {
-                            t.EffectiveImportance = t.Importance;
-                        }
-                        _tasks = loadedTasks;
-                        _nextId = data["NextId"].GetInt32();
-                        _nextDisplayId = data["NextDisplayId"].GetInt32();
-                    }
-                }
-                catch
-                {
-                    // If any error occurs, skip loading tasks
-                    _tasks = new List<TaskItem>();
-                    _nextId = 1;
-                    _nextDisplayId = 1;
-                }
-            }
-        }
-
-        public void SaveTasks()
-        {
-            var data = new
-            {
-                Tasks = _tasks,
-                NextId = _nextId,
-                NextDisplayId = _nextDisplayId
-            };
-
-            File.WriteAllText(_filePath, JsonSerializer.Serialize(data));
-        }
-
-        private void LoadLists()
-        {
-            if (File.Exists(_listFilePath))
-            {
-                try
-                {
-                    var json = File.ReadAllText(_listFilePath);
-                    var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
-                    if (data != null && data.ContainsKey("Lists"))
-                    {
-                        var rawLists = data["Lists"].GetRawText();
-                        _lists = JsonSerializer.Deserialize<List<TaskList>>(rawLists) ?? new List<TaskList>();
-                        if (_lists.Count > 0)
-                        {
-                            _nextListId = _lists.Max(l => l.Id) + 1;
-                        }
-                        else
-                        {
-                            _nextListId = 1;
-                        }
-                        if (data.ContainsKey("NextListId"))
-                        {
-                            _nextListId = Math.Max(_nextListId, data["NextListId"].GetInt32());
-                        }
-                    }
-                    else
-                    {
-                        _lists = new List<TaskList>();
-                        _nextListId = 1;
-                    }
-                }
-                catch
-                {
-                    _lists = new List<TaskList>();
-                    _nextListId = 1;
-                }
-            }
-            else
-            {
-                var defaultList = new TaskList { Id = _nextListId++, Name = "General", SortOption = SortOption.Default };
-                _lists.Add(defaultList);
-                SaveLists();
-            }
-        }
-
-        private void SaveLists()
-        {
-            var data = new
-            {
-                Lists = _lists,
-                NextListId = _nextListId
-            };
-            File.WriteAllText(_listFilePath, JsonSerializer.Serialize(data));
-        }
+        // ...existing code...
 
         /// <summary>
         /// Checks if adding the given dependencies to the specified task would create a circular dependency.
@@ -443,7 +288,7 @@ namespace PriorityTaskManager.Services
             if (visited.Contains(currentId))
                 return false;
             visited.Add(currentId);
-            var currentTask = _tasks.Find(t => t.Id == currentId);
+            var currentTask = _data.Tasks.Find(t => t.Id == currentId);
             if (currentTask == null)
                 return false;
             foreach (var depId in currentTask.Dependencies)
@@ -478,7 +323,7 @@ namespace PriorityTaskManager.Services
             if (visited.Contains(currentId))
                 return false;
             visited.Add(currentId);
-            var currentTask = _tasks.Find(t => t.Id == currentId);
+            var currentTask = _data.Tasks.Find(t => t.Id == currentId);
             if (currentTask == null)
                 return false;
             foreach (var depId in currentTask.Dependencies)
@@ -495,18 +340,15 @@ namespace PriorityTaskManager.Services
         /// <param name="tasksToArchive">The tasks to archive.</param>
         public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
         {
+            // This method should be moved to PersistenceService in a future refactor.
             const string archiveFilePath = "archive.json";
-
             List<TaskItem> archivedTasks = new List<TaskItem>();
-
             if (File.Exists(archiveFilePath))
             {
                 var existingData = File.ReadAllText(archiveFilePath);
                 archivedTasks = JsonSerializer.Deserialize<List<TaskItem>>(existingData) ?? new List<TaskItem>();
             }
-
             archivedTasks.AddRange(tasksToArchive);
-
             var updatedData = JsonSerializer.Serialize(archivedTasks);
             File.WriteAllText(archiveFilePath, updatedData);
         }
@@ -518,7 +360,7 @@ namespace PriorityTaskManager.Services
         public int GetActiveListId()
         {
             // Placeholder implementation: Return the first list's ID or 0 if no lists exist.
-            return _lists.FirstOrDefault()?.Id ?? 0;
+            return _data.Lists.FirstOrDefault()?.Id ?? 0;
         }
     }
 }

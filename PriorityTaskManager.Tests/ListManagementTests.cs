@@ -10,22 +10,14 @@ namespace PriorityTaskManager.Tests
     public class ListManagementTests : IDisposable
     {
         private readonly TaskManagerService _service;
-        private readonly string _uniqueTestId = Guid.NewGuid().ToString();
-        private string TestTasksFile => $"test_tasks_{_uniqueTestId}.json";
-        private string TestListsFile => $"test_lists_{_uniqueTestId}.json";
 
         public ListManagementTests()
         {
-            File.Delete(TestTasksFile);
-            File.Delete(TestListsFile);
-            _service = new TaskManagerService(new SingleAgentStrategy(), TestTasksFile, TestListsFile);
+            var mockPersistence = new MockPersistenceService();
+            _service = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
         }
 
-        public void Dispose()
-        {
-            File.Delete(TestTasksFile);
-            File.Delete(TestListsFile);
-        }
+        public void Dispose() { }
 
         [Fact]
         public void TaskManagerService_ShouldCreateDefaultGeneralList_OnFirstLoad()
