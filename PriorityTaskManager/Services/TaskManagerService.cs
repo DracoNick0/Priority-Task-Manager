@@ -42,7 +42,7 @@ namespace PriorityTaskManager.Services
             }
         }
 
-        private void SaveData() => _persistenceService.SaveData(_data);
+        public void SaveData() => _persistenceService.SaveData(_data);
 
         /// <summary>
         /// Calculates urgency for all tasks using the urgency strategy.

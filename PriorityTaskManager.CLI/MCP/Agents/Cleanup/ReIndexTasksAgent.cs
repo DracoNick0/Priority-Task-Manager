@@ -34,7 +34,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
                 newDisplayId++;
             }
 
-            _taskManagerService.SaveAll();
+            _taskManagerService.SaveData();
 
             context.SharedState["IdMap"] = idMap;
             context.History.Add($"Successfully re-indexed {idMap.Count} tasks.");
