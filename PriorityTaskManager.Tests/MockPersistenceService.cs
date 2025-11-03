@@ -59,7 +59,11 @@ namespace PriorityTaskManager.Tests
 
         private UserProfile CloneUserProfile(UserProfile u) => new UserProfile
         {
-            ActiveUrgencyMode = u.ActiveUrgencyMode
+            ActiveUrgencyMode = u.ActiveUrgencyMode,
+            WorkStartTime = u.WorkStartTime,
+            WorkEndTime = u.WorkEndTime,
+            WorkDays = new List<DayOfWeek>(u.WorkDays),
+            DesiredBreatherDuration = u.DesiredBreatherDuration
         };
     }
 }

@@ -5,6 +5,14 @@ namespace PriorityTaskManager.Services
 {
     public class TaskManagerService
     {
+        /// <summary>
+        /// Saves the user profile to persistent storage.
+        /// </summary>
+        public void SaveUserProfile()
+        {
+            SaveData();
+        }
+
         private readonly IUrgencyStrategy _urgencyStrategy;
         private readonly IPersistenceService _persistenceService;
         private DataContainer _data;

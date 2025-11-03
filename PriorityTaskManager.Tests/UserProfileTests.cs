@@ -9,6 +9,33 @@ namespace PriorityTaskManager.Tests
 {
     public class UserProfileTests : IDisposable
     {
+        [Fact]
+        public void ShouldCorrectlyPersistSchedulingPreferences()
+        {
+            // Arrange
+            var mockPersistence = new MockPersistenceService();
+            var service = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
+            var profile = service.UserProfile;
+
+            // Set hypothetical scheduling preferences (these properties do not exist yet)
+            profile.WorkStartTime = new TimeOnly(8, 30);
+            profile.WorkEndTime = new TimeOnly(18, 0);
+            profile.WorkDays = new List<DayOfWeek> { DayOfWeek.Saturday, DayOfWeek.Sunday };
+            profile.DesiredBreatherDuration = TimeSpan.FromMinutes(30);
+
+            // Act
+            service.SaveUserProfile();
+            // Simulate reloading from persistence
+            var reloadedService = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
+            var loadedProfile = reloadedService.UserProfile;
+
+            // Assert
+            Assert.Equal(new TimeOnly(8, 30), loadedProfile.WorkStartTime);
+            Assert.Equal(new TimeOnly(18, 0), loadedProfile.WorkEndTime);
+            Assert.Equal(new List<DayOfWeek> { DayOfWeek.Saturday, DayOfWeek.Sunday }, loadedProfile.WorkDays);
+            Assert.Equal(TimeSpan.FromMinutes(30), loadedProfile.DesiredBreatherDuration);
+        }
+
         public UserProfileTests() { }
         public void Dispose() { }
 
