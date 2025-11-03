@@ -15,16 +15,16 @@ namespace PriorityTaskManager.Tests
             // Arrange
             var mockPersistence = new MockPersistenceService();
             var service = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
-            var profile = service.UserProfile;
-
-            // Set hypothetical scheduling preferences (these properties do not exist yet)
-            profile.WorkStartTime = new TimeOnly(8, 30);
-            profile.WorkEndTime = new TimeOnly(18, 0);
-            profile.WorkDays = new List<DayOfWeek> { DayOfWeek.Saturday, DayOfWeek.Sunday };
-            profile.DesiredBreatherDuration = TimeSpan.FromMinutes(30);
+            var updatedProfile = new UserProfile
+            {
+                WorkStartTime = new TimeOnly(8, 30),
+                WorkEndTime = new TimeOnly(18, 0),
+                WorkDays = new List<DayOfWeek> { DayOfWeek.Saturday, DayOfWeek.Sunday },
+                DesiredBreatherDuration = TimeSpan.FromMinutes(30)
+            };
 
             // Act
-            service.SaveUserProfile();
+            service.UpdateUserProfile(updatedProfile);
             // Simulate reloading from persistence
             var reloadedService = new TaskManagerService(new SingleAgentStrategy(), mockPersistence);
             var loadedProfile = reloadedService.UserProfile;

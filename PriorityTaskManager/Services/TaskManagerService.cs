@@ -6,10 +6,12 @@ namespace PriorityTaskManager.Services
     public class TaskManagerService
     {
         /// <summary>
-        /// Saves the user profile to persistent storage.
+        /// Updates the user profile and persists the change.
         /// </summary>
-        public void SaveUserProfile()
+        /// <param name="updatedProfile">The new user profile to persist.</param>
+        public void UpdateUserProfile(UserProfile updatedProfile)
         {
+            _data.UserProfile = updatedProfile;
             SaveData();
         }
 
@@ -18,13 +20,6 @@ namespace PriorityTaskManager.Services
         private DataContainer _data;
         public UserProfile UserProfile => _data.UserProfile;
 
-        /// <summary>
-        /// Saves all current data to persistent storage.
-        /// </summary>
-        public void SaveAll()
-        {
-            SaveData();
-        }
 
         /// <summary>
         /// Initializes a new instance of the TaskManagerService class with the given persistence and urgency strategies.
