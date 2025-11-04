@@ -53,9 +53,15 @@ namespace PriorityTaskManager.Services.Agents
                     var totalDuration = TimeSpan.FromTicks(totalDurationTicks);
                     if (totalDuration > totalAvailableTime)
                     {
-                        // Remove lowest-importance task
-                        var minImportance = tentativeSchedule.Min(t => t.Importance);
-                        var toRemove = tentativeSchedule.First(t => t.Importance == minImportance);
+                        // Remove lowest-importance unpinned task
+                        var unpinned = tentativeSchedule.Where(t => !t.IsPinned).ToList();
+                        if (unpinned.Count == 0)
+                        {
+                            // All tasks are pinned, cannot remove any
+                            break;
+                        }
+                        var minImportance = unpinned.Min(t => t.Importance);
+                        var toRemove = unpinned.First(t => t.Importance == minImportance);
                         tentativeSchedule.Remove(toRemove);
                         if (toRemove == taskToTry)
                             break; // Can't schedule this task
@@ -68,9 +74,15 @@ namespace PriorityTaskManager.Services.Agents
                         // Valid schedule
                         break;
                     }
-                    // Due date violated: remove lowest-importance task
-                    var minImp = tentativeSchedule.Min(t => t.Importance);
-                    var removeTask = tentativeSchedule.First(t => t.Importance == minImp);
+                    // Due date violated: remove lowest-importance unpinned task
+                    var unpinnedDue = tentativeSchedule.Where(t => !t.IsPinned).ToList();
+                    if (unpinnedDue.Count == 0)
+                    {
+                        // All tasks are pinned, cannot remove any
+                        break;
+                    }
+                    var minImp = unpinnedDue.Min(t => t.Importance);
+                    var removeTask = unpinnedDue.First(t => t.Importance == minImp);
                     tentativeSchedule.Remove(removeTask);
                     if (removeTask == taskToTry)
                         break; // Can't schedule this task
