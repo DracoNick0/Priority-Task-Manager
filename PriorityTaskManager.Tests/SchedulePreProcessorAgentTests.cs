@@ -33,11 +33,17 @@ namespace PriorityTaskManager.Tests
             Assert.NotNull(scheduleWindow.AvailableSlots);
             Assert.Equal(2, scheduleWindow.AvailableSlots.Count);
 
-            // Check the first slot is for the next Monday
+            // Dynamically find the next available workday from today
             var now = DateTime.Now;
-            var nextMonday = now.Date.AddDays(((int)DayOfWeek.Monday - (int)now.DayOfWeek + 7) % 7);
-            var expectedStart = nextMonday.Add(userProfile.WorkStartTime.ToTimeSpan());
-            var expectedEnd = nextMonday.Add(userProfile.WorkEndTime.ToTimeSpan());
+            var workDays = userProfile.WorkDays.OrderBy(d => d).ToList();
+            int daysToNextWorkDay = Enumerable.Range(0, 7)
+                .Select(offset => new { Offset = offset, Day = now.AddDays(offset).DayOfWeek })
+                .Where(x => workDays.Contains(x.Day) && (x.Offset > 0 || workDays.Contains(now.DayOfWeek)))
+                .Select(x => x.Offset)
+                .First();
+            var nextWorkDay = now.Date.AddDays(daysToNextWorkDay);
+            var expectedStart = nextWorkDay.Add(userProfile.WorkStartTime.ToTimeSpan());
+            var expectedEnd = nextWorkDay.Add(userProfile.WorkEndTime.ToTimeSpan());
             Assert.Equal(expectedStart, scheduleWindow.AvailableSlots[0].StartTime);
             Assert.Equal(expectedEnd, scheduleWindow.AvailableSlots[0].EndTime);
         }
