@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Xunit;
 using PriorityTaskManager.Models;
+using PriorityTaskManager.Services.Helpers;
 
 namespace PriorityTaskManager.Tests
 {
