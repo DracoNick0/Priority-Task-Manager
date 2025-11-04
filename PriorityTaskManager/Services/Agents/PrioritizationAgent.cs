@@ -2,8 +2,16 @@ using PriorityTaskManager.MCP;
 
 namespace PriorityTaskManager.Services.Agents
 {
+    using PriorityTaskManager.Services.Helpers;
     public class PrioritizationAgent : IAgent
     {
+        private readonly DependencyGraphHelper _dependencyGraphHelper;
+
+        public PrioritizationAgent(DependencyGraphHelper? dependencyGraphHelper = null)
+        {
+            _dependencyGraphHelper = dependencyGraphHelper ?? new DependencyGraphHelper();
+        }
+
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("PrioritizationAgent execution started.");

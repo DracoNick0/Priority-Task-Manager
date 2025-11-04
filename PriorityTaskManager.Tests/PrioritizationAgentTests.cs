@@ -5,10 +5,49 @@ using PriorityTaskManager.Models;
 using PriorityTaskManager.MCP;
 using PriorityTaskManager.Services.Agents;
 
+using PriorityTaskManager.Services.Helpers;
+
 namespace PriorityTaskManager.Tests
 {
     public class PrioritizationAgentTests
     {
+        [Fact]
+        public void Act_ShouldRejectFullChainAndRePlan_WhenDependencyIsImpossible()
+        {
+            // Arrange
+            var task1 = new TaskItem { Id = 1, IsPinned = true, EstimatedDuration = TimeSpan.FromHours(20), Title = "Impossible Pinned" };
+            var task2 = new TaskItem { Id = 2, Dependencies = new List<int> { 1 }, Title = "Dependent on Impossible" };
+            var task3 = new TaskItem { Id = 3, EstimatedDuration = TimeSpan.FromHours(2), Title = "Valid 1" };
+            var task4 = new TaskItem { Id = 4, EstimatedDuration = TimeSpan.FromHours(3), Title = "Valid 2" };
+            var allTasks = new List<TaskItem> { task1, task2, task3, task4 };
+
+            var context = new MCPContext();
+            context.SharedState["Tasks"] = allTasks;
+            context.SharedState["TotalAvailableTime"] = TimeSpan.FromHours(8);
+
+            var helper = new DependencyGraphHelper();
+            var agent = new PrioritizationAgent(helper);
+
+            // Act
+            agent.Act(context);
+
+            // Assert
+            Assert.True(context.SharedState.ContainsKey("Tasks"));
+            var finalSchedule = context.SharedState["Tasks"] as List<TaskItem>;
+            Assert.NotNull(finalSchedule);
+            Assert.Equal(2, finalSchedule.Count);
+            Assert.Contains(finalSchedule, t => t.Id == 3);
+            Assert.Contains(finalSchedule, t => t.Id == 4);
+            Assert.DoesNotContain(finalSchedule, t => t.Id == 1);
+            Assert.DoesNotContain(finalSchedule, t => t.Id == 2);
+
+            Assert.True(context.SharedState.ContainsKey("UnschedulableTasks"));
+            var unschedulable = context.SharedState["UnschedulableTasks"] as List<TaskItem>;
+            Assert.NotNull(unschedulable);
+            Assert.Equal(2, unschedulable.Count);
+            Assert.Contains(unschedulable, t => t.Id == 1);
+            Assert.Contains(unschedulable, t => t.Id == 2);
+        }
         [Fact]
         public void Act_ShouldNeverRemovePinnedTask_EvenWithLowImportance()
         {
