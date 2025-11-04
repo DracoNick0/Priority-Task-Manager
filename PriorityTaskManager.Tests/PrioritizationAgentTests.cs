@@ -48,6 +48,7 @@ namespace PriorityTaskManager.Tests
             Assert.Contains(unschedulable, t => t.Id == 1);
             Assert.Contains(unschedulable, t => t.Id == 2);
         }
+        
         [Fact]
         public void Act_ShouldNeverRemovePinnedTask_EvenWithLowImportance()
         {
