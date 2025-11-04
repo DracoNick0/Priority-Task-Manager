@@ -9,6 +9,66 @@ namespace PriorityTaskManager.Tests
 {
     public class PrioritizationAgentTests
     {
+        [Fact]
+        public void Act_ShouldNeverRemovePinnedTask_EvenWithLowImportance()
+        {
+            // Arrange
+            var helper = new WorkdayTimeHelper(DateTime.Today);
+            var scheduleWindow = new ScheduleWindow
+            {
+                AvailableSlots = new List<TimeSlot>
+                {
+                    new TimeSlot
+                    {
+                        StartTime = helper.OffsetToDateTime(TimeSpan.Zero),
+                        EndTime = helper.OffsetToDateTime(TimeSpan.FromHours(10))
+                    }
+                }
+            };
+
+            var taskA = new TaskItem
+            {
+                Title = "Task A",
+                Importance = 1,
+                EstimatedDuration = TimeSpan.FromHours(5),
+                IsPinned = true
+            };
+            var taskB = new TaskItem
+            {
+                Title = "Task B",
+                Importance = 5,
+                EstimatedDuration = TimeSpan.FromHours(5),
+                IsPinned = false
+            };
+            var taskC = new TaskItem
+            {
+                Title = "Task C",
+                Importance = 10,
+                EstimatedDuration = TimeSpan.FromHours(1),
+                DueDate = helper.OffsetToDateTime(TimeSpan.FromHours(1)) // Today at 10 AM
+            };
+            var tasks = new List<TaskItem> { taskA, taskB, taskC };
+
+            var context = new MCPContext();
+            context.SharedState["Tasks"] = tasks;
+            context.SharedState["TotalAvailableTime"] = TimeSpan.FromHours(10);
+            context.SharedState["AvailableScheduleWindow"] = scheduleWindow;
+
+            var agent = new PrioritizationAgent();
+
+            // Act
+            agent.Act(context);
+
+            // Assert
+            Assert.True(context.SharedState.ContainsKey("Tasks"));
+            var result = context.SharedState["Tasks"] as List<TaskItem>;
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count); // Only two tasks should be scheduled
+            Assert.Contains(result, t => t.Title == "Task A"); // Pinned task must remain
+            Assert.Contains(result, t => t.Title == "Task C"); // New valid task must be scheduled
+            Assert.DoesNotContain(result, t => t.Title == "Task B"); // Unpinned task should be removed
+        }
+
         // Simple helper to translate TimeSpan offset into DateTime for a workday (9 AM - 5 PM)
         private class WorkdayTimeHelper
         {
