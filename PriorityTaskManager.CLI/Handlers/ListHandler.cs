@@ -80,17 +80,34 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
                 Console.WriteLine("Scheduling complete.\n");
 
-                // Show colored slack meter
-                var today = DateTime.Today;
-                var workStart = today.Add(userProfile.WorkStartTime.ToTimeSpan());
-                var workEnd = today.Add(userProfile.WorkEndTime.ToTimeSpan());
+                // Use new helper to determine which day to analyze
+                var targetDay = FindTargetDayForSlackMeter(DateTime.Now, userProfile);
+                var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
+                var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
                 var totalWorkTime = (workEnd - workStart).TotalHours;
-                var tasksForToday = tasksToDisplay
-                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == today)
+                var tasksForTargetDay = tasksToDisplay
+                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
                     .ToList();
-                var scheduledTimeToday = tasksForToday.Sum(t => t.EstimatedDuration.TotalHours);
-                var slackTime = totalWorkTime - scheduledTimeToday;
-                double slackRatio = scheduledTimeToday > 0 ? slackTime / scheduledTimeToday : 1.0;
+
+                if (!tasksForTargetDay.Any())
+                {
+                    Console.WriteLine($"\nNo tasks scheduled for {targetDay:dddd, MMM dd}.");
+                }
+                else
+                {
+                    Console.WriteLine($"\nTasks scheduled for {targetDay:dddd, MMM dd}:");
+                    foreach (var t in tasksForTargetDay.OrderBy(t => t.ScheduledStartTime))
+                    {
+                        var start = t.ScheduledStartTime.HasValue ? t.ScheduledStartTime.Value.ToString("HH:mm") : "--:--";
+                        var end = t.ScheduledEndTime.HasValue ? t.ScheduledEndTime.Value.ToString("HH:mm") : "--:--";
+                        Console.WriteLine($"- [ID: {t.DisplayId}] {start} - {end} ({t.EstimatedDuration.TotalHours:F1}h) {t.Title}");
+                    }
+                    Console.WriteLine();
+                }
+
+                var scheduledTimeTargetDay = tasksForTargetDay.Sum(t => t.EstimatedDuration.TotalHours);
+                var slackTime = totalWorkTime - scheduledTimeTargetDay;
+                double slackRatio = scheduledTimeTargetDay > 0 ? slackTime / scheduledTimeTargetDay : 1.0;
 
                 // Meter color
                 if (slackRatio > 0.5)
@@ -104,12 +121,22 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 // Meter bar
                 int meterWidth = 30;
-                double busyFraction = scheduledTimeToday / (totalWorkTime > 0 ? totalWorkTime : 1);
+                double busyFraction = scheduledTimeTargetDay / (totalWorkTime > 0 ? totalWorkTime : 1);
                 busyFraction = Math.Clamp(busyFraction, 0, 1);
                 int busyBlocks = (int)(meterWidth * busyFraction);
                 int slackBlocks = meterWidth - busyBlocks;
                 string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
-                Console.WriteLine($"Today's Schedule Pressure: [{meter}] - {slackTime:F1} hours free");
+
+                string headerText;
+                if (targetDay.Date == DateTime.Today.Date)
+                {
+                    headerText = "Today's Schedule Pressure:";
+                }
+                else
+                {
+                    headerText = $"{targetDay:dddd}'s Schedule Pressure:";
+                }
+                Console.WriteLine($"{headerText} [{meter}] - {slackTime:F1} hours free");
                 Console.ResetColor();
             }
 
@@ -314,5 +341,31 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
+        /// <summary>
+        /// Determines the target day for the slack meter (public for testing; make private after TDD).
+        /// </summary>
+        public DateTime FindTargetDayForSlackMeter(DateTime currentTime, UserProfile profile)
+        {
+            // Get end of workday for the current day
+            var endOfWorkday = currentTime.Date.Add(profile.WorkEndTime.ToTimeSpan());
+            var isWorkday = profile.WorkDays.Contains(currentTime.DayOfWeek);
+            if (isWorkday && currentTime <= endOfWorkday)
+            {
+                // During work hours on a workday
+                return currentTime.Date;
+            }
+            // Otherwise, find the next workday
+            var checkDate = currentTime.Date.AddDays(1);
+            for (int i = 0; i < 14; i++) // Safety: max 2 weeks
+            {
+                if (profile.WorkDays.Contains(checkDate.DayOfWeek))
+                {
+                    return checkDate;
+                }
+                checkDate = checkDate.AddDays(1);
+            }
+            // Fallback: just return today
+            return currentTime.Date;
+        }
     }
 }

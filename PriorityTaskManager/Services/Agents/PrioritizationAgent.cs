@@ -30,7 +30,9 @@ namespace PriorityTaskManager.Services.Agents
                 return context;
             if (!context.SharedState.TryGetValue("TotalAvailableTime", out var totalTimeObj) || totalTimeObj is not TimeSpan totalAvailableTime)
                 return context;
-            if (allTasks == null || allTasks.Count == 0 || totalAvailableTime <= TimeSpan.Zero)
+            // Exclude completed tasks from scheduling
+            var schedulableTasks = allTasks.Where(t => !t.IsCompleted).ToList();
+            if (schedulableTasks == null || schedulableTasks.Count == 0 || totalAvailableTime <= TimeSpan.Zero)
                 return context;
 
             // Try to get the schedule window (optional for now, fallback to continuous block)
@@ -39,7 +41,7 @@ namespace PriorityTaskManager.Services.Agents
                 scheduleWindow = sw;
 
             // Orchestrate scheduling
-            var initialResult = TryScheduleTasks(allTasks, totalAvailableTime, scheduleWindow);
+            var initialResult = TryScheduleTasks(schedulableTasks, totalAvailableTime, scheduleWindow);
             if (initialResult.IsSuccess)
             {
                 context.SharedState["Tasks"] = initialResult.ScheduledTasks;
@@ -49,9 +51,9 @@ namespace PriorityTaskManager.Services.Agents
             // If failed due to pinned task, get the full chain and re-plan
             if (initialResult.FailedPinnedTask != null)
             {
-                var fullChain = _dependencyGraphHelper.GetFullChain(allTasks, initialResult.FailedPinnedTask.Id);
+                var fullChain = _dependencyGraphHelper.GetFullChain(schedulableTasks, initialResult.FailedPinnedTask.Id);
                 context.History.Add($"  -> NOTICE: Task chain for '{initialResult.FailedPinnedTask.Title}' is impossible to schedule and has been excluded.");
-                var remainingTasks = allTasks.Except(fullChain).ToList();
+                var remainingTasks = schedulableTasks.Except(fullChain).ToList();
                 var finalResult = TryScheduleTasks(remainingTasks, totalAvailableTime, scheduleWindow);
                 context.SharedState["Tasks"] = finalResult.ScheduledTasks;
                 context.SharedState["UnschedulableTasks"] = fullChain;
@@ -71,23 +73,44 @@ namespace PriorityTaskManager.Services.Agents
                 if (window == null || window.AvailableSlots.Count == 0)
                 {
                     // Fallback: assume now + offset
-                    return DateTime.Today.AddHours(9).Add(offset); // Assume workday starts at 9 AM
+                    var baseTime = DateTime.Now > DateTime.Today.AddHours(9) ? DateTime.Now : DateTime.Today.AddHours(9);
+                    return baseTime.Add(offset);
                 }
                 var remaining = offset;
+                var now = DateTime.Now;
                 foreach (var slot in window.AvailableSlots.OrderBy(s => s.StartTime))
                 {
-                    var slotDuration = slot.EndTime - slot.StartTime;
+                    var slotStart = slot.StartTime;
+                    // For the first slot, ensure we never schedule before now
+                    if (slotStart.Date == now.Date && now > slotStart && now < slot.EndTime)
+                    {
+                        slotStart = now;
+                    }
+                    var slotDuration = slot.EndTime - slotStart;
                     if (remaining <= slotDuration)
-                        return slot.StartTime.Add(remaining);
+                        return slotStart.Add(remaining);
                     remaining -= slotDuration;
                 }
                 // If offset exceeds all slots, return end of last slot
                 return window.AvailableSlots.Last().EndTime;
             }
 
-            var orderedTasks = tasks.OrderBy(t => t.DueDate).ToList();
+            // Normalize all due dates to end-of-day (23:59:59) if time is 00:00:00
+            var normalizedTasks = tasks.Select(t => {
+                var due = t.DueDate;
+                if (due.TimeOfDay == TimeSpan.Zero)
+                {
+                    // Set to end of day
+                    t.DueDate = due.Date.AddDays(1).AddTicks(-1);
+                }
+                return t;
+            }).ToList();
+            var orderedTasks = normalizedTasks.OrderBy(t => t.DueDate).ToList();
             var currentSchedule = new List<Models.TaskItem>();
             var unscheduledTasks = new List<Models.TaskItem>();
+
+            // Track running offset for scheduling
+            TimeSpan runningOffset = TimeSpan.Zero;
 
             foreach (var taskToTry in orderedTasks)
             {
@@ -155,6 +178,18 @@ namespace PriorityTaskManager.Services.Agents
                     unscheduledTasks.Add(taskToTry);
                 }
             }
+
+            // Assign ScheduledStartTime and ScheduledEndTime for scheduled tasks
+            runningOffset = TimeSpan.Zero;
+            foreach (var task in currentSchedule)
+            {
+                var start = TranslateOffsetToRealTime(runningOffset, scheduleWindow);
+                var end = start + task.EstimatedDuration;
+                task.ScheduledStartTime = start;
+                task.ScheduledEndTime = end;
+                runningOffset += task.EstimatedDuration;
+            }
+
             return new ScheduleResult
             {
                 IsSuccess = true,
