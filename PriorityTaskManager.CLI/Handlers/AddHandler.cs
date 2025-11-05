@@ -32,6 +32,16 @@ namespace PriorityTaskManager.CLI.Handlers
             if (!string.IsNullOrWhiteSpace(importanceInput) && int.TryParse(importanceInput, out int imp) && imp >= 1 && imp <= 10)
                 importance = imp;
 
+            Console.Write($"Complexity (1-10, default: 5): ");
+            var complexityInput = Console.ReadLine();
+            double complexity = 5.0;
+            if (!string.IsNullOrWhiteSpace(complexityInput) && double.TryParse(complexityInput, out double comp) && comp >= 1 && comp <= 10)
+                complexity = comp;
+
+            Console.Write($"Pin this task? (y/n, default: n): ");
+            var pinInput = Console.ReadLine();
+            bool isPinned = !string.IsNullOrWhiteSpace(pinInput) && pinInput.Trim().StartsWith("y", StringComparison.OrdinalIgnoreCase);
+
             Console.Write($"Estimated Duration (hours, default: 1): ");
             var durationInput = Console.ReadLine();
             double durationHours = 1.0;
@@ -75,6 +85,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 Title = title,
                 Description = description,
                 Importance = importance,
+                Complexity = complexity,
+                IsPinned = isPinned,
                 DueDate = dueDate,
                 IsCompleted = false,
                 EstimatedDuration = TimeSpan.FromHours(durationHours),
