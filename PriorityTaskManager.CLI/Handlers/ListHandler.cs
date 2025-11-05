@@ -66,35 +66,25 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Error: Active list ID '{Program.ActiveListId}' does not exist.");
                 return;
             }
-            var tasks = service.GetAllTasks(Program.ActiveListId).ToList();
+            var tasksToDisplay = service.GetPrioritizedTasks(Program.ActiveListId).ToList();
 
-            switch (activeList.SortOption)
-            {
-                case SortOption.Default:
-                    service.CalculateUrgencyForAllTasks();
-                    tasks = tasks.OrderByDescending(t => t.UrgencyScore).ToList();
-                    break;
-                case SortOption.Alphabetical:
-                    tasks = tasks.OrderBy(t => t.Title).ToList();
-                    break;
-                case SortOption.DueDate:
-                    tasks = tasks.OrderBy(t => t.DueDate).ToList();
-                    break;
-                case SortOption.Id:
-                    tasks = tasks.OrderBy(t => t.Id).ToList();
-                    break;
-            }
-
-            if (!tasks.Any())
+            if (!tasksToDisplay.Any())
             {
                 Console.WriteLine("No tasks found in this list.");
                 return;
             }
 
-            foreach (var task in tasks)
+            foreach (var task in tasksToDisplay)
             {
                 var checkbox = task.IsCompleted ? "[x]" : "[ ]";
-                Console.WriteLine($"Id: {task.DisplayId} {checkbox} {task.Title}, Urgency: {task.UrgencyScore:F2}/{task.Importance}");
+                if (task.ScheduledStartTime.HasValue && task.ScheduledEndTime.HasValue)
+                {
+                    Console.WriteLine($"Id: {task.DisplayId} {checkbox} {task.Title} (Scheduled: {task.ScheduledStartTime:HH:mm} - {task.ScheduledEndTime:HH:mm})");
+                }
+                else
+                {
+                    Console.WriteLine($"Id: {task.DisplayId} {checkbox} {task.Title}, Urgency: {task.UrgencyScore:F2}/{task.Importance}");
+                }
             }
         }
 
