@@ -40,6 +40,7 @@ namespace PriorityTaskManager.CLI.Handlers
             // General Commands
             Console.WriteLine("\nGeneral Commands:");
             Console.WriteLine("help                - Display this help text");
+            Console.WriteLine("mode [Mode]         - View or set the urgency strategy mode (SingleAgent, MultiAgent)");
             Console.WriteLine("exit                - Exit the application");
         }
     }
