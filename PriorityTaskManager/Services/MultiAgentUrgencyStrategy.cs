@@ -6,24 +6,56 @@ namespace PriorityTaskManager.Services
     public class MultiAgentUrgencyStrategy : IUrgencyStrategy
     {
         private readonly UserProfile _userProfile;
+        private readonly Agents.TaskAnalyzerAgent _taskAnalyzerAgent;
+        private readonly Agents.SchedulePreProcessorAgent _schedulePreProcessorAgent;
+        private readonly Agents.PrioritizationAgent _prioritizationAgent;
+        private readonly Agents.UserContextAgent _userContextAgent;
+        private readonly Agents.ScheduleSpreaderAgent _scheduleSpreaderAgent;
 
         public MultiAgentUrgencyStrategy(UserProfile userProfile)
         {
             _userProfile = userProfile;
+            var dependencyHelper = new Helpers.DependencyGraphHelper();
+            _taskAnalyzerAgent = new Agents.TaskAnalyzerAgent();
+            _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent();
+            _prioritizationAgent = new Agents.PrioritizationAgent(dependencyHelper);
+            _userContextAgent = new Agents.UserContextAgent();
+            _scheduleSpreaderAgent = new Agents.ScheduleSpreaderAgent();
         }
 
         public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
         {
-            // Simulate multi-agent MCP logic and logging
+            // Build the agent chain
+            var agentChain = new List<MCP.IAgent>
+            {
+                _taskAnalyzerAgent,
+                _schedulePreProcessorAgent,
+                _prioritizationAgent,
+                _userContextAgent,
+                _scheduleSpreaderAgent
+            };
+
+            // Create and populate the context
             var context = new MCP.MCPContext();
-            context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Tasks"] = tasks;
-            // Here, agents would be run in sequence, updating context and logging to context.History
-            // For now, just return the tasks and any logs
+            context.SharedState["UserProfile"] = _userProfile;
+
+            // Execute the agent chain
+            var finalContext = MCP.MCP.Coordinate(agentChain, context);
+
+            // Retrieve the final data
+            var finalTasks = finalContext.SharedState.ContainsKey("Tasks")
+                ? (List<TaskItem>)finalContext.SharedState["Tasks"]
+                : new List<TaskItem>();
+            if (finalContext.SharedState.ContainsKey("UnschedulableTasks"))
+            {
+                finalTasks.AddRange((List<TaskItem>)finalContext.SharedState["UnschedulableTasks"]);
+            }
+
             var result = new PrioritizationResult
             {
-                Tasks = tasks,
-                History = context.History.ToList()
+                Tasks = finalTasks,
+                History = finalContext.History
             };
             return result;
         }
