@@ -12,13 +12,15 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
-            if (args.Length < 1 || !int.TryParse(args[0], out int id))
+
+            if (args.Length < 1 || !int.TryParse(args[0], out int displayId))
             {
-                Console.WriteLine("Invalid arguments. Please provide a valid task ID.");
+                Console.WriteLine("Invalid arguments. Please provide a valid task Display ID.");
                 return;
             }
 
-            var existing = service.GetTaskById(id);
+            // Use ActiveListId for display id lookup
+            var existing = service.GetTaskByDisplayId(displayId, Program.ActiveListId);
 
             if (existing == null)
             {
@@ -34,13 +36,15 @@ namespace PriorityTaskManager.CLI.Handlers
                 {
                     directValue = string.Join(" ", args.Skip(2));
                 }
-                HandleTargetedUpdate(service, id, attribute, directValue);
+                HandleTargetedUpdate(service, existing.Id, attribute, directValue);
                 return;
             }
 
             // Full edit process
             Console.Write($"New Title (default: {existing.Title}): ");
-            existing.Title = Console.ReadLine() ?? existing.Title;
+            var newTitle = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(newTitle))
+                existing.Title = newTitle;
 
             Console.Write($"New Description (default: {existing.Description}): ");
             existing.Description = Console.ReadLine() ?? existing.Description;

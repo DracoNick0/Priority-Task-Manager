@@ -68,6 +68,9 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             var result = service.GetPrioritizedTasks(Program.ActiveListId);
             var tasksToDisplay = result.Tasks;
+            // Separate completed and incomplete tasks
+            var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
+            var completedTasks = tasksToDisplay.Where(t => t.IsCompleted).ToList();
             var userProfile = service.UserProfile;
             if (userProfile.ActiveUrgencyMode == UrgencyMode.MultiAgent)
             {
@@ -85,7 +88,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
                 var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
                 var totalWorkTime = (workEnd - workStart).TotalHours;
-                var tasksForTargetDay = tasksToDisplay
+                var tasksForTargetDay = incompleteTasks
                     .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
                     .ToList();
 
@@ -147,7 +150,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             var mode = service.UserProfile.ActiveUrgencyMode;
-            foreach (var task in tasksToDisplay)
+            foreach (var task in incompleteTasks)
             {
                 if (mode == UrgencyMode.MultiAgent)
                 {
@@ -163,6 +166,16 @@ namespace PriorityTaskManager.CLI.Handlers
                 else // SingleAgent
                 {
                     Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Urgency: {task.UrgencyScore:F2})");
+                }
+            }
+
+            // Show completed tasks at the bottom
+            if (completedTasks.Any())
+            {
+                Console.WriteLine("\nCompleted Tasks:");
+                foreach (var task in completedTasks.OrderByDescending(t => t.ScheduledEndTime ?? DateTime.MinValue))
+                {
+                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Completed)");
                 }
             }
         }
