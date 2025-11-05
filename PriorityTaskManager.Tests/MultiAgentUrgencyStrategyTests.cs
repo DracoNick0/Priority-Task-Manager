@@ -20,7 +20,7 @@ namespace PriorityTaskManager.Tests
 			var result = strategy.CalculateUrgency(tasks);
 
 			// Assert
-			Assert.Equal(tasks, result);
+			Assert.Equal(tasks, result.Tasks);
 		}
 	}
 }

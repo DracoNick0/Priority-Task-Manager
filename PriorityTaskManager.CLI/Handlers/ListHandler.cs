@@ -66,12 +66,21 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Error: Active list ID '{Program.ActiveListId}' does not exist.");
                 return;
             }
-            var tasksToDisplay = service.GetPrioritizedTasks(Program.ActiveListId).ToList();
-
-            // Show colored slack meter if in MultiAgent mode
+            var result = service.GetPrioritizedTasks(Program.ActiveListId);
+            var tasksToDisplay = result.Tasks;
             var userProfile = service.UserProfile;
             if (userProfile.ActiveUrgencyMode == UrgencyMode.MultiAgent)
             {
+                // Show agent logs ("thinking" effect)
+                Console.WriteLine("\nRunning multi-agent scheduler...");
+                foreach (var message in result.History)
+                {
+                    Console.WriteLine(message);
+                    System.Threading.Thread.Sleep(500);
+                }
+                Console.WriteLine("Scheduling complete.\n");
+
+                // Show colored slack meter
                 var today = DateTime.Today;
                 var workStart = today.Add(userProfile.WorkStartTime.ToTimeSpan());
                 var workEnd = today.Add(userProfile.WorkEndTime.ToTimeSpan());

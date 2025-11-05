@@ -22,7 +22,8 @@ namespace PriorityTaskManager.Services.Agents
 
         public MCPContext Act(MCPContext context)
         {
-            context.History.Add("PrioritizationAgent execution started.");
+
+            context.History.Add("Phase 2: Building optimal schedule based on importance and due dates...");
 
             // Retrieve tasks and available time from context
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> allTasks)
@@ -49,6 +50,7 @@ namespace PriorityTaskManager.Services.Agents
             if (initialResult.FailedPinnedTask != null)
             {
                 var fullChain = _dependencyGraphHelper.GetFullChain(allTasks, initialResult.FailedPinnedTask.Id);
+                context.History.Add($"  -> NOTICE: Task chain for '{initialResult.FailedPinnedTask.Title}' is impossible to schedule and has been excluded.");
                 var remainingTasks = allTasks.Except(fullChain).ToList();
                 var finalResult = TryScheduleTasks(remainingTasks, totalAvailableTime, scheduleWindow);
                 context.SharedState["Tasks"] = finalResult.ScheduledTasks;

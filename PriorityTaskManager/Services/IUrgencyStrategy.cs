@@ -5,6 +5,6 @@ namespace PriorityTaskManager.Services
 {
     public interface IUrgencyStrategy
     {
-        List<TaskItem> CalculateUrgency(List<TaskItem> tasks);
+        PrioritizationResult CalculateUrgency(List<TaskItem> tasks);
     }
 }

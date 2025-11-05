@@ -6,11 +6,11 @@ namespace PriorityTaskManager.Services
     public class TaskManagerService
     {
         /// <summary>
-        /// Returns the prioritized (processed) list of tasks for the given list, using the active urgency strategy.
+        /// Returns the prioritized (processed) list of tasks and agent logs for the given list, using the active urgency strategy.
         /// </summary>
         /// <param name="listId">The ID of the list to prioritize tasks for.</param>
-        /// <returns>The processed list of tasks.</returns>
-        public IEnumerable<TaskItem> GetPrioritizedTasks(int listId)
+        /// <returns>The prioritization result (tasks and history).</returns>
+        public PrioritizationResult GetPrioritizedTasks(int listId)
         {
             IUrgencyStrategy strategy;
             switch (this.UserProfile.ActiveUrgencyMode)
@@ -24,8 +24,8 @@ namespace PriorityTaskManager.Services
                     break;
             }
             var rawTasks = GetAllTasks(listId);
-            var processedTasks = strategy.CalculateUrgency(rawTasks.ToList());
-            return processedTasks;
+            var result = strategy.CalculateUrgency(rawTasks.ToList());
+            return result;
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         public void CalculateUrgencyForAllTasks()
         {
-            _data.Tasks = _urgencyStrategy.CalculateUrgency(_data.Tasks);
+            _data.Tasks = _urgencyStrategy.CalculateUrgency(_data.Tasks).Tasks;
         }
 
         /// <summary>

@@ -10,6 +10,8 @@ namespace PriorityTaskManager.Services.Agents
         /// <inheritdoc />
         public MCPContext Act(MCPContext context)
         {
+
+            context.History.Add("Phase 1: Analyzing user's schedule constraints...");
             if (context == null || !context.SharedState.ContainsKey("UserProfile"))
                 return context;
 

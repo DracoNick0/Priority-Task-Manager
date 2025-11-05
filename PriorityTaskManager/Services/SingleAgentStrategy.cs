@@ -6,7 +6,7 @@ namespace PriorityTaskManager.Services
 {
     public class SingleAgentStrategy : IUrgencyStrategy
     {
-        public List<TaskItem> CalculateUrgency(List<TaskItem> tasks)
+        public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
         {
             foreach (var task in tasks)
             {
@@ -52,7 +52,11 @@ namespace PriorityTaskManager.Services
                 CalculateLpsdRecursive(task, tasks, today, successorMap, visited);
             }
 
-            return tasks;
+            return new PrioritizationResult
+            {
+                Tasks = tasks,
+                History = new List<string>()
+            };
         }
 
         private int CalculateLpsdRecursive(TaskItem task, List<TaskItem> allTasks, DateTime today, Dictionary<int, List<TaskItem>> successorMap, HashSet<int> visited)

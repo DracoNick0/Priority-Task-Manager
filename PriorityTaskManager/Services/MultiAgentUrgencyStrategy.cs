@@ -12,11 +12,20 @@ namespace PriorityTaskManager.Services
             _userProfile = userProfile;
         }
 
-        public List<TaskItem> CalculateUrgency(List<TaskItem> tasks)
+        public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
         {
-            // TODO: Implement multi-agent MCP logic here in a future sprint.
-            // Example: context.SharedState["UserProfile"] = _userProfile;
-            return tasks;
+            // Simulate multi-agent MCP logic and logging
+            var context = new MCP.MCPContext();
+            context.SharedState["UserProfile"] = _userProfile;
+            context.SharedState["Tasks"] = tasks;
+            // Here, agents would be run in sequence, updating context and logging to context.History
+            // For now, just return the tasks and any logs
+            var result = new PrioritizationResult
+            {
+                Tasks = tasks,
+                History = context.History.ToList()
+            };
+            return result;
         }
     }
 }

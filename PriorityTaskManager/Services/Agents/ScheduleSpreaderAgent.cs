@@ -10,6 +10,7 @@ namespace PriorityTaskManager.Services.Agents
         /// <inheritdoc />
         public MCPContext Act(MCPContext context)
         {
+            context.History.Add("Phase 4: Adding breathers for a more realistic schedule...");
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks || tasks.Count == 0)
                 return context;
             if (!context.SharedState.TryGetValue("UserProfile", out var userProfileObj) || userProfileObj is not Models.UserProfile userProfile)

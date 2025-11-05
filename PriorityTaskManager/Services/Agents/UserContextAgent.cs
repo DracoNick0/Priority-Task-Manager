@@ -6,7 +6,7 @@ namespace PriorityTaskManager.Services.Agents
     {
         public MCPContext Act(MCPContext context)
         {
-            context.History.Add("UserContextAgent execution started.");
+            context.History.Add("Phase 3: Refining schedule for user context (Complexity)...");
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks || tasks.Count == 0)
             {
                 return context;
