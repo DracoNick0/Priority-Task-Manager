@@ -110,16 +110,23 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
+            var mode = service.UserProfile.ActiveUrgencyMode;
             foreach (var task in tasksToDisplay)
             {
-                var checkbox = task.IsCompleted ? "[x]" : "[ ]";
-                if (task.ScheduledStartTime.HasValue && task.ScheduledEndTime.HasValue)
+                if (mode == UrgencyMode.MultiAgent)
                 {
-                    Console.WriteLine($"Id: {task.DisplayId} {checkbox} {task.Title} (Scheduled: {task.ScheduledStartTime:HH:mm} - {task.ScheduledEndTime:HH:mm})");
+                    if (task.ScheduledStartTime.HasValue)
+                    {
+                        Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Recommended Start: {task.ScheduledStartTime:ddd, MMM dd HH:mm})");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Unscheduled)");
+                    }
                 }
-                else
+                else // SingleAgent
                 {
-                    Console.WriteLine($"Id: {task.DisplayId} {checkbox} {task.Title}, Urgency: {task.UrgencyScore:F2}/{task.Importance}");
+                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Urgency: {task.UrgencyScore:F2})");
                 }
             }
         }
