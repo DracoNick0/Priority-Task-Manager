@@ -20,7 +20,7 @@ namespace PriorityTaskManager.Tests
         public void MultiAgentUrgencyStrategy_Should_ImplementIUrgencyStrategy()
         {
             // Arrange
-            var multiAgentStrategy = new MultiAgentUrgencyStrategy();
+            var multiAgentStrategy = new MultiAgentUrgencyStrategy(new PriorityTaskManager.Models.UserProfile());
 
             // Act & Assert
             Assert.IsAssignableFrom<IUrgencyStrategy>(multiAgentStrategy);

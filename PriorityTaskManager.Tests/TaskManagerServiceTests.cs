@@ -168,7 +168,7 @@ namespace PriorityTaskManager.Tests
         /// <summary>
         /// Verifies that AddTask throws ArgumentException when the title is null, empty, or whitespace.
         /// </summary>
-        //[Theory(Skip = "File locking issue.")]
+        [Theory]
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
