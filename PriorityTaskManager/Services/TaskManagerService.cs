@@ -6,6 +6,16 @@ namespace PriorityTaskManager.Services
     public class TaskManagerService
     {
         /// <summary>
+        /// Sets the active urgency mode and persists the change to the user profile.
+        /// </summary>
+        /// <param name="mode">The urgency mode to set as active.</param>
+        public void SetActiveUrgencyMode(UrgencyMode mode)
+        {
+            this.UserProfile.ActiveUrgencyMode = mode;
+            SaveData();
+        }
+        
+        /// <summary>
         /// Updates the user profile and persists the change.
         /// </summary>
         /// <param name="updatedProfile">The new user profile to persist.</param>

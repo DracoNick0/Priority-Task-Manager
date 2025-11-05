@@ -45,7 +45,8 @@ namespace PriorityTaskManager.CLI
 				{ "help", new HelpHandler() },
 				{ "depend", new DependHandler() },
 				{ "view", new ViewHandler() },
-				{ "cleanup", new CleanupHandler(service) }
+				{ "cleanup", new CleanupHandler(service) },
+				{ "mode", new ModeHandler() }
 			};
 
 			while (true)
