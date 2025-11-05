@@ -18,6 +18,7 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine("add <Title>         - Add a new task (prompts for details)");
             Console.WriteLine("view <Id>           - View all details of a specific task");
             Console.WriteLine("edit <Id> ...       - Edit a task by Id or specific attributes");
+            Console.WriteLine("edit <Id> <attr> [val] - Edit a task attribute (title, description, importance, duedate, duration, complexity, pin)");
             Console.WriteLine("delete <Id1,Id2,...> - Delete tasks by Id");
             Console.WriteLine("complete <Id1,Id2,...> - Mark tasks as complete");
             Console.WriteLine("uncomplete <Id1,Id2,...> - Mark tasks as incomplete");

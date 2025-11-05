@@ -105,6 +105,28 @@ namespace PriorityTaskManager.CLI.Handlers
                             task.Importance = importance;
                     }
                     break;
+                case "complexity":
+                    if (directValue != null)
+                    {
+                        if (double.TryParse(directValue, out double complexity) && complexity >= 1 && complexity <= 10)
+                            task.Complexity = complexity;
+                        else
+                            Console.WriteLine("Invalid complexity value. Must be a number between 1 and 10.");
+                    }
+                    else
+                    {
+                        Console.Write($"New Complexity (1-10, default: {task.Complexity}): ");
+                        var input = Console.ReadLine();
+                        if (double.TryParse(input, out double complexity) && complexity >= 1 && complexity <= 10)
+                            task.Complexity = complexity;
+                        else
+                            Console.WriteLine("Invalid complexity value. Must be a number between 1 and 10.");
+                    }
+                    break;
+                case "pin":
+                    task.IsPinned = !task.IsPinned;
+                    Console.WriteLine($"Task is now {(task.IsPinned ? "pinned" : "unpinned") }.");
+                    break;
                 case "duedate":
                     if (directValue != null)
                         Console.WriteLine("Direct value editing for due date is not supported. Please use interactive editor.");
