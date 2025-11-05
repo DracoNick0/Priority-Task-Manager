@@ -68,6 +68,42 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             var tasksToDisplay = service.GetPrioritizedTasks(Program.ActiveListId).ToList();
 
+            // Show colored slack meter if in MultiAgent mode
+            var userProfile = service.UserProfile;
+            if (userProfile.ActiveUrgencyMode == UrgencyMode.MultiAgent)
+            {
+                var today = DateTime.Today;
+                var workStart = today.Add(userProfile.WorkStartTime.ToTimeSpan());
+                var workEnd = today.Add(userProfile.WorkEndTime.ToTimeSpan());
+                var totalWorkTime = (workEnd - workStart).TotalHours;
+                var tasksForToday = tasksToDisplay
+                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == today)
+                    .ToList();
+                var scheduledTimeToday = tasksForToday.Sum(t => t.EstimatedDuration.TotalHours);
+                var slackTime = totalWorkTime - scheduledTimeToday;
+                double slackRatio = scheduledTimeToday > 0 ? slackTime / scheduledTimeToday : 1.0;
+
+                // Meter color
+                if (slackRatio > 0.5)
+                    Console.ForegroundColor = ConsoleColor.Green;
+                else if (slackRatio > 0.25)
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                else if (slackRatio >= 0)
+                    Console.ForegroundColor = ConsoleColor.Red;
+                else
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+
+                // Meter bar
+                int meterWidth = 30;
+                double busyFraction = scheduledTimeToday / (totalWorkTime > 0 ? totalWorkTime : 1);
+                busyFraction = Math.Clamp(busyFraction, 0, 1);
+                int busyBlocks = (int)(meterWidth * busyFraction);
+                int slackBlocks = meterWidth - busyBlocks;
+                string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
+                Console.WriteLine($"Today's Schedule Pressure: [{meter}] - {slackTime:F1} hours free");
+                Console.ResetColor();
+            }
+
             if (!tasksToDisplay.Any())
             {
                 Console.WriteLine("No tasks found in this list.");
