@@ -24,9 +24,14 @@ namespace PriorityTaskManager.Services.Agents
         {
             context.History.Add("Phase 2: Building optimal schedule based on importance and due dates...");
 
-            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> allTasks)
+            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj))
                 return context;
-            if (!context.SharedState.TryGetValue("TotalAvailableTime", out var totalTimeObj) || totalTimeObj is not TimeSpan totalAvailableTime)
+            var allTasks = tasksObj as List<Models.TaskItem>;
+            if (allTasks == null)
+                return context;
+            if (!context.SharedState.TryGetValue("TotalAvailableTime", out var totalTimeObj))
+                return context;
+            if (totalTimeObj is not TimeSpan totalAvailableTime)
                 return context;
 
             var schedulableTasks = HandleLateTasks(context, allTasks.Where(t => !t.IsCompleted).ToList());
@@ -34,8 +39,9 @@ namespace PriorityTaskManager.Services.Agents
             if (!schedulableTasks.Any() || totalAvailableTime <= TimeSpan.Zero)
                 return context;
 
-            if (!context.SharedState.TryGetValue("AvailableScheduleWindow", out var windowObj) || windowObj is not Models.ScheduleWindow scheduleWindow)
-                scheduleWindow = null;
+            Models.ScheduleWindow? scheduleWindow = null;
+            if (context.SharedState.TryGetValue("AvailableScheduleWindow", out var windowObj) && windowObj is Models.ScheduleWindow sw)
+                scheduleWindow = sw;
 
             var result = TryScheduleTasks(schedulableTasks, totalAvailableTime, scheduleWindow);
 

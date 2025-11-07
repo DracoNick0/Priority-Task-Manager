@@ -89,7 +89,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
                 var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
                 double totalWorkTime;
-                bool afterHours = false;
                 if (targetDay.Date == DateTime.Today.Date)
                 {
                     if (now >= workEnd)
@@ -99,7 +98,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
                         workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
                         totalWorkTime = (workEnd - workStart).TotalHours;
-                        afterHours = true;
+                        // afterHours variable removed as it was unused
                     }
                     else if (now < workStart)
                     {
@@ -120,7 +119,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
                     .ToList();
 
-                if (!tasksForTargetDay.Any())
+                if (tasksForTargetDay == null || !tasksForTargetDay.Any())
                 {
                     string noTasksMessage;
                     if (targetDay.Date == DateTime.Today.Date)
@@ -142,7 +141,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         tasksHeader = $"Tasks due on {targetDay:dddd, MMM dd}:";
                     Console.WriteLine(tasksHeader);
 
-                    foreach (var t in tasksForTargetDay.OrderBy(t => t.ScheduledStartTime))
+                    foreach (var t in (tasksForTargetDay ?? new List<TaskItem>()).OrderBy(t => t.ScheduledStartTime))
                     {
                         var start = t.ScheduledStartTime.HasValue ? t.ScheduledStartTime.Value.ToString("HH:mm") : "--:--";
                         var end = t.ScheduledEndTime.HasValue ? t.ScheduledEndTime.Value.ToString("HH:mm") : "--:--";
@@ -151,7 +150,9 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine();
                 }
 
-                var scheduledTimeTargetDay = tasksForTargetDay.Sum(t => t.EstimatedDuration.TotalHours);
+                var scheduledTimeTargetDay = (tasksForTargetDay != null && tasksForTargetDay.Count > 0)
+                    ? tasksForTargetDay.Sum(t => t.EstimatedDuration.TotalHours)
+                    : 0.0;
                 var slackTime = totalWorkTime - scheduledTimeTargetDay;
                 double slackRatio = scheduledTimeTargetDay > 0 ? slackTime / scheduledTimeTargetDay : 1.0;
 

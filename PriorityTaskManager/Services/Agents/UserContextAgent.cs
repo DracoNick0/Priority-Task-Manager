@@ -15,7 +15,7 @@ namespace PriorityTaskManager.Services.Agents
             // Group tasks by the date part of ScheduledStartTime
             var grouped = tasks
                 .Where(t => t.ScheduledStartTime.HasValue)
-                .GroupBy(t => t.ScheduledStartTime.Value.Date);
+                .GroupBy(t => t.ScheduledStartTime!.Value.Date);
 
             var finalReorderedSchedule = new List<Models.TaskItem>();
 
@@ -24,13 +24,13 @@ namespace PriorityTaskManager.Services.Agents
                 // Sort by complexity descending
                 var sorted = dayGroup.OrderByDescending(t => t.Complexity).ToList();
                 // Find earliest start time for the day
-                var earliest = dayGroup.Min(t => t.ScheduledStartTime.Value);
+                var earliest = dayGroup.Min(t => t.ScheduledStartTime.GetValueOrDefault());
                 var current = earliest;
                 foreach (var task in sorted)
                 {
                     task.ScheduledStartTime = current;
                     task.ScheduledEndTime = current + task.EstimatedDuration;
-                    current = task.ScheduledEndTime.Value;
+                    current = task.ScheduledEndTime.GetValueOrDefault();
                     finalReorderedSchedule.Add(task);
                 }
             }

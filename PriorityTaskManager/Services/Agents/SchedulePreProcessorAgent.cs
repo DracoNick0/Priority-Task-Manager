@@ -11,7 +11,7 @@ namespace PriorityTaskManager.Services.Agents
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("Phase 1: Analyzing user's schedule constraints...");
-            if (context == null || !context.SharedState.ContainsKey("UserProfile"))
+            if (!context.SharedState.ContainsKey("UserProfile"))
                 return context;
 
             var userProfile = context.SharedState["UserProfile"] as PriorityTaskManager.Models.UserProfile;
@@ -61,6 +61,7 @@ namespace PriorityTaskManager.Services.Agents
             var totalAvailableTime = slots.Sum(slot => (slot.EndTime - slot.StartTime).Ticks);
             context.SharedState["TotalAvailableTime"] = TimeSpan.FromTicks(totalAvailableTime);
 
+            // Ensure we never return null (method signature is non-nullable)
             return context;
         }
     }
