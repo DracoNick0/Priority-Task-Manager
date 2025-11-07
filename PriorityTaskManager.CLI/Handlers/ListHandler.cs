@@ -60,6 +60,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
+            Console.Clear();
             var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == Program.ActiveListId);
             if (activeList == null)
             {
@@ -114,21 +115,40 @@ namespace PriorityTaskManager.CLI.Handlers
                     totalWorkTime = (workEnd - workStart).TotalHours;
                 }
 
-                // If after hours, tasks due today are now late and not scheduled
-                List<TaskItem> tasksForTargetDay;
-                if (afterHours)
+                // If after hours, tasks due to day are now late and not scheduled
+                var tasksForTargetDay = incompleteTasks
+                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
+                    .ToList();
+
+                if (!tasksForTargetDay.Any())
                 {
-                    // Exclude tasks due today (now late)
-                    var today = DateTime.Today;
-                    tasksForTargetDay = incompleteTasks
-                        .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date && t.DueDate.Date >= targetDay.Date)
-                        .ToList();
+                    string noTasksMessage;
+                    if (targetDay.Date == DateTime.Today.Date)
+                        noTasksMessage = "\nNo tasks due today.";
+                    else if (targetDay.Date == DateTime.Today.AddDays(1).Date)
+                        noTasksMessage = "\nNo tasks due tomorrow.";
+                    else
+                        noTasksMessage = $"\nNo tasks due on {targetDay:dddd, MMM dd}.";
+                    Console.WriteLine(noTasksMessage);
                 }
                 else
                 {
-                    tasksForTargetDay = incompleteTasks
-                        .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                        .ToList();
+                    string tasksHeader;
+                    if (targetDay.Date == DateTime.Today.Date)
+                        tasksHeader = "Tasks due today:";
+                    else if (targetDay.Date == DateTime.Today.AddDays(1).Date)
+                        tasksHeader = "Tasks due tomorrow:";
+                    else
+                        tasksHeader = $"Tasks due on {targetDay:dddd, MMM dd}:";
+                    Console.WriteLine(tasksHeader);
+
+                    foreach (var t in tasksForTargetDay.OrderBy(t => t.ScheduledStartTime))
+                    {
+                        var start = t.ScheduledStartTime.HasValue ? t.ScheduledStartTime.Value.ToString("HH:mm") : "--:--";
+                        var end = t.ScheduledEndTime.HasValue ? t.ScheduledEndTime.Value.ToString("HH:mm") : "--:--";
+                        Console.WriteLine($"- [ID: {t.DisplayId}] {start} - {end} ({t.EstimatedDuration.TotalHours:F1}h) {t.Title}");
+                    }
+                    Console.WriteLine();
                 }
 
                 var scheduledTimeTargetDay = tasksForTargetDay.Sum(t => t.EstimatedDuration.TotalHours);
@@ -144,14 +164,12 @@ namespace PriorityTaskManager.CLI.Handlers
                 string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
 
                 // Check for unscheduled tasks
-                var unscheduledTasksForMeter = result.UnscheduledTasks ?? new List<TaskItem>();
-                bool hasUnscheduled = unscheduledTasksForMeter.Any();
+                var unscheduledTasks = result.UnscheduledTasks ?? new List<TaskItem>();
+                bool hasUnscheduled = unscheduledTasks.Any();
 
                 // Meter color
                 if (hasUnscheduled)
-                {
                     Console.ForegroundColor = ConsoleColor.Black;
-                }
                 else if (slackRatio > 0.5)
                     Console.ForegroundColor = ConsoleColor.Green;
                 else if (slackRatio > 0.25)
@@ -163,13 +181,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 string headerText;
                 if (targetDay.Date == DateTime.Today.Date)
-                {
                     headerText = "Today's Schedule Pressure:";
-                }
                 else
-                {
                     headerText = $"{targetDay:dddd}'s Schedule Pressure:";
-                }
                 Console.WriteLine($"{headerText} [{meter}] - {slackTime:F1} hours free");
                 Console.ResetColor();
 
@@ -181,34 +195,40 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
             }
 
-            if (!tasksToDisplay.Any())
+            if (!tasksToDisplay.Any() && !result.UnscheduledTasks.Any())
             {
                 Console.WriteLine("No tasks found in this list.");
                 return;
             }
 
             var mode = service.UserProfile.ActiveUrgencyMode;
-            // Show scheduled/incomplete tasks
-            foreach (var task in incompleteTasks.Where(t => t.ScheduledStartTime.HasValue))
+            var scheduledTasks = incompleteTasks.Where(t => t.ScheduledStartTime.HasValue).ToList();
+
+
+            // Show scheduled/incomplete tasks (prettier format)
+            if (scheduledTasks.Any())
             {
-                if (mode == UrgencyMode.MultiAgent)
+                Console.WriteLine("\nScheduled Tasks:");
+                foreach (var task in scheduledTasks.OrderBy(t => t.ScheduledStartTime))
                 {
-                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Recommended Start: {task.ScheduledStartTime:ddd, MMM dd HH:mm})");
-                }
-                else // SingleAgent
-                {
-                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Urgency: {task.UrgencyScore:F2})");
+                    var start = task.ScheduledStartTime?.ToString("HH:mm") ?? "--:--";
+                    var end = task.ScheduledEndTime?.ToString("HH:mm") ?? "--:--";
+                    var duration = task.EstimatedDuration.TotalHours.ToString("0.##");
+                    var due = FormatDate(task.DueDate);
+                    Console.WriteLine($"[ID: {task.DisplayId}] {start} - {end} | {task.Title} (Duration: {duration}h, Due: {due})");
                 }
             }
 
             // Show unschedulable/overdue tasks (incomplete, no scheduled start)
-            var unscheduledTasks = result.UnscheduledTasks ?? new List<TaskItem>();
-            if (unscheduledTasks.Any())
+            var unscheduledTasksToDisplay = result.UnscheduledTasks ?? new List<TaskItem>();
+            if (unscheduledTasksToDisplay.Any())
             {
                 Console.WriteLine("\nUnscheduled/Overdue Tasks:");
-                foreach (var task in unscheduledTasks)
+                foreach (var task in unscheduledTasksToDisplay.OrderBy(t => t.DueDate))
                 {
-                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Unscheduled/Overdue)");
+                    var duration = task.EstimatedDuration.TotalHours.ToString("0.##");
+                    var due = FormatDate(task.DueDate);
+                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Due: {due}, Duration: {duration}h)");
                 }
             }
 
@@ -221,6 +241,16 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Completed)");
                 }
             }
+        }
+
+        // Helper to format dates as MM-dd or MM-dd-yyyy if not current year
+        private string FormatDate(DateTime date)
+        {
+            var now = DateTime.Now;
+            if (date.Year == now.Year)
+                return date.ToString("MM-dd");
+            else
+                return date.ToString("MM-dd-yyyy");
         }
 
         private void HandleViewAllLists(TaskManagerService service)
