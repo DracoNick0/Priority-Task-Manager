@@ -6,5 +6,6 @@ namespace PriorityTaskManager.Models
     {
         public List<TaskItem> Tasks { get; set; } = new List<TaskItem>();
         public List<string> History { get; set; } = new List<string>();
+        public List<TaskItem> UnscheduledTasks { get; set; } = new List<TaskItem>();
     }
 }

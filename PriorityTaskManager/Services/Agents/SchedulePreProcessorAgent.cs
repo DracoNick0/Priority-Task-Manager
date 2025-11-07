@@ -29,10 +29,19 @@ namespace PriorityTaskManager.Services.Agents
                 {
                     var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
-                    // If today, trim start to now if now is after work start but before work end
-                    if (i == 0 && now > start && now < end)
+                    // If today
+                    if (i == 0)
                     {
-                        start = now;
+                        // If after work end, skip today entirely
+                        if (now >= end)
+                        {
+                            continue;
+                        }
+                        // If after work start but before work end, trim start to now
+                        if (now > start && now < end)
+                        {
+                            start = now;
+                        }
                     }
                     // Only add slot if end is after start (skip if workday is already over)
                     if (end > start)

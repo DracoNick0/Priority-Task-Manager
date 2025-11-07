@@ -47,15 +47,16 @@ namespace PriorityTaskManager.Services
             var finalTasks = finalContext.SharedState.ContainsKey("Tasks")
                 ? (List<TaskItem>)finalContext.SharedState["Tasks"]
                 : new List<TaskItem>();
-            if (finalContext.SharedState.ContainsKey("UnschedulableTasks"))
-            {
-                finalTasks.AddRange((List<TaskItem>)finalContext.SharedState["UnschedulableTasks"]);
-            }
+
+            var unschedulable = finalContext.SharedState.ContainsKey("UnschedulableTasks")
+                ? (List<TaskItem>)finalContext.SharedState["UnschedulableTasks"]
+                : new List<TaskItem>();
 
             var result = new PrioritizationResult
             {
                 Tasks = finalTasks,
-                History = finalContext.History
+                History = finalContext.History,
+                UnscheduledTasks = unschedulable
             };
             return result;
         }

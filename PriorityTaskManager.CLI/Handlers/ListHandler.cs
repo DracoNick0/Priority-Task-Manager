@@ -79,41 +79,80 @@ namespace PriorityTaskManager.CLI.Handlers
                 foreach (var message in result.History)
                 {
                     Console.WriteLine(message);
-                    System.Threading.Thread.Sleep(500);
                 }
                 Console.WriteLine("Scheduling complete.\n");
 
                 // Use new helper to determine which day to analyze
-                var targetDay = FindTargetDayForSlackMeter(DateTime.Now, userProfile);
+                var now = DateTime.Now;
+                var targetDay = FindTargetDayForSlackMeter(now, userProfile);
                 var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
                 var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
-                var totalWorkTime = (workEnd - workStart).TotalHours;
-                var tasksForTargetDay = incompleteTasks
-                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                    .ToList();
-
-                if (!tasksForTargetDay.Any())
+                double totalWorkTime;
+                bool afterHours = false;
+                if (targetDay.Date == DateTime.Today.Date)
                 {
-                    Console.WriteLine($"\nNo tasks scheduled for {targetDay:dddd, MMM dd}.");
+                    if (now >= workEnd)
+                    {
+                        // After hours: plan for next workday
+                        targetDay = FindTargetDayForSlackMeter(now.AddDays(1), userProfile);
+                        workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
+                        workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+                        totalWorkTime = (workEnd - workStart).TotalHours;
+                        afterHours = true;
+                    }
+                    else if (now < workStart)
+                    {
+                        totalWorkTime = (workEnd - workStart).TotalHours;
+                    }
+                    else
+                    {
+                        totalWorkTime = (workEnd - now).TotalHours;
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"\nTasks scheduled for {targetDay:dddd, MMM dd}:");
-                    foreach (var t in tasksForTargetDay.OrderBy(t => t.ScheduledStartTime))
-                    {
-                        var start = t.ScheduledStartTime.HasValue ? t.ScheduledStartTime.Value.ToString("HH:mm") : "--:--";
-                        var end = t.ScheduledEndTime.HasValue ? t.ScheduledEndTime.Value.ToString("HH:mm") : "--:--";
-                        Console.WriteLine($"- [ID: {t.DisplayId}] {start} - {end} ({t.EstimatedDuration.TotalHours:F1}h) {t.Title}");
-                    }
-                    Console.WriteLine();
+                    totalWorkTime = (workEnd - workStart).TotalHours;
+                }
+
+                // If after hours, tasks due today are now late and not scheduled
+                List<TaskItem> tasksForTargetDay;
+                if (afterHours)
+                {
+                    // Exclude tasks due today (now late)
+                    var today = DateTime.Today;
+                    tasksForTargetDay = incompleteTasks
+                        .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date && t.DueDate.Date >= targetDay.Date)
+                        .ToList();
+                }
+                else
+                {
+                    tasksForTargetDay = incompleteTasks
+                        .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
+                        .ToList();
                 }
 
                 var scheduledTimeTargetDay = tasksForTargetDay.Sum(t => t.EstimatedDuration.TotalHours);
                 var slackTime = totalWorkTime - scheduledTimeTargetDay;
                 double slackRatio = scheduledTimeTargetDay > 0 ? slackTime / scheduledTimeTargetDay : 1.0;
 
+                // Meter bar
+                int meterWidth = 32;
+                double busyFraction = totalWorkTime > 0 ? scheduledTimeTargetDay / totalWorkTime : 0;
+                busyFraction = Math.Clamp(busyFraction, 0, 1);
+                int busyBlocks = (int)(meterWidth * busyFraction);
+                int slackBlocks = meterWidth - busyBlocks;
+                string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
+
+                // Check for unscheduled tasks
+                var unscheduledTasksForMeter = result.UnscheduledTasks ?? new List<TaskItem>();
+                bool hasUnscheduled = unscheduledTasksForMeter.Any();
+
                 // Meter color
-                if (slackRatio > 0.5)
+                if (hasUnscheduled)
+                {
+                    Console.ForegroundColor = ConsoleColor.Black;
+                }
+                else if (slackRatio > 0.5)
                     Console.ForegroundColor = ConsoleColor.Green;
                 else if (slackRatio > 0.25)
                     Console.ForegroundColor = ConsoleColor.Yellow;
@@ -121,14 +160,6 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.ForegroundColor = ConsoleColor.Red;
                 else
                     Console.ForegroundColor = ConsoleColor.DarkGray;
-
-                // Meter bar
-                int meterWidth = 30;
-                double busyFraction = scheduledTimeTargetDay / (totalWorkTime > 0 ? totalWorkTime : 1);
-                busyFraction = Math.Clamp(busyFraction, 0, 1);
-                int busyBlocks = (int)(meterWidth * busyFraction);
-                int slackBlocks = meterWidth - busyBlocks;
-                string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
 
                 string headerText;
                 if (targetDay.Date == DateTime.Today.Date)
@@ -141,6 +172,13 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
                 Console.WriteLine($"{headerText} [{meter}] - {slackTime:F1} hours free");
                 Console.ResetColor();
+
+                if (hasUnscheduled)
+                {
+                    Console.ForegroundColor = ConsoleColor.Black;
+                    Console.WriteLine("WARNING: Some tasks could not be scheduled due to time or dependency constraints.");
+                    Console.ResetColor();
+                }
             }
 
             if (!tasksToDisplay.Any())
@@ -150,22 +188,27 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             var mode = service.UserProfile.ActiveUrgencyMode;
-            foreach (var task in incompleteTasks)
+            // Show scheduled/incomplete tasks
+            foreach (var task in incompleteTasks.Where(t => t.ScheduledStartTime.HasValue))
             {
                 if (mode == UrgencyMode.MultiAgent)
                 {
-                    if (task.ScheduledStartTime.HasValue)
-                    {
-                        Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Recommended Start: {task.ScheduledStartTime:ddd, MMM dd HH:mm})");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Unscheduled)");
-                    }
+                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Recommended Start: {task.ScheduledStartTime:ddd, MMM dd HH:mm})");
                 }
                 else // SingleAgent
                 {
                     Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Urgency: {task.UrgencyScore:F2})");
+                }
+            }
+
+            // Show unschedulable/overdue tasks (incomplete, no scheduled start)
+            var unscheduledTasks = result.UnscheduledTasks ?? new List<TaskItem>();
+            if (unscheduledTasks.Any())
+            {
+                Console.WriteLine("\nUnscheduled/Overdue Tasks:");
+                foreach (var task in unscheduledTasks)
+                {
+                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Unscheduled/Overdue)");
                 }
             }
 

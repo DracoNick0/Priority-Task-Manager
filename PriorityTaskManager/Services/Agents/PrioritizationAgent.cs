@@ -30,8 +30,44 @@ namespace PriorityTaskManager.Services.Agents
                 return context;
             if (!context.SharedState.TryGetValue("TotalAvailableTime", out var totalTimeObj) || totalTimeObj is not TimeSpan totalAvailableTime)
                 return context;
+
             // Exclude completed tasks from scheduling
             var schedulableTasks = allTasks.Where(t => !t.IsCompleted).ToList();
+
+            // Exclude tasks that are late (due today and after work hours)
+            if (context.SharedState.TryGetValue("UserProfile", out var userProfileObj) && userProfileObj is PriorityTaskManager.Models.UserProfile userProfile)
+            {
+                var now = DateTime.Now;
+                var today = DateTime.Today;
+                var workEnd = today.Add(userProfile.WorkEndTime.ToTimeSpan());
+                if (now > workEnd)
+                {
+                    // After work hours: tasks due today are late
+                    var lateTasks = schedulableTasks.Where(t => t.DueDate.Date <= today).ToList();
+                    foreach (var late in lateTasks)
+                    {
+                        // Mark as unscheduled (late)
+                        late.ScheduledStartTime = null;
+                        late.ScheduledEndTime = null;
+                    }
+                    // Remove from schedulable
+                    schedulableTasks = schedulableTasks.Except(lateTasks).ToList();
+                    // Add to unschedulable in context
+                    if (!context.SharedState.ContainsKey("UnschedulableTasks"))
+                        context.SharedState["UnschedulableTasks"] = new List<Models.TaskItem>();
+                    var unschedulable = (List<Models.TaskItem>)context.SharedState["UnschedulableTasks"];
+                    foreach (var late in lateTasks)
+                        if (!unschedulable.Contains(late)) unschedulable.Add(late);
+
+                    // Also add to PrioritizationResult.UnscheduledTasks if present
+                    if (context.SharedState.TryGetValue("PrioritizationResult", out var prObj) && prObj is PriorityTaskManager.Models.PrioritizationResult pr)
+                    {
+                        foreach (var late in lateTasks)
+                            if (!pr.UnscheduledTasks.Contains(late)) pr.UnscheduledTasks.Add(late);
+                    }
+                }
+            }
+
             if (schedulableTasks == null || schedulableTasks.Count == 0 || totalAvailableTime <= TimeSpan.Zero)
                 return context;
 
@@ -45,7 +81,18 @@ namespace PriorityTaskManager.Services.Agents
             if (initialResult.IsSuccess)
             {
                 context.SharedState["Tasks"] = initialResult.ScheduledTasks;
-                context.SharedState["UnschedulableTasks"] = initialResult.UnscheduledTasks;
+                // Append to UnschedulableTasks, avoiding duplicates
+                if (!context.SharedState.ContainsKey("UnschedulableTasks"))
+                    context.SharedState["UnschedulableTasks"] = new List<Models.TaskItem>();
+                var unschedulable = (List<Models.TaskItem>)context.SharedState["UnschedulableTasks"];
+                foreach (var t in initialResult.UnscheduledTasks)
+                    if (!unschedulable.Contains(t)) unschedulable.Add(t);
+                // Also set UnscheduledTasks in PrioritizationResult if present
+                if (context.SharedState.TryGetValue("PrioritizationResult", out var prObj) && prObj is PriorityTaskManager.Models.PrioritizationResult pr)
+                {
+                    foreach (var t in initialResult.UnscheduledTasks)
+                        if (!pr.UnscheduledTasks.Contains(t)) pr.UnscheduledTasks.Add(t);
+                }
                 return context;
             }
             // If failed due to pinned task, get the full chain and re-plan
@@ -56,12 +103,32 @@ namespace PriorityTaskManager.Services.Agents
                 var remainingTasks = schedulableTasks.Except(fullChain).ToList();
                 var finalResult = TryScheduleTasks(remainingTasks, totalAvailableTime, scheduleWindow);
                 context.SharedState["Tasks"] = finalResult.ScheduledTasks;
-                context.SharedState["UnschedulableTasks"] = fullChain;
+                // Append to UnschedulableTasks, avoiding duplicates
+                if (!context.SharedState.ContainsKey("UnschedulableTasks"))
+                    context.SharedState["UnschedulableTasks"] = new List<Models.TaskItem>();
+                var unschedulable = (List<Models.TaskItem>)context.SharedState["UnschedulableTasks"];
+                foreach (var t in fullChain)
+                    if (!unschedulable.Contains(t)) unschedulable.Add(t);
+                if (context.SharedState.TryGetValue("PrioritizationResult", out var prObj) && prObj is PriorityTaskManager.Models.PrioritizationResult pr)
+                {
+                    foreach (var t in fullChain)
+                        if (!pr.UnscheduledTasks.Contains(t)) pr.UnscheduledTasks.Add(t);
+                }
                 return context;
             }
             // Fallback: just return what we have
             context.SharedState["Tasks"] = initialResult.ScheduledTasks;
-            context.SharedState["UnschedulableTasks"] = initialResult.UnscheduledTasks;
+            // Append to UnschedulableTasks, avoiding duplicates
+            if (!context.SharedState.ContainsKey("UnschedulableTasks"))
+                context.SharedState["UnschedulableTasks"] = new List<Models.TaskItem>();
+            var unschedulableFallback = (List<Models.TaskItem>)context.SharedState["UnschedulableTasks"];
+            foreach (var t in initialResult.UnscheduledTasks)
+                if (!unschedulableFallback.Contains(t)) unschedulableFallback.Add(t);
+            if (context.SharedState.TryGetValue("PrioritizationResult", out var prObj2) && prObj2 is PriorityTaskManager.Models.PrioritizationResult pr2)
+            {
+                foreach (var t in initialResult.UnscheduledTasks)
+                    if (!pr2.UnscheduledTasks.Contains(t)) pr2.UnscheduledTasks.Add(t);
+            }
             return context;
         }
 
@@ -105,6 +172,7 @@ namespace PriorityTaskManager.Services.Agents
                 }
                 return t;
             }).ToList();
+
             var orderedTasks = normalizedTasks.OrderBy(t => t.DueDate).ToList();
             var currentSchedule = new List<Models.TaskItem>();
             var unscheduledTasks = new List<Models.TaskItem>();
@@ -112,9 +180,13 @@ namespace PriorityTaskManager.Services.Agents
             // Track running offset for scheduling
             TimeSpan runningOffset = TimeSpan.Zero;
 
+            // For rollback: keep a stack of unscheduled tasks per schedule state
+            var unscheduledStack = new Stack<List<Models.TaskItem>>();
+
             foreach (var taskToTry in orderedTasks)
             {
                 var tentativeSchedule = new List<Models.TaskItem>(currentSchedule) { taskToTry };
+                var localUnscheduled = new List<Models.TaskItem>();
                 bool pinnedFailure = false;
                 while (true)
                 {
@@ -131,8 +203,16 @@ namespace PriorityTaskManager.Services.Agents
                             break;
                         }
                         var minImportance = unpinned.Min(t => t.Importance);
+                        // If the lowest importance is the same as the task to try, remove the task to try
+                        if (taskToTry.Importance == minImportance)
+                        {
+                            tentativeSchedule.Remove(taskToTry);
+                            localUnscheduled.Add(taskToTry);
+                            break; // Can't schedule this task
+                        }
                         var toRemove = unpinned.First(t => t.Importance == minImportance);
                         tentativeSchedule.Remove(toRemove);
+                        localUnscheduled.Add(toRemove);
                         if (toRemove == taskToTry)
                             break; // Can't schedule this task
                         continue;
@@ -153,14 +233,25 @@ namespace PriorityTaskManager.Services.Agents
                         break;
                     }
                     var minImp = unpinnedDue.Min(t => t.Importance);
+                    // If the lowest importance is the same as the task to try, remove the task to try
+                    if (taskToTry.Importance == minImp)
+                    {
+                        tentativeSchedule.Remove(taskToTry);
+                        localUnscheduled.Add(taskToTry);
+                        break; // Can't schedule this task
+                    }
                     var removeTask = unpinnedDue.First(t => t.Importance == minImp);
                     tentativeSchedule.Remove(removeTask);
+                    localUnscheduled.Add(removeTask);
                     if (removeTask == taskToTry)
                         break; // Can't schedule this task
                 }
                 if (pinnedFailure && taskToTry.IsPinned)
                 {
                     // Impossible to schedule a pinned task
+                    // Roll back any local unscheduled tasks
+                    foreach (var t in localUnscheduled)
+                        unscheduledTasks.Remove(t);
                     return new ScheduleResult
                     {
                         IsSuccess = false,
@@ -172,12 +263,21 @@ namespace PriorityTaskManager.Services.Agents
                 if (tentativeSchedule.Contains(taskToTry))
                 {
                     currentSchedule = new List<Models.TaskItem>(tentativeSchedule);
+                    // Commit local unscheduled tasks
+                    foreach (var t in localUnscheduled)
+                        if (!unscheduledTasks.Contains(t)) unscheduledTasks.Add(t);
                 }
                 else
                 {
-                    unscheduledTasks.Add(taskToTry);
+                    // Only add taskToTry if it was not already unscheduled
+                    if (!unscheduledTasks.Contains(taskToTry))
+                        unscheduledTasks.Add(taskToTry);
+                    // Also commit any other local unscheduled tasks
+                    foreach (var t in localUnscheduled)
+                        if (!unscheduledTasks.Contains(t)) unscheduledTasks.Add(t);
                 }
             }
+
 
             // Assign ScheduledStartTime and ScheduledEndTime for scheduled tasks
             runningOffset = TimeSpan.Zero;
@@ -188,6 +288,13 @@ namespace PriorityTaskManager.Services.Agents
                 task.ScheduledStartTime = start;
                 task.ScheduledEndTime = end;
                 runningOffset += task.EstimatedDuration;
+            }
+
+            // Clear ScheduledStartTime and ScheduledEndTime for unscheduled tasks
+            foreach (var task in unscheduledTasks)
+            {
+                task.ScheduledStartTime = null;
+                task.ScheduledEndTime = null;
             }
 
             return new ScheduleResult
