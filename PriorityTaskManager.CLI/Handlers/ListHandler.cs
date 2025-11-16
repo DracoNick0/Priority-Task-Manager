@@ -98,25 +98,63 @@ namespace PriorityTaskManager.CLI.Handlers
             if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
             {
                 var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
-                var slack = (effectiveDueTime - closestTask.ScheduledStartTime.Value) - closestTask.EstimatedDuration;
+                var slack = (effectiveDueTime - closestTask.ScheduledStartTime!.Value) - closestTask.EstimatedDuration;
                 var slackPercentage = slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes;
 
                 // Calculate schedule pressure
                 var totalWorkTime = (workEnd - workStart).TotalHours;
                 var scheduledTime = incompleteTasks
-                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                    .Sum(t => t.EstimatedDuration.TotalHours);
+                        .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
+                        .Sum(t => t.EstimatedDuration.TotalHours);
 
                 // Adjust slackTime to reflect only hours free within the target day
                 var slackTime = Math.Max(0, totalWorkTime - scheduledTime);
 
-                // Meter bar
+                // Meter bar with task numbers
                 int meterWidth = 32;
-                double busyFraction = totalWorkTime > 0 ? scheduledTime / totalWorkTime : 0;
-                busyFraction = Math.Clamp(busyFraction, 0, 1);
-                int busyBlocks = (int)(meterWidth * busyFraction);
-                int slackBlocks = meterWidth - busyBlocks;
-                string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
+                double totalWorkMinutes = (workEnd - workStart).TotalMinutes;
+                var taskBlocks = new char[meterWidth];
+                Array.Fill(taskBlocks, ' ');
+
+                foreach (var task in incompleteTasks.Where(t => t.ScheduledStartTime.HasValue))
+                {
+                    var startMinutes = (task.ScheduledStartTime.Value - workStart).TotalMinutes;
+                    var endMinutes = ((task.ScheduledEndTime ?? workEnd) - workStart).TotalMinutes;
+
+                    if (startMinutes >= 0 && startMinutes < totalWorkMinutes)
+                    {
+                        int startBlock = (int)(meterWidth * (startMinutes / totalWorkMinutes));
+                        int endBlock = (int)(meterWidth * (Math.Min(endMinutes, totalWorkMinutes) / totalWorkMinutes));
+
+                        if (startBlock < meterWidth)
+                        {
+                            taskBlocks[startBlock] = '|';
+                        }
+
+                        int taskWidth = endBlock - startBlock - 1;
+                        if (taskWidth > 0)
+                        {
+                            string taskRepresentation = new string('=', taskWidth);
+                            int idPosition = taskWidth / 2;
+                            taskRepresentation = taskRepresentation.Remove(idPosition, 1).Insert(idPosition, task.DisplayId.ToString());
+
+                            for (int i = 0; i < taskWidth; i++)
+                            {
+                                if (startBlock + 1 + i < meterWidth)
+                                {
+                                    taskBlocks[startBlock + 1 + i] = taskRepresentation[i];
+                                }
+                            }
+                        }
+
+                        if (endBlock < meterWidth)
+                        {
+                            taskBlocks[endBlock] = '|';
+                        }
+                    }
+                }
+
+                string meter = new string(taskBlocks);
 
                 // Determine color
                 ConsoleColor meterColor;
