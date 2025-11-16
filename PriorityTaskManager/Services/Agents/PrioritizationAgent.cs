@@ -287,5 +287,69 @@ namespace PriorityTaskManager.Services.Agents
                 UnscheduledTasks = unscheduledTasks
             };
         }
+
+        private ScheduleResult TryScheduleTasksAcrossMultipleDays(List<Models.TaskItem> tasks, TimeSpan totalAvailableTime, Models.ScheduleWindow? scheduleWindow, Models.UserProfile userProfile)
+        {
+            var result = new ScheduleResult();
+            var remainingTasks = new List<Models.TaskItem>(tasks);
+
+            while (remainingTasks.Any())
+            {
+                var dailyResult = TryScheduleTasks(remainingTasks, totalAvailableTime, scheduleWindow);
+
+                result.ScheduledTasks.AddRange(dailyResult.ScheduledTasks);
+                result.UnscheduledTasks.AddRange(dailyResult.UnscheduledTasks);
+
+                if (!dailyResult.UnscheduledTasks.Any())
+                {
+                    break; // All tasks scheduled
+                }
+
+                // Move to the next workday
+                var nextWorkday = FindNextWorkday(scheduleWindow?.AvailableSlots.LastOrDefault()?.EndTime ?? DateTime.Now, userProfile);
+                if (nextWorkday == null)
+                {
+                    result.UnscheduledTasks.AddRange(dailyResult.UnscheduledTasks);
+                    break; // No more workdays available
+                }
+
+                scheduleWindow = CreateScheduleWindowForDay(nextWorkday.Value, userProfile);
+                remainingTasks = dailyResult.UnscheduledTasks;
+            }
+
+            return result;
+        }
+
+        private DateTime? FindNextWorkday(DateTime currentDay, Models.UserProfile userProfile)
+        {
+            var nextDay = currentDay.Date.AddDays(1);
+            for (int i = 0; i < 14; i++) // Safety: max 2 weeks
+            {
+                if (userProfile.WorkDays.Contains(nextDay.DayOfWeek))
+                {
+                    return nextDay;
+                }
+                nextDay = nextDay.AddDays(1);
+            }
+            return null; // No workday found within 2 weeks
+        }
+
+        private Models.ScheduleWindow CreateScheduleWindowForDay(DateTime day, Models.UserProfile userProfile)
+        {
+            var workStart = day.Add(userProfile.WorkStartTime.ToTimeSpan());
+            var workEnd = day.Add(userProfile.WorkEndTime.ToTimeSpan());
+
+            return new Models.ScheduleWindow
+            {
+                AvailableSlots = new List<Models.TimeSlot>
+                {
+                    new Models.TimeSlot
+                    {
+                        StartTime = workStart,
+                        EndTime = workEnd
+                    }
+                }
+            };
+        }
         }
     }

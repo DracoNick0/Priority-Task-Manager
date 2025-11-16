@@ -58,6 +58,23 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
+        /// <summary>
+        /// Finds the task closest to its due date across all tasks.
+        /// </summary>
+        public TaskItem? FindClosestTaskToDueDate(IEnumerable<TaskItem> tasks)
+        {
+            return tasks
+                .Where(t => t.ScheduledStartTime.HasValue && !t.IsCompleted)
+                .OrderBy(t => (t.DueDate - t.ScheduledStartTime.Value).Duration())
+                .FirstOrDefault();
+        }
+
+        private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)
+        {
+            var workEnd = task.DueDate.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+            return task.DueDate < workEnd ? task.DueDate : workEnd;
+        }
+
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
             Console.Clear();
@@ -69,131 +86,70 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             var result = service.GetPrioritizedTasks(Program.ActiveListId);
             var tasksToDisplay = result.Tasks;
-            // Separate completed and incomplete tasks
             var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
-            var completedTasks = tasksToDisplay.Where(t => t.IsCompleted).ToList();
+
             var userProfile = service.UserProfile;
-            if (userProfile.ActiveUrgencyMode == UrgencyMode.MultiAgent)
+            var now = DateTime.Now;
+            var targetDay = FindTargetDayForSlackMeter(now, userProfile);
+            var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
+            var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+
+            var closestTask = FindClosestTaskToDueDate(incompleteTasks);
+            if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
             {
-                // Show agent logs ("thinking" effect)
-                Console.WriteLine("\nRunning multi-agent scheduler...");
-                foreach (var message in result.History)
-                {
-                    Console.WriteLine(message);
-                }
-                Console.WriteLine("Scheduling complete.\n");
+                var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
+                var slack = (effectiveDueTime - closestTask.ScheduledStartTime.Value) - closestTask.EstimatedDuration;
+                var slackPercentage = slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes;
 
-                // Use new helper to determine which day to analyze
-                var now = DateTime.Now;
-                var targetDay = FindTargetDayForSlackMeter(now, userProfile);
-                var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
-                var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
-                double totalWorkTime;
-                if (targetDay.Date == DateTime.Today.Date)
-                {
-                    if (now >= workEnd)
-                    {
-                        // After hours: plan for next workday
-                        targetDay = FindTargetDayForSlackMeter(now.AddDays(1), userProfile);
-                        workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
-                        workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
-                        totalWorkTime = (workEnd - workStart).TotalHours;
-                        // afterHours variable removed as it was unused
-                    }
-                    else if (now < workStart)
-                    {
-                        totalWorkTime = (workEnd - workStart).TotalHours;
-                    }
-                    else
-                    {
-                        totalWorkTime = (workEnd - now).TotalHours;
-                    }
-                }
-                else
-                {
-                    totalWorkTime = (workEnd - workStart).TotalHours;
-                }
+                // Calculate schedule pressure
+                var totalWorkTime = (workEnd - workStart).TotalHours;
+                var scheduledTime = incompleteTasks
+                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
+                    .Sum(t => t.EstimatedDuration.TotalHours);
 
-                // If after hours, tasks due to day are now late and not scheduled
-                var tasksForTargetDay = incompleteTasks
-                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledEndTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                    .ToList();
-
-                if (tasksForTargetDay == null || !tasksForTargetDay.Any())
-                {
-                    string noTasksMessage;
-                    if (targetDay.Date == DateTime.Today.Date)
-                        noTasksMessage = "\nNo tasks due today.";
-                    else if (targetDay.Date == DateTime.Today.AddDays(1).Date)
-                        noTasksMessage = "\nNo tasks due tomorrow.";
-                    else
-                        noTasksMessage = $"\nNo tasks due on {targetDay:dddd, MMM dd}.";
-                    Console.WriteLine(noTasksMessage);
-                }
-                else
-                {
-                    string tasksHeader;
-                    if (targetDay.Date == DateTime.Today.Date)
-                        tasksHeader = "Tasks due today:";
-                    else if (targetDay.Date == DateTime.Today.AddDays(1).Date)
-                        tasksHeader = "Tasks due tomorrow:";
-                    else
-                        tasksHeader = $"Tasks due on {targetDay:dddd, MMM dd}:";
-                    Console.WriteLine(tasksHeader);
-
-                    foreach (var t in (tasksForTargetDay ?? new List<TaskItem>()).OrderBy(t => t.ScheduledStartTime))
-                    {
-                        var start = t.ScheduledStartTime.HasValue ? t.ScheduledStartTime.Value.ToString("HH:mm") : "--:--";
-                        var end = t.ScheduledEndTime.HasValue ? t.ScheduledEndTime.Value.ToString("HH:mm") : "--:--";
-                        Console.WriteLine($"- [ID: {t.DisplayId}] {start} - {end} ({t.EstimatedDuration.TotalHours:F1}h) {t.Title}");
-                    }
-                    Console.WriteLine();
-                }
-
-                var scheduledTimeTargetDay = (tasksForTargetDay != null && tasksForTargetDay.Count > 0)
-                    ? tasksForTargetDay.Sum(t => t.EstimatedDuration.TotalHours)
-                    : 0.0;
-                var slackTime = totalWorkTime - scheduledTimeTargetDay;
-                double slackRatio = scheduledTimeTargetDay > 0 ? slackTime / scheduledTimeTargetDay : 1.0;
+                // Adjust slackTime to reflect only hours free within the target day
+                var slackTime = Math.Max(0, totalWorkTime - scheduledTime);
 
                 // Meter bar
                 int meterWidth = 32;
-                double busyFraction = totalWorkTime > 0 ? scheduledTimeTargetDay / totalWorkTime : 0;
+                double busyFraction = totalWorkTime > 0 ? scheduledTime / totalWorkTime : 0;
                 busyFraction = Math.Clamp(busyFraction, 0, 1);
                 int busyBlocks = (int)(meterWidth * busyFraction);
                 int slackBlocks = meterWidth - busyBlocks;
                 string meter = new string('=', busyBlocks) + new string('-', slackBlocks);
 
-                // Check for unscheduled tasks
-                var unscheduledTasks = result.UnscheduledTasks ?? new List<TaskItem>();
-                bool hasUnscheduled = unscheduledTasks.Any();
-
-                // Meter color
-                if (hasUnscheduled)
-                    Console.ForegroundColor = ConsoleColor.Black;
-                else if (slackRatio > 0.5)
-                    Console.ForegroundColor = ConsoleColor.Green;
-                else if (slackRatio > 0.25)
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                else if (slackRatio >= 0)
-                    Console.ForegroundColor = ConsoleColor.Red;
+                // Determine color
+                ConsoleColor meterColor;
+                if (slack.TotalMinutes < 0)
+                    meterColor = ConsoleColor.Black;
+                else if (slackPercentage > 0.25)
+                    meterColor = ConsoleColor.Green;
+                else if (slackPercentage > 0.10)
+                    meterColor = ConsoleColor.Yellow;
                 else
-                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    meterColor = ConsoleColor.Red;
 
-                string headerText;
-                if (targetDay.Date == DateTime.Today.Date)
-                    headerText = "Today's Schedule Pressure:";
-                else
-                    headerText = $"{targetDay:dddd}'s Schedule Pressure:";
-                Console.WriteLine($"{headerText} [{meter}] - {slackTime:F1} hours free");
+                // Display combined output
+                Console.ForegroundColor = meterColor;
+                string headerText = targetDay.Date == DateTime.Today.Date
+                    ? "Today's Schedule:"
+                    : $"{targetDay:dddd}'s Schedule:";
+                Console.WriteLine($"{headerText} [{meter}] {slackTime:F1} hours free");
+                Console.WriteLine($"Task with least slack: '{closestTask.Title}' - Slack: {slack.Hours} hours {slack.Minutes} minutes");
                 Console.ResetColor();
+            }
+            else
+            {
+                Console.WriteLine("No tasks available to calculate slack.");
+            }
 
-                if (hasUnscheduled)
-                {
-                    Console.ForegroundColor = ConsoleColor.Black;
-                    Console.WriteLine("WARNING: Some tasks could not be scheduled due to time or dependency constraints.");
-                    Console.ResetColor();
-                }
+            // Critical tasks meter
+            var criticalTasks = incompleteTasks.Where(t => GetEffectiveDueTime(t, userProfile) < now).ToList();
+            if (criticalTasks.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Critical Tasks: {criticalTasks.Count} tasks overdue by user preferences");
+                Console.ResetColor();
             }
 
             if (!tasksToDisplay.Any() && !result.UnscheduledTasks.Any())
@@ -234,6 +190,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             // Show completed tasks at the bottom
+            var completedTasks = tasksToDisplay.Where(t => t.IsCompleted).ToList();
             if (completedTasks.Any())
             {
                 Console.WriteLine("\nCompleted Tasks:");
