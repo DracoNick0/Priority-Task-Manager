@@ -14,5 +14,9 @@ namespace PriorityTaskManager.Models
         public int NextDisplayId { get; set; } = 1;
         public int NextListId { get; set; } = 1;
         public UserProfile UserProfile { get; set; } = new UserProfile();
+        /// <summary>
+        /// The ID of the currently active task list.
+        /// </summary>
+        public int ActiveListId { get; set; } = 0;
     }
 }

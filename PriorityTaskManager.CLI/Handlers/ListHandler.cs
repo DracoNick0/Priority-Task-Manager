@@ -14,13 +14,13 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
-            if (Program.ActiveListId == 0)
+            if (service.GetActiveListId() == 0)
             {
                 var generalList = service.GetListByName("General");
                 if (generalList != null)
-                    Program.ActiveListId = generalList.Id;
+                    service.SetActiveListId(generalList.Id);
                 else
-                    Program.ActiveListId = 1;
+                    service.SetActiveListId(1);
             }
 
             if (args.Length == 0 || args[0].Equals("view", StringComparison.OrdinalIgnoreCase))
@@ -80,13 +80,13 @@ namespace PriorityTaskManager.CLI.Handlers
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
             Console.Clear();
-            var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == Program.ActiveListId);
+            var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == service.GetActiveListId());
             if (activeList == null)
             {
-                Console.WriteLine($"Error: Active list ID '{Program.ActiveListId}' does not exist.");
+                Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
                 return;
             }
-            var result = service.GetPrioritizedTasks(Program.ActiveListId);
+            var result = service.GetPrioritizedTasks(service.GetActiveListId());
             var tasksToDisplay = result.Tasks;
             var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
 
@@ -182,8 +182,8 @@ namespace PriorityTaskManager.CLI.Handlers
                     : $"{targetDay:dddd}'s Schedule:";
                 Console.WriteLine($"{headerText} [{meter}] {slackTime:F1} hours free");
                 Console.WriteLine($"Task with least slack: '{closestTask.Title}'");
-                Console.WriteLine($"Realistic Slack: {realisticSlack.Hours} hours {realisticSlack.Minutes} minutes");
-                Console.WriteLine($"Actual Slack: {actualSlack.Hours} hours {actualSlack.Minutes} minutes");
+                Console.WriteLine($"Realistic Slack: {realisticSlack.Days} days {realisticSlack.Hours} hours {realisticSlack.Minutes} minutes");
+                Console.WriteLine($"Actual Slack: {realisticSlack.Days} days {actualSlack.Hours} hours {actualSlack.Minutes} minutes");
                 Console.ResetColor();
             }
             else
@@ -264,7 +264,7 @@ namespace PriorityTaskManager.CLI.Handlers
             var lists = service.GetAllLists();
             foreach (var list in lists)
             {
-                var activeIndicator = list.Id == Program.ActiveListId ? " (Active)" : string.Empty;
+                var activeIndicator = list.Id == service.GetActiveListId() ? " (Active)" : string.Empty;
                 Console.WriteLine($"- {list.Name}{activeIndicator}");
             }
         }
@@ -301,7 +301,7 @@ namespace PriorityTaskManager.CLI.Handlers
             var list = service.GetListByName(listName);
             if (list != null)
             {
-                Program.ActiveListId = list.Id;
+                service.SetActiveListId(list.Id);
                 Console.WriteLine($"Switched to list '{listName}'.");
             }
             else
@@ -340,11 +340,10 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             var listToDelete = service.GetListByName(listName);
-            if (listToDelete != null && listToDelete.Id == Program.ActiveListId)
+            if (listToDelete != null && listToDelete.Id == service.GetActiveListId())
             {
-                // If deleting the active list, switch to General
                 var generalList = service.GetListByName("General");
-                Program.ActiveListId = generalList != null ? generalList.Id : 1;
+                service.SetActiveListId(generalList != null ? generalList.Id : 1);
             }
             service.DeleteList(listName);
             Console.WriteLine($"List '{listName}' deleted successfully.");
@@ -364,10 +363,10 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == Program.ActiveListId);
+            var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == service.GetActiveListId());
             if (activeList == null)
             {
-                Console.WriteLine($"Error: Active list ID '{Program.ActiveListId}' does not exist.");
+                Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
                 return;
             }
             activeList.SortOption = sortOption;
@@ -384,7 +383,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            int selectedIndex = lists.FindIndex(l => l.Id == Program.ActiveListId);
+            int selectedIndex = lists.FindIndex(l => l.Id == service.GetActiveListId());
             if (selectedIndex == -1) selectedIndex = 0;
 
             int initialTop = Console.CursorTop;
@@ -408,7 +407,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         selectedIndex = (selectedIndex - 1 + lists.Count) % lists.Count;
                         break;
                     case ConsoleKey.Enter:
-                        Program.ActiveListId = lists[selectedIndex].Id;
+                        service.SetActiveListId(lists[selectedIndex].Id);
                         Console.SetCursorPosition(0, initialTop + lists.Count);
                         Console.WriteLine($"Switched to list '{lists[selectedIndex].Name}'.");
                         return;

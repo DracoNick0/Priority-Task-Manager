@@ -20,7 +20,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             // Use ActiveListId for display id lookup
-            var existing = service.GetTaskByDisplayId(displayId, Program.ActiveListId);
+            var existing = service.GetTaskByDisplayId(displayId, service.GetActiveListId());
 
             if (existing == null)
             {

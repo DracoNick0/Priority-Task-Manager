@@ -17,7 +17,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
         {
             context.History.Add("Finding all completed tasks...");
 
-            var allTasks = _taskManagerService.GetAllTasks(Program.ActiveListId);
+            var allTasks = _taskManagerService.GetAllTasks(_taskManagerService.GetActiveListId());
             var completedTasks = allTasks.Where(task => task.IsCompleted).ToList();
 
             context.SharedState["CompletedTasks"] = completedTasks;

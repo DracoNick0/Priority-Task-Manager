@@ -298,8 +298,6 @@ namespace PriorityTaskManager.Services
             }
         }
 
-        // ...existing code...
-
         /// <summary>
         /// Checks if adding the given dependencies to the specified task would create a circular dependency.
         /// </summary>
@@ -395,8 +393,21 @@ namespace PriorityTaskManager.Services
         /// <returns>The ID of the active list.</returns>
         public int GetActiveListId()
         {
-            // Placeholder implementation: Return the first list's ID or 0 if no lists exist.
-            return _data.Lists.FirstOrDefault()?.Id ?? 0;
+            return _data.ActiveListId;
+        }
+
+        /// <summary>
+        /// Sets the ID of the currently active task list.
+        /// </summary>
+        /// <param name="listId">The ID of the list to set as active.</param>
+        public void SetActiveListId(int listId)
+        {
+            if (!_data.Lists.Any(list => list.Id == listId))
+            {
+                throw new ArgumentException($"List with ID {listId} does not exist.");
+            }
+            _data.ActiveListId = listId;
+            SaveData();
         }
     }
 }
