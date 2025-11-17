@@ -9,6 +9,8 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class ListHandler : ICommandHandler
     {
+        private readonly TaskMetricsService _taskMetricsService = new TaskMetricsService();
+
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
@@ -90,7 +92,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             var userProfile = service.UserProfile;
             var now = DateTime.Now;
-            var targetDay = FindTargetDayForSlackMeter(now, userProfile);
+            var targetDay = _taskMetricsService.FindTargetDayForSlackMeter(now, userProfile);
             var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
             var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
 
@@ -98,7 +100,7 @@ namespace PriorityTaskManager.CLI.Handlers
             if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
             {
                 var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
-                var slack = CalculateSlack(closestTask, userProfile);
+                var slack = _taskMetricsService.CalculateSlack(closestTask, userProfile);
                 var slackPercentage = slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes;
 
                 // Calculate schedule pressure
@@ -168,7 +170,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     meterColor = ConsoleColor.Red;
 
                 // Calculate realistic slack
-                var realisticSlack = CalculateSlack(closestTask, userProfile);
+                var realisticSlack = _taskMetricsService.CalculateSlack(closestTask, userProfile);
 
                 // Calculate actual slack
                 var actualSlack = closestTask.DueDate - (DateTime.Now + closestTask.EstimatedDuration);
@@ -429,74 +431,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 string line = (prefix + lists[i].Name).PadRight(Console.WindowWidth - 1);
                 Console.Write(line);
             }
-        }
-
-        /// <summary>
-        /// Determines the target day for the slack meter (public for testing; make private after TDD).
-        /// </summary>
-        public DateTime FindTargetDayForSlackMeter(DateTime currentTime, UserProfile profile)
-        {
-            // Get end of workday for the current day
-            var endOfWorkday = currentTime.Date.Add(profile.WorkEndTime.ToTimeSpan());
-            var isWorkday = profile.WorkDays.Contains(currentTime.DayOfWeek);
-            if (isWorkday && currentTime <= endOfWorkday)
-            {
-                // During work hours on a workday
-                return currentTime.Date;
-            }
-            // Otherwise, find the next workday
-            var checkDate = currentTime.Date.AddDays(1);
-            for (int i = 0; i < 14; i++) // Safety: max 2 weeks
-            {
-                if (profile.WorkDays.Contains(checkDate.DayOfWeek))
-                {
-                    return checkDate;
-                }
-                checkDate = checkDate.AddDays(1);
-            }
-            // Fallback: just return today
-            return currentTime.Date;
-        }
-
-        private TimeSpan CalculateSlack(TaskItem task, UserProfile userProfile)
-        {
-            if (!task.ScheduledStartTime.HasValue)
-                return TimeSpan.Zero;
-
-            var startTime = task.ScheduledStartTime.Value;
-            var effectiveDueTime = GetEffectiveDueTime(task, userProfile);
-
-            TimeSpan totalSlack = TimeSpan.Zero;
-            var currentDay = startTime.Date;
-
-            while (currentDay <= effectiveDueTime.Date)
-            {
-                if (userProfile.WorkDays.Contains(currentDay.DayOfWeek))
-                {
-                    var workStart = currentDay.Add(userProfile.WorkStartTime.ToTimeSpan());
-                    var workEnd = currentDay.Add(userProfile.WorkEndTime.ToTimeSpan());
-
-                    if (currentDay == startTime.Date)
-                    {
-                        // Partial day for the start date
-                        totalSlack += workEnd - (startTime > workStart ? startTime : workStart);
-                    }
-                    else if (currentDay == effectiveDueTime.Date)
-                    {
-                        // Partial day for the due date
-                        totalSlack += (effectiveDueTime < workEnd ? effectiveDueTime : workEnd) - workStart;
-                    }
-                    else
-                    {
-                        // Full workday
-                        totalSlack += workEnd - workStart;
-                    }
-                }
-
-                currentDay = currentDay.AddDays(1);
-            }
-
-            return totalSlack - task.EstimatedDuration;
         }
     }
 }
