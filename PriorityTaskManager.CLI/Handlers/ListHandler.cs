@@ -98,7 +98,7 @@ namespace PriorityTaskManager.CLI.Handlers
             if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
             {
                 var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
-                var slack = (effectiveDueTime - closestTask.ScheduledStartTime!.Value) - closestTask.EstimatedDuration;
+                var slack = CalculateSlack(closestTask, userProfile);
                 var slackPercentage = slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes;
 
                 // Calculate schedule pressure
@@ -167,13 +167,21 @@ namespace PriorityTaskManager.CLI.Handlers
                 else
                     meterColor = ConsoleColor.Red;
 
+                // Calculate realistic slack
+                var realisticSlack = CalculateSlack(closestTask, userProfile);
+
+                // Calculate actual slack
+                var actualSlack = closestTask.DueDate - (DateTime.Now + closestTask.EstimatedDuration);
+
                 // Display combined output
                 Console.ForegroundColor = meterColor;
                 string headerText = targetDay.Date == DateTime.Today.Date
                     ? "Today's Schedule:"
                     : $"{targetDay:dddd}'s Schedule:";
                 Console.WriteLine($"{headerText} [{meter}] {slackTime:F1} hours free");
-                Console.WriteLine($"Task with least slack: '{closestTask.Title}' - Slack: {slack.Hours} hours {slack.Minutes} minutes");
+                Console.WriteLine($"Task with least slack: '{closestTask.Title}'");
+                Console.WriteLine($"Realistic Slack: {realisticSlack.Hours} hours {realisticSlack.Minutes} minutes");
+                Console.WriteLine($"Actual Slack: {actualSlack.Hours} hours {actualSlack.Minutes} minutes");
                 Console.ResetColor();
             }
             else
@@ -448,6 +456,47 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             // Fallback: just return today
             return currentTime.Date;
+        }
+
+        private TimeSpan CalculateSlack(TaskItem task, UserProfile userProfile)
+        {
+            if (!task.ScheduledStartTime.HasValue)
+                return TimeSpan.Zero;
+
+            var startTime = task.ScheduledStartTime.Value;
+            var effectiveDueTime = GetEffectiveDueTime(task, userProfile);
+
+            TimeSpan totalSlack = TimeSpan.Zero;
+            var currentDay = startTime.Date;
+
+            while (currentDay <= effectiveDueTime.Date)
+            {
+                if (userProfile.WorkDays.Contains(currentDay.DayOfWeek))
+                {
+                    var workStart = currentDay.Add(userProfile.WorkStartTime.ToTimeSpan());
+                    var workEnd = currentDay.Add(userProfile.WorkEndTime.ToTimeSpan());
+
+                    if (currentDay == startTime.Date)
+                    {
+                        // Partial day for the start date
+                        totalSlack += workEnd - (startTime > workStart ? startTime : workStart);
+                    }
+                    else if (currentDay == effectiveDueTime.Date)
+                    {
+                        // Partial day for the due date
+                        totalSlack += (effectiveDueTime < workEnd ? effectiveDueTime : workEnd) - workStart;
+                    }
+                    else
+                    {
+                        // Full workday
+                        totalSlack += workEnd - workStart;
+                    }
+                }
+
+                currentDay = currentDay.AddDays(1);
+            }
+
+            return totalSlack - task.EstimatedDuration;
         }
     }
 }
