@@ -10,37 +10,55 @@ namespace PriorityTaskManager.Services.Agents
         /// <inheritdoc />
         public MCPContext Act(MCPContext context)
         {
-            context.History.Add("Phase 4: Adding breathers for a more realistic schedule...");
+            context.History.Add("Phase 4: Spreading tasks across available time slots...");
+
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks || tasks.Count == 0)
                 return context;
-            if (!context.SharedState.TryGetValue("UserProfile", out var userProfileObj) || userProfileObj is not Models.UserProfile userProfile)
+
+            if (!context.SharedState.TryGetValue("AvailableScheduleWindow", out var scheduleWindowObj) || scheduleWindowObj is not Models.ScheduleWindow scheduleWindow)
                 return context;
 
-            // Sort tasks by ScheduledStartTime
-            var sortedTasks = tasks.OrderBy(t => t.ScheduledStartTime).ToList();
-            var finalSpacedSchedule = new List<Models.TaskItem>();
-            if (sortedTasks.Count > 0)
+            var scheduledTasks = new List<Models.TaskItem>();
+            var unschedulableTasks = new List<Models.TaskItem>();
+            var availableSlots = scheduleWindow.AvailableSlots.OrderBy(s => s.StartTime).ToList();
+
+            foreach (var task in tasks)
             {
-                finalSpacedSchedule.Add(sortedTasks[0]); // First task stays as anchor
-            }
-            for (int i = 1; i < sortedTasks.Count; i++)
-            {
-                var prevTask = finalSpacedSchedule.Last();
-                var currentTask = sortedTasks[i];
-                if (prevTask.ScheduledEndTime.HasValue)
+                bool scheduled = false;
+                for (int i = 0; i < availableSlots.Count; i++)
                 {
-                    var desiredStartTime = prevTask.ScheduledEndTime.Value + userProfile.DesiredBreatherDuration;
-                    var newEndTime = desiredStartTime + currentTask.EstimatedDuration;
-                    // Only update if new end time is before or equal to due date
-                    if (newEndTime <= currentTask.DueDate)
+                    var slot = availableSlots[i];
+                    if (slot.EndTime - slot.StartTime >= task.EstimatedDuration)
                     {
-                        currentTask.ScheduledStartTime = desiredStartTime;
-                        currentTask.ScheduledEndTime = newEndTime;
+                        // Schedule the task in this slot
+                        task.ScheduledStartTime = slot.StartTime;
+                        task.ScheduledEndTime = slot.StartTime + task.EstimatedDuration;
+                        
+                        // Update the slot
+                        slot.StartTime += task.EstimatedDuration;
+
+                        // If the slot is now used up, remove it
+                        if (slot.StartTime >= slot.EndTime)
+                        {
+                            availableSlots.RemoveAt(i);
+                            i--; // Adjust index after removal
+                        }
+
+                        scheduledTasks.Add(task);
+                        scheduled = true;
+                        break; // Move to the next task
                     }
                 }
-                finalSpacedSchedule.Add(currentTask);
+
+                if (!scheduled)
+                {
+                    unschedulableTasks.Add(task);
+                }
             }
-            context.SharedState["Tasks"] = finalSpacedSchedule;
+
+            context.SharedState["Tasks"] = scheduledTasks;
+            context.SharedState["UnschedulableTasks"] = unschedulableTasks;
+            
             return context;
         }
     }

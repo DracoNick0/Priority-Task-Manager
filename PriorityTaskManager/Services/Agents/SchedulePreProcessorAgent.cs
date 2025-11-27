@@ -58,39 +58,37 @@ namespace PriorityTaskManager.Services.Agents
             // Subtract events from the available time slots
             if (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<PriorityTaskManager.Models.Event> events)
             {
-                var newSlots = new List<PriorityTaskManager.Models.TimeSlot>();
+                var finalSlots = new List<PriorityTaskManager.Models.TimeSlot>();
+                var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
+
                 foreach (var slot in slots)
                 {
-                    var currentSlots = new List<PriorityTaskManager.Models.TimeSlot> { slot };
-                    foreach (var ev in events)
+                    var currentStartTime = slot.StartTime;
+                    foreach (var ev in sortedEvents)
                     {
-                        var tempSlots = new List<PriorityTaskManager.Models.TimeSlot>();
-                        foreach (var currentSlot in currentSlots)
+                        // If event is outside the current slot, ignore it
+                        if (ev.EndTime <= slot.StartTime || ev.StartTime >= slot.EndTime)
                         {
-                            // Case 1: Event is completely outside the slot
-                            if (ev.EndTime <= currentSlot.StartTime || ev.StartTime >= currentSlot.EndTime)
-                            {
-                                tempSlots.Add(currentSlot);
-                                continue;
-                            }
-
-                            // Case 2: Event creates a new slot before it
-                            if (ev.StartTime > currentSlot.StartTime)
-                            {
-                                tempSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentSlot.StartTime, EndTime = ev.StartTime });
-                            }
-
-                            // Case 3: Event creates a new slot after it
-                            if (ev.EndTime < currentSlot.EndTime)
-                            {
-                                tempSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = ev.EndTime, EndTime = currentSlot.EndTime });
-                            }
+                            continue;
                         }
-                        currentSlots = tempSlots;
+
+                        // If there's a gap between the current start time and the event's start, add it as a new slot
+                        if (ev.StartTime > currentStartTime)
+                        {
+                            finalSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStartTime, EndTime = ev.StartTime });
+                        }
+                        
+                        // Move the current start time to after the event
+                        currentStartTime = ev.EndTime > currentStartTime ? ev.EndTime : currentStartTime;
                     }
-                    newSlots.AddRange(currentSlots);
+
+                    // If there's any remaining time in the slot after all events, add it
+                    if (currentStartTime < slot.EndTime)
+                    {
+                        finalSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStartTime, EndTime = slot.EndTime });
+                    }
                 }
-                slots = newSlots;
+                slots = finalSlots;
             }
 
             scheduleWindow.AvailableSlots = slots;
