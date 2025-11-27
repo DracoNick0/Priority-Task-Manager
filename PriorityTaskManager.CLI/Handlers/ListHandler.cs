@@ -91,10 +91,16 @@ namespace PriorityTaskManager.CLI.Handlers
             var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
 
             var userProfile = service.UserProfile;
+            var events = service.GetAllEvents().ToList();
             var now = DateTime.Now;
             var targetDay = _taskMetricsService.FindTargetDayForSlackMeter(now, userProfile);
             var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
             var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+
+            var eventsForDay = events
+                    .Where(e => e.StartTime.Date == targetDay.Date)
+                    .OrderBy(e => e.StartTime)
+                    .ToList();
 
             var closestTask = FindClosestTaskToDueDate(incompleteTasks);
             if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
@@ -166,6 +172,28 @@ namespace PriorityTaskManager.CLI.Handlers
                 var taskBlocks = new char[meterWidth];
                 Array.Fill(taskBlocks, ' ');
 
+                // --- Add events to the meter bar ---
+                foreach (var ev in eventsForDay)
+                {
+                    var startBlock = (int)((ev.StartTime - workStart).TotalMinutes / 15);
+                    var durationInMinutes = (ev.EndTime - ev.StartTime).TotalMinutes;
+                    var eventDurationInBlocks = (int)(durationInMinutes / 15);
+
+                    if (startBlock < 0) // Event starts before work day starts
+                    {
+                        eventDurationInBlocks -= (0 - startBlock);
+                        startBlock = 0;
+                    }
+
+                    for (int i = 0; i < eventDurationInBlocks && startBlock + i < meterWidth; i++)
+                    {
+                        if (startBlock + i >= 0)
+                        {
+                            taskBlocks[startBlock + i] = '■'; // Using a block character for events
+                        }
+                    }
+                }
+
                 var nowInSchedule = now > workStart && now < workEnd;
                 int passedBlocks = 0;
                 if (nowInSchedule)
@@ -190,7 +218,11 @@ namespace PriorityTaskManager.CLI.Handlers
 
                         for (int i = 0; i < representation.Length && startBlock + i < meterWidth; i++)
                         {
-                            taskBlocks[startBlock + i] = representation[i];
+                            // Only draw task if the block is not already taken by an event
+                            if (taskBlocks[startBlock + i] == ' ')
+                            {
+                                taskBlocks[startBlock + i] = representation[i];
+                            }
                         }
                     }
                 }
@@ -224,7 +256,16 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     else
                     {
-                        Console.Write(taskBlocks[i]);
+                        if (taskBlocks[i] == '■')
+                        {
+                            Console.ForegroundColor = ConsoleColor.Magenta; // Color for events
+                            Console.Write(taskBlocks[i]);
+                            Console.ForegroundColor = meterColor; // Revert to meter color
+                        }
+                        else
+                        {
+                            Console.Write(taskBlocks[i]);
+                        }
                     }
                 }
 
@@ -265,6 +306,18 @@ namespace PriorityTaskManager.CLI.Handlers
 
             var mode = service.UserProfile.ActiveUrgencyMode;
             var scheduledTasks = incompleteTasks.Where(t => t.ScheduledStartTime.HasValue).ToList();
+
+            // Show scheduled events
+            if (eventsForDay.Any())
+            {
+                Console.WriteLine("\nScheduled Events:");
+                foreach (var ev in eventsForDay)
+                {
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.WriteLine($"      {ev.StartTime:HH:mm} - {ev.EndTime:HH:mm} | {ev.Name}");
+                    Console.ResetColor();
+                }
+            }
 
 
             // Show scheduled/incomplete tasks (prettier format)

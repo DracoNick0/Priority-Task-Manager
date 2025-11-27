@@ -13,12 +13,14 @@ namespace PriorityTaskManager.Services
         private readonly string _tasksFilePath;
         private readonly string _listsFilePath;
         private readonly string _userProfileFilePath;
+        private readonly string _eventsFilePath;
 
-        public PersistenceService(string tasksFilePath, string listsFilePath, string userProfileFilePath)
+        public PersistenceService(string tasksFilePath, string listsFilePath, string userProfileFilePath, string eventsFilePath)
         {
             _tasksFilePath = Path.GetFullPath(tasksFilePath);
             _listsFilePath = Path.GetFullPath(listsFilePath);
             _userProfileFilePath = Path.GetFullPath(userProfileFilePath);
+            _eventsFilePath = Path.GetFullPath(eventsFilePath);
         }
 
         public DataContainer LoadData()
@@ -61,6 +63,23 @@ namespace PriorityTaskManager.Services
                 catch { }
             }
 
+            // Load events
+            if (File.Exists(_eventsFilePath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(_eventsFilePath);
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                    if (dict != null && dict.ContainsKey("Events"))
+                    {
+                        data.Events = JsonSerializer.Deserialize<List<Event>>(dict["Events"].GetRawText()) ?? new List<Event>();
+                        if (dict.ContainsKey("NextEventId"))
+                            data.NextEventId = dict["NextEventId"].GetInt32();
+                    }
+                }
+                catch { }
+            }
+
             // Load user profile
             if (File.Exists(_userProfileFilePath))
             {
@@ -97,6 +116,14 @@ namespace PriorityTaskManager.Services
                 NextListId = data.NextListId
             };
             File.WriteAllText(_listsFilePath, JsonSerializer.Serialize(listsData));
+
+            // Save events
+            var eventsData = new
+            {
+                Events = data.Events,
+                NextEventId = data.NextEventId
+            };
+            File.WriteAllText(_eventsFilePath, JsonSerializer.Serialize(eventsData));
 
             // Save user profile
             File.WriteAllText(_userProfileFilePath, JsonSerializer.Serialize(data.UserProfile));

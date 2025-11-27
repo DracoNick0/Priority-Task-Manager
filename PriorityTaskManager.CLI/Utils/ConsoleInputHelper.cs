@@ -111,5 +111,83 @@ namespace PriorityTaskManager.CLI.Utils
         /// Represents the modes for incrementing the date during interactive input.
         /// </summary>
         private enum IncrementMode { Day, Week, Month, Year }
+
+        private enum TimeIncrementMode { Hour, Minute }
+
+        public static DateTime GetDateTimeFromUser(string prompt, DateTime? defaultTime = null)
+        {
+            Console.WriteLine(prompt);
+            DateTime datePart = HandleInteractiveDateInput(defaultTime ?? DateTime.Now);
+            DateTime timePart = HandleInteractiveTimeInput(defaultTime ?? DateTime.Now);
+            return datePart.Date + timePart.TimeOfDay;
+        }
+
+        public static DateTime HandleInteractiveTimeInput(DateTime initialTime)
+        {
+            DateTime time = initialTime;
+            int left = Console.CursorLeft;
+            int top = Console.CursorTop;
+            TimeIncrementMode mode = TimeIncrementMode.Hour;
+
+            // Round initial time to nearest 15 minutes
+            time = time.AddMinutes(-(time.Minute % 15));
+
+            while (true)
+            {
+                Console.SetCursorPosition(left, top);
+                
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("Set time: ");
+                
+                Console.BackgroundColor = (mode == TimeIncrementMode.Hour) ? ConsoleColor.DarkCyan : ConsoleColor.Black;
+                Console.ForegroundColor = (mode == TimeIncrementMode.Hour) ? ConsoleColor.White : ConsoleColor.Gray;
+                Console.Write($"{time:HH}");
+
+                Console.BackgroundColor = ConsoleColor.Black;
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write(":");
+
+                Console.BackgroundColor = (mode == TimeIncrementMode.Minute) ? ConsoleColor.DarkCyan : ConsoleColor.Black;
+                Console.ForegroundColor = (mode == TimeIncrementMode.Minute) ? ConsoleColor.White : ConsoleColor.Gray;
+                Console.Write($"{time:mm}");
+
+                Console.ResetColor();
+                Console.Write(" (Use Up/Down to change value, Left/Right to switch, Enter to confirm)      ");
+
+                var key = Console.ReadKey(true);
+
+                // Clear the line for redrawing
+                Console.SetCursorPosition(left, top);
+                Console.Write(new string(' ', Console.WindowWidth - 1)); 
+
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        switch (mode)
+                        {
+                            case TimeIncrementMode.Hour: time = time.AddHours(1); break;
+                            case TimeIncrementMode.Minute: time = time.AddMinutes(15); break;
+                        }
+                        break;
+                    case ConsoleKey.DownArrow:
+                        switch (mode)
+                        {
+                            case TimeIncrementMode.Hour: time = time.AddHours(-1); break;
+                            case TimeIncrementMode.Minute: time = time.AddMinutes(-15); break;
+                        }
+                        break;
+                    case ConsoleKey.LeftArrow:
+                    case ConsoleKey.RightArrow:
+                        mode = mode == TimeIncrementMode.Hour ? TimeIncrementMode.Minute : TimeIncrementMode.Hour;
+                        break;
+                    case ConsoleKey.Enter:
+                        Console.SetCursorPosition(left, top);
+                        Console.Write(new string(' ', Console.WindowWidth - 1)); 
+                        Console.SetCursorPosition(left, top);
+                        Console.WriteLine($"Selected time: {time:HH:mm}");
+                        return time;
+                }
+            }
+        }
     }
 }

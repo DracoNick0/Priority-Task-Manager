@@ -16,7 +16,7 @@ namespace PriorityTaskManager.Services
             switch (this.UserProfile.ActiveUrgencyMode)
             {
                 case UrgencyMode.MultiAgent:
-                    strategy = new MultiAgentUrgencyStrategy(this.UserProfile);
+                    strategy = new MultiAgentUrgencyStrategy(this.UserProfile, _data.Events);
                     break;
                 case UrgencyMode.SingleAgent:
                 default:
@@ -419,6 +419,30 @@ namespace PriorityTaskManager.Services
             }
             _data.ActiveListId = listId;
             SaveData();
+        }
+
+        // Event Management
+        public void AddEvent(Event newEvent)
+        {
+            newEvent.Id = _data.NextEventId++;
+            _data.Events.Add(newEvent);
+            SaveData();
+        }
+
+        public IEnumerable<Event> GetAllEvents()
+        {
+            return _data.Events;
+        }
+
+        public bool DeleteEvent(int id)
+        {
+            var eventToDelete = _data.Events.Find(e => e.Id == id);
+            if (eventToDelete == null)
+                return false;
+
+            _data.Events.Remove(eventToDelete);
+            SaveData();
+            return true;
         }
     }
 }

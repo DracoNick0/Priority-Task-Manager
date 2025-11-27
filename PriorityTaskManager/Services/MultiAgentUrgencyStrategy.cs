@@ -11,10 +11,12 @@ namespace PriorityTaskManager.Services
         private readonly Agents.PrioritizationAgent _prioritizationAgent;
         private readonly Agents.UserContextAgent _userContextAgent;
         private readonly Agents.ScheduleSpreaderAgent _scheduleSpreaderAgent;
+        private readonly List<Event> _events;
 
-        public MultiAgentUrgencyStrategy(UserProfile userProfile)
+        public MultiAgentUrgencyStrategy(UserProfile userProfile, List<Event> events)
         {
             _userProfile = userProfile;
+            _events = events;
             var dependencyHelper = new Helpers.DependencyGraphHelper();
             _taskAnalyzerAgent = new Agents.TaskAnalyzerAgent();
             _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent();
@@ -39,6 +41,7 @@ namespace PriorityTaskManager.Services
             var context = new MCP.MCPContext();
             context.SharedState["Tasks"] = tasks;
             context.SharedState["UserProfile"] = _userProfile;
+            context.SharedState["Events"] = _events;
 
             // Execute the agent chain
             var finalContext = MCP.MCP.Coordinate(agentChain, context);

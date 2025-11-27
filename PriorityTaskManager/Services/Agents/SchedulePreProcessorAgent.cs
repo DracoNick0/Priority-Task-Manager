@@ -54,6 +54,45 @@ namespace PriorityTaskManager.Services.Agents
                     }
                 }
             }
+
+            // Subtract events from the available time slots
+            if (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<PriorityTaskManager.Models.Event> events)
+            {
+                var newSlots = new List<PriorityTaskManager.Models.TimeSlot>();
+                foreach (var slot in slots)
+                {
+                    var currentSlots = new List<PriorityTaskManager.Models.TimeSlot> { slot };
+                    foreach (var ev in events)
+                    {
+                        var tempSlots = new List<PriorityTaskManager.Models.TimeSlot>();
+                        foreach (var currentSlot in currentSlots)
+                        {
+                            // Case 1: Event is completely outside the slot
+                            if (ev.EndTime <= currentSlot.StartTime || ev.StartTime >= currentSlot.EndTime)
+                            {
+                                tempSlots.Add(currentSlot);
+                                continue;
+                            }
+
+                            // Case 2: Event creates a new slot before it
+                            if (ev.StartTime > currentSlot.StartTime)
+                            {
+                                tempSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentSlot.StartTime, EndTime = ev.StartTime });
+                            }
+
+                            // Case 3: Event creates a new slot after it
+                            if (ev.EndTime < currentSlot.EndTime)
+                            {
+                                tempSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = ev.EndTime, EndTime = currentSlot.EndTime });
+                            }
+                        }
+                        currentSlots = tempSlots;
+                    }
+                    newSlots.AddRange(currentSlots);
+                }
+                slots = newSlots;
+            }
+
             scheduleWindow.AvailableSlots = slots;
             context.SharedState["AvailableScheduleWindow"] = scheduleWindow;
 

@@ -29,7 +29,8 @@ namespace PriorityTaskManager.CLI
 			var tasksFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tasks.json");
 			var listsFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "lists.json");
 			var userProfileFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "user_profile.json");
-			var persistenceService = new PersistenceService(tasksFilePath, listsFilePath, userProfileFilePath);
+			var eventsFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "events.json");
+			var persistenceService = new PersistenceService(tasksFilePath, listsFilePath, userProfileFilePath, eventsFilePath);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService);
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
@@ -47,7 +48,8 @@ namespace PriorityTaskManager.CLI
 				{ "view", new ViewHandler() },
 				{ "cleanup", new CleanupHandler(service) },
 				{ "mode", new ModeHandler() },
-				{ "settings", new SettingsHandler() }
+				{ "settings", new SettingsHandler() },
+				{ "event", new EventCommandHandler() }
 			};
 
 			while (true)
