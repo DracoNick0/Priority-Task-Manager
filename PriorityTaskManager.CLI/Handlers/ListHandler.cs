@@ -112,55 +112,48 @@ namespace PriorityTaskManager.CLI.Handlers
                 // Adjust slackTime to reflect only hours free within the target day
                 var slackTime = Math.Max(0, totalWorkTime - scheduledTime);
 
-                // Meter bar with task numbers
-                int meterWidth = 32;
-                double totalWorkMinutes = (workEnd - workStart).TotalMinutes;
-                var taskBlocks = new char[meterWidth];
-                Array.Fill(taskBlocks, ' ');
+                // --- Timeline and Task Letter Assignment ---
+                var scheduledTasksForDay = incompleteTasks
+                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
+                    .OrderBy(t => t.ScheduledStartTime)
+                    .ToList();
 
-                foreach (var task in incompleteTasks.Where(t => t.ScheduledStartTime.HasValue))
+                var taskLetterMapping = new Dictionary<int, char>();
+                char currentLetter = 'A';
+                foreach (var task in scheduledTasksForDay)
                 {
-                    var startMinutes = (task.ScheduledStartTime.Value - workStart).TotalMinutes;
-                    var endMinutes = ((task.ScheduledEndTime ?? workEnd) - workStart).TotalMinutes;
+                    taskLetterMapping[task.Id] = currentLetter++;
+                }
 
-                    if (startMinutes >= 0 && startMinutes < totalWorkMinutes)
+                // --- Generate Timeline ---
+                var totalWorkDuration = workEnd - workStart;
+                int meterWidth = (int)(totalWorkDuration.TotalMinutes / 15);
+                var timeline = new char[meterWidth];
+                Array.Fill(timeline, ' ');
+
+                for (int h = 0; h <= totalWorkDuration.TotalHours; h++)
+                {
+                    var hourTime = workStart.Date.Add(userProfile.WorkStartTime.ToTimeSpan()).AddHours(h);
+                    if (hourTime <= workEnd)
                     {
-                        int startBlock = (int)(meterWidth * (startMinutes / totalWorkMinutes));
-                        int endBlock = (int)(meterWidth * (Math.Min(endMinutes, totalWorkMinutes) / totalWorkMinutes));
-
-                        if (startBlock < meterWidth)
+                        var position = (int)((hourTime - workStart).TotalMinutes / 15);
+                        if (position < meterWidth)
                         {
-                            taskBlocks[startBlock] = '|';
-                        }
-
-                        int taskWidth = endBlock - startBlock - 1;
-                        if (taskWidth > 0)
-                        {
-                            string taskRepresentation = new string('=', taskWidth);
-                            int idPosition = taskWidth / 2;
-                            taskRepresentation = taskRepresentation.Remove(idPosition, 1).Insert(idPosition, task.DisplayId.ToString());
-
-                            for (int i = 0; i < taskWidth; i++)
+                            string hourString = hourTime.ToString("%h");
+                            if (position + hourString.Length < meterWidth)
                             {
-                                if (startBlock + 1 + i < meterWidth)
+                                for (int i = 0; i < hourString.Length; i++)
                                 {
-                                    taskBlocks[startBlock + 1 + i] = taskRepresentation[i];
+                                    timeline[position + i] = hourString[i];
                                 }
                             }
-                        }
-
-                        if (endBlock < meterWidth)
-                        {
-                            taskBlocks[endBlock] = '|';
                         }
                     }
                 }
 
-                string meter = new string(taskBlocks);
-
                 // Determine color
                 ConsoleColor meterColor;
-                if (slack.TotalMinutes < 0)
+                if (slack.TotalMinutes <= 0 || result.UnscheduledTasks.Any())
                     meterColor = ConsoleColor.Black;
                 else if (slackPercentage > 0.25)
                     meterColor = ConsoleColor.Green;
@@ -169,18 +162,82 @@ namespace PriorityTaskManager.CLI.Handlers
                 else
                     meterColor = ConsoleColor.Red;
 
+                // --- Meter bar with task letters ---
+                var taskBlocks = new char[meterWidth];
+                Array.Fill(taskBlocks, ' ');
+
+                var nowInSchedule = now > workStart && now < workEnd;
+                int passedBlocks = 0;
+                if (nowInSchedule)
+                {
+                    var minutesPassed = (now - workStart).TotalMinutes;
+                    passedBlocks = (int)(minutesPassed / 15);
+                }
+
+                foreach (var task in scheduledTasksForDay)
+                {
+                    var startBlock = (int)((task.ScheduledStartTime.Value - workStart).TotalMinutes / 15);
+                    var taskDurationInBlocks = (int)(task.EstimatedDuration.TotalMinutes / 15);
+
+                    if (startBlock < meterWidth)
+                    {
+                        char taskChar = taskLetterMapping[task.Id];
+                        string representation = taskChar.ToString();
+                        if (taskDurationInBlocks > 1)
+                        {
+                            representation += new string('=', taskDurationInBlocks - 1);
+                        }
+
+                        for (int i = 0; i < representation.Length && startBlock + i < meterWidth; i++)
+                        {
+                            taskBlocks[startBlock + i] = representation[i];
+                        }
+                    }
+                }
+
+                // --- Display combined output ---
+                string headerText = targetDay.Date == DateTime.Today.Date
+                    ? "Today's Schedule:"
+                    : $"{targetDay:dddd}'s Schedule:";
+                
+                Console.WriteLine(headerText);
+                Console.WriteLine($"          [{new string(timeline)}]");
+
+                if (now < workStart)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                }
+                else
+                {
+                    Console.ForegroundColor = meterColor;
+                }
+                Console.Write($"          [");
+                Console.ForegroundColor = meterColor; // Ensure meterColor is set for the bar content
+
+                for (int i = 0; i < meterWidth; i++)
+                {
+                    if (i < passedBlocks)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        Console.Write("/");
+                        Console.ForegroundColor = meterColor;
+                    }
+                    else
+                    {
+                        Console.Write(taskBlocks[i]);
+                    }
+                }
+
+                Console.WriteLine($"] {slackTime:F1} hours free");
+                Console.ResetColor();
+
                 // Calculate realistic slack
                 var realisticSlack = _taskMetricsService.CalculateSlack(closestTask, userProfile);
 
                 // Calculate actual slack
                 var actualSlack = closestTask.DueDate - (DateTime.Now + closestTask.EstimatedDuration);
 
-                // Display combined output
                 Console.ForegroundColor = meterColor;
-                string headerText = targetDay.Date == DateTime.Today.Date
-                    ? "Today's Schedule:"
-                    : $"{targetDay:dddd}'s Schedule:";
-                Console.WriteLine($"{headerText} [{meter}] {slackTime:F1} hours free");
                 Console.WriteLine($"Task with least slack: '{closestTask.Title}'");
                 Console.WriteLine($"Realistic Slack: {realisticSlack.Days} days {realisticSlack.Hours} hours {realisticSlack.Minutes} minutes");
                 Console.WriteLine($"Actual Slack: {realisticSlack.Days} days {actualSlack.Hours} hours {actualSlack.Minutes} minutes");
@@ -214,12 +271,48 @@ namespace PriorityTaskManager.CLI.Handlers
             if (scheduledTasks.Any())
             {
                 Console.WriteLine("\nScheduled Tasks:");
+                var scheduledTasksForDay = scheduledTasks
+                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
+                    .OrderBy(t => t.ScheduledStartTime)
+                    .ToList();
+                
+                var taskLetterMapping = new Dictionary<int, char>();
+                char currentLetter = 'A';
+                foreach (var task in scheduledTasksForDay)
+                {
+                    taskLetterMapping[task.Id] = currentLetter++;
+                }
+
                 foreach (var task in scheduledTasks.OrderBy(t => t.ScheduledStartTime))
                 {
+                    var letter = taskLetterMapping.ContainsKey(task.Id) ? $"({taskLetterMapping[task.Id]})" : "";
+
+                    if (!string.IsNullOrEmpty(letter))
+                    {
+                        var realisticSlackForTask = _taskMetricsService.CalculateSlack(task, userProfile);
+                        var slackPercentageForTask = task.EstimatedDuration.TotalMinutes > 0 ? realisticSlackForTask.TotalMinutes / task.EstimatedDuration.TotalMinutes : 0;
+
+                        ConsoleColor taskColor;
+                        if (realisticSlackForTask.TotalMinutes <= 0)
+                            taskColor = ConsoleColor.Red;
+                        else if (slackPercentageForTask > 0.25)
+                            taskColor = ConsoleColor.Green;
+                        else if (slackPercentageForTask > 0.10)
+                            taskColor = ConsoleColor.Yellow;
+                        else
+                            taskColor = ConsoleColor.Red;
+
+                        Console.ForegroundColor = taskColor;
+                        Console.Write(letter);
+                        Console.ResetColor();
+                        Console.Write(" "); // Add a space after the colored letter
+                    }
+
                     var start = task.ScheduledStartTime?.ToString("HH:mm") ?? "--:--";
                     var end = task.ScheduledEndTime?.ToString("HH:mm") ?? "--:--";
                     var duration = task.EstimatedDuration.TotalHours.ToString("0.##");
                     var due = FormatDate(task.DueDate);
+                    
                     Console.WriteLine($"[ID: {task.DisplayId}] {start} - {end} | {task.Title} (Duration: {duration}h, Due: {due})");
                 }
             }
