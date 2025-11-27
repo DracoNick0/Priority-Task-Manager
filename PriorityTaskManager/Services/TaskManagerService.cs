@@ -37,6 +37,17 @@ namespace PriorityTaskManager.Services
             this.UserProfile.ActiveUrgencyMode = mode;
             SaveData();
         }
+
+        public UserProfile GetUserProfile()
+        {
+            return _data.UserProfile;
+        }
+
+        public void SaveUserProfile(UserProfile userProfile)
+        {
+            _data.UserProfile = userProfile;
+            SaveData();
+        }
         
         /// <summary>
         /// Updates the user profile and persists the change.
