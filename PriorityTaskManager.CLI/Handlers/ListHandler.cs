@@ -119,9 +119,11 @@ namespace PriorityTaskManager.CLI.Handlers
                 var scheduledTime = incompleteTasks
                         .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
                         .Sum(t => t.EstimatedDuration.TotalHours);
+                
+                var eventTime = eventsForDay.Sum(e => (e.EndTime - e.StartTime).TotalHours);
 
                 // Adjust slackTime to reflect only hours free within the target day
-                var slackTime = Math.Max(0, totalWorkTime - scheduledTime);
+                var slackTime = Math.Max(0, totalWorkTime - scheduledTime - eventTime);
 
                 // --- Timeline and Task Letter Assignment ---
                 var scheduledTasksForDay = incompleteTasks
