@@ -159,7 +159,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 // Determine color
                 ConsoleColor meterColor;
-                if (slack.TotalMinutes <= 0 || result.UnscheduledTasks.Any())
+                if (slack.TotalMinutes < 0 || result.UnscheduledTasks.Any())
                     meterColor = ConsoleColor.Black;
                 else if (slackPercentage > 0.25)
                     meterColor = ConsoleColor.Green;
@@ -281,7 +281,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.ForegroundColor = meterColor;
                 Console.WriteLine($"Task with least slack: '{closestTask.Title}'");
                 Console.WriteLine($"Realistic Slack: {realisticSlack.Days} days {realisticSlack.Hours} hours {realisticSlack.Minutes} minutes");
-                Console.WriteLine($"Actual Slack: {realisticSlack.Days} days {actualSlack.Hours} hours {actualSlack.Minutes} minutes");
+                Console.WriteLine($"Actual Slack: {actualSlack.Days} days {actualSlack.Hours} hours {actualSlack.Minutes} minutes");
                 Console.ResetColor();
             }
             else

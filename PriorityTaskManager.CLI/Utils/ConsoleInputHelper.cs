@@ -129,8 +129,9 @@ namespace PriorityTaskManager.CLI.Utils
             int top = Console.CursorTop;
             TimeIncrementMode mode = TimeIncrementMode.Hour;
 
-            // Round initial time to nearest 15 minutes
+            // Round initial time to nearest 15 minutes and clear seconds/milliseconds
             time = time.AddMinutes(-(time.Minute % 15));
+            time = new DateTime(time.Year, time.Month, time.Day, time.Hour, time.Minute, 0, time.Kind);
 
             while (true)
             {

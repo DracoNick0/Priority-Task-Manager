@@ -33,12 +33,17 @@ namespace PriorityTaskManager.Services.Agents
                         // Schedule the task in this slot
                         task.ScheduledStartTime = slot.StartTime;
                         task.ScheduledEndTime = slot.StartTime + task.EstimatedDuration;
-                        
-                        // Update the slot
-                        slot.StartTime += task.EstimatedDuration;
 
-                        // If the slot is now used up, remove it
-                        if (slot.StartTime >= slot.EndTime)
+                        // Instead of modifying the slot, replace it with the remainder.
+                        // This avoids any potential floating point precision issues with TimeSpan addition.
+                        var remainingSlotStartTime = task.ScheduledEndTime.Value;
+
+                        // If the remaining slot has any duration, update the list. Otherwise, remove it.
+                        if (remainingSlotStartTime < slot.EndTime)
+                        {
+                            availableSlots[i] = new Models.TimeSlot { StartTime = remainingSlotStartTime, EndTime = slot.EndTime };
+                        }
+                        else
                         {
                             availableSlots.RemoveAt(i);
                             i--; // Adjust index after removal
