@@ -13,7 +13,7 @@ namespace PriorityTaskManager.Tests
 		{
 			// Arrange
 			var userProfile = new UserProfile();
-			var strategy = new MultiAgentUrgencyStrategy(userProfile);
+			var strategy = new MultiAgentUrgencyStrategy(userProfile, new List<Event>());
 			var tasks = new List<TaskItem> { new TaskItem { Title = "Test" } };
 
 			// Act

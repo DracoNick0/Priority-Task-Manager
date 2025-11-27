@@ -32,13 +32,14 @@ namespace PriorityTaskManager.CLI
 			var eventsFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "events.json");
 			var persistenceService = new PersistenceService(tasksFilePath, listsFilePath, userProfileFilePath, eventsFilePath);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService);
+			var taskMetricsService = new TaskMetricsService();
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 
 			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ "add", new AddHandler() },
-				{ "list", new ListHandler() },
+				{ "list", new ListHandler(taskMetricsService) },
 				{ "edit", new EditHandler() },
 				{ "delete", new DeleteHandler() },
 				{ "complete", new CompleteHandler() },

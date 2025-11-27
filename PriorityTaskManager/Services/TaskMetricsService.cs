@@ -2,10 +2,7 @@ using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.Services
 {
-    /// <summary>
-    /// Provides methods for task metrics and slack calculations.
-    /// </summary>
-    public class TaskMetricsService
+    public class TaskMetricsService : ITaskMetricsService
     {
         /// <summary>
         /// Determines the target day for the slack meter.
@@ -36,12 +33,12 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
-        /// Calculates the slack time for a task.
+        /// Calculates the realistic slack time for a task based on working hours.
         /// </summary>
         /// <param name="task">The task to calculate slack for.</param>
         /// <param name="userProfile">The user profile.</param>
         /// <returns>The calculated slack time.</returns>
-        public TimeSpan CalculateSlack(TaskItem task, UserProfile userProfile)
+        public TimeSpan CalculateRealisticSlack(TaskItem task, UserProfile userProfile)
         {
             if (!task.ScheduledStartTime.HasValue)
                 return TimeSpan.Zero;
@@ -77,6 +74,20 @@ namespace PriorityTaskManager.Services
             }
 
             return totalSlack - task.EstimatedDuration;
+        }
+
+        /// <summary>
+        /// Calculates the actual slack time for a task.
+        /// </summary>
+        /// <param name="task">The task to calculate slack for.</param>
+        /// <returns>The calculated slack time.</returns>
+        public TimeSpan CalculateActualSlack(TaskItem task)
+        {
+            if (!task.ScheduledEndTime.HasValue)
+            {
+                return TimeSpan.Zero;
+            }
+            return task.DueDate - task.ScheduledEndTime.Value;
         }
 
         private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)

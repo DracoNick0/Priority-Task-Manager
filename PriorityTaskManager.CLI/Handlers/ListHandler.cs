@@ -9,7 +9,12 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class ListHandler : ICommandHandler
     {
-        private readonly TaskMetricsService _taskMetricsService = new TaskMetricsService();
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public ListHandler(ITaskMetricsService taskMetricsService)
+        {
+            _taskMetricsService = taskMetricsService;
+        }
 
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
@@ -106,7 +111,7 @@ namespace PriorityTaskManager.CLI.Handlers
             if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
             {
                 var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
-                var slack = _taskMetricsService.CalculateSlack(closestTask, userProfile);
+                var slack = _taskMetricsService.CalculateRealisticSlack(closestTask, userProfile);
                 var slackPercentage = slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes;
 
                 // Calculate schedule pressure
@@ -273,10 +278,10 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.ResetColor();
 
                 // Calculate realistic slack
-                var realisticSlack = _taskMetricsService.CalculateSlack(closestTask, userProfile);
+                var realisticSlack = _taskMetricsService.CalculateRealisticSlack(closestTask, userProfile);
 
                 // Calculate actual slack
-                var actualSlack = closestTask.DueDate - (DateTime.Now + closestTask.EstimatedDuration);
+                var actualSlack = _taskMetricsService.CalculateActualSlack(closestTask);
 
                 Console.ForegroundColor = meterColor;
                 Console.WriteLine($"Task with least slack: '{closestTask.Title}'");
@@ -342,7 +347,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
                     if (!string.IsNullOrEmpty(letter))
                     {
-                        var realisticSlackForTask = _taskMetricsService.CalculateSlack(task, userProfile);
+                        var realisticSlackForTask = _taskMetricsService.CalculateRealisticSlack(task, userProfile);
                         var slackPercentageForTask = task.EstimatedDuration.TotalMinutes > 0 ? realisticSlackForTask.TotalMinutes / task.EstimatedDuration.TotalMinutes : 0;
 
                         ConsoleColor taskColor;
