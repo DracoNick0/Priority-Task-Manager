@@ -118,7 +118,7 @@ namespace PriorityTaskManager.CLI.Utils
         {
             Console.WriteLine(prompt);
             DateTime datePart = HandleInteractiveDateInput(defaultTime ?? DateTime.Now);
-            DateTime timePart = HandleInteractiveTimeInput(defaultTime ?? DateTime.Now);
+            DateTime timePart = HandleInteractiveTimeInput(defaultTime ?? datePart);
             return datePart.Date + timePart.TimeOfDay;
         }
 

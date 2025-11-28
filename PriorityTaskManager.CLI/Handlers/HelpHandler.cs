@@ -89,6 +89,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine("event add           - Interactively add a new event");
                     Console.WriteLine("event add \"<Name>\" --from \"<DateTime>\" --to \"<DateTime>\" - Add a new event with details");
                     Console.WriteLine("event list          - List all upcoming events");
+                    Console.WriteLine("event edit <Id>     - Interactively edit an event by its Id");
                     Console.WriteLine("event remove <Id>   - Remove an event by its Id");
                     break;
                 case "General Commands":

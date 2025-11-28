@@ -13,7 +13,7 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: event <add|list|remove>");
+                Console.WriteLine("Usage: event <add|list|edit|remove>");
                 return;
             }
 
@@ -25,11 +25,14 @@ namespace PriorityTaskManager.CLI.Handlers
                 case "list":
                     HandleListEvents(service);
                     break;
+                case "edit":
+                    HandleEditEvent(service, args.Skip(1).ToArray());
+                    break;
                 case "remove":
                     HandleRemoveEvent(service, args.Skip(1).ToArray());
                     break;
                 default:
-                    Console.WriteLine("Usage: event <add|list|remove>");
+                    Console.WriteLine("Usage: event <add|list|edit|remove>");
                     break;
             }
         }
@@ -135,6 +138,45 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 Console.WriteLine($"  [ID: {ev.Id}] {ev.Name} ({ev.StartTime:g} - {ev.EndTime:g})");
             }
+        }
+
+        private void HandleEditEvent(TaskManagerService service, string[] args)
+        {
+            if (args.Length == 0 || !int.TryParse(args[0], out int id))
+            {
+                Console.WriteLine("Usage: event edit <ID>");
+                return;
+            }
+
+            var existingEvent = service.GetEvent(id);
+            if (existingEvent == null)
+            {
+                Console.WriteLine($"Error: Event with ID {id} not found.");
+                return;
+            }
+
+            Console.WriteLine($"Editing event: {existingEvent.Name} (ID: {existingEvent.Id})");
+
+            Console.Write($"Event Name ({existingEvent.Name}): ");
+            string newName = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(newName))
+            {
+                existingEvent.Name = newName;
+            }
+
+            existingEvent.StartTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event start time:", existingEvent.StartTime);
+
+            DateTime newEndTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event end time:", existingEvent.EndTime);
+
+            if (newEndTime < existingEvent.StartTime)
+            {
+                Console.WriteLine("End time cannot be before start time. Adjusting end time.");
+                newEndTime = existingEvent.StartTime.AddHours(1);
+            }
+            existingEvent.EndTime = newEndTime;
+
+            service.UpdateEvent(existingEvent);
+            Console.WriteLine($"Event '{existingEvent.Name}' updated successfully.");
         }
 
         private void HandleRemoveEvent(TaskManagerService service, string[] args)

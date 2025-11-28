@@ -434,6 +434,24 @@ namespace PriorityTaskManager.Services
             return _data.Events;
         }
 
+        public Event? GetEvent(int id)
+        {
+            return _data.Events.Find(e => e.Id == id);
+        }
+
+        public bool UpdateEvent(Event updatedEvent)
+        {
+            var existingEvent = _data.Events.Find(e => e.Id == updatedEvent.Id);
+            if (existingEvent == null)
+                return false;
+
+            existingEvent.Name = updatedEvent.Name;
+            existingEvent.StartTime = updatedEvent.StartTime;
+            existingEvent.EndTime = updatedEvent.EndTime;
+            SaveData();
+            return true;
+        }
+
         public bool DeleteEvent(int id)
         {
             var eventToDelete = _data.Events.Find(e => e.Id == id);
