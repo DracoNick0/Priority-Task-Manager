@@ -5,6 +5,7 @@ obj/
 # Ignore user task data file
 tasks.json
 lists.json
+events.json
 archive.json
 user_profile.json
 

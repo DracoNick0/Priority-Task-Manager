@@ -1,1 +1,1 @@
-{"Events":[{"Id":5,"Name":"Temp","StartTime":"2025-11-27T09:00:00-08:00","EndTime":"2025-11-27T10:00:00-08:00"}],"NextEventId":6}
+{"Events":[{"Id":5,"Name":"Temp","StartTime":"2025-11-27T09:00:00-08:00","EndTime":"2025-11-27T10:00:00-08:00"},{"Id":6,"Name":"Temp","StartTime":"2025-11-28T09:00:00-08:00","EndTime":"2025-11-28T10:00:00-08:00"}],"NextEventId":7}
