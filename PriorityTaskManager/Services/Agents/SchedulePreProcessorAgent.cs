@@ -11,39 +11,61 @@ namespace PriorityTaskManager.Services.Agents
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("Phase 1: Analyzing user's schedule constraints...");
-            if (!context.SharedState.ContainsKey("UserProfile"))
+            if (!context.SharedState.TryGetValue("UserProfile", out var userProfileObj) || userProfileObj is not Models.UserProfile userProfile)
+                return context;
+            
+            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks)
                 return context;
 
-            var userProfile = context.SharedState["UserProfile"] as PriorityTaskManager.Models.UserProfile;
-            if (userProfile == null)
-                return context;
+            // Step 3.1: Calculate the Core Horizon End Date
+            var totalWorkloadDuration = TimeSpan.FromTicks(tasks.Sum(t => t.EstimatedDuration.Ticks));
+            var accumulatedAvailableTime = TimeSpan.Zero;
+            var coreHorizonEndDate = DateTime.Today;
+            var dailyWorkDuration = userProfile.WorkEndTime.ToTimeSpan() - userProfile.WorkStartTime.ToTimeSpan();
+
+            while (accumulatedAvailableTime < totalWorkloadDuration)
+            {
+                if (userProfile.WorkDays.Contains(coreHorizonEndDate.DayOfWeek))
+                {
+                    accumulatedAvailableTime += dailyWorkDuration;
+                }
+                // Stop if we look more than 5 years into the future to prevent infinite loops
+                if (coreHorizonEndDate > DateTime.Today.AddYears(5)) 
+                {
+                    context.History.Add("Warning: Workload exceeds 5 years of available time. Capping horizon.");
+                    break;
+                }
+                coreHorizonEndDate = coreHorizonEndDate.AddDays(1);
+            }
 
             var scheduleWindow = new PriorityTaskManager.Models.ScheduleWindow();
             var slots = new List<PriorityTaskManager.Models.TimeSlot>();
-            var today = DateTime.Today;
             var now = DateTime.Now;
-            for (int i = 0; i < 7; i++)
+
+            // Step 3.2: Generate slots within the calculated horizon
+            for (var day = DateTime.Today; day <= coreHorizonEndDate; day = day.AddDays(1))
             {
-                var day = today.AddDays(i);
                 if (userProfile.WorkDays.Contains(day.DayOfWeek))
                 {
                     var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
-                    // If today
-                    if (i == 0)
+
+                    // If the day is today, adjust start time if we are already past the work start time.
+                    if (day == DateTime.Today)
                     {
-                        // If after work end, skip today entirely
+                        // If it's already past the end of the workday, skip today entirely.
                         if (now >= end)
                         {
                             continue;
                         }
-                        // If after work start but before work end, trim start to now
-                        if (now > start && now < end)
+                        // If we are currently within the workday, the earliest we can start is now.
+                        if (now > start)
                         {
                             start = now;
                         }
                     }
-                    // Only add slot if end is after start (skip if workday is already over)
+
+                    // Only add the slot if it represents a positive duration.
                     if (end > start)
                     {
                         slots.Add(new PriorityTaskManager.Models.TimeSlot
