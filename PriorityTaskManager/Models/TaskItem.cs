@@ -34,7 +34,9 @@ namespace PriorityTaskManager.Models
                 BeforePadding = this.BeforePadding,
                 AfterPadding = this.AfterPadding,
                 ScheduledStartTime = this.ScheduledStartTime,
-                ScheduledEndTime = this.ScheduledEndTime
+                ScheduledEndTime = this.ScheduledEndTime,
+                IsDivisible = this.IsDivisible,
+                ScheduledParts = new List<ScheduledChunk>(this.ScheduledParts.Select(c => c.Clone()))
             };
         }
         /// <summary>
@@ -62,7 +64,21 @@ namespace PriorityTaskManager.Models
             AfterPadding = null;
             ScheduledStartTime = null;
             ScheduledEndTime = null;
+            IsDivisible = true;
+            ScheduledParts = new List<ScheduledChunk>();
         }
+
+        /// <summary>
+        /// Gets or sets whether the task can be broken into smaller chunks during scheduling.
+        /// Defaults to true.
+        /// </summary>
+        public bool IsDivisible { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of time blocks this task is scheduled for.
+        /// This is populated by the scheduling engine.
+        /// </summary>
+        public List<ScheduledChunk> ScheduledParts { get; set; }
 
         /// <summary>
         /// Gets or sets whether the task is pinned and should not be rescheduled automatically.
