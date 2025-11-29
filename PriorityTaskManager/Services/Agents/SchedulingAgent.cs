@@ -41,6 +41,12 @@ namespace PriorityTaskManager.Services.Agents
             // Make a mutable copy of the available slots to modify during scheduling
             var availableSlots = scheduleWindow.AvailableSlots.OrderBy(s => s.StartTime).ToList();
 
+            // Ensure all tasks start with a clean slate before any scheduling attempts.
+            foreach (var task in tasksToProcess)
+            {
+                task.ScheduledParts.Clear();
+            }
+
             var inflexibleTasks = tasksToProcess.Where(t => !t.IsDivisible).ToList();
             var flexibleTasks = tasksToProcess.Where(t => t.IsDivisible).ToList();
 
@@ -48,7 +54,6 @@ namespace PriorityTaskManager.Services.Agents
             context.History.Add("Phase 4.2 & 4.3: Processing inflexible tasks with transactional bumping...");
             foreach (var task in inflexibleTasks)
             {
-                task.ScheduledParts.Clear(); // Ensure we start fresh
                 bool isScheduled = false;
 
                 // Dependency Check
@@ -133,8 +138,73 @@ namespace PriorityTaskManager.Services.Agents
             context.History.Add("Phase 4.4: Processing flexible tasks...");
             foreach (var task in flexibleTasks)
             {
-                // Placeholder for flexible tasks (Step 4.4)
-                unscheduledTasks.Add(task);
+                // Dependency Check
+                if (!AreDependenciesMet(task, scheduledTasks, taskDictionary))
+                {
+                    unscheduledTasks.Add(task);
+                    context.History.Add($"  -> Task '{task.Title}' unscheduled: Blocked by an unscheduled dependency.");
+                    continue;
+                }
+
+                var durationToSchedule = task.EstimatedDuration;
+                var slotsToRemove = new List<TimeSlot>();
+                var slotsToAdd = new List<TimeSlot>();
+
+                // Iterate through available slots before the task's due date, filling them up
+                foreach (var slot in availableSlots.Where(s => s.EndTime <= task.DueDate).OrderBy(s => s.StartTime))
+                {
+                    if (durationToSchedule <= TimeSpan.Zero) break;
+
+                    var slotDuration = slot.Duration;
+                    var timeToUse = slotDuration < durationToSchedule ? slotDuration : durationToSchedule;
+
+                    if (timeToUse > TimeSpan.Zero)
+                    {
+                        var newChunk = new ScheduledChunk
+                        {
+                            StartTime = slot.StartTime,
+                            EndTime = slot.StartTime + timeToUse
+                        };
+                        task.ScheduledParts.Add(newChunk);
+
+                        durationToSchedule -= timeToUse;
+
+                        // Mark the original slot for removal
+                        slotsToRemove.Add(slot);
+
+                        // If the slot was only partially used, create a new slot for the remainder
+                        if (slotDuration > timeToUse)
+                        {
+                            var remainingSlot = new TimeSlot
+                            {
+                                StartTime = newChunk.EndTime,
+                                EndTime = slot.EndTime
+                            };
+                            slotsToAdd.Add(remainingSlot);
+                        }
+                    }
+                }
+
+                // Perform the slot updates after iterating
+                if (slotsToRemove.Any())
+                {
+                    availableSlots.RemoveAll(s => slotsToRemove.Contains(s));
+                    availableSlots.AddRange(slotsToAdd);
+                    availableSlots.Sort((s1, s2) => s1.StartTime.CompareTo(s2.StartTime));
+                }
+
+                // Final check if task was fully scheduled
+                if (durationToSchedule <= TimeSpan.Zero)
+                {
+                    scheduledTasks.Add(task);
+                    context.History.Add($"  -> Flexible task '{task.Title}' successfully scheduled in {task.ScheduledParts.Count} chunk(s).");
+                }
+                else
+                {
+                    task.ScheduledParts.Clear(); // Incomplete, so clear partial chunks
+                    unscheduledTasks.Add(task);
+                    context.History.Add($"  -> Flexible task '{task.Title}' could not be fully scheduled. Remaining duration: {durationToSchedule}.");
+                }
             }
 
             // Finalize context
