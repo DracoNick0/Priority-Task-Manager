@@ -71,8 +71,8 @@ namespace PriorityTaskManager.CLI.Handlers
         public TaskItem? FindClosestTaskToDueDate(IEnumerable<TaskItem> tasks)
         {
             return tasks
-                .Where(t => t.ScheduledStartTime.HasValue && !t.IsCompleted)
-                .OrderBy(t => (t.DueDate - t.ScheduledStartTime.Value).Duration())
+                .Where(t => t.ScheduledParts.Any() && !t.IsCompleted)
+                .OrderBy(t => (t.DueDate - t.ScheduledParts.Min(p => p.StartTime)).Duration())
                 .FirstOrDefault();
         }
 
@@ -108,7 +108,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     .ToList();
 
             var closestTask = FindClosestTaskToDueDate(incompleteTasks);
-            if (closestTask != null && closestTask.ScheduledStartTime.HasValue)
+            if (closestTask != null && closestTask.ScheduledParts.Any())
             {
                 var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
                 var slack = _taskMetricsService.CalculateRealisticSlack(closestTask, userProfile);
@@ -117,9 +117,9 @@ namespace PriorityTaskManager.CLI.Handlers
                 // Calculate schedule pressure
                 var totalWorkTime = (workEnd - workStart).TotalHours;
                 var scheduledTime = incompleteTasks
-                        .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                        .Sum(t => t.EstimatedDuration.TotalHours);
-                
+                        .SelectMany(t => t.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date))
+                        .Sum(p => p.Duration.TotalHours);
+
                 var eventTime = eventsForDay.Sum(e => (e.EndTime - e.StartTime).TotalHours);
 
                 // Adjust slackTime to reflect only hours free within the target day
@@ -127,8 +127,8 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 // --- Timeline and Task Letter Assignment ---
                 var scheduledTasksForDay = incompleteTasks
-                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                    .OrderBy(t => t.ScheduledStartTime)
+                    .Where(t => t.ScheduledParts.Any(p => p.StartTime.Date == targetDay.Date))
+                    .OrderBy(t => t.ScheduledParts.Min(p => p.StartTime))
                     .ToList();
 
                 var taskLetterMapping = new Dictionary<int, char>();
@@ -211,24 +211,25 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 foreach (var task in scheduledTasksForDay)
                 {
-                    var startBlock = (int)((task.ScheduledStartTime.Value - workStart).TotalMinutes / 15);
-                    var taskDurationInBlocks = (int)(task.EstimatedDuration.TotalMinutes / 15);
-
-                    if (startBlock < meterWidth)
+                    foreach (var chunk in task.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date))
                     {
-                        char taskChar = taskLetterMapping[task.Id];
-                        string representation = taskChar.ToString();
-                        if (taskDurationInBlocks > 1)
+                        var startBlock = (int)((chunk.StartTime - workStart).TotalMinutes / 15);
+                        var chunkDurationInBlocks = (int)(chunk.Duration.TotalMinutes / 15);
+                        if (startBlock < meterWidth)
                         {
-                            representation += new string('=', taskDurationInBlocks - 1);
-                        }
-
-                        for (int i = 0; i < representation.Length && startBlock + i < meterWidth; i++)
-                        {
-                            // Only draw task if the block is not already taken by an event
-                            if (taskBlocks[startBlock + i] == ' ')
+                            char taskChar = taskLetterMapping[task.Id];
+                            string representation = taskChar.ToString();
+                            if (chunkDurationInBlocks > 1)
                             {
-                                taskBlocks[startBlock + i] = representation[i];
+                                representation += new string('=', chunkDurationInBlocks - 1);
+                            }
+                            for (int i = 0; i < representation.Length && startBlock + i < meterWidth; i++)
+                            {
+                                // Only draw task if the block is not already taken by an event
+                                if (taskBlocks[startBlock + i] == ' ')
+                                {
+                                    taskBlocks[startBlock + i] = representation[i];
+                                }
                             }
                         }
                     }
@@ -312,7 +313,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             var mode = service.UserProfile.ActiveUrgencyMode;
-            var scheduledTasks = incompleteTasks.Where(t => t.ScheduledStartTime.HasValue).ToList();
+            var scheduledTasks = incompleteTasks.Where(t => t.ScheduledParts.Any()).ToList();
 
             // Show scheduled events
             if (eventsForDay.Any())
@@ -332,8 +333,8 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 Console.WriteLine("\nScheduled Tasks:");
                 var scheduledTasksForDay = scheduledTasks
-                    .Where(t => t.ScheduledStartTime.HasValue && t.ScheduledStartTime.Value.Date == targetDay.Date)
-                    .OrderBy(t => t.ScheduledStartTime)
+                    .Where(t => t.ScheduledParts.Any(p => p.StartTime.Date == targetDay.Date))
+                    .OrderBy(t => t.ScheduledParts.Min(p => p.StartTime))
                     .ToList();
                 
                 var taskLetterMapping = new Dictionary<int, char>();
@@ -343,7 +344,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     taskLetterMapping[task.Id] = currentLetter++;
                 }
 
-                foreach (var task in scheduledTasks.OrderBy(t => t.ScheduledStartTime))
+                foreach (var task in scheduledTasks.OrderBy(t => t.ScheduledParts.Min(p => p.StartTime)))
                 {
                     var letter = taskLetterMapping.ContainsKey(task.Id) ? $"({taskLetterMapping[task.Id]})" : "";
 
@@ -368,12 +369,25 @@ namespace PriorityTaskManager.CLI.Handlers
                         Console.Write(" "); // Add a space after the colored letter
                     }
 
-                    var start = task.ScheduledStartTime?.ToString("HH:mm") ?? "--:--";
-                    var end = task.ScheduledEndTime?.ToString("HH:mm") ?? "--:--";
-                    var duration = task.EstimatedDuration.TotalHours.ToString("0.##");
-                    var due = FormatDate(task.DueDate);
-                    
-                    Console.WriteLine($"[ID: {task.DisplayId}] {start} - {end} | {task.Title} (Duration: {duration}h, Due: {due})");
+                    // Show all scheduled chunks for this task on the target day
+                    var chunksForDay = task.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date).OrderBy(p => p.StartTime).ToList();
+                    if (chunksForDay.Any())
+                    {
+                        foreach (var chunk in chunksForDay)
+                        {
+                            var start = chunk.StartTime.ToString("HH:mm");
+                            var end = chunk.EndTime.ToString("HH:mm");
+                            var duration = chunk.Duration.TotalHours.ToString("0.##");
+                            var due = FormatDate(task.DueDate);
+                            Console.WriteLine($"[ID: {task.DisplayId}] {start} - {end} | {task.Title} (Chunk: {duration}h, Due: {due})");
+                        }
+                    }
+                    else
+                    {
+                        // Fallback if no chunk for today (shouldn't happen for scheduledTasksForDay)
+                        var due = FormatDate(task.DueDate);
+                        Console.WriteLine($"[ID: {task.DisplayId}] --:-- - --:-- | {task.Title} (Due: {due})");
+                    }
                 }
             }
 
@@ -395,7 +409,7 @@ namespace PriorityTaskManager.CLI.Handlers
             if (completedTasks.Any())
             {
                 Console.WriteLine("\nCompleted Tasks:");
-                foreach (var task in completedTasks.OrderByDescending(t => t.ScheduledEndTime ?? DateTime.MinValue))
+                foreach (var task in completedTasks.OrderByDescending(t => t.ScheduledParts.Any() ? t.ScheduledParts.Max(p => p.EndTime) : DateTime.MinValue))
                 {
                     Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Completed)");
                 }

@@ -30,15 +30,18 @@ namespace PriorityTaskManager.Services.Agents
                     var slot = availableSlots[i];
                     if (slot.EndTime - slot.StartTime >= task.EstimatedDuration)
                     {
-                        // Schedule the task in this slot
-                        task.ScheduledStartTime = slot.StartTime;
-                        task.ScheduledEndTime = slot.StartTime + task.EstimatedDuration;
+                        // Schedule the task in this slot using ScheduledParts
+                        task.ScheduledParts.Clear();
+                        var chunk = new Models.ScheduledChunk
+                        {
+                            StartTime = slot.StartTime,
+                            EndTime = slot.StartTime + task.EstimatedDuration
+                        };
+                        task.ScheduledParts.Add(chunk);
 
                         // Instead of modifying the slot, replace it with the remainder.
-                        // This avoids any potential floating point precision issues with TimeSpan addition.
-                        var remainingSlotStartTime = task.ScheduledEndTime.Value;
+                        var remainingSlotStartTime = chunk.EndTime;
 
-                        // If the remaining slot has any duration, update the list. Otherwise, remove it.
                         if (remainingSlotStartTime < slot.EndTime)
                         {
                             availableSlots[i] = new Models.TimeSlot { StartTime = remainingSlotStartTime, EndTime = slot.EndTime };
@@ -57,6 +60,7 @@ namespace PriorityTaskManager.Services.Agents
 
                 if (!scheduled)
                 {
+                    task.ScheduledParts.Clear();
                     unschedulableTasks.Add(task);
                 }
             }

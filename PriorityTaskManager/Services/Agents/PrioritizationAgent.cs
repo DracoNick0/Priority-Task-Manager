@@ -85,8 +85,7 @@ namespace PriorityTaskManager.Services.Agents
                     {
                         foreach (var late in lateTasks)
                         {
-                            late.ScheduledStartTime = null;
-                            late.ScheduledEndTime = null;
+                            late.ScheduledParts.Clear();
                         }
                         AppendToUnscheduledContext(context, lateTasks);
                         return tasks.Except(lateTasks).ToList();
@@ -262,22 +261,21 @@ namespace PriorityTaskManager.Services.Agents
             }
 
 
-            // Assign ScheduledStartTime and ScheduledEndTime for scheduled tasks
+            // Assign ScheduledParts for scheduled tasks
             runningOffset = TimeSpan.Zero;
             foreach (var task in currentSchedule)
             {
                 var start = TranslateOffsetToRealTime(runningOffset, scheduleWindow);
                 var end = start + task.EstimatedDuration;
-                task.ScheduledStartTime = start;
-                task.ScheduledEndTime = end;
+                task.ScheduledParts.Clear();
+                task.ScheduledParts.Add(new Models.ScheduledChunk { StartTime = start, EndTime = end });
                 runningOffset += task.EstimatedDuration;
             }
 
-            // Clear ScheduledStartTime and ScheduledEndTime for unscheduled tasks
+            // Clear ScheduledParts for unscheduled tasks
             foreach (var task in unscheduledTasks)
             {
-                task.ScheduledStartTime = null;
-                task.ScheduledEndTime = null;
+                task.ScheduledParts.Clear();
             }
 
             return new ScheduleResult

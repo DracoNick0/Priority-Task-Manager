@@ -40,10 +40,11 @@ namespace PriorityTaskManager.Services
         /// <returns>The calculated slack time.</returns>
         public TimeSpan CalculateRealisticSlack(TaskItem task, UserProfile userProfile)
         {
-            if (!task.ScheduledStartTime.HasValue)
+            if (task.ScheduledParts == null || !task.ScheduledParts.Any())
                 return TimeSpan.Zero;
 
-            var startTime = task.ScheduledStartTime.Value;
+            // Use the earliest scheduled chunk for slack calculation
+            var startTime = task.ScheduledParts.Min(p => p.StartTime);
             var effectiveDueTime = GetEffectiveDueTime(task, userProfile);
 
             TimeSpan totalSlack = TimeSpan.Zero;
@@ -83,11 +84,13 @@ namespace PriorityTaskManager.Services
         /// <returns>The calculated slack time.</returns>
         public TimeSpan CalculateActualSlack(TaskItem task)
         {
-            if (!task.ScheduledEndTime.HasValue)
+            if (task.ScheduledParts == null || !task.ScheduledParts.Any())
             {
                 return TimeSpan.Zero;
             }
-            return task.DueDate - task.ScheduledEndTime.Value;
+            // Use the latest scheduled chunk end time
+            var scheduledEnd = task.ScheduledParts.Max(p => p.EndTime);
+            return task.DueDate - scheduledEnd;
         }
 
         private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)

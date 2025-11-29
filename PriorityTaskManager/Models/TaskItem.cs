@@ -33,8 +33,6 @@ namespace PriorityTaskManager.Models
                 Points = this.Points,
                 BeforePadding = this.BeforePadding,
                 AfterPadding = this.AfterPadding,
-                ScheduledStartTime = this.ScheduledStartTime,
-                ScheduledEndTime = this.ScheduledEndTime,
                 IsDivisible = this.IsDivisible,
                 ScheduledParts = new List<ScheduledChunk>(this.ScheduledParts.Select(c => c.Clone()))
             };
@@ -62,8 +60,6 @@ namespace PriorityTaskManager.Models
             Points = 0.0;
             BeforePadding = null;
             AfterPadding = null;
-            ScheduledStartTime = null;
-            ScheduledEndTime = null;
             IsDivisible = true;
             ScheduledParts = new List<ScheduledChunk>();
         }
@@ -105,15 +101,7 @@ namespace PriorityTaskManager.Models
         /// </summary>
         public TimeSpan? AfterPadding { get; set; }
 
-        /// <summary>
-        /// Gets or sets the scheduled start time for the task (if assigned).
-        /// </summary>
-        public DateTime? ScheduledStartTime { get; set; }
 
-        /// <summary>
-        /// Gets or sets the scheduled end time for the task (if assigned).
-        /// </summary>
-        public DateTime? ScheduledEndTime { get; set; }
 
         /// <summary>
         /// The name of the list this task belongs to.
