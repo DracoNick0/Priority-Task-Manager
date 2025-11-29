@@ -8,9 +8,9 @@ namespace PriorityTaskManager.Services
         private readonly UserProfile _userProfile;
         private readonly Agents.TaskAnalyzerAgent _taskAnalyzerAgent;
         private readonly Agents.SchedulePreProcessorAgent _schedulePreProcessorAgent;
-        private readonly Agents.PrioritizationAgent _prioritizationAgent;
+        private readonly Agents.SchedulingAgent _schedulingAgent;
+        private readonly Agents.ComplexityBalancerAgent _complexityBalancerAgent;
         private readonly Agents.UserContextAgent _userContextAgent;
-        private readonly Agents.ScheduleSpreaderAgent _scheduleSpreaderAgent;
         private readonly List<Event> _events;
 
         public MultiAgentUrgencyStrategy(UserProfile userProfile, List<Event> events)
@@ -20,9 +20,9 @@ namespace PriorityTaskManager.Services
             var dependencyHelper = new Helpers.DependencyGraphHelper();
             _taskAnalyzerAgent = new Agents.TaskAnalyzerAgent();
             _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent();
-            _prioritizationAgent = new Agents.PrioritizationAgent(dependencyHelper);
+            _schedulingAgent = new Agents.SchedulingAgent(dependencyHelper);
+            _complexityBalancerAgent = new Agents.ComplexityBalancerAgent();
             _userContextAgent = new Agents.UserContextAgent();
-            _scheduleSpreaderAgent = new Agents.ScheduleSpreaderAgent();
         }
 
         public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
@@ -32,9 +32,9 @@ namespace PriorityTaskManager.Services
             {
                 _taskAnalyzerAgent,
                 _schedulePreProcessorAgent,
-                _prioritizationAgent,
-                _userContextAgent,
-                _scheduleSpreaderAgent
+                _schedulingAgent,
+                _complexityBalancerAgent,
+                _userContextAgent
             };
 
             // Create and populate the context
