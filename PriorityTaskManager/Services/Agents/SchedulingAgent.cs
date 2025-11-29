@@ -10,6 +10,7 @@ namespace PriorityTaskManager.Services.Agents
     public class SchedulingAgent : IAgent
     {
         private readonly DependencyGraphHelper _dependencyGraphHelper;
+        private readonly bool _enableMultiBump = true; // Feature flag for advanced bumping
 
         public SchedulingAgent(DependencyGraphHelper? dependencyGraphHelper = null)
         {
@@ -152,17 +153,19 @@ namespace PriorityTaskManager.Services.Agents
             // Step 4.5: Last Chance Appeal for High-Importance Flexible Tasks
             context.History.Add("Phase 4.5: Last Chance Appeal for important flexible tasks...");
 
-            var scheduledInflexibleTasks = scheduledTasks.Where(st => !st.IsDivisible).ToList();
-            if (!scheduledInflexibleTasks.Any())
+            if (_enableMultiBump)
             {
-                context.History.Add("  -> No scheduled inflexible tasks to consider for bumping. Skipping appeal process.");
-            }
-            else
-            {
-                var minInflexibleImportance = scheduledInflexibleTasks.Min(st => st.Importance);
+                context.History.Add("  -> Multi-bump logic enabled.");
+                var scheduledInflexibleTasks = scheduledTasks.Where(st => !st.IsDivisible).ToList();
+                if (!scheduledInflexibleTasks.Any())
+                {
+                    context.History.Add("  -> No scheduled inflexible tasks to consider for bumping. Skipping appeal process.");
+                    return context; // Return early as no bumping is possible
+                }
 
+                var minInflexibleImportance = scheduledInflexibleTasks.Min(st => st.Importance);
                 var appealingFlexibleTasks = unscheduledTasks
-                    .Where(t => t.IsDivisible && t.Importance > minInflexibleImportance)
+                    .Where(t => t.IsDivisible && t.Importance >= minInflexibleImportance)
                     .OrderByDescending(t => t.Importance)
                     .ToList();
 
@@ -174,50 +177,161 @@ namespace PriorityTaskManager.Services.Agents
                 {
                     foreach (var flexibleTask in appealingFlexibleTasks)
                     {
-                        // Find a low-priority, inflexible task to bump
-                        var potentialBumpCandidates = scheduledTasks
-                            .Where(st => !st.IsDivisible && flexibleTask.Importance > st.Importance) // Authority Check
-                            .OrderBy(st => st.Importance) // Start with the least important candidate
+                        // Step 1: Calculate Slack and Shortfall
+                        var slack = availableSlots.Where(s => s.EndTime <= flexibleTask.DueDate).Sum(s => s.Duration.Ticks);
+                        var slackTimeSpan = TimeSpan.FromTicks(slack);
+                        var shortfall = flexibleTask.EstimatedDuration - slackTimeSpan;
+
+                        context.History.Add($"  -> Evaluating flexible task '{flexibleTask.Title}'. Needed: {flexibleTask.EstimatedDuration}, Slack: {slackTimeSpan}, Shortfall: {shortfall}.");
+
+                        if (shortfall <= TimeSpan.Zero)
+                        {
+                            // Enough slack has been freed up by other bumps. No need to bump for this task.
+                            context.History.Add($"    -> Sufficient slack available. Attempting to schedule without bumping.");
+                            unscheduledTasks.Remove(flexibleTask);
+                            ScheduleFlexibleTask(flexibleTask, availableSlots, scheduledTasks, unscheduledTasks, context);
+                            continue; // Move to the next appealing task
+                        }
+
+                        // Step 2 & 3: Gather and Sort Bump Candidates
+                        var bumpCandidates = scheduledTasks
+                            .Where(st => !st.IsDivisible && flexibleTask.Importance >= st.Importance)
+                            .OrderBy(st => st.Importance)
+                            .ThenByDescending(st => st.EstimatedDuration)
                             .ToList();
 
-                        foreach (var candidateToBump in potentialBumpCandidates)
+                        if (!bumpCandidates.Any())
                         {
-                            var slotOccupiedByCandidate = new TimeSlot
+                            context.History.Add($"    -> No suitable inflexible tasks available to bump. Task remains unscheduled.");
+                            continue; // Move to the next appealing task
+                        }
+
+                        // Step 4 & 5: Aggregate, Simulate, and Commit/Abort
+                        var tasksToBump = new List<TaskItem>();
+                        var timeFreedUp = TimeSpan.Zero;
+                        bool solutionFound = false;
+
+                        foreach (var candidate in bumpCandidates)
+                        {
+                            tasksToBump.Add(candidate);
+                            timeFreedUp += candidate.EstimatedDuration;
+                            if (timeFreedUp >= shortfall)
                             {
-                                StartTime = candidateToBump.ScheduledParts.First().StartTime,
-                                EndTime = candidateToBump.ScheduledParts.First().EndTime
-                            };
+                                solutionFound = true;
+                                break;
+                            }
+                        }
 
-                            // Fit Check: Can the flexible task fit entirely within this single freed slot?
-                            if (flexibleTask.EstimatedDuration <= slotOccupiedByCandidate.Duration)
+                        if (solutionFound)
+                        {
+                            context.History.Add($"    -> Solution found: Bumping {tasksToBump.Count} task(s) to free up {timeFreedUp}.");
+
+                            var bumpedTasksToReschedule = new List<TaskItem>();
+
+                            // Commit the bumps
+                            foreach (var taskToBump in tasksToBump)
                             {
-                                context.History.Add($"  -> Last Chance: Bumping inflexible '{candidateToBump.Title}' for flexible '{flexibleTask.Title}'.");
+                                UnscheduleTask(taskToBump, scheduledTasks, availableSlots);
+                                bumpedTasksToReschedule.Add(taskToBump);
+                            }
 
-                                // 1. Bump the candidate
-                                UnscheduleTask(candidateToBump, scheduledTasks, availableSlots);
-                                unscheduledTasks.Add(candidateToBump);
+                            // Schedule the flexible task
+                            unscheduledTasks.Remove(flexibleTask);
+                            ScheduleFlexibleTask(flexibleTask, availableSlots, scheduledTasks, unscheduledTasks, context);
 
-                                // 2. Schedule the flexible task
-                                unscheduledTasks.Remove(flexibleTask); // It's about to be scheduled
-                                ScheduleFlexibleTask(flexibleTask, availableSlots, scheduledTasks, unscheduledTasks, context);
-
-                                // 3. Attempt to reschedule the bumped task immediately
-                                unscheduledTasks.Remove(candidateToBump);
-                                TimeSlot? rescheduleSlot = FindBestFitSlot(candidateToBump, availableSlots);
+                            // Attempt to reschedule the bumped tasks
+                            foreach (var bumpedTask in bumpedTasksToReschedule.OrderBy(t => t.DueDate).ThenByDescending(t => t.Importance))
+                            {
+                                TimeSlot? rescheduleSlot = FindBestFitSlot(bumpedTask, availableSlots);
                                 if (rescheduleSlot != null)
                                 {
-                                    ScheduleInSlot(candidateToBump, rescheduleSlot, scheduledTasks, availableSlots);
-                                    context.History.Add($"    -> Successfully rescheduled bumped task '{candidateToBump.Title}'.");
+                                    ScheduleInSlot(bumpedTask, rescheduleSlot, scheduledTasks, availableSlots);
+                                    context.History.Add($"      -> Successfully rescheduled bumped task '{bumpedTask.Title}'.");
                                 }
                                 else
                                 {
-                                    unscheduledTasks.Add(candidateToBump); // Failed again, put it back
-                                    context.History.Add($"    -> Failed to reschedule bumped task '{candidateToBump.Title}'.");
+                                    unscheduledTasks.Add(bumpedTask);
+                                    context.History.Add($"      -> Failed to reschedule bumped task '{bumpedTask.Title}'.");
                                 }
-                                goto nextFlexibleTask; // Move to the next unscheduled flexible task
                             }
                         }
-                        nextFlexibleTask:;
+                        else
+                        {
+                            context.History.Add($"    -> No combination of bumps could satisfy the shortfall of {shortfall}.");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Original single-bump logic
+                var scheduledInflexibleTasks = scheduledTasks.Where(st => !st.IsDivisible).ToList();
+                if (!scheduledInflexibleTasks.Any())
+                {
+                    context.History.Add("  -> No scheduled inflexible tasks to consider for bumping. Skipping appeal process.");
+                }
+                else
+                {
+                    var minInflexibleImportance = scheduledInflexibleTasks.Min(st => st.Importance);
+
+                    var appealingFlexibleTasks = unscheduledTasks
+                        .Where(t => t.IsDivisible && t.Importance > minInflexibleImportance)
+                        .OrderByDescending(t => t.Importance)
+                        .ToList();
+
+                    if (!appealingFlexibleTasks.Any())
+                    {
+                        context.History.Add("  -> No unscheduled flexible tasks with enough importance to appeal.");
+                    }
+                    else
+                    {
+                        foreach (var flexibleTask in appealingFlexibleTasks)
+                        {
+                            // Find a low-priority, inflexible task to bump
+                            var potentialBumpCandidates = scheduledTasks
+                                .Where(st => !st.IsDivisible && flexibleTask.Importance > st.Importance) // Authority Check
+                                .OrderBy(st => st.Importance) // Start with the least important candidate
+                                .ToList();
+
+                            foreach (var candidateToBump in potentialBumpCandidates)
+                            {
+                                var slotOccupiedByCandidate = new TimeSlot
+                                {
+                                    StartTime = candidateToBump.ScheduledParts.First().StartTime,
+                                    EndTime = candidateToBump.ScheduledParts.First().EndTime
+                                };
+
+                                // Fit Check: Can the flexible task fit entirely within this single freed slot?
+                                if (flexibleTask.EstimatedDuration <= slotOccupiedByCandidate.Duration)
+                                {
+                                    context.History.Add($"  -> Last Chance: Bumping inflexible '{candidateToBump.Title}' for flexible '{flexibleTask.Title}'.");
+
+                                    // 1. Bump the candidate
+                                    UnscheduleTask(candidateToBump, scheduledTasks, availableSlots);
+                                    unscheduledTasks.Add(candidateToBump);
+
+                                    // 2. Schedule the flexible task
+                                    unscheduledTasks.Remove(flexibleTask); // It's about to be scheduled
+                                    ScheduleFlexibleTask(flexibleTask, availableSlots, scheduledTasks, unscheduledTasks, context);
+
+                                    // 3. Attempt to reschedule the bumped task immediately
+                                    unscheduledTasks.Remove(candidateToBump);
+                                    TimeSlot? rescheduleSlot = FindBestFitSlot(bumpedTask, availableSlots);
+                                    if (rescheduleSlot != null)
+                                    {
+                                        ScheduleInSlot(rescheduleSlot, scheduledTasks, availableSlots);
+                                        context.History.Add($"    -> Successfully rescheduled bumped task '{bumpedTask.Title}'.");
+                                    }
+                                    else
+                                    {
+                                        unscheduledTasks.Add(bumpedTask); // Failed again, put it back
+                                        context.History.Add($"    -> Failed to reschedule bumped task '{bumpedTask.Title}'.");
+                                    }
+                                    goto nextFlexibleTask; // Move to the next unscheduled flexible task
+                                }
+                            }
+                            nextFlexibleTask:;
+                        }
                     }
                 }
             }
