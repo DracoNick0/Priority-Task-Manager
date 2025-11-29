@@ -42,75 +42,68 @@ namespace PriorityTaskManager.Services.Agents
             var slots = new List<PriorityTaskManager.Models.TimeSlot>();
             var now = DateTime.Now;
 
-            // Step 3.2: Generate slots within the calculated horizon
-            for (var day = DateTime.Today; day <= coreHorizonEndDate; day = day.AddDays(1))
+            // Step 3.2: Generate slots for each workday, splitting around events (if any)
+            if (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<PriorityTaskManager.Models.Event> events)
             {
-                if (userProfile.WorkDays.Contains(day.DayOfWeek))
+                var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
+                for (var day = DateTime.Today; day <= coreHorizonEndDate; day = day.AddDays(1))
                 {
+                    if (!userProfile.WorkDays.Contains(day.DayOfWeek))
+                        continue;
+
                     var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
 
                     // If the day is today, adjust start time if we are already past the work start time.
                     if (day == DateTime.Today)
                     {
-                        // If it's already past the end of the workday, skip today entirely.
                         if (now >= end)
-                        {
                             continue;
-                        }
-                        // If we are currently within the workday, the earliest we can start is now.
                         if (now > start)
-                        {
                             start = now;
-                        }
                     }
+                    if (end <= start)
+                        continue;
 
-                    // Only add the slot if it represents a positive duration.
-                    if (end > start)
+                    // Gather all events for this day that overlap the work window
+                    var dayEvents = sortedEvents.Where(ev => ev.EndTime > start && ev.StartTime < end).OrderBy(ev => ev.StartTime).ToList();
+                    var currentStart = start;
+                    foreach (var ev in dayEvents)
                     {
-                        slots.Add(new PriorityTaskManager.Models.TimeSlot
+                        if (ev.StartTime > currentStart)
                         {
-                            StartTime = start,
-                            EndTime = end
-                        });
+                            slots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStart, EndTime = ev.StartTime });
+                        }
+                        currentStart = ev.EndTime > currentStart ? ev.EndTime : currentStart;
+                    }
+                    if (currentStart < end)
+                    {
+                        slots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStart, EndTime = end });
                     }
                 }
             }
-
-            // Subtract events from the available time slots
-            if (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<PriorityTaskManager.Models.Event> events)
+            else
             {
-                var finalSlots = new List<PriorityTaskManager.Models.TimeSlot>();
-                var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
-
-                foreach (var slot in slots)
+                for (var day = DateTime.Today; day <= coreHorizonEndDate; day = day.AddDays(1))
                 {
-                    var currentStartTime = slot.StartTime;
-                    foreach (var ev in sortedEvents)
+                    if (!userProfile.WorkDays.Contains(day.DayOfWeek))
+                        continue;
+
+                    var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
+                    var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
+
+                    if (day == DateTime.Today)
                     {
-                        // If event is outside the current slot, ignore it
-                        if (ev.EndTime <= slot.StartTime || ev.StartTime >= slot.EndTime)
-                        {
+                        if (now >= end)
                             continue;
-                        }
-
-                        // If there's a gap between the current start time and the event's start, add it as a new slot
-                        if (ev.StartTime > currentStartTime)
-                        {
-                            finalSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStartTime, EndTime = ev.StartTime });
-                        }
-                        
-                        // Move the current start time to after the event
-                        currentStartTime = ev.EndTime > currentStartTime ? ev.EndTime : currentStartTime;
+                        if (now > start)
+                            start = now;
                     }
-
-                    // If there's any remaining time in the slot after all events, add it
-                    if (currentStartTime < slot.EndTime)
+                    if (end > start)
                     {
-                        finalSlots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStartTime, EndTime = slot.EndTime });
+                        slots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = start, EndTime = end });
                     }
                 }
-                slots = finalSlots;
             }
 
             scheduleWindow.AvailableSlots = slots;
