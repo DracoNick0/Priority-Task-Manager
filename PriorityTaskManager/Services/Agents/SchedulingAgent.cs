@@ -146,64 +146,79 @@ namespace PriorityTaskManager.Services.Agents
                     continue;
                 }
 
-                var durationToSchedule = task.EstimatedDuration;
-                var slotsToRemove = new List<TimeSlot>();
-                var slotsToAdd = new List<TimeSlot>();
+                ScheduleFlexibleTask(task, availableSlots, scheduledTasks, unscheduledTasks, context);
+            }
 
-                // Iterate through available slots before the task's due date, filling them up
-                foreach (var slot in availableSlots.Where(s => s.EndTime <= task.DueDate).OrderBy(s => s.StartTime))
+            // Step 4.5: Last Chance Appeal for High-Importance Flexible Tasks
+            context.History.Add("Phase 4.5: Last Chance Appeal for important flexible tasks...");
+
+            var scheduledInflexibleTasks = scheduledTasks.Where(st => !st.IsDivisible).ToList();
+            if (!scheduledInflexibleTasks.Any())
+            {
+                context.History.Add("  -> No scheduled inflexible tasks to consider for bumping. Skipping appeal process.");
+            }
+            else
+            {
+                var minInflexibleImportance = scheduledInflexibleTasks.Min(st => st.Importance);
+
+                var appealingFlexibleTasks = unscheduledTasks
+                    .Where(t => t.IsDivisible && t.Importance > minInflexibleImportance)
+                    .OrderByDescending(t => t.Importance)
+                    .ToList();
+
+                if (!appealingFlexibleTasks.Any())
                 {
-                    if (durationToSchedule <= TimeSpan.Zero) break;
-
-                    var slotDuration = slot.Duration;
-                    var timeToUse = slotDuration < durationToSchedule ? slotDuration : durationToSchedule;
-
-                    if (timeToUse > TimeSpan.Zero)
-                    {
-                        var newChunk = new ScheduledChunk
-                        {
-                            StartTime = slot.StartTime,
-                            EndTime = slot.StartTime + timeToUse
-                        };
-                        task.ScheduledParts.Add(newChunk);
-
-                        durationToSchedule -= timeToUse;
-
-                        // Mark the original slot for removal
-                        slotsToRemove.Add(slot);
-
-                        // If the slot was only partially used, create a new slot for the remainder
-                        if (slotDuration > timeToUse)
-                        {
-                            var remainingSlot = new TimeSlot
-                            {
-                                StartTime = newChunk.EndTime,
-                                EndTime = slot.EndTime
-                            };
-                            slotsToAdd.Add(remainingSlot);
-                        }
-                    }
-                }
-
-                // Perform the slot updates after iterating
-                if (slotsToRemove.Any())
-                {
-                    availableSlots.RemoveAll(s => slotsToRemove.Contains(s));
-                    availableSlots.AddRange(slotsToAdd);
-                    availableSlots.Sort((s1, s2) => s1.StartTime.CompareTo(s2.StartTime));
-                }
-
-                // Final check if task was fully scheduled
-                if (durationToSchedule <= TimeSpan.Zero)
-                {
-                    scheduledTasks.Add(task);
-                    context.History.Add($"  -> Flexible task '{task.Title}' successfully scheduled in {task.ScheduledParts.Count} chunk(s).");
+                    context.History.Add("  -> No unscheduled flexible tasks with enough importance to appeal.");
                 }
                 else
                 {
-                    task.ScheduledParts.Clear(); // Incomplete, so clear partial chunks
-                    unscheduledTasks.Add(task);
-                    context.History.Add($"  -> Flexible task '{task.Title}' could not be fully scheduled. Remaining duration: {durationToSchedule}.");
+                    foreach (var flexibleTask in appealingFlexibleTasks)
+                    {
+                        // Find a low-priority, inflexible task to bump
+                        var potentialBumpCandidates = scheduledTasks
+                            .Where(st => !st.IsDivisible && flexibleTask.Importance > st.Importance) // Authority Check
+                            .OrderBy(st => st.Importance) // Start with the least important candidate
+                            .ToList();
+
+                        foreach (var candidateToBump in potentialBumpCandidates)
+                        {
+                            var slotOccupiedByCandidate = new TimeSlot
+                            {
+                                StartTime = candidateToBump.ScheduledParts.First().StartTime,
+                                EndTime = candidateToBump.ScheduledParts.First().EndTime
+                            };
+
+                            // Fit Check: Can the flexible task fit entirely within this single freed slot?
+                            if (flexibleTask.EstimatedDuration <= slotOccupiedByCandidate.Duration)
+                            {
+                                context.History.Add($"  -> Last Chance: Bumping inflexible '{candidateToBump.Title}' for flexible '{flexibleTask.Title}'.");
+
+                                // 1. Bump the candidate
+                                UnscheduleTask(candidateToBump, scheduledTasks, availableSlots);
+                                unscheduledTasks.Add(candidateToBump);
+
+                                // 2. Schedule the flexible task
+                                unscheduledTasks.Remove(flexibleTask); // It's about to be scheduled
+                                ScheduleFlexibleTask(flexibleTask, availableSlots, scheduledTasks, unscheduledTasks, context);
+
+                                // 3. Attempt to reschedule the bumped task immediately
+                                unscheduledTasks.Remove(candidateToBump);
+                                TimeSlot? rescheduleSlot = FindBestFitSlot(candidateToBump, availableSlots);
+                                if (rescheduleSlot != null)
+                                {
+                                    ScheduleInSlot(candidateToBump, rescheduleSlot, scheduledTasks, availableSlots);
+                                    context.History.Add($"    -> Successfully rescheduled bumped task '{candidateToBump.Title}'.");
+                                }
+                                else
+                                {
+                                    unscheduledTasks.Add(candidateToBump); // Failed again, put it back
+                                    context.History.Add($"    -> Failed to reschedule bumped task '{candidateToBump.Title}'.");
+                                }
+                                goto nextFlexibleTask; // Move to the next unscheduled flexible task
+                            }
+                        }
+                        nextFlexibleTask:;
+                    }
                 }
             }
 
@@ -215,6 +230,72 @@ namespace PriorityTaskManager.Services.Agents
             }
 
             return context;
+        }
+
+        private void ScheduleFlexibleTask(TaskItem task, List<TimeSlot> availableSlots, List<TaskItem> scheduledTasks, List<TaskItem> unscheduledTasks, MCPContext context)
+        {
+            var durationToSchedule = task.EstimatedDuration;
+            var slotsToRemove = new List<TimeSlot>();
+            var slotsToAdd = new List<TimeSlot>();
+
+            // Iterate through available slots before the task's due date, filling them up
+            foreach (var slot in availableSlots.Where(s => s.EndTime <= task.DueDate).OrderBy(s => s.StartTime))
+            {
+                if (durationToSchedule <= TimeSpan.Zero) break;
+
+                var slotDuration = slot.Duration;
+                var timeToUse = slotDuration < durationToSchedule ? slotDuration : durationToSchedule;
+
+                if (timeToUse > TimeSpan.Zero)
+                {
+                    var newChunk = new ScheduledChunk
+                    {
+                        StartTime = slot.StartTime,
+                        EndTime = slot.StartTime + timeToUse
+                    };
+                    task.ScheduledParts.Add(newChunk);
+
+                    durationToSchedule -= timeToUse;
+
+                    // Mark the original slot for removal
+                    slotsToRemove.Add(slot);
+
+                    // If the slot was only partially used, create a new slot for the remainder
+                    if (slotDuration > timeToUse)
+                    {
+                        var remainingSlot = new TimeSlot
+                        {
+                            StartTime = newChunk.EndTime,
+                            EndTime = slot.EndTime
+                        };
+                        slotsToAdd.Add(remainingSlot);
+                    }
+                }
+            }
+
+            // Perform the slot updates after iterating
+            if (slotsToRemove.Any())
+            {
+                availableSlots.RemoveAll(s => slotsToRemove.Contains(s));
+                availableSlots.AddRange(slotsToAdd);
+                availableSlots.Sort((s1, s2) => s1.StartTime.CompareTo(s2.StartTime));
+            }
+
+            // Final check if task was fully scheduled
+            if (durationToSchedule <= TimeSpan.Zero)
+            {
+                scheduledTasks.Add(task);
+                context.History.Add($"  -> Flexible task '{task.Title}' successfully scheduled in {task.ScheduledParts.Count} chunk(s).");
+            }
+            else
+            {
+                task.ScheduledParts.Clear(); // Incomplete, so clear partial chunks
+                if (!unscheduledTasks.Contains(task))
+                {
+                    unscheduledTasks.Add(task);
+                }
+                context.History.Add($"  -> Flexible task '{task.Title}' could not be fully scheduled. Remaining duration: {durationToSchedule}.");
+            }
         }
 
         private bool AreDependenciesMet(TaskItem task, List<TaskItem> scheduledTasks, Dictionary<Guid, TaskItem> taskDictionary)
