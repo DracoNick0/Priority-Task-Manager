@@ -316,16 +316,16 @@ namespace PriorityTaskManager.Services.Agents
 
                                     // 3. Attempt to reschedule the bumped task immediately
                                     unscheduledTasks.Remove(candidateToBump);
-                                    TimeSlot? rescheduleSlot = FindBestFitSlot(bumpedTask, availableSlots);
+                                    TimeSlot? rescheduleSlot = FindBestFitSlot(candidateToBump, availableSlots);
                                     if (rescheduleSlot != null)
                                     {
-                                        ScheduleInSlot(rescheduleSlot, scheduledTasks, availableSlots);
-                                        context.History.Add($"    -> Successfully rescheduled bumped task '{bumpedTask.Title}'.");
+                                        ScheduleInSlot(candidateToBump, rescheduleSlot, scheduledTasks, availableSlots);
+                                        context.History.Add($"    -> Successfully rescheduled bumped task '{candidateToBump.Title}'.");
                                     }
                                     else
                                     {
-                                        unscheduledTasks.Add(bumpedTask); // Failed again, put it back
-                                        context.History.Add($"    -> Failed to reschedule bumped task '{bumpedTask.Title}'.");
+                                        unscheduledTasks.Add(candidateToBump); // Failed again, put it back
+                                        context.History.Add($"    -> Failed to reschedule bumped task '{candidateToBump.Title}'.");
                                     }
                                     goto nextFlexibleTask; // Move to the next unscheduled flexible task
                                 }
@@ -412,7 +412,7 @@ namespace PriorityTaskManager.Services.Agents
             }
         }
 
-        private bool AreDependenciesMet(TaskItem task, List<TaskItem> scheduledTasks, Dictionary<Guid, TaskItem> taskDictionary)
+        private bool AreDependenciesMet(TaskItem task, List<TaskItem> scheduledTasks, Dictionary<int, TaskItem> taskDictionary)
         {
             foreach (var dependencyId in task.Dependencies)
             {
