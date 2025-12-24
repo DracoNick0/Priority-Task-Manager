@@ -392,15 +392,34 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             // Show unschedulable/overdue tasks (incomplete, no scheduled start)
+            // Show all overdue tasks (scheduled and unscheduled)
             var unscheduledTasksToDisplay = result.UnscheduledTasks ?? new List<TaskItem>();
-            if (unscheduledTasksToDisplay.Any())
+            var overdueTasksToDisplay = tasksToDisplay
+                .Where(t => !t.IsCompleted && t.DueDate < DateTime.Now)
+                .ToList();
+
+            // Combine both sets, avoid duplicates
+            var unscheduledAndOverdueTasks = unscheduledTasksToDisplay
+                .Concat(overdueTasksToDisplay)
+                .GroupBy(t => t.Id)
+                .Select(g => g.First())
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            if (unscheduledAndOverdueTasks.Any())
             {
                 Console.WriteLine("\nUnscheduled/Overdue Tasks:");
-                foreach (var task in unscheduledTasksToDisplay.OrderBy(t => t.DueDate))
+                foreach (var task in unscheduledAndOverdueTasks)
                 {
                     var duration = task.EstimatedDuration.TotalHours.ToString("0.##");
                     var due = FormatDate(task.DueDate);
-                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Due: {due}, Duration: {duration}h)");
+                    var labels = new List<string>();
+                    if (task.DueDate < DateTime.Now) labels.Add("OVERDUE");
+                    if (unscheduledTasksToDisplay.Any(u => u.Id == task.Id)) labels.Add("UNSCHEDULED");
+                    var labelText = labels.Count > 0 ? $"[{string.Join(", ", labels)}] " : "";
+                    Console.ForegroundColor = labels.Contains("OVERDUE") ? ConsoleColor.Red : ConsoleColor.Yellow;
+                    Console.WriteLine($"[ID: {task.DisplayId}] {labelText}{task.Title} (Due: {due}, Duration: {duration}h)");
+                    Console.ResetColor();
                 }
             }
 
