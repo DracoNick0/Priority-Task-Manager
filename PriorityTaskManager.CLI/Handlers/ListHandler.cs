@@ -176,28 +176,78 @@ namespace PriorityTaskManager.CLI.Handlers
                     meterColor = ConsoleColor.Red;
 
                 // --- Meter bar with task letters ---
-                var taskBlocks = new char[meterWidth];
-                Array.Fill(taskBlocks, ' ');
+                // --- Robust per-block ownership and transition detection ---
+                var blockOwners = new string[meterWidth]; // "task:<id>", "event:<id>", or null
+                var blockChars = new char[meterWidth];
+                Array.Fill(blockChars, ' ');
 
-                // --- Add events to the meter bar ---
+                // Assign events to blocks
                 foreach (var ev in eventsForDay)
                 {
-                    var startBlock = (int)((ev.StartTime - workStart).TotalMinutes / 15);
-                    var durationInMinutes = (ev.EndTime - ev.StartTime).TotalMinutes;
-                    var eventDurationInBlocks = (int)(durationInMinutes / 15);
-
-                    if (startBlock < 0) // Event starts before work day starts
+                    var eventStart = ev.StartTime;
+                    var eventEnd = ev.EndTime;
+                    for (int b = 0; b < meterWidth; b++)
                     {
-                        eventDurationInBlocks -= (0 - startBlock);
-                        startBlock = 0;
-                    }
-
-                    for (int i = 0; i < eventDurationInBlocks && startBlock + i < meterWidth; i++)
-                    {
-                        if (startBlock + i >= 0)
+                        var blockStart = workStart + TimeSpan.FromMinutes(b * 15);
+                        var blockEnd = blockStart + TimeSpan.FromMinutes(15);
+                        if (eventStart < blockEnd && eventEnd > blockStart)
                         {
-                            taskBlocks[startBlock + i] = '■'; // Using a block character for events
+                            blockOwners[b] = $"event:{ev.Id}";
+                            blockChars[b] = '■';
                         }
+                    }
+                }
+
+                // Assign tasks to blocks (tasks take precedence over empty blocks, not over events)
+                foreach (var task in scheduledTasksForDay)
+                {
+                    char taskChar = taskLetterMapping[task.Id];
+                    bool firstBlockOfTaskSet = false;
+                    foreach (var chunk in task.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date))
+                    {
+                        var chunkStart = chunk.StartTime;
+                        var chunkEnd = chunk.StartTime + chunk.Duration;
+                        bool firstBlockOfChunkSet = false;
+                        for (int b = 0; b < meterWidth; b++)
+                        {
+                            var blockStart = workStart + TimeSpan.FromMinutes(b * 15);
+                            var blockEnd = blockStart + TimeSpan.FromMinutes(15);
+                            if (chunkStart < blockEnd && chunkEnd > blockStart)
+                            {
+                                // Only assign if not already an event
+                                if (blockOwners[b] == null)
+                                {
+                                    blockOwners[b] = $"task:{task.Id}";
+                                    if (!firstBlockOfTaskSet)
+                                    {
+                                        blockChars[b] = taskChar;
+                                        firstBlockOfTaskSet = true;
+                                        firstBlockOfChunkSet = true;
+                                    }
+                                    else if (!firstBlockOfChunkSet)
+                                    {
+                                        blockChars[b] = '=';
+                                        firstBlockOfChunkSet = true;
+                                    }
+                                    else
+                                    {
+                                        blockChars[b] = '=';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Insert split marker '=' at transitions from task to event
+                for (int b = 1; b < meterWidth; b++)
+                {
+                    if (blockOwners[b - 1]?.StartsWith("task:") == true && blockOwners[b]?.StartsWith("event:") == true)
+                    {
+                        // Only overwrite with '=' if not the first block of the chunk (i.e., not a letter)
+                        if (blockChars[b - 1] == '=')
+                            blockChars[b - 1] = '=';
+                        // else leave the task letter as is
                     }
                 }
 
@@ -207,32 +257,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 {
                     var minutesPassed = (now - workStart).TotalMinutes;
                     passedBlocks = (int)(minutesPassed / 15);
-                }
-
-                foreach (var task in scheduledTasksForDay)
-                {
-                    foreach (var chunk in task.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date))
-                    {
-                        var startBlock = (int)((chunk.StartTime - workStart).TotalMinutes / 15);
-                        var chunkDurationInBlocks = (int)(chunk.Duration.TotalMinutes / 15);
-                        if (startBlock < meterWidth)
-                        {
-                            char taskChar = taskLetterMapping[task.Id];
-                            string representation = taskChar.ToString();
-                            if (chunkDurationInBlocks > 1)
-                            {
-                                representation += new string('=', chunkDurationInBlocks - 1);
-                            }
-                            for (int i = 0; i < representation.Length && startBlock + i < meterWidth; i++)
-                            {
-                                // Only draw task if the block is not already taken by an event
-                                if (taskBlocks[startBlock + i] == ' ')
-                                {
-                                    taskBlocks[startBlock + i] = representation[i];
-                                }
-                            }
-                        }
-                    }
                 }
 
                 // --- Display combined output ---
@@ -264,15 +288,15 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     else
                     {
-                        if (taskBlocks[i] == '■')
+                        if (blockChars[i] == '■')
                         {
                             Console.ForegroundColor = ConsoleColor.Magenta; // Color for events
-                            Console.Write(taskBlocks[i]);
+                            Console.Write(blockChars[i]);
                             Console.ForegroundColor = meterColor; // Revert to meter color
                         }
                         else
                         {
-                            Console.Write(taskBlocks[i]);
+                            Console.Write(blockChars[i]);
                         }
                     }
                 }
