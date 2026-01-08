@@ -12,31 +12,12 @@ namespace PriorityTaskManager.Services
         /// <returns>The prioritization result (tasks and history).</returns>
         public PrioritizationResult GetPrioritizedTasks(int listId, ITimeService timeService)
         {
-            IUrgencyStrategy strategy;
-            switch (this.UserProfile.ActiveUrgencyMode)
-            {
-                case UrgencyMode.MultiAgent:
-                    strategy = new MultiAgentUrgencyStrategy(this.UserProfile, _data.Events, timeService);
-                    break;
-                case UrgencyMode.SingleAgent:
-                default:
-                    strategy = new SingleAgentStrategy();
-                    break;
-            }
+            IUrgencyStrategy strategy = new MCP.MultiAgentUrgencyStrategy(this.UserProfile, _data.Events, timeService);
             var rawTasks = GetAllTasks(listId);
             var result = strategy.CalculateUrgency(rawTasks.ToList());
             return result;
         }
 
-        /// <summary>
-        /// Sets the active urgency mode and persists the change to the user profile.
-        /// </summary>
-        /// <param name="mode">The urgency mode to set as active.</param>
-        public void SetActiveUrgencyMode(UrgencyMode mode)
-        {
-            this.UserProfile.ActiveUrgencyMode = mode;
-            SaveData();
-        }
 
         public UserProfile GetUserProfile()
         {

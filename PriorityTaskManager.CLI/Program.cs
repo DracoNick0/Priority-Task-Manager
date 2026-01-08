@@ -30,7 +30,7 @@ namespace PriorityTaskManager.CLI
 			var dataContainer = persistenceService.LoadData();
 			var timeService = new TimeService();
 
-			var urgencyStrategy = new MultiAgentUrgencyStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
+			var urgencyStrategy = new PriorityTaskManager.MCP.MultiAgentUrgencyStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
 
@@ -48,7 +48,6 @@ namespace PriorityTaskManager.CLI
 				{ "depend", new DependHandler() },
 				{ "view", new ViewHandler() },
 				{ "cleanup", new CleanupHandler(service) },
-				{ "mode", new ModeHandler() },
 				{ "settings", new SettingsHandler() },
 				{ "event", new EventCommandHandler() },
 				{ "time", new TimeHandler(timeService) }

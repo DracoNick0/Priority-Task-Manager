@@ -26,7 +26,7 @@ The most sophisticated part of the architecture is the agent-based pipeline used
 
 The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility agents. This makes the system easier to modify, debug, and extend.
 
-The pipeline is defined and executed in `PriorityTaskManager/Services/MultiAgentUrgencyStrategy.cs`.
+The pipeline is defined and executed in `PriorityTaskManager/MCP/MultiAgentUrgencyStrategy.cs`.
 
 ### Agent Execution Order
 
@@ -70,7 +70,5 @@ The core library is built around a set of services and strategies, each with a s
 -   **`PersistenceService`**: Implements `IPersistenceService`. Handles the serialization and deserialization of data to and from the `.json` files on disk.
 -   **`TaskMetricsService`**: Implements `ITaskMetricsService`. Provides utility functions for calculating metrics about tasks, used by the `ListHandler` to display statistics.
 -   **`TimeService`**: Implements `ITimeService`. This service abstracts away the system clock (`DateTime.Now`). It allows the application to use either the real system time or a "simulated" time set by the user. This is crucial for testing and debugging time-sensitive scheduling logic. All components that need to know the "current time" should depend on `ITimeService` rather than calling `DateTime.Now` directly.
--   **`IUrgencyStrategy`**: This interface defines the contract for any class that can prioritize tasks. The application currently has two implementations:
-    -   **`MultiAgentUrgencyStrategy`**: The primary, sophisticated strategy that uses the agent pipeline described below.
-    -   **`SingleAgentStrategy`**: A simpler, legacy strategy. **Note:** This strategy is currently broken and deprecated. It will be removed in a future refactoring.
+-   **`IUrgencyStrategy`**: This interface defines the contract for any class that can prioritize tasks. The application's primary implementation is the `MultiAgentUrgencyStrategy`, which uses the sophisticated agent pipeline.
 -   **`Services/Helpers`**: This directory contains helper classes that perform specific, isolated tasks for the services. For example, `DependencyGraphHelper` provides functions for working with task dependencies.

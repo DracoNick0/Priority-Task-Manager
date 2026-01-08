@@ -1,13 +1,16 @@
 using PriorityTaskManager.MCP;
+using PriorityTaskManager.Models;
+using System;
+using System.Collections.Generic;
 
-namespace PriorityTaskManager.Services.Agents
+namespace PriorityTaskManager.MCP.Agents
 {
     public class TaskAnalyzerAgent : IAgent
     {
         public MCPContext Act(MCPContext context)
         {
             // Retrieve the tasks list from context
-            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks)
+            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks)
             {
                 context.History.Add("TaskAnalyzerAgent: No valid task list found in context.");
                 return context;

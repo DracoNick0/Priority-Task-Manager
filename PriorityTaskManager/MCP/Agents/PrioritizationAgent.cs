@@ -2,7 +2,7 @@ using PriorityTaskManager.MCP;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Services.Agents
+namespace PriorityTaskManager.MCP.Agents
 {
     public class PrioritizationAgent : IAgent
     {

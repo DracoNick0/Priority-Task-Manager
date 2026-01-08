@@ -1,7 +1,8 @@
 using PriorityTaskManager.MCP;
+using PriorityTaskManager.Services;
 using System;
 
-namespace PriorityTaskManager.Services.Agents
+namespace PriorityTaskManager.MCP.Agents
 {
     /// <summary>
     /// Agent responsible for pre-processing tasks before scheduling.

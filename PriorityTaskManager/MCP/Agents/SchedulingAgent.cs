@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Services.Agents
+namespace PriorityTaskManager.MCP.Agents
 {
     public class SchedulingAgent : IAgent
     {

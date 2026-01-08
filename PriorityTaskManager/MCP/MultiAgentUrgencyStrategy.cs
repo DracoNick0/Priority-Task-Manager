@@ -1,16 +1,18 @@
-using System.Collections.Generic;
+using PriorityTaskManager.MCP.Agents;
 using PriorityTaskManager.Models;
+using PriorityTaskManager.Services;
+using PriorityTaskManager.Services.Helpers;
 
-namespace PriorityTaskManager.Services
+namespace PriorityTaskManager.MCP
 {
     public class MultiAgentUrgencyStrategy : IUrgencyStrategy
     {
         private readonly UserProfile _userProfile;
-        private readonly Agents.TaskAnalyzerAgent _taskAnalyzerAgent;
-        private readonly Agents.SchedulePreProcessorAgent _schedulePreProcessorAgent;
-        private readonly Agents.PrioritizationAgent _prioritizationAgent;
-        private readonly Agents.SchedulingAgent _schedulingAgent;
-        private readonly Agents.ComplexityBalancerAgent _complexityBalancerAgent;
+        private readonly TaskAnalyzerAgent _taskAnalyzerAgent;
+        private readonly SchedulePreProcessorAgent _schedulePreProcessorAgent;
+        private readonly PrioritizationAgent _prioritizationAgent;
+        private readonly SchedulingAgent _schedulingAgent;
+        private readonly ComplexityBalancerAgent _complexityBalancerAgent;
         private readonly ITimeService _timeService;
         
         private readonly List<Event> _events;
@@ -20,19 +22,19 @@ namespace PriorityTaskManager.Services
             _userProfile = userProfile;
             _events = events;
             _timeService = timeService;
-            var dependencyHelper = new Helpers.DependencyGraphHelper();
-            _taskAnalyzerAgent = new Agents.TaskAnalyzerAgent();
-            _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent(_timeService);
-            _prioritizationAgent = new Agents.PrioritizationAgent();
-            _complexityBalancerAgent = new Agents.ComplexityBalancerAgent();
-            _schedulingAgent = new Agents.SchedulingAgent(dependencyHelper);
+            var dependencyHelper = new DependencyGraphHelper();
+            _taskAnalyzerAgent = new TaskAnalyzerAgent();
+            _schedulePreProcessorAgent = new SchedulePreProcessorAgent(_timeService);
+            _prioritizationAgent = new PrioritizationAgent();
+            _complexityBalancerAgent = new ComplexityBalancerAgent();
+            _schedulingAgent = new SchedulingAgent(dependencyHelper);
             
         }
 
         public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
         {
             // Build the agent chain
-            var agentChain = new List<MCP.IAgent>
+            var agentChain = new List<IAgent>
             {
                 _taskAnalyzerAgent,
                 _schedulePreProcessorAgent,
@@ -42,13 +44,13 @@ namespace PriorityTaskManager.Services
             };
 
             // Create and populate the context
-            var context = new MCP.MCPContext();
+            var context = new MCPContext();
             context.SharedState["Tasks"] = tasks;
             context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Events"] = _events;
 
             // Execute the agent chain
-            var finalContext = MCP.MCP.Coordinate(agentChain, context);
+            var finalContext = MCP.Coordinate(agentChain, context);
 
             // Retrieve the final data
             var finalTasks = finalContext.SharedState.ContainsKey("Tasks")

@@ -17,8 +17,6 @@ namespace PriorityTaskManager.Models
         /// </summary>
         public TimeOnly WorkEndTime { get; set; } = new TimeOnly(17, 0);
 
-        public UrgencyMode ActiveUrgencyMode { get; set; } = UrgencyMode.SingleAgent;
-
         /// <summary>
         /// The days of the week the user typically works. Defaults to Monday-Friday.
         /// </summary>

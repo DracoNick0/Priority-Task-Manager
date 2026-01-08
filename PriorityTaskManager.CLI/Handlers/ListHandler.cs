@@ -337,7 +337,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            var mode = service.UserProfile.ActiveUrgencyMode;
             var scheduledTasks = incompleteTasks.Where(t => t.ScheduledParts.Any()).ToList();
 
             // Show scheduled events

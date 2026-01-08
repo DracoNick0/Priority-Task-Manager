@@ -90,7 +90,6 @@ The pipeline follows a **Prioritize -> Balance -> Schedule** workflow:
 ### System Commands
 | Command | Description |
 | :--- | :--- |
-| `mode` | Switch between `MultiAgent` and `SingleAgent` urgency modes. |
 | `cleanup` | Archive completed tasks and re-index the list. |
 | `time` | View the current time (real or simulated). |
 | `time now` | Switch to using real-time. |
