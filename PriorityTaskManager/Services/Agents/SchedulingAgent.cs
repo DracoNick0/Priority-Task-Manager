@@ -70,7 +70,7 @@ namespace PriorityTaskManager.Services.Agents
 
                 if (bestFitSlot != null)
                 {
-                    ScheduleInSlot(task, bestFitSlot, scheduledTasks, availableSlots);
+                    ScheduleInSlot(task, bestFitSlot, scheduledTasks, availableSlots, context);
                     isScheduled = true;
                     context.History.Add($"  -> Task '{task.Title}' scheduled in empty slot starting at {bestFitSlot.StartTime}.");
                 }
@@ -102,7 +102,7 @@ namespace PriorityTaskManager.Services.Agents
                             bumpedTasks.Add(candidateToBump);
 
                             // Schedule the current task in the newly freed slot
-                            ScheduleInSlot(task, slotOccupiedByCandidate, scheduledTasks, availableSlots);
+                            ScheduleInSlot(task, slotOccupiedByCandidate, scheduledTasks, availableSlots, context);
                             isScheduled = true;
                             break; // Stop after the first successful bump
                         }
@@ -116,7 +116,7 @@ namespace PriorityTaskManager.Services.Agents
                             TimeSlot? rescheduleSlot = FindBestFitSlot(bumpedTask, availableSlots);
                             if (rescheduleSlot != null)
                             {
-                                ScheduleInSlot(bumpedTask, rescheduleSlot, scheduledTasks, availableSlots);
+                                ScheduleInSlot(bumpedTask, rescheduleSlot, scheduledTasks, availableSlots, context);
                                 context.History.Add($"    -> Successfully rescheduled bumped task '{bumpedTask.Title}'.");
                             }
                             else
@@ -245,7 +245,7 @@ namespace PriorityTaskManager.Services.Agents
                                 TimeSlot? rescheduleSlot = FindBestFitSlot(bumpedTask, availableSlots);
                                 if (rescheduleSlot != null)
                                 {
-                                    ScheduleInSlot(bumpedTask, rescheduleSlot, scheduledTasks, availableSlots);
+                                    ScheduleInSlot(bumpedTask, rescheduleSlot, scheduledTasks, availableSlots, context);
                                     context.History.Add($"      -> Successfully rescheduled bumped task '{bumpedTask.Title}'.");
                                 }
                                 else
@@ -319,7 +319,7 @@ namespace PriorityTaskManager.Services.Agents
                                     TimeSlot? rescheduleSlot = FindBestFitSlot(candidateToBump, availableSlots);
                                     if (rescheduleSlot != null)
                                     {
-                                        ScheduleInSlot(candidateToBump, rescheduleSlot, scheduledTasks, availableSlots);
+                                        ScheduleInSlot(candidateToBump, rescheduleSlot, scheduledTasks, availableSlots, context);
                                         context.History.Add($"    -> Successfully rescheduled bumped task '{candidateToBump.Title}'.");
                                     }
                                     else
@@ -368,7 +368,7 @@ namespace PriorityTaskManager.Services.Agents
                         EndTime = slot.StartTime + timeToUse
                     };
                     task.ScheduledParts.Add(newChunk);
-                    Console.WriteLine($"  - [SchedulingAgent] Scheduled part of '{task.Title}': {newChunk.StartTime} to {newChunk.EndTime}");
+                    context.History.Add($"  -> Scheduled part of '{task.Title}': {newChunk.StartTime} to {newChunk.EndTime}");
 
                     durationToSchedule -= timeToUse;
 
@@ -446,7 +446,7 @@ namespace PriorityTaskManager.Services.Agents
             return bestFitSlot;
         }
 
-        private void ScheduleInSlot(TaskItem task, TimeSlot slot, List<TaskItem> scheduledTasks, List<TimeSlot> availableSlots)
+        private void ScheduleInSlot(TaskItem task, TimeSlot slot, List<TaskItem> scheduledTasks, List<TimeSlot> availableSlots, MCPContext context)
         {
             var newChunk = new ScheduledChunk
             {
@@ -454,7 +454,7 @@ namespace PriorityTaskManager.Services.Agents
                 EndTime = slot.StartTime + task.EstimatedDuration
             };
             task.ScheduledParts.Add(newChunk);
-            Console.WriteLine($"  - [SchedulingAgent] Scheduled '{task.Title}': {newChunk.StartTime} to {newChunk.EndTime}");
+            context.History.Add($"  -> Scheduled '{task.Title}': {newChunk.StartTime} to {newChunk.EndTime}");
             scheduledTasks.Add(task);
 
             // Update available slots

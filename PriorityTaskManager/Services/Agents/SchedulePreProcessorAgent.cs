@@ -107,12 +107,11 @@ namespace PriorityTaskManager.Services.Agents
                 }
             }
 
-            Console.WriteLine("\n--- [SchedulePreProcessorAgent] Calculated Available Time Slots ---");
+            context.History.Add("  -> Calculated Available Time Slots:");
             foreach (var slot in slots.OrderBy(s => s.StartTime))
             {
-                Console.WriteLine($"  - Slot: {slot.StartTime} to {slot.EndTime}");
+                context.History.Add($"    - Slot: {slot.StartTime} to {slot.EndTime}");
             }
-            Console.WriteLine("-----------------------------------------------------------------");
 
             scheduleWindow.AvailableSlots = slots;
             context.SharedState["AvailableScheduleWindow"] = scheduleWindow;
