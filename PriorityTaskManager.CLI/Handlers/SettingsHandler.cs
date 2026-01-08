@@ -47,7 +47,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
             }
 
-            service.SaveUserProfile(userProfile);
+            service.UpdateUserProfile(userProfile);
             Console.WriteLine("Settings updated.");
             PrintCurrentSettings(userProfile);
         }
@@ -78,7 +78,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     case ConsoleKey.Enter:
                         if (selectedIndex == menuItems.Count - 1) // Save and Exit
                         {
-                            service.SaveUserProfile(userProfile);
+                            service.UpdateUserProfile(userProfile);
                             Console.Clear();
                             Console.WriteLine("Settings saved.");
                             PrintCurrentSettings(userProfile);

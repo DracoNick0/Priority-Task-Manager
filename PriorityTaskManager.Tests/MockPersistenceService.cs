@@ -9,16 +9,16 @@ namespace PriorityTaskManager.Tests
     /// </summary>
     public class MockPersistenceService : IPersistenceService
     {
-        private DataContainer _data;
+        public DataContainer Data { get; private set; }
 
         public MockPersistenceService()
         {
-            _data = new DataContainer();
+            Data = new DataContainer();
         }
 
         public MockPersistenceService(DataContainer initialData)
         {
-            _data = initialData;
+            Data = initialData;
         }
 
         private Event CloneEvent(Event e) => new Event
@@ -34,22 +34,22 @@ namespace PriorityTaskManager.Tests
             // Return a deep copy to prevent test cross-contamination
             return new DataContainer
             {
-                Tasks = new List<TaskItem>(_data.Tasks.Select(t => t.Clone())),
-                Lists = new List<TaskList>(_data.Lists.Select(l => CloneList(l))),
-                Events = new List<Event>(_data.Events.Select(e => CloneEvent(e))),
-                NextTaskId = _data.NextTaskId,
-                NextDisplayId = _data.NextDisplayId,
-                NextListId = _data.NextListId,
-                NextEventId = _data.NextEventId,
-                UserProfile = CloneUserProfile(_data.UserProfile),
-                ActiveListId = _data.ActiveListId
+                Tasks = new List<TaskItem>(Data.Tasks.Select(t => t.Clone())),
+                Lists = new List<TaskList>(Data.Lists.Select(l => CloneList(l))),
+                Events = new List<Event>(Data.Events.Select(e => CloneEvent(e))),
+                NextTaskId = Data.NextTaskId,
+                NextDisplayId = Data.NextDisplayId,
+                NextListId = Data.NextListId,
+                NextEventId = Data.NextEventId,
+                UserProfile = CloneUserProfile(Data.UserProfile),
+                ActiveListId = Data.ActiveListId
             };
         }
 
         public void SaveData(DataContainer data)
         {
             // Store a deep copy to prevent test cross-contamination
-            _data = new DataContainer
+            Data = new DataContainer
             {
                 Tasks = new List<TaskItem>(data.Tasks.Select(t => t.Clone())),
                 Lists = new List<TaskList>(data.Lists.Select(l => CloneList(l))),
@@ -72,7 +72,6 @@ namespace PriorityTaskManager.Tests
 
         private UserProfile CloneUserProfile(UserProfile u) => new UserProfile
         {
-            ActiveUrgencyMode = u.ActiveUrgencyMode,
             WorkStartTime = u.WorkStartTime,
             WorkEndTime = u.WorkEndTime,
             WorkDays = new List<DayOfWeek>(u.WorkDays),
