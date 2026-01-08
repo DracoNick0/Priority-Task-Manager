@@ -13,6 +13,7 @@ namespace PriorityTaskManager.MCP.Agents
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks)
             {
                 context.History.Add("TaskAnalyzerAgent: No valid task list found in context.");
+                context.SharedState.Remove("Tasks");
                 return context;
             }
 
@@ -23,7 +24,7 @@ namespace PriorityTaskManager.MCP.Agents
                     task.Importance = 1;
 
                 // Apply default for EstimatedDuration
-                if (task.EstimatedDuration == TimeSpan.Zero)
+                if (task.EstimatedDuration <= TimeSpan.Zero)
                     task.EstimatedDuration = TimeSpan.FromHours(1);
 
                 // Apply default for Complexity

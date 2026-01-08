@@ -2,7 +2,7 @@
 
 1.  **Implement Core Logic Test Suite**
     -   [x] `TaskManagerServiceTests.cs`
-    -   [ ] `TaskAnalyzerAgentTests.cs`
+    -   [x] `TaskAnalyzerAgentTests.cs`
     -   [ ] `SchedulePreProcessorAgentTests.cs`
     -   [ ] `PrioritizationAgentTests.cs`
     -   [ ] `ComplexityBalancerAgentTests.cs`
