@@ -24,14 +24,13 @@ namespace PriorityTaskManager.CLI
 		static void Main(string[] args)
 		{
 
-			var urgencyStrategy = new SingleAgentStrategy();
-			// Set up file paths relative to the CLI project directory
-			var tasksFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tasks.json");
-			var listsFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "lists.json");
-			var userProfileFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "user_profile.json");
-			var eventsFilePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "events.json");
-			var persistenceService = new PersistenceService(tasksFilePath, listsFilePath, userProfileFilePath, eventsFilePath);
-			var service = new TaskManagerService(urgencyStrategy, persistenceService);
+			// Set up services
+			var dataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
+			var persistenceService = new PersistenceService(dataDirectory);
+			var dataContainer = persistenceService.LoadData();
+
+			var urgencyStrategy = new MultiAgentUrgencyStrategy(dataContainer.UserProfile, dataContainer.Events);
+			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");

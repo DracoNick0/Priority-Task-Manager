@@ -15,12 +15,12 @@ namespace PriorityTaskManager.Services
         private readonly string _userProfileFilePath;
         private readonly string _eventsFilePath;
 
-        public PersistenceService(string tasksFilePath, string listsFilePath, string userProfileFilePath, string eventsFilePath)
+        public PersistenceService(string dataDirectory)
         {
-            _tasksFilePath = Path.GetFullPath(tasksFilePath);
-            _listsFilePath = Path.GetFullPath(listsFilePath);
-            _userProfileFilePath = Path.GetFullPath(userProfileFilePath);
-            _eventsFilePath = Path.GetFullPath(eventsFilePath);
+            _tasksFilePath = Path.Combine(dataDirectory, "tasks.json");
+            _listsFilePath = Path.Combine(dataDirectory, "lists.json");
+            _userProfileFilePath = Path.Combine(dataDirectory, "user_profile.json");
+            _eventsFilePath = Path.Combine(dataDirectory, "events.json");
         }
 
         public DataContainer LoadData()

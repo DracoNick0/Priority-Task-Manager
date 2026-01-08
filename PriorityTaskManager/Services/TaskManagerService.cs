@@ -70,11 +70,11 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="urgencyStrategy">The urgency strategy used to calculate task urgency.</param>
         /// <param name="persistenceService">The persistence service for loading and saving data.</param>
-        public TaskManagerService(IUrgencyStrategy urgencyStrategy, IPersistenceService persistenceService)
+        public TaskManagerService(IUrgencyStrategy urgencyStrategy, IPersistenceService persistenceService, DataContainer data)
         {
             _urgencyStrategy = urgencyStrategy;
             _persistenceService = persistenceService;
-            _data = _persistenceService.LoadData();
+            _data = data;
             // Ensure at least one default list exists
             if (_data.Lists == null || _data.Lists.Count == 0)
             {
