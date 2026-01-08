@@ -4,11 +4,11 @@
 	- Add a feature allowing the user to specify a pretend date and time, so the scheduler and CLI behave as if it is that moment.
 	- Ensure all scheduling logic and outputs respect the simulated time when set.
 
-2. **Fix Dependency Scheduling Logic**
-	- The scheduling engine currently does not correctly respect task dependencies. This needs to be fixed to ensure dependent tasks are always scheduled after their prerequisites.
-
-3. **Fix and update tests**
+2. **Fix and update tests**
 	- Review, fix, and update all existing tests to ensure they pass and cover new/changed functionality.
+
+3. **Fix Dependency Scheduling Logic**
+	- The scheduling engine currently does not correctly respect task dependencies. This needs to be fixed to ensure dependent tasks are always scheduled after their prerequisites.
 
 4. **Remove SingleAgentStrategy and `mode` command**
 	- Remove the broken and deprecated `SingleAgentStrategy.cs` file.
