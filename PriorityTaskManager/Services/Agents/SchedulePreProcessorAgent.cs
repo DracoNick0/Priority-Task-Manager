@@ -1,4 +1,5 @@
 using PriorityTaskManager.MCP;
+using System;
 
 namespace PriorityTaskManager.Services.Agents
 {
@@ -105,6 +106,13 @@ namespace PriorityTaskManager.Services.Agents
                     }
                 }
             }
+
+            Console.WriteLine("\n--- [SchedulePreProcessorAgent] Calculated Available Time Slots ---");
+            foreach (var slot in slots.OrderBy(s => s.StartTime))
+            {
+                Console.WriteLine($"  - Slot: {slot.StartTime} to {slot.EndTime}");
+            }
+            Console.WriteLine("-----------------------------------------------------------------");
 
             scheduleWindow.AvailableSlots = slots;
             context.SharedState["AvailableScheduleWindow"] = scheduleWindow;

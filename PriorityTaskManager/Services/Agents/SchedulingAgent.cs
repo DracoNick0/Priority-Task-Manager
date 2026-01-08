@@ -368,6 +368,7 @@ namespace PriorityTaskManager.Services.Agents
                         EndTime = slot.StartTime + timeToUse
                     };
                     task.ScheduledParts.Add(newChunk);
+                    Console.WriteLine($"  - [SchedulingAgent] Scheduled part of '{task.Title}': {newChunk.StartTime} to {newChunk.EndTime}");
 
                     durationToSchedule -= timeToUse;
 
@@ -453,6 +454,7 @@ namespace PriorityTaskManager.Services.Agents
                 EndTime = slot.StartTime + task.EstimatedDuration
             };
             task.ScheduledParts.Add(newChunk);
+            Console.WriteLine($"  - [SchedulingAgent] Scheduled '{task.Title}': {newChunk.StartTime} to {newChunk.EndTime}");
             scheduledTasks.Add(task);
 
             // Update available slots

@@ -84,7 +84,6 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
-            Console.Clear();
             var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == service.GetActiveListId());
             if (activeList == null)
             {
@@ -93,6 +92,18 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             var result = service.GetPrioritizedTasks(service.GetActiveListId());
             var tasksToDisplay = result.Tasks;
+
+            Console.WriteLine("\n--- [ListHandler] Raw Scheduling Data Received ---");
+            foreach (var task in tasksToDisplay.Where(t => t.ScheduledParts.Any()))
+            {
+                Console.WriteLine($"  - Task: '{task.Title}' (ID: {task.Id})");
+                foreach (var part in task.ScheduledParts.OrderBy(p => p.StartTime))
+                {
+                    Console.WriteLine($"    - Chunk: {part.StartTime} to {part.EndTime}");
+                }
+            }
+            Console.WriteLine("----------------------------------------------------");
+
             var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
 
             var userProfile = service.UserProfile;
