@@ -28,8 +28,9 @@ namespace PriorityTaskManager.CLI
 			var dataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
 			var persistenceService = new PersistenceService(dataDirectory);
 			var dataContainer = persistenceService.LoadData();
+			var timeService = new TimeService();
 
-			var urgencyStrategy = new MultiAgentUrgencyStrategy(dataContainer.UserProfile, dataContainer.Events);
+			var urgencyStrategy = new MultiAgentUrgencyStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
 
@@ -38,7 +39,7 @@ namespace PriorityTaskManager.CLI
 			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ "add", new AddHandler() },
-				{ "list", new ListHandler(taskMetricsService) },
+				{ "list", new ListHandler(taskMetricsService, timeService) },
 				{ "edit", new EditHandler() },
 				{ "delete", new DeleteHandler() },
 				{ "complete", new CompleteHandler() },
@@ -49,7 +50,8 @@ namespace PriorityTaskManager.CLI
 				{ "cleanup", new CleanupHandler(service) },
 				{ "mode", new ModeHandler() },
 				{ "settings", new SettingsHandler() },
-				{ "event", new EventCommandHandler() }
+				{ "event", new EventCommandHandler() },
+				{ "time", new TimeHandler(timeService) }
 			};
 
 			while (true)

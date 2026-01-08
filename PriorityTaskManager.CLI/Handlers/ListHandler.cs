@@ -10,10 +10,12 @@ namespace PriorityTaskManager.CLI.Handlers
     public class ListHandler : ICommandHandler
     {
         private readonly ITaskMetricsService _taskMetricsService;
+        private readonly ITimeService _timeService;
 
-        public ListHandler(ITaskMetricsService taskMetricsService)
+        public ListHandler(ITaskMetricsService taskMetricsService, ITimeService timeService)
         {
             _taskMetricsService = taskMetricsService;
+            _timeService = timeService;
         }
 
         /// <inheritdoc/>
@@ -90,13 +92,13 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
                 return;
             }
-            var result = service.GetPrioritizedTasks(service.GetActiveListId());
+            var result = service.GetPrioritizedTasks(service.GetActiveListId(), _timeService);
             var tasksToDisplay = result.Tasks;
             var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
 
             var userProfile = service.UserProfile;
             var events = service.GetAllEvents().ToList();
-            var now = DateTime.Now;
+            var now = _timeService.GetCurrentTime();
             var targetDay = _taskMetricsService.FindTargetDayForSlackMeter(now, userProfile);
             var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
             var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());

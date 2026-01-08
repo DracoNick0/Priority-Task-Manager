@@ -1,4 +1,5 @@
 using PriorityTaskManager.Services;
+using PriorityTaskManager.CLI.Handlers;
 
 namespace PriorityTaskManager.CLI.Interfaces
 {
@@ -13,5 +14,20 @@ namespace PriorityTaskManager.CLI.Interfaces
         /// <param name="service">The task manager service to interact with tasks.</param>
         /// <param name="args">The arguments provided by the user for the command.</param>
         void Execute(TaskManagerService service, string[] args);
+    }
+
+    public static class CommandHandlerExtensions
+    {
+        public static void Execute(this ICommandHandler handler, TaskManagerService service, ITimeService timeService, string[] args)
+        {
+            if (handler is ListHandler listHandler)
+            {
+                listHandler.Execute(service, timeService, args);
+            }
+            else
+            {
+                handler.Execute(service, args);
+            }
+        }
     }
 }

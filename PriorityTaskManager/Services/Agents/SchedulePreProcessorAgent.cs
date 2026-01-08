@@ -8,6 +8,13 @@ namespace PriorityTaskManager.Services.Agents
     /// </summary>
     public class SchedulePreProcessorAgent : IAgent
     {
+        private readonly ITimeService _timeService;
+
+        public SchedulePreProcessorAgent(ITimeService timeService)
+        {
+            _timeService = timeService;
+        }
+
         /// <inheritdoc />
         public MCPContext Act(MCPContext context)
         {
@@ -18,10 +25,12 @@ namespace PriorityTaskManager.Services.Agents
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks)
                 return context;
 
+            var now = _timeService.GetCurrentTime();
+
             // Step 3.1: Calculate the Core Horizon End Date
             var totalWorkloadDuration = TimeSpan.FromTicks(tasks.Sum(t => t.EstimatedDuration.Ticks));
             var accumulatedAvailableTime = TimeSpan.Zero;
-            var coreHorizonEndDate = DateTime.Today;
+            var coreHorizonEndDate = now.Date;
             var dailyWorkDuration = userProfile.WorkEndTime.ToTimeSpan() - userProfile.WorkStartTime.ToTimeSpan();
 
             while (accumulatedAvailableTime < totalWorkloadDuration)
@@ -31,7 +40,7 @@ namespace PriorityTaskManager.Services.Agents
                     accumulatedAvailableTime += dailyWorkDuration;
                 }
                 // Stop if we look more than 5 years into the future to prevent infinite loops
-                if (coreHorizonEndDate > DateTime.Today.AddYears(5)) 
+                if (coreHorizonEndDate > now.Date.AddYears(5)) 
                 {
                     context.History.Add("Warning: Workload exceeds 5 years of available time. Capping horizon.");
                     break;
@@ -41,13 +50,12 @@ namespace PriorityTaskManager.Services.Agents
 
             var scheduleWindow = new PriorityTaskManager.Models.ScheduleWindow();
             var slots = new List<PriorityTaskManager.Models.TimeSlot>();
-            var now = DateTime.Now;
 
             // Step 3.2: Generate slots for each workday, splitting around events (if any)
             if (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<PriorityTaskManager.Models.Event> events)
             {
                 var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
-                for (var day = DateTime.Today; day <= coreHorizonEndDate; day = day.AddDays(1))
+                for (var day = now.Date; day <= coreHorizonEndDate; day = day.AddDays(1))
                 {
                     if (!userProfile.WorkDays.Contains(day.DayOfWeek))
                         continue;
@@ -56,7 +64,7 @@ namespace PriorityTaskManager.Services.Agents
                     var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
 
                     // If the day is today, adjust start time if we are already past the work start time.
-                    if (day == DateTime.Today)
+                    if (day == now.Date)
                     {
                         if (now >= end)
                             continue;
@@ -85,7 +93,7 @@ namespace PriorityTaskManager.Services.Agents
             }
             else
             {
-                for (var day = DateTime.Today; day <= coreHorizonEndDate; day = day.AddDays(1))
+                for (var day = now.Date; day <= coreHorizonEndDate; day = day.AddDays(1))
                 {
                     if (!userProfile.WorkDays.Contains(day.DayOfWeek))
                         continue;
@@ -93,7 +101,7 @@ namespace PriorityTaskManager.Services.Agents
                     var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
 
-                    if (day == DateTime.Today)
+                    if (day == now.Date)
                     {
                         if (now >= end)
                             continue;
