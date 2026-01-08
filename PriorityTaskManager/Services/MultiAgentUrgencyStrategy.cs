@@ -11,16 +11,18 @@ namespace PriorityTaskManager.Services
         private readonly Agents.PrioritizationAgent _prioritizationAgent;
         private readonly Agents.SchedulingAgent _schedulingAgent;
         private readonly Agents.ComplexityBalancerAgent _complexityBalancerAgent;
+        private readonly ITimeService _timeService;
         
         private readonly List<Event> _events;
 
-        public MultiAgentUrgencyStrategy(UserProfile userProfile, List<Event> events)
+        public MultiAgentUrgencyStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService)
         {
             _userProfile = userProfile;
             _events = events;
+            _timeService = timeService;
             var dependencyHelper = new Helpers.DependencyGraphHelper();
             _taskAnalyzerAgent = new Agents.TaskAnalyzerAgent();
-            _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent();
+            _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent(_timeService);
             _prioritizationAgent = new Agents.PrioritizationAgent();
             _complexityBalancerAgent = new Agents.ComplexityBalancerAgent();
             _schedulingAgent = new Agents.SchedulingAgent(dependencyHelper);

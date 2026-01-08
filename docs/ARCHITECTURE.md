@@ -69,6 +69,7 @@ The core library is built around a set of services and strategies, each with a s
 -   **`TaskManagerService`**: The central facade for all business logic. It coordinates operations like adding, deleting, and updating tasks, lists, and events.
 -   **`PersistenceService`**: Implements `IPersistenceService`. Handles the serialization and deserialization of data to and from the `.json` files on disk.
 -   **`TaskMetricsService`**: Implements `ITaskMetricsService`. Provides utility functions for calculating metrics about tasks, used by the `ListHandler` to display statistics.
+-   **`TimeService`**: Implements `ITimeService`. This service abstracts away the system clock (`DateTime.Now`). It allows the application to use either the real system time or a "simulated" time set by the user. This is crucial for testing and debugging time-sensitive scheduling logic. All components that need to know the "current time" should depend on `ITimeService` rather than calling `DateTime.Now` directly.
 -   **`IUrgencyStrategy`**: This interface defines the contract for any class that can prioritize tasks. The application currently has two implementations:
     -   **`MultiAgentUrgencyStrategy`**: The primary, sophisticated strategy that uses the agent pipeline described below.
     -   **`SingleAgentStrategy`**: A simpler, legacy strategy. **Note:** This strategy is currently broken and deprecated. It will be removed in a future refactoring.

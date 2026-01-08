@@ -10,13 +10,13 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="listId">The ID of the list to prioritize tasks for.</param>
         /// <returns>The prioritization result (tasks and history).</returns>
-        public PrioritizationResult GetPrioritizedTasks(int listId)
+        public PrioritizationResult GetPrioritizedTasks(int listId, ITimeService timeService)
         {
             IUrgencyStrategy strategy;
             switch (this.UserProfile.ActiveUrgencyMode)
             {
                 case UrgencyMode.MultiAgent:
-                    strategy = new MultiAgentUrgencyStrategy(this.UserProfile, _data.Events);
+                    strategy = new MultiAgentUrgencyStrategy(this.UserProfile, _data.Events, timeService);
                     break;
                 case UrgencyMode.SingleAgent:
                 default:

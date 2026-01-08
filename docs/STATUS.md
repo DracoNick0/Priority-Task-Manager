@@ -26,6 +26,7 @@ The last major refactoring focused on two key areas:
 | `add <Title>` | Add a new task to the active list. |
 | `view <Id>` | View all details of a specific task. |
 | `edit <Id> ...` | Edit a task's attributes interactively. |
+| `edit <attr> <Id> [val]` | Edit a specific attribute, optionally providing the new value directly. |
 | `delete <Id1,Id2,...>` | Delete one or more tasks by ID. |
 | `complete <Id1,Id2,...>` | Mark one or more tasks as complete. |
 | `uncomplete <Id1,Id2,...>` | Mark one or more tasks as incomplete. |
@@ -53,6 +54,9 @@ The last major refactoring focused on two key areas:
 | :--- | :--- |
 | `mode` | Switch between `MultiAgent` and `SingleAgent` urgency modes. |
 | `cleanup` | Archive completed tasks and re-index the list. |
+| `time` | View the current time (real or simulated). |
+| `time now` | Switch to using real-time. |
+| `time custom` | Interactively set a custom simulated time. |
 | `settings` | View and edit user profile settings. |
 | `help` | Display a list of all commands. |
 | `exit` | Close the application. |

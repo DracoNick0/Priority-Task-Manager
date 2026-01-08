@@ -18,7 +18,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void RunInteractiveHelp()
         {
-            var categories = new List<string> { "Task Commands", "List Commands", "Dependency Commands", "Event Commands", "General Commands", "Exit" };
+            var categories = new List<string> { "Task Commands", "List Commands", "Dependency Commands", "Event Commands", "Time Commands", "General Commands", "Exit" };
             int selectedIndex = 0;
 
             Console.CursorVisible = false;
@@ -84,6 +84,11 @@ namespace PriorityTaskManager.CLI.Handlers
                 case "Dependency Commands":
                     Console.WriteLine("depend add <childId> <parentId>    - Add a dependency (child depends on parent)");
                     Console.WriteLine("depend remove <childId> <parentId> - Remove a dependency");
+                    break;
+                case "Time Commands":
+                    Console.WriteLine("time                - Show current time (real or simulated)");
+                    Console.WriteLine("time now            - Switch to using real-time");
+                    Console.WriteLine("time custom         - Interactively set a custom simulated time");
                     break;
                 case "Event Commands":
                     Console.WriteLine("event add           - Interactively add a new event");
