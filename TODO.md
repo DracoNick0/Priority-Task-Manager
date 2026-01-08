@@ -1,23 +1,29 @@
 ## TODOs
 
-1. **LLM Onboarding & Continuity Markdown Files**
-	 - Create dedicated markdown files that provide LLMs with:
-		 - A summary of current project status and progress
-		 - A list of outstanding issues and tasks
-		 - Clear instructions on what needs work and what to do next
-		 - Guidance on where in the architecture and files to focus
-		 - A high-level overview of how key classes interact, especially across different projects (e.g., how `PriorityTaskManager.CLI` uses services from `PriorityTaskManager`).
-	 - Purpose: Ensure that whenever you switch LLMs or start a new chat, the LLM can immediately understand the project context, priorities, and next steps without manual onboarding.
-
-2. **Fix and update tests**
-	- Review, fix, and update all existing tests to ensure they pass and cover new/changed functionality.
-
-3. **Temporary: Simulated Date/Time Feature**
+1. **Temporary: Simulated Date/Time Feature**
 	- Add a feature allowing the user to specify a pretend date and time, so the scheduler and CLI behave as if it is that moment.
 	- Ensure all scheduling logic and outputs respect the simulated time when set.
 
-5. **Improve Event Adding Commands**
-	- Make event adding commands in the CLI more user friendly and intuitive.
-	- Simplify input, provide better prompts, and improve error messages for event creation.
+2. **Fix Dependency Scheduling Logic**
+	- The scheduling engine currently does not correctly respect task dependencies. This needs to be fixed to ensure dependent tasks are always scheduled after their prerequisites.
+
+3. **Fix and update tests**
+	- Review, fix, and update all existing tests to ensure they pass and cover new/changed functionality.
+
+4. **Remove SingleAgentStrategy and `mode` command**
+	- Remove the broken and deprecated `SingleAgentStrategy.cs` file.
+	- Remove the `mode` command and `ModeHandler.cs` from the CLI, as it will be redundant.
+	- Clean up any remaining references in the codebase (e.g., in `TaskManagerService`).
+
+5. **Improve Event Scheduling & Command Consistency**
+	- Implement support for repeating events (e.g., daily, weekly).
+	- Make the event creation process more user-friendly.
+	- Standardize command naming conventions across the application (e.g., ensure `delete` is used consistently for all entities instead of a mix of `delete`, `remove`, etc.).
+
+6. **Improve Settings Interface**
+	- Make the `settings` command more interactive and user-friendly for viewing and changing user profile settings.
+
+7. **Improve Overall CLI User Experience**
+	- Review all commands to simplify their usage, improve prompts, and provide clearer, more helpful error messages.
 
 ---

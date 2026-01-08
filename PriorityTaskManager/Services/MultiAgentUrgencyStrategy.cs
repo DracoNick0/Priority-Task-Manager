@@ -22,8 +22,8 @@ namespace PriorityTaskManager.Services
             _taskAnalyzerAgent = new Agents.TaskAnalyzerAgent();
             _schedulePreProcessorAgent = new Agents.SchedulePreProcessorAgent();
             _prioritizationAgent = new Agents.PrioritizationAgent();
-            _schedulingAgent = new Agents.SchedulingAgent(dependencyHelper);
             _complexityBalancerAgent = new Agents.ComplexityBalancerAgent();
+            _schedulingAgent = new Agents.SchedulingAgent(dependencyHelper);
             
         }
 
@@ -35,8 +35,8 @@ namespace PriorityTaskManager.Services
                 _taskAnalyzerAgent,
                 _schedulePreProcessorAgent,
                 _prioritizationAgent,
-                _schedulingAgent,
-                _complexityBalancerAgent
+                _complexityBalancerAgent,
+                _schedulingAgent
             };
 
             // Create and populate the context
