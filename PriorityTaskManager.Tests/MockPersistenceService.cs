@@ -21,6 +21,13 @@ namespace PriorityTaskManager.Tests
             _data = initialData;
         }
 
+        private Event CloneEvent(Event e) => new Event
+        {
+            Id = e.Id,
+            Name = e.Name,
+            StartTime = e.StartTime,
+            EndTime = e.EndTime
+        };
 
         public DataContainer LoadData()
         {
@@ -29,10 +36,13 @@ namespace PriorityTaskManager.Tests
             {
                 Tasks = new List<TaskItem>(_data.Tasks.Select(t => t.Clone())),
                 Lists = new List<TaskList>(_data.Lists.Select(l => CloneList(l))),
+                Events = new List<Event>(_data.Events.Select(e => CloneEvent(e))),
                 NextTaskId = _data.NextTaskId,
                 NextDisplayId = _data.NextDisplayId,
                 NextListId = _data.NextListId,
-                UserProfile = CloneUserProfile(_data.UserProfile)
+                NextEventId = _data.NextEventId,
+                UserProfile = CloneUserProfile(_data.UserProfile),
+                ActiveListId = _data.ActiveListId
             };
         }
 
@@ -43,10 +53,13 @@ namespace PriorityTaskManager.Tests
             {
                 Tasks = new List<TaskItem>(data.Tasks.Select(t => t.Clone())),
                 Lists = new List<TaskList>(data.Lists.Select(l => CloneList(l))),
+                Events = new List<Event>(data.Events.Select(e => CloneEvent(e))),
                 NextTaskId = data.NextTaskId,
                 NextDisplayId = data.NextDisplayId,
                 NextListId = data.NextListId,
-                UserProfile = CloneUserProfile(data.UserProfile)
+                NextEventId = data.NextEventId,
+                UserProfile = CloneUserProfile(data.UserProfile),
+                ActiveListId = data.ActiveListId
             };
         }
 
