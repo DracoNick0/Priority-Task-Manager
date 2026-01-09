@@ -1,11 +1,15 @@
 using PriorityTaskManager.MCP;
+using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace PriorityTaskManager.MCP.Agents
 {
     /// <summary>
     /// Agent responsible for pre-processing tasks before scheduling.
+    /// It calculates the available time slots for work based on the user's profile, tasks, and existing events.
     /// </summary>
     public class SchedulePreProcessorAgent : IAgent
     {
@@ -20,117 +24,153 @@ namespace PriorityTaskManager.MCP.Agents
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("Phase 1: Analyzing user's schedule constraints...");
-            if (!context.SharedState.TryGetValue("UserProfile", out var userProfileObj) || userProfileObj is not Models.UserProfile userProfile)
+
+            if (!context.SharedState.TryGetValue("UserProfile", out var userProfileObj) || userProfileObj is not UserProfile userProfile)
+            {
+                context.History.Add("Error: UserProfile not found in context.");
                 return context;
+            }
             
-            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<Models.TaskItem> tasks)
+            if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks)
+            {
+                context.History.Add("Error: Task list not found in context.");
                 return context;
+            }
 
             var now = _timeService.GetCurrentTime();
-
-            // Step 3.1: Calculate the Core Horizon End Date
             var totalWorkloadDuration = TimeSpan.FromTicks(tasks.Sum(t => t.EstimatedDuration.Ticks));
-            var accumulatedAvailableTime = TimeSpan.Zero;
-            var coreHorizonEndDate = now.Date;
-            var dailyWorkDuration = userProfile.WorkEndTime.ToTimeSpan() - userProfile.WorkStartTime.ToTimeSpan();
 
-            while (accumulatedAvailableTime < totalWorkloadDuration)
+            // If there's no work to be done, there's no need to calculate slots.
+            if (totalWorkloadDuration <= TimeSpan.Zero)
             {
-                if (userProfile.WorkDays.Contains(coreHorizonEndDate.DayOfWeek))
-                {
-                    accumulatedAvailableTime += dailyWorkDuration;
-                }
-                // Stop if we look more than 5 years into the future to prevent infinite loops
-                if (coreHorizonEndDate > now.Date.AddYears(5)) 
-                {
-                    context.History.Add("Warning: Workload exceeds 5 years of available time. Capping horizon.");
-                    break;
-                }
-                coreHorizonEndDate = coreHorizonEndDate.AddDays(1);
+                context.History.Add("SchedulePreProcessorAgent: No tasks to schedule, no time slots generated.");
+                context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow { AvailableSlots = new List<TimeSlot>() };
+                context.SharedState["TotalAvailableTime"] = TimeSpan.Zero;
+                return context;
             }
 
-            var scheduleWindow = new PriorityTaskManager.Models.ScheduleWindow();
-            var slots = new List<PriorityTaskManager.Models.TimeSlot>();
+            // Step 1: Calculate the Core Horizon End Date
+            var coreHorizonEndDate = CalculateHorizon(now, totalWorkloadDuration, userProfile, context.History);
 
-            // Step 3.2: Generate slots for each workday, splitting around events (if any)
-            if (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<PriorityTaskManager.Models.Event> events)
-            {
-                var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
-                for (var day = now.Date; day <= coreHorizonEndDate; day = day.AddDays(1))
-                {
-                    if (!userProfile.WorkDays.Contains(day.DayOfWeek))
-                        continue;
-
-                    var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
-                    var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
-
-                    // If the day is today, adjust start time if we are already past the work start time.
-                    if (day == now.Date)
-                    {
-                        if (now >= end)
-                            continue;
-                        if (now > start)
-                            start = now;
-                    }
-                    if (end <= start)
-                        continue;
-
-                    // Gather all events for this day that overlap the work window
-                    var dayEvents = sortedEvents.Where(ev => ev.EndTime > start && ev.StartTime < end).OrderBy(ev => ev.StartTime).ToList();
-                    var currentStart = start;
-                    foreach (var ev in dayEvents)
-                    {
-                        if (ev.StartTime > currentStart)
-                        {
-                            slots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStart, EndTime = ev.StartTime });
-                        }
-                        currentStart = ev.EndTime > currentStart ? ev.EndTime : currentStart;
-                    }
-                    if (currentStart < end)
-                    {
-                        slots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = currentStart, EndTime = end });
-                    }
-                }
-            }
-            else
-            {
-                for (var day = now.Date; day <= coreHorizonEndDate; day = day.AddDays(1))
-                {
-                    if (!userProfile.WorkDays.Contains(day.DayOfWeek))
-                        continue;
-
-                    var start = day.Add(userProfile.WorkStartTime.ToTimeSpan());
-                    var end = day.Add(userProfile.WorkEndTime.ToTimeSpan());
-
-                    if (day == now.Date)
-                    {
-                        if (now >= end)
-                            continue;
-                        if (now > start)
-                            start = now;
-                    }
-                    if (end > start)
-                    {
-                        slots.Add(new PriorityTaskManager.Models.TimeSlot { StartTime = start, EndTime = end });
-                    }
-                }
-            }
+            // Step 2: Generate available time slots within the horizon
+            var slots = GenerateAvailableSlots(now, coreHorizonEndDate, userProfile, context);
 
             context.History.Add("  -> Calculated Available Time Slots:");
             foreach (var slot in slots.OrderBy(s => s.StartTime))
             {
-                context.History.Add($"    - Slot: {slot.StartTime} to {slot.EndTime}");
+                context.History.Add($"    - Slot: {slot.StartTime} to {slot.EndTime} (Duration: {slot.Duration.TotalHours:F2}h)");
             }
 
-            scheduleWindow.AvailableSlots = slots;
+            var scheduleWindow = new ScheduleWindow { AvailableSlots = slots };
             context.SharedState["AvailableScheduleWindow"] = scheduleWindow;
 
-            // Calculate total available time from all slots
-            var totalAvailableTime = slots.Sum(slot => (slot.EndTime - slot.StartTime).Ticks);
+            var totalAvailableTime = slots.Sum(slot => slot.Duration.Ticks);
             context.SharedState["TotalAvailableTime"] = TimeSpan.FromTicks(totalAvailableTime);
 
-            // Ensure we never return null (method signature is non-nullable)
             return context;
+        }
+
+        private DateTime CalculateHorizon(DateTime now, TimeSpan totalWorkloadDuration, UserProfile userProfile, List<string> history)
+        {
+            var accumulatedAvailableTime = TimeSpan.Zero;
+            var horizonDate = now.Date;
+            var dailyWorkDuration = userProfile.WorkEndTime - userProfile.WorkStartTime;
+
+            while (accumulatedAvailableTime < totalWorkloadDuration)
+            {
+                if (userProfile.WorkDays.Contains(horizonDate.DayOfWeek))
+                {
+                    accumulatedAvailableTime += dailyWorkDuration;
+                }
+
+                if (horizonDate > now.Date.AddYears(5)) 
+                {
+                    history.Add("Warning: Workload exceeds 5 years of available time. Capping horizon.");
+                    break;
+                }
+                
+                if (accumulatedAvailableTime < totalWorkloadDuration)
+                {
+                    horizonDate = horizonDate.AddDays(1);
+                }
+            }
+            return horizonDate;
+        }
+
+        private List<TimeSlot> GenerateAvailableSlots(DateTime now, DateTime coreHorizonEndDate, UserProfile userProfile, MCPContext context)
+        {
+            var slots = new List<TimeSlot>();
+            var events = (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<Event> ev) ? ev : new List<Event>();
+            var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
+
+            for (var day = now.Date; day <= coreHorizonEndDate; day = day.AddDays(1))
+            {
+                if (!userProfile.WorkDays.Contains(day.DayOfWeek))
+                    continue;
+
+                var workStart = day.Add(userProfile.WorkStartTime.ToTimeSpan());
+                var workEnd = day.Add(userProfile.WorkEndTime.ToTimeSpan());
+
+                // Adjust start time if we are already past the work start time today.
+                if (day == now.Date && now > workStart)
+                {
+                    workStart = now;
+                }
+
+                // If the effective start is after the end, there's no time to work today.
+                if (workStart >= workEnd)
+                    continue;
+
+                // Merge overlapping events for the current day
+                var dayEvents = MergeOverlappingEvents(sortedEvents.Where(e => e.EndTime > workStart && e.StartTime < workEnd).ToList());
+
+                var currentStart = workStart;
+                foreach (var dayEvent in dayEvents)
+                {
+                    // Add a slot for the free time before the current event
+                    if (dayEvent.StartTime > currentStart)
+                    {
+                        slots.Add(new TimeSlot { StartTime = currentStart, EndTime = dayEvent.StartTime });
+                    }
+                    // Move the pointer to the end of the current event
+                    currentStart = dayEvent.EndTime > currentStart ? dayEvent.EndTime : currentStart;
+                }
+
+                // Add the final slot for the remaining time in the workday
+                if (currentStart < workEnd)
+                {
+                    slots.Add(new TimeSlot { StartTime = currentStart, EndTime = workEnd });
+                }
+            }
+            return slots;
+        }
+
+        private List<Event> MergeOverlappingEvents(List<Event> events)
+        {
+            if (events.Count <= 1)
+                return events;
+
+            var mergedEvents = new List<Event>();
+            var currentEvent = events[0];
+
+            for (int i = 1; i < events.Count; i++)
+            {
+                var nextEvent = events[i];
+                if (nextEvent.StartTime < currentEvent.EndTime)
+                {
+                    // Overlap detected, merge by extending the current event's end time
+                    currentEvent.EndTime = nextEvent.EndTime > currentEvent.EndTime ? nextEvent.EndTime : currentEvent.EndTime;
+                }
+                else
+                {
+                    // No overlap, add the completed event and start a new one
+                    mergedEvents.Add(currentEvent);
+                    currentEvent = nextEvent;
+                }
+            }
+            mergedEvents.Add(currentEvent); // Add the last event
+
+            return mergedEvents;
         }
     }
 }
