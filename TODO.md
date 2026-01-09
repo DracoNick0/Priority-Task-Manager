@@ -1,19 +1,20 @@
 ## TODOs
 
-1.  **Implement Core Logic Test Suite**
+1.  **Default Tasks to No Due Date**
+    -   Allow tasks to be created without a due date by default.
+    -   Ensure tasks with no due date are given a lower priority than tasks with a due date.
+
+2.  **Implement Core Logic Test Suite**
     -   [x] `TaskManagerServiceTests.cs`
     -   [x] `TaskAnalyzerAgentTests.cs`
-    -   [ ] `SchedulePreProcessorAgentTests.cs`
-    -   [ ] `PrioritizationAgentTests.cs`
+    -   [x] `SchedulePreProcessorAgentTests.cs`
+    -   [x] `PrioritizationAgentTests.cs`
     -   [ ] `ComplexityBalancerAgentTests.cs`
     -   [ ] `SchedulingAgentTests.cs`
     -   [ ] `MultiAgentUrgencyStrategyTests.cs` (Integration)
 
-2.  **Fix Dependency Scheduling Logic**
+3.  **Fix Dependency Scheduling Logic**
     -   The scheduling engine currently does not correctly respect task dependencies. This needs to be fixed to ensure dependent tasks are always scheduled after their prerequisites.
-
-3.  **[DONE] Fix Schedule Pre-Processor Logic**
-    -   The `SchedulePreProcessorAgent` was failing its test suite. It incorrectly calculated the scheduling horizon and mishandled time slots, especially when events were present. This has been fixed.
 
 4.  **Improve Event Scheduling & Command Consistency**
     -   Implement support for repeating events (e.g., daily, weekly).
