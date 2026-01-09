@@ -10,10 +10,7 @@ namespace PriorityTaskManager.Tests
     {
         private DateTime? _simulatedTime;
 
-        public DateTime GetCurrentTime()
-        {
-            return _simulatedTime ?? DateTime.Now;
-        }
+        public DateTime GetCurrentTime() => _simulatedTime ?? DateTime.Now;
 
         public void SetSimulatedTime(DateTime? time)
         {
@@ -25,14 +22,14 @@ namespace PriorityTaskManager.Tests
             _simulatedTime = null;
         }
 
-        public bool IsSimulated()
-        {
-            return _simulatedTime.HasValue;
-        }
+        public bool IsSimulated() => _simulatedTime.HasValue;
 
-        public DateTime? GetSimulatedTime()
+        public DateTime? GetSimulatedTime() => _simulatedTime;
+
+        // This method is for testing convenience and is not part of ITimeService
+        public void SetCurrentTime(DateTime customTime)
         {
-            return _simulatedTime;
+            _simulatedTime = customTime;
         }
     }
 }
