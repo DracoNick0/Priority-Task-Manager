@@ -49,7 +49,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 durationHours = dur;
 
             Console.WriteLine($"Due Date (use arrow keys to adjust, Enter to confirm):");
-            var dueDate = ConsoleInputHelper.HandleInteractiveDateInput(DateTime.Today.AddDays(1)).Date.AddDays(1).AddTicks(-1);
+            var dueDate = ConsoleInputHelper.GetDateTimeFromUser("Set a due date, or select 'No Due Date'.");
 
             // Prompt for dependencies
             Console.WriteLine("Dependencies (optional): Enter comma-separated IDs of tasks this depends on, or press Enter to skip.");

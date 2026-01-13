@@ -44,7 +44,7 @@ namespace PriorityTaskManager.Models
         {
             Title = string.Empty;
             Description = string.Empty;
-            DueDate = DateTime.Today.AddDays(1);
+            DueDate = null; // Default to no due date
             EstimatedDuration = TimeSpan.FromHours(1);
             Importance = 5;
             EffectiveImportance = 0;
@@ -111,7 +111,12 @@ namespace PriorityTaskManager.Models
         /// <summary>
         /// Gets or sets the effective importance used for urgency calculation.
         /// </summary>
-        public int EffectiveImportance { get; set; }
+        public double EffectiveImportance { get; set; }
+
+        /// <summary>
+        /// Gets or sets the importance of the task, on a scale from 1 to 10.
+        /// </summary>
+        public int Importance { get; set; }
 
         /// <summary>
         /// Gets or sets the unique identifier for the task.
@@ -126,27 +131,22 @@ namespace PriorityTaskManager.Models
         /// <summary>
         /// Gets or sets the description of the task.
         /// </summary>
-        public string? Description { get; set; }
+        public string Description { get; set; }
 
         /// <summary>
-        /// Gets or sets the importance level of the task.
+        /// Gets or sets the due date of the task. Can be null.
         /// </summary>
-        public int Importance { get; set; }
+        public DateTime? DueDate { get; set; }
 
         /// <summary>
-        /// Gets or sets the due date of the task.
+        /// Gets or sets the estimated duration of the task.
         /// </summary>
-        public DateTime DueDate { get; set; }
+        public TimeSpan EstimatedDuration { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the task is completed.
         /// </summary>
         public bool IsCompleted { get; set; }
-
-        /// <summary>
-        /// Gets or sets the estimated duration to complete the task.
-        /// </summary>
-        public TimeSpan EstimatedDuration { get; set; }
 
         /// <summary>
         /// Gets or sets the progress of the task as a percentage (0.0 to 1.0).
@@ -166,7 +166,7 @@ namespace PriorityTaskManager.Models
         /// <summary>
         /// Gets or sets the latest possible start date for the task to ensure timely completion.
         /// </summary>
-        public DateTime LatestPossibleStartDate { get; set; }
+        public DateTime? LatestPossibleStartDate { get; set; }
 
         /// <summary>
         /// Gets or sets the numeric ID of the list to which the task belongs.

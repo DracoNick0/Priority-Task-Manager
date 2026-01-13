@@ -40,8 +40,8 @@ namespace PriorityTaskManager.Services
         /// <returns>The calculated slack time.</returns>
         public TimeSpan CalculateRealisticSlack(TaskItem task, UserProfile userProfile)
         {
-            if (task.ScheduledParts == null || !task.ScheduledParts.Any())
-                return TimeSpan.Zero;
+            if (task.ScheduledParts == null || !task.ScheduledParts.Any() || !task.DueDate.HasValue)
+                return TimeSpan.MaxValue;
 
             // Use the earliest scheduled chunk for slack calculation
             var startTime = task.ScheduledParts.Min(p => p.StartTime);
@@ -84,19 +84,25 @@ namespace PriorityTaskManager.Services
         /// <returns>The calculated slack time.</returns>
         public TimeSpan CalculateActualSlack(TaskItem task)
         {
-            if (task.ScheduledParts == null || !task.ScheduledParts.Any())
+            if (task.ScheduledParts == null || !task.ScheduledParts.Any() || !task.DueDate.HasValue)
             {
-                return TimeSpan.Zero;
+                return TimeSpan.MaxValue;
             }
             // Use the latest scheduled chunk end time
             var scheduledEnd = task.ScheduledParts.Max(p => p.EndTime);
-            return task.DueDate - scheduledEnd;
+            return task.DueDate.Value - scheduledEnd;
         }
 
         private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)
         {
-            var workEnd = task.DueDate.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
-            return task.DueDate < workEnd ? task.DueDate : workEnd;
+            if (!task.DueDate.HasValue)
+            {
+                // This should ideally not be reached if called from a context that checks for DueDate,
+                // but as a fallback, return a far-future date.
+                return DateTime.MaxValue;
+            }
+            var workEnd = task.DueDate.Value.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+            return task.DueDate.Value < workEnd ? task.DueDate.Value : workEnd;
         }
     }
 }

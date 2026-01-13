@@ -12,11 +12,11 @@ namespace PriorityTaskManager.CLI.Utils
         /// <summary>
         /// Handles interactive date input, allowing users to adjust and confirm a date.
         /// </summary>
-        /// <param name="initialDate">The initial date to start the adjustment from.</param>
-        /// <returns>The adjusted and confirmed date.</returns>
-        public static DateTime HandleInteractiveDateInput(DateTime initialDate)
+        /// <param name="initialDate">The initial date to start the adjustment from. Can be null.</param>
+        /// <returns>The adjusted and confirmed date, or null if no due date is selected.</returns>
+        public static DateTime? HandleInteractiveDateInput(DateTime? initialDate)
         {
-            DateTime date = initialDate;
+            DateTime date = initialDate ?? DateTime.Today;
             int left = Console.CursorLeft;
             int top = Console.CursorTop;
             IncrementMode mode = IncrementMode.Day;
@@ -24,38 +24,55 @@ namespace PriorityTaskManager.CLI.Utils
             while (true)
             {
                 Console.SetCursorPosition(left, top);
-                Console.Write($"[Mode: {mode}] {date:yyyy-MM-dd dddd}      ");
+                if (mode == IncrementMode.NoDueDate)
+                {
+                    Console.Write($"[Mode: No Due Date] (Press Enter to confirm)      ");
+                }
+                else
+                {
+                    Console.Write($"[Mode: {mode}] {date:yyyy-MM-dd dddd}              ");
+                }
 
                 var key = Console.ReadKey(true);
 
                 switch (key.Key)
                 {
                     case ConsoleKey.RightArrow:
-                        switch (mode)
+                        if (mode != IncrementMode.NoDueDate)
                         {
-                            case IncrementMode.Day: date = date.AddDays(1); break;
-                            case IncrementMode.Week: date = date.AddDays(7); break;
-                            case IncrementMode.Month: date = date.AddMonths(1); break;
-                            case IncrementMode.Year: date = date.AddYears(1); break;
+                            switch (mode)
+                            {
+                                case IncrementMode.Day: date = date.AddDays(1); break;
+                                case IncrementMode.Week: date = date.AddDays(7); break;
+                                case IncrementMode.Month: date = date.AddMonths(1); break;
+                                case IncrementMode.Year: date = date.AddYears(1); break;
+                            }
                         }
                         break;
                     case ConsoleKey.LeftArrow:
-                        switch (mode)
+                        if (mode != IncrementMode.NoDueDate)
                         {
-                            case IncrementMode.Day: date = date.AddDays(-1); break;
-                            case IncrementMode.Week: date = date.AddDays(-7); break;
-                            case IncrementMode.Month: date = date.AddMonths(-1); break;
-                            case IncrementMode.Year: date = date.AddYears(-1); break;
+                            switch (mode)
+                            {
+                                case IncrementMode.Day: date = date.AddDays(-1); break;
+                                case IncrementMode.Week: date = date.AddDays(-7); break;
+                                case IncrementMode.Month: date = date.AddMonths(-1); break;
+                                case IncrementMode.Year: date = date.AddYears(-1); break;
+                            }
                         }
                         break;
                     case ConsoleKey.UpArrow:
-                        mode = (IncrementMode)(((int)mode + 1) % 4);
+                        mode = (IncrementMode)(((int)mode + 1) % 5);
                         break;
                     case ConsoleKey.DownArrow:
-                        mode = (IncrementMode)(((int)mode + 3) % 4);
+                        mode = (IncrementMode)(((int)mode + 4) % 5);
                         break;
                     case ConsoleKey.Enter:
                         Console.WriteLine();
+                        if (mode == IncrementMode.NoDueDate)
+                        {
+                            return null;
+                        }
                         return date;
                 }
             }
@@ -110,16 +127,20 @@ namespace PriorityTaskManager.CLI.Utils
         /// <summary>
         /// Represents the modes for incrementing the date during interactive input.
         /// </summary>
-        private enum IncrementMode { Day, Week, Month, Year }
+        private enum IncrementMode { Day, Week, Month, Year, NoDueDate }
 
         private enum TimeIncrementMode { Hour, Minute }
 
-        public static DateTime GetDateTimeFromUser(string prompt, DateTime? defaultTime = null)
+        public static DateTime? GetDateTimeFromUser(string prompt, DateTime? defaultTime = null)
         {
             Console.WriteLine(prompt);
-            DateTime datePart = HandleInteractiveDateInput(defaultTime ?? DateTime.Now);
-            DateTime timePart = HandleInteractiveTimeInput(defaultTime ?? datePart);
-            return datePart.Date + timePart.TimeOfDay;
+            DateTime? datePart = HandleInteractiveDateInput(defaultTime ?? DateTime.Now);
+            if (datePart == null)
+            {
+                return null;
+            }
+            DateTime timePart = HandleInteractiveTimeInput(defaultTime ?? datePart.Value);
+            return datePart.Value.Date + timePart.TimeOfDay;
         }
 
         public static DateTime HandleInteractiveTimeInput(DateTime initialTime)

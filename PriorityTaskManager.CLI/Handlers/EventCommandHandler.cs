@@ -81,21 +81,32 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine("Adding a new event (press Esc to cancel).");
 
             Console.Write("Event Name: ");
-            string name = Console.ReadLine();
+            string? name = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(name))
             {
                 Console.WriteLine("Event creation cancelled.");
                 return;
             }
 
-            DateTime startTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set event start time:", DateTime.Now);
-            DateTime endTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set event end time:", startTime.AddHours(1));
+            DateTime? startTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set event start time:", DateTime.Now);
+            if (startTime == null)
+            {
+                Console.WriteLine("Event creation cancelled. A valid start time is required.");
+                return;
+            }
+
+            DateTime? endTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set event end time:", startTime.Value.AddHours(1));
+            if (endTime == null)
+            {
+                Console.WriteLine("Event creation cancelled. A valid end time is required.");
+                return;
+            }
 
             var newEvent = new Event
             {
                 Name = name,
-                StartTime = startTime,
-                EndTime = endTime
+                StartTime = startTime.Value,
+                EndTime = endTime.Value
             };
 
             service.AddEvent(newEvent);
@@ -108,7 +119,7 @@ namespace PriorityTaskManager.CLI.Handlers
             while (true)
             {
                 Console.Write(prompt);
-                string input = Console.ReadLine();
+                string? input = Console.ReadLine();
                 if (DateTime.TryParse(input, out result))
                 {
                     return result;
@@ -158,22 +169,33 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine($"Editing event: {existingEvent.Name} (ID: {existingEvent.Id})");
 
             Console.Write($"Event Name ({existingEvent.Name}): ");
-            string newName = Console.ReadLine();
+            string? newName = Console.ReadLine();
             if (!string.IsNullOrWhiteSpace(newName))
             {
                 existingEvent.Name = newName;
             }
 
-            existingEvent.StartTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event start time:", existingEvent.StartTime);
-
-            DateTime newEndTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event end time:", existingEvent.EndTime);
-
-            if (newEndTime < existingEvent.StartTime)
+            DateTime? newStartTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event start time:", existingEvent.StartTime);
+            if (newStartTime.HasValue)
             {
-                Console.WriteLine("End time cannot be before start time. Adjusting end time.");
-                newEndTime = existingEvent.StartTime.AddHours(1);
+                existingEvent.StartTime = newStartTime.Value;
             }
-            existingEvent.EndTime = newEndTime;
+
+
+            DateTime? newEndTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event end time:", existingEvent.EndTime);
+
+            if (newEndTime.HasValue)
+            {
+                if (newEndTime.Value < existingEvent.StartTime)
+                {
+                    Console.WriteLine("End time cannot be before start time. Adjusting end time.");
+                    existingEvent.EndTime = existingEvent.StartTime.AddHours(1);
+                }
+                else
+                {
+                    existingEvent.EndTime = newEndTime.Value;
+                }
+            }
 
             service.UpdateEvent(existingEvent);
             Console.WriteLine($"Event '{existingEvent.Name}' updated successfully.");

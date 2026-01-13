@@ -73,15 +73,20 @@ namespace PriorityTaskManager.CLI.Handlers
         public TaskItem? FindClosestTaskToDueDate(IEnumerable<TaskItem> tasks)
         {
             return tasks
-                .Where(t => t.ScheduledParts.Any() && !t.IsCompleted)
-                .OrderBy(t => (t.DueDate - t.ScheduledParts.Min(p => p.StartTime)).Duration())
+                .Where(t => t.DueDate.HasValue && t.ScheduledParts.Any() && !t.IsCompleted)
+                .OrderBy(t => (t.DueDate!.Value - t.ScheduledParts.Min(p => p.StartTime)).Duration())
                 .FirstOrDefault();
         }
 
         private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)
         {
-            var workEnd = task.DueDate.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
-            return task.DueDate < workEnd ? task.DueDate : workEnd;
+            if (task.DueDate.HasValue)
+            {
+                var dueDate = task.DueDate.Value;
+                var workEnd = dueDate.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+                return dueDate < workEnd ? dueDate : workEnd;
+            }
+            return DateTime.MaxValue;
         }
 
         private void HandleViewTasksInActiveList(TaskManagerService service)
@@ -113,7 +118,7 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 var effectiveDueTime = GetEffectiveDueTime(closestTask, userProfile);
                 var slack = _taskMetricsService.CalculateRealisticSlack(closestTask, userProfile);
-                var slackPercentage = slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes;
+                var slackPercentage = closestTask.EstimatedDuration.TotalMinutes > 0 ? slack.TotalMinutes / closestTask.EstimatedDuration.TotalMinutes : 0;
 
                 // Calculate schedule pressure
                 var totalWorkTime = (workEnd - workStart).TotalHours;
@@ -460,13 +465,17 @@ namespace PriorityTaskManager.CLI.Handlers
         }
 
         // Helper to format dates as MM-dd or MM-dd-yyyy if not current year
-        private string FormatDate(DateTime date)
+        private string FormatDate(DateTime? date)
         {
+            if (!date.HasValue)
+            {
+                return "No date";
+            }
             var now = DateTime.Now;
-            if (date.Year == now.Year)
-                return date.ToString("MM-dd");
+            if (date.Value.Year == now.Year)
+                return date.Value.ToString("MM-dd");
             else
-                return date.ToString("MM-dd-yyyy");
+                return date.Value.ToString("MM-dd-yyyy");
         }
 
         private void HandleViewAllLists(TaskManagerService service)
