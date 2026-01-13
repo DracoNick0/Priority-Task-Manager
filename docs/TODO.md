@@ -1,5 +1,7 @@
 ## TODOs
 
+> **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified.
+
 1.  **Default Tasks to No Due Date**
     -   Allow tasks to be created without a due date by default.
     -   Ensure tasks with no due date are given a lower priority than tasks with a due date.

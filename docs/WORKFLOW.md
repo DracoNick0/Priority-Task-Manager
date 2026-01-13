@@ -9,6 +9,15 @@ This document outlines the standard workflow for contributing to the Priority Ta
 -   **Check the Status.** For a high-level overview of the project's current capabilities and state, refer to `docs/STATUS.md`.
 -   **Small, iterative changes.** Prefer small, well-defined commits over large, monolithic ones.
 
+## Working with AI Assistants
+
+When using AI tools (GitHub Copilot, etc.) to contribute to this project:
+
+1.  **Reference Definitions**: Use the terms defined in `ARCHITECTURE.md` (e.g., "Ask the SchedulingAgent to...", not "Ask the thing that puts tasks on the calendar").
+2.  **Consult Documentation First**: As per `copilot.instructions.md`, always ask the AI to verify its plan against `ARCHITECTURE.md` and `STATUS.md`.
+3.  **Update Documentation**: If you or the AI refactor code, you **must** update the corresponding documentation. The AI is instructed to help with this.
+4.  **TDD**: Instruct the AI to write the failing test *before* implementing the logic, enhancing reliability.
+
 ## Standard Workflow
 
 1.  **Select a Task**: Choose the highest-priority task from `TODO.md` that has not yet been completed.

@@ -1,22 +1,38 @@
 # Project Status
 
-This document provides a high-level summary of the Priority Task Manager's current capabilities, available commands, and recent developments. It is intended to be a quick reference for understanding the application's present state.
+**Framework**: .NET 8.0 Console
+**Storage**: Local JSON Files
+
+This document provides a high-level summary of the Priority Task Manager's current capabilities. It is the distinct source of truth for what is working, what is in progress, and what is broken.
+
+## Feature Matrix
+
+| Feature Area | Status | Notes |
+| :--- | :--- | :--- |
+| **Task Management** | 🟢 **Stable** | Standard CRUD (Title, Importance, Complexity, DueDate) is solid. |
+| **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
+| **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
+| **Scheduling Logic** | 🟡 **Beta** | The Multi-Agent pipeline runs, but "Greedy" placement is not mathematically optimal. |
+| **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
+| **Dependencies** | 🔴 **Broken** | You can add dependencies, but the Scheduler currently **ignores** them. |
+| **Unit Tests** | 🔴 **Critical** | Tests are severely outdated. Most do not compile or pass. |
 
 ## Current Capabilities
 
--   **Advanced Task Scheduling**: The application can generate a detailed, non-contiguous schedule for tasks based on their due date, complexity, and dependencies. This is powered by a sophisticated multi-agent pipeline.
--   **Task Management**: Full CRUD (Create, Read, Update, Delete) operations for tasks, including setting properties like title, description, importance, and due date.
--   **Dependency Management**: Users can create dependency chains between tasks (`depend add`). **Note:** The scheduling engine's respect for these dependencies is not fully implemented or is buggy and requires fixing.
--   **List Management**: Users can create, switch between, and delete multiple task lists to organize their work.
--   **Event Management**: Users can create fixed events (e.g., meetings), which the scheduler will block off as unavailable time.
--   **Configurable Workday**: Users can define their daily start and end work times via a `user_profile.json` file, which the scheduler uses to determine available work windows.
+### Core Features
+-   **Multi-Agent Scheduling**: Uses the `MultiAgentUrgencyStrategy` to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
+-   **Command Line Interface**: A robust CLI loop (`PriorityTaskManager.CLI`) handles user input with clear feedback.
+-   **Workday Configuration**: Respects user-defined start/end times in `user_profile.json`.
 
-## Recent Developments
+### Limitations (Not Bugs)
+-   **Single User Only**: Designed for a single user on a local machine. No multi-user support.
+-   **No Undo/Redo**: Actions are permanent immediately upon execution.
+-   **No Recurring Tasks**: Tasks must be created individually.
 
-The last major refactoring focused on two key areas:
+## Known Issues & Technical Debt
 
-1.  **Scheduling Pipeline Fix**: A critical bug was fixed where the agent pipeline was corrupting the final schedule. The agent execution order was corrected to a more logical **Prioritize -> Balance -> Schedule** workflow, which is now documented in `docs/ARCHITECTURE.md`.
-2.  **Data Persistence Decoupling**: The application's `.json` data files were moved from the `PriorityTaskManager.CLI` project into a `Data/` folder in the core `PriorityTaskManager` library. The `PersistenceService` was updated to be more flexible, removing its dependency on the CLI project's file structure.
+*   **Dependency Management**: While users can create dependency chains (`depend add`), the scheduling engine does not yet strictly enforce them. A child task might be scheduled before its parent.
+*   **Unit Tests**: Tests are severely outdated. Most do not compile or pass.
 
 ## Command Reference
 
