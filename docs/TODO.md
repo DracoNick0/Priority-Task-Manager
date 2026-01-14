@@ -2,9 +2,8 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified.
 
-1.  **Default Tasks to No Due Date**
-    -   Allow tasks to be created without a due date by default.
-    -   Ensure tasks with no due date are given a lower priority than tasks with a due date.
+1.  **Implement ComplexityBalancerAgent Logic**
+    -   Implement the core logic for ComplexityBalancerAgent to distribute task complexity density across available days, respecting all constraints and pipeline separation.
 
 2.  **Implement Core Logic Test Suite**
     -   [x] `TaskManagerServiceTests.cs`
@@ -40,5 +39,9 @@
     -   [ ] `DeleteHandlerTests.cs`
     -   [ ] `etc...`
 
--  **Implement Infrastructure Test Suite**
+--  **Implement Infrastructure Test Suite**
     -   [ ] `PersistenceServiceTests.cs` (Integration)
+
+-  **User-Driven Scheduling Enhancements**
+    -   [ ] Allow user to set their current energy level to influence scheduling of complex tasks.
+    -   [ ] Implement a 'put off' feature so users can defer a task to a later day.
