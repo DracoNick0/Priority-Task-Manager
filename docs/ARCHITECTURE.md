@@ -2,6 +2,8 @@
 
 This document provides a high-level overview of the Priority Task Manager's architecture. It is intended for developers to understand the key components, data flow, and design patterns used in the system.
 
+For details on **Quantifying Task Complexity**, please refer to [COMPLEXITY_GUIDE.md](COMPLEXITY_GUIDE.md).
+
 ## Project Structure
 
 The solution is divided into three main projects to ensure a clean separation of concerns:

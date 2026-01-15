@@ -1,20 +1,12 @@
 ## TODOs
 
-> **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified.
+> **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Implement ComplexityBalancerAgent Logic**
-    -   Implement the core logic for ComplexityBalancerAgent to distribute task complexity density across available days, respecting all constraints and pipeline separation.
-
-2.  **Implement Core Logic Test Suite**
-    -   [x] `TaskManagerServiceTests.cs`
-    -   [x] `TaskAnalyzerAgentTests.cs`
-    -   [x] `SchedulePreProcessorAgentTests.cs`
-    -   [x] `PrioritizationAgentTests.cs`
-    -   [ ] `ComplexityBalancerAgentTests.cs`
+1.  **Implement Core Logic Test Suite**
     -   [ ] `SchedulingAgentTests.cs`
     -   [ ] `MultiAgentUrgencyStrategyTests.cs` (Integration)
 
-3.  **Fix Dependency Scheduling Logic**
+2.  **Fix Dependency Scheduling Logic**
     -   The scheduling engine currently does not correctly respect task dependencies. This needs to be fixed to ensure dependent tasks are always scheduled after their prerequisites.
 
 4.  **Improve Event Scheduling & Command Consistency**

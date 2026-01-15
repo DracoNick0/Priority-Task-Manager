@@ -100,6 +100,12 @@ namespace PriorityTaskManager.Services
 
         public void SaveData(DataContainer data)
         {
+            // Ensure data directory exists for all files
+            Directory.CreateDirectory(Path.GetDirectoryName(_tasksFilePath) ?? ".");
+            Directory.CreateDirectory(Path.GetDirectoryName(_listsFilePath) ?? ".");
+            Directory.CreateDirectory(Path.GetDirectoryName(_eventsFilePath) ?? ".");
+            Directory.CreateDirectory(Path.GetDirectoryName(_userProfileFilePath) ?? ".");
+
             // Save tasks
             var tasksData = new
             {

@@ -12,10 +12,10 @@ This document provides a high-level summary of the Priority Task Manager's curre
 | **Task Management** | 🟢 **Stable** | Standard CRUD (Title, Importance, Complexity, DueDate) is solid. |
 | **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
-| **Scheduling Logic** | 🟡 **Beta** | The Multi-Agent pipeline runs, but "Greedy" placement is not mathematically optimal. |
+| **Scheduling Logic** | 🟡 **Beta** | ComplexityBalancer uses Best Fit Density. **Dependencies are still ignored**. |
 | **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
 | **Dependencies** | 🔴 **Broken** | You can add dependencies, but the Scheduler currently **ignores** them. |
-| **Unit Tests** | 🔴 **Critical** | Tests are severely outdated. Most do not compile or pass. |
+| **Unit Tests** | 🟡 **Stable** | Core Agents are covered. Integration and CLI tests pending. |
 
 ## Current Capabilities
 
