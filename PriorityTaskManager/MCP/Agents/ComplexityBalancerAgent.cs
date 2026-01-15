@@ -68,11 +68,13 @@ namespace PriorityTaskManager.MCP.Agents
                                     .ToList();
 
             // Determine the latest due date for fallback
-            var latestDue = tasks.Where(t => t.DueDate.HasValue).Select(t => t.DueDate.Value).DefaultIfEmpty(days.Last()).Max();
+            // FIX: Failing to define a window end means tasks are constrained by other tasks' due dates.
+            // We should use the last available day in value window as the fallback.
+            var windowEnd = days.Last();
 
             foreach (var task in orderedTasks)
             {
-                var due = task.DueDate ?? latestDue;
+                var due = task.DueDate ?? windowEnd;
                 var availableDays = days.Where(d => d <= due).ToList();
                 var hoursNeeded = task.EstimatedDuration.TotalHours;
                 

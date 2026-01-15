@@ -140,7 +140,9 @@ namespace PriorityTaskManager.Tests
             // Act
             var resultContext = _agent.Act(context);
             var resultTasks = resultContext.SharedState["Tasks"] as List<TaskItem>;
-            var resultTitles = resultTasks?.Select(t => t.Title).ToList();
+            
+            Assert.NotNull(resultTasks);
+            var resultTitles = resultTasks.Select(t => t.Title ?? string.Empty).ToList();
 
             // Assert
             Assert.NotNull(resultTitles);
