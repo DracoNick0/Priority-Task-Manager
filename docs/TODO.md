@@ -2,19 +2,18 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Implement Core Logic Test Suite**
-    -   [ ] `SchedulingAgentTests.cs`
-    -   [x] `ComplexityBalancerAgentTests.cs`
+1.  **Refine Scheduling Algorithm (Elastic Constraints)**
+    -   Implement the "Gold Panning" Algorithm (RFC_ELASTIC_SCHEDULING.md).
+    -   Rethink the `ComplexityBalancerAgent` and `PrioritizationAgent` to work cooperatively (Pour and Sift).
+    -   Implement "Front-Loading" intra-day sequencing (Eat the Frog).
+    -   Implement "Relative Density" weighting for Backlog tasks.
+
+2.  **Implement Core Logic Test Suite**
+    -   [ ] `SchedulingAgentTests.cs` (Update needed for new Algo)
+    -   [x] `ComplexityBalancerAgentTests.cs` (Will need major refactor)
     -   [ ] `MultiAgentUrgencyStrategyTests.cs` (Integration)
 
-2.  **Fix Dependency Scheduling Logic**
-    -   The scheduling engine currently does not correctly respect task dependencies. This needs to be fixed to ensure dependent tasks are always scheduled after their prerequisites.
-
-3.  **Refine Scheduling Algorithm (Elastic Constraints)**
-    -   Rethink the `ComplexityBalancerAgent` and `PrioritizationAgent` to work cooperatively rather than sequentially.
-    -   Explore "Elastic Constraint" approach: Soft placement scores (buffer vs. balance) inside hard due-date windows.
-    -   Address "Anti-Starvation" for tasks with no due date (so they don't get pushed forever).
-    -   Ensure Priority Importance is weighed alongside Urgency and Complexity.
+3.  **Fix Dependency Scheduling Logic**
 
 4.  **Improve Event Scheduling & Command Consistency**
     -   Implement support for repeating events (e.g., daily, weekly).
