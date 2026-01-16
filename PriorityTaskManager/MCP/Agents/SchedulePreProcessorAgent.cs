@@ -83,17 +83,22 @@ namespace PriorityTaskManager.MCP.Agents
                     accumulatedAvailableTime += dailyWorkDuration;
                 }
 
+                horizonDate = horizonDate.AddDays(1);
+
                 if (horizonDate > now.Date.AddYears(5)) 
                 {
                     history.Add("Warning: Workload exceeds 5 years of available time. Capping horizon.");
                     break;
                 }
-                
-                if (accumulatedAvailableTime < totalWorkloadDuration)
-                {
-                    horizonDate = horizonDate.AddDays(1);
-                }
             }
+            
+            // Ensure horizon includes at least a week, even if workload is tiny.
+            // This prevents "No Available Days" issues when workload is small but scheduling needs bucket space.
+            if (horizonDate < now.Date.AddDays(7))
+            {
+               horizonDate = now.Date.AddDays(7);
+            }
+            
             return horizonDate;
         }
 

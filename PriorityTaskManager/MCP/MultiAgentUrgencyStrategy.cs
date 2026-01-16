@@ -11,8 +11,8 @@ namespace PriorityTaskManager.MCP
         private readonly TaskAnalyzerAgent _taskAnalyzerAgent;
         private readonly SchedulePreProcessorAgent _schedulePreProcessorAgent;
         private readonly PrioritizationAgent _prioritizationAgent;
-        private readonly SchedulingAgent _schedulingAgent;
-        private readonly ComplexityBalancerAgent _complexityBalancerAgent;
+        private readonly ScheduleSpreaderAgent _scheduleSpreaderAgent;
+        private readonly DaySequencingAgent _daySequencingAgent;
         private readonly ITimeService _timeService;
         
         private readonly List<Event> _events;
@@ -26,21 +26,21 @@ namespace PriorityTaskManager.MCP
             _taskAnalyzerAgent = new TaskAnalyzerAgent();
             _schedulePreProcessorAgent = new SchedulePreProcessorAgent(_timeService);
             _prioritizationAgent = new PrioritizationAgent();
-            _complexityBalancerAgent = new ComplexityBalancerAgent();
-            _schedulingAgent = new SchedulingAgent(dependencyHelper);
+            _scheduleSpreaderAgent = new ScheduleSpreaderAgent();
+            _daySequencingAgent = new DaySequencingAgent();
             
         }
 
         public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
         {
-            // Build the agent chain
+            // NEW PIPELINE: TaskAnalyzer -> PreProcessor -> Prioritizer -> Spreader -> Sequencer
             var agentChain = new List<IAgent>
             {
                 _taskAnalyzerAgent,
                 _schedulePreProcessorAgent,
                 _prioritizationAgent,
-                _complexityBalancerAgent,
-                _schedulingAgent
+                _scheduleSpreaderAgent, // Replaces ComplexityBalancer + SchedulingAgent
+                _daySequencingAgent
             };
 
             // Create and populate the context

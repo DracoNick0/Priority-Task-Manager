@@ -2,16 +2,17 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Refine Scheduling Algorithm (Elastic Constraints)**
-    -   Implement the "Gold Panning" Algorithm (RFC_ELASTIC_SCHEDULING.md).
-    -   Rethink the `ComplexityBalancerAgent` and `PrioritizationAgent` to work cooperatively (Pour and Sift).
-    -   Implement "Front-Loading" intra-day sequencing (Eat the Frog).
-    -   Implement "Relative Density" weighting for Backlog tasks.
+1.  **Ensure Scheduling Algorithm is Effective and Properly Working**
+    -   [x] Implement the "Gold Panning" Algorithm (RFC_ELASTIC_SCHEDULING.md).
+    -   [x] Rethink the `ComplexityBalancerAgent` and `PrioritizationAgent` to work cooperatively (Pour and Sift).
+    -   [x] Implement "Front-Loading" intra-day sequencing (Eat the Frog).
+    -   [x] Implement "Relative Density" weighting for Backlog tasks.
 
-2.  **Implement Core Logic Test Suite**
-    -   [ ] `SchedulingAgentTests.cs` (Update needed for new Algo)
-    -   [x] `ComplexityBalancerAgentTests.cs` (Will need major refactor)
-    -   [ ] `MultiAgentUrgencyStrategyTests.cs` (Integration)
+2.  **Fix & Expand Core Logic Test Suite**
+    -   [ ] Fix `SchedulePreProcessorAgentTests.cs` (Horizon logic updated)
+    -   [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated)
+    -   [ ] Create `ScheduleSpreaderAgentTests.cs` (Gold Panning logic)
+    -   [ ] Create `DaySequencingAgentTests.cs` (Front-loading logic)
 
 3.  **Fix Dependency Scheduling Logic**
 
