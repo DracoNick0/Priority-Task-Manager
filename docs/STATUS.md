@@ -16,6 +16,7 @@ This document provides a high-level summary of the Priority Task Manager's curre
 | **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
 | **Dependencies** | 🔴 **Broken** | You can add dependencies, but the Scheduler currently **ignores** them. |
 | **Unit Tests** | 🟡 **Stable** | Core Agents are covered. Integration and CLI tests pending. |
+| **Backend API** | 🟢 **Stable** | CRUD endpoints for Tasks/Events and Mock Chat implementation ready. |
 
 ## Current Capabilities
 
