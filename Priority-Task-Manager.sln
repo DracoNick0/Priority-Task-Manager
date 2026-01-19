@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PriorityTaskManager.CLI", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PriorityTaskManager.Tests", "PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj", "{7CEE6A26-E788-44EB-8DDF-3B1809929530}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PriorityTaskManager.API", "PriorityTaskManager.API\PriorityTaskManager.API.csproj", "{C50FF8E4-211E-42E6-B825-97B03EDE06FA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{7CEE6A26-E788-44EB-8DDF-3B1809929530}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7CEE6A26-E788-44EB-8DDF-3B1809929530}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7CEE6A26-E788-44EB-8DDF-3B1809929530}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C50FF8E4-211E-42E6-B825-97B03EDE06FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C50FF8E4-211E-42E6-B825-97B03EDE06FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C50FF8E4-211E-42E6-B825-97B03EDE06FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C50FF8E4-211E-42E6-B825-97B03EDE06FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

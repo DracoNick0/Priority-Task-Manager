@@ -1,0 +1,6 @@
+@PriorityTaskManager.API_HostAddress = http://localhost:5258
+
+GET {{PriorityTaskManager.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

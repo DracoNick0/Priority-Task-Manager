@@ -10,6 +10,7 @@ The solution is divided into three main projects to ensure a clean separation of
 
 -   `PriorityTaskManager/`: The **core library**. This project contains all business logic, data models, services, and the agent-based scheduling engine. It is completely independent of any user interface and can be reused by other front-ends (e.g., a future GUI or web application).
 -   `PriorityTaskManager.CLI/`: The **command-line interface**. This project is responsible for parsing user commands, interacting with the `TaskManagerService` from the core library, and displaying output to the console.
+-   `PriorityTaskManager.API/`: The **REST API**. This project facilitates external client integration (Android, Web) and serves as the host for LLM-based logic processing.
 -   `PriorityTaskManager.Tests/`: The **unit testing project**. This contains xUnit tests for the core library. **Note:** These tests are currently outdated due to recent refactoring and require a complete overhaul.
 
 ### Detailed File Structure
@@ -85,6 +86,13 @@ Priority-Task-Manager/
 │   └── Utils/
 │       ├── ConsoleHelper.cs
 │       └── ConsoleInputHelper.cs
+├── PriorityTaskManager.API/
+│   ├── PriorityTaskManager.API.csproj
+│   ├── Program.cs
+│   └── Controllers/
+│       ├── ChatController.cs
+│       ├── EventsController.cs
+│       └── TasksController.cs
 └── PriorityTaskManager.Tests/
     ├── PriorityTaskManager.Tests.csproj
     └── ...
