@@ -5,6 +5,19 @@
 
 This document provides a high-level summary of the Priority Task Manager's current capabilities. It is the distinct source of truth for what is working, what is in progress, and what is broken.
 
+## Migration Snapshot (Scheduling Overhaul)
+
+Current branch strategy:
+1. Documentation-first migration.
+2. Early removal of legacy scheduling paths on this branch.
+3. Branch-level fallback for rollback.
+
+Phase progress:
+- Phase 1 (Docs and contracts): In progress.
+- Phase 2 (Legacy path removal): Planned.
+- Phase 3 (New pipeline implementation): Planned.
+- Phase 4 (Migration test matrix): Planned.
+
 ## Feature Matrix
 
 | Feature Area | Status | Notes |
@@ -12,9 +25,9 @@ This document provides a high-level summary of the Priority Task Manager's curre
 | **Task Management** | 🟢 **Stable** | Standard CRUD (Title, Importance, Complexity, DueDate) is solid. |
 | **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
-| **Scheduling Logic** | 🟡 **Beta** | ComplexityBalancer uses Best Fit Density. **Dependencies are still ignored**. |
+| **Scheduling Logic** | 🟡 **Migration** | Legacy scheduling is being replaced by the V1 reduced pipeline contract. |
 | **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
-| **Dependencies** | 🔴 **Broken** | You can add dependencies, but the Scheduler currently **ignores** them. |
+| **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
 | **Unit Tests** | 🟡 **Stable** | Core Agents are covered. Integration and CLI tests pending. |
 
 ## Current Capabilities
@@ -31,8 +44,9 @@ This document provides a high-level summary of the Priority Task Manager's curre
 
 ## Known Issues & Technical Debt
 
-*   **Dependency Management**: While users can create dependency chains (`depend add`), the scheduling engine does not yet strictly enforce them. A child task might be scheduled before its parent.
-*   **Unit Tests**: Tests are severely outdated. Most do not compile or pass.
+*   **Migration Churn**: Scheduling internals are actively being replaced; temporary instability is expected during Phase 2 and Phase 3.
+*   **Dependency Management**: FS enforcement is a priority in the new migration test matrix and target pipeline.
+*   **Unit Tests**: Existing tests are still being realigned to the new scheduling contract.
 
 ## Command Reference
 

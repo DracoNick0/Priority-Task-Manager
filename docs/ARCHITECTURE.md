@@ -115,11 +115,13 @@ Before understanding the flow, it is helpful to define the core data objects pas
 4.  **`DataContainer`**: On application startup, the `PersistenceService` loads all data from the JSON files into a single `DataContainer` object.
 5.  **`TaskManagerService`**: This central service holds the `DataContainer` in memory. All business logic operations (adding tasks, updating events, etc.) are performed on the data within this container. When data is modified, `TaskManagerService` calls `PersistenceService.SaveData()` to write the changes back to the disk.
 
-## The Agent Pipeline (Multi-Agent Coordination Pattern - MCP)
+## Legacy Agent Pipeline (Multi-Agent Coordination Pattern - MCP)
 
 The most sophisticated part of the architecture is the agent-based pipeline used for task scheduling, which leverages a Multi-Agent Coordination Pattern (MCP).
 
 The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility agents. This makes the system easier to modify, debug, and extend.
+
+> Migration Note: On this branch, this pipeline is treated as legacy and is being replaced by the Phase 1 contract in the section "V1 Scheduling Contract (Phase 1 Baseline)" below.
 
 The pipeline is defined and executed in `PriorityTaskManager/MCP/MultiAgentUrgencyStrategy.cs`.
 
@@ -156,6 +158,58 @@ The current MCP framework provides a strong foundation for future enhancements. 
 2.  **Calendar Integration**: Integrate with external calendar services (e.g., Google Calendar, Outlook) to get a more accurate, real-time view of the user's availability. This would replace the manual `Events` system and improve scheduling accuracy.
 
 3.  **Refining the Multi-Agent System**: While the system is already multi-agent, the vision is to enhance it by adding more specialized agents. These could analyze tasks from different perspectives (e.g., user habits, energy levels, long-term goals) to provide a more adaptive and context-aware prioritization.
+
+## V1 Scheduling Contract (Phase 1 Baseline)
+
+This section defines the contract for the new scheduling path. It is the implementation baseline for migration work.
+
+### Planner Input Contract
+The planner consumes a request with:
+1. Candidate tasks (excluding completed tasks).
+2. User profile and scheduling preferences.
+3. Event blocks and work-window rules.
+4. Current time context via `ITimeService`.
+
+### Planner Output Contract
+The planner returns:
+1. Scheduled chunks with explicit start/end times.
+2. Unscheduled non-must tasks.
+3. Late and overtime classification metadata.
+4. Reason codes and explanation entries for user-facing output.
+
+### Locked V1 Execution Pipeline
+The V1 execution order is:
+1. `PolicyCoordinator + Feasibility`
+2. `WindowBuilder`
+3. `Dependency + Decomposition`
+4. `Scoring`
+5. `OptimizationPlanner`
+6. `Explanation`
+
+In V1, in-day sequencing and cross-day balancing run as internal sub-passes inside `OptimizationPlanner`.
+
+### Stage Ownership Boundaries (No Overlap)
+Single owner per concern:
+1. Validation and cycle checks: `Feasibility`.
+2. Availability window construction: `WindowBuilder`.
+3. Chunk construction rules: `Decomposition`.
+4. Objective and weight definitions: `Scoring`.
+5. Placement, drop, and overtime decisions: `OptimizationPlanner`.
+6. User-facing reason mapping: `Explanation`.
+
+### Objective Model Requirements
+The scoring model must include:
+1. Slack risk (deadline closeness before lateness).
+2. Lateness penalty.
+3. Drop policy penalty.
+4. In-day ordering penalty.
+5. Cross-day load balancing penalty.
+6. Switching penalty derived from schedule shape (transitions, fragmentation, tiny chunks).
+
+### Migration Policy on This Branch
+1. Legacy scheduling paths may be removed early on this branch.
+2. Branch-level fallback is the rollback strategy.
+3. Documentation contracts must be completed before implementation tasks.
 
 ## Core Services and Strategies
 
