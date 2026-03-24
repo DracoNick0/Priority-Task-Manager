@@ -2,29 +2,14 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Phase 1: File Organization & Strategy Implementation**
-    -   [x] Reorganize `PriorityTaskManager.Tests` folders (LegacyMCP, V1Optimization, Infrastructure, Integration).
-    -   [x] Update test namespaces to match new folder structure.
-    -   [x] Create `PriorityTaskManager/Scheduling` directory structure (Core, Optimization).
-    -   [x] Add `SchedulingMode` to `UserProfile` (`GoldPanning`, `ConstraintOptimization`).
-    -   [x] Rename `MultiAgentUrgencyStrategy` to `McpGoldPanningStrategy`.
-    -   [x] Implement `ConstraintOptimizationStrategy` skeleton.
-    -   [x] Update `TaskManagerService` to instantiate `GoldPanning` or `ConstraintOptimization` strategy based on user settings.
-
-2.  **Phase 2: Stabilize McpGoldPanning (Legacy Strategy)**
+1.  **Phase 2: Stabilize McpGoldPanning (Legacy Strategy)**
     -   [ ] Fix `SchedulePreProcessorAgentTests.cs` (Horizon logic updated).
     -   [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated).
     -   [ ] Create `ScheduleSpreaderAgentTests.cs` (to cover logic moved from old SchedulingAgent).
     -   [ ] Create `DaySequencingAgentTests.cs` (to cover logic moved from old ComplexityBalancer).
     -   [ ] Ensure all `LegacyMCP` tests pass before starting V1 implementation.
 
-3.  **Phase 3: Refine Scheduling Algorithm (Constraint Optimization)**
-    -   Follow TDD for each feature slice (Red-Green-Refactor).
-    -   [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated)
-    -   [ ] Create `ScheduleSpreaderAgentTests.cs` (Gold Panning logic)
-    -   [ ] Create `DaySequencingAgentTests.cs` (Front-loading logic)
-
-3.  **Phase 3: Refine Scheduling Algorithm (Elastic Constraints)**
+2.  **Phase 3: Implement Constraint Optimization (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
     -   Implement locked V1 reduced pipeline from SCHEDULING_SYSTEM_SPEC.md:
