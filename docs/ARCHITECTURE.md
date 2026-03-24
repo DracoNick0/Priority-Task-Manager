@@ -80,24 +80,26 @@ Before understanding the flow, it is helpful to define the core data objects pas
 
 The application supports multiple scheduling algorithms, selectable by the user via `UserProfile.SchedulingMode`. This allows for safe evolution of the scheduling logic without breaking existing functionality. The common interface for all strategies is `IUrgencyStrategy`.
 
-### 1. Legacy Strategy (Multi-Agent Coordination Pattern - MCP)
+### 1. MCP Gold Panning Strategy (Legacy)
 
-*   **Class**: `MultiAgentUrgencyStrategy` (or `LegacyMcpStrategy`)
-*   **Description**: The original agent-based pipeline. It breaks down scheduling into independent agents (TaskAnalyzer, Prioritization, ComplexityBalancer, Scheduling).
+*   **Class**: `McpGoldPanningStrategy` (formerly `MultiAgentUrgencyStrategy`)
+*   **Concept**: "Gold Panning". Tasks flow through time like material in a sluice box. Heavy items (Urgent/Important) settle early; light items (Backlog) wash downstream.
+*   **Architecture**: Multi-Agent Coordination Pattern (MCP).
 *   **Status**: Maintenance Mode. Default for existing users.
 
 The flow for this strategy is defined below in "Legacy Agent Pipeline".
 
-### 2. V1 Optimization Strategy (Solver-Based)
+### 2. Constraint Optimization Strategy (New)
 
-*   **Class**: `OptimizationSchedulingStrategy`
-*   **Description**: A new solver-centered approach focused on global optimization of the schedule.
+*   **Class**: `ConstraintOptimizationStrategy`
+*   **Concept**: "Solver". The scheduler treats the calendar as a constraint satisfaction problem. It optimizes for an objective function (minimizing lateness, maximizing balance) while respecting hard limits.
+*   **Architecture**: Single-pass Optimization Planner.
 *   **Status**: Active Development.
 *   **Spec**: implementation details are strictly defined in `SCHEDULING_SYSTEM_SPEC.md`.
 
-## Legacy Agent Pipeline (Multi-Agent Coordination Pattern - MCP)
+## Legacy Agent Pipeline (MCP Gold Panning)
 
-The legacy pipeline is used when `SchedulerMode` is set to `Legacy`.
+The legacy pipeline is used when `SchedulerMode` is set to `GoldPanning`.
 
 The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility agents. This makes the system easier to modify, debug, and extend.
 

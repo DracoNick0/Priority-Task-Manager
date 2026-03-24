@@ -6,9 +6,10 @@
     -   [ ] Reorganize `PriorityTaskManager.Tests` folders (LegacyMCP, V1Optimization, Infrastructure, Integration).
     -   [ ] Update test namespaces to match new folder structure.
     -   [ ] Create `PriorityTaskManager/Scheduling` directory structure (Core, Optimization).
-    -   [ ] Add `SchedulingMode` to `UserProfile`.
-    -   [ ] Extract `IUrgencyStrategy` and implement `OptimizationSchedulingStrategy` skeleton.
-    -   [ ] Update `TaskManagerService` to use the Strategy Pattern based on `UserProfile` settings.
+    -   [ ] Add `SchedulingMode` to `UserProfile` (`GoldPanning`, `ConstraintOptimization`).
+    -   [ ] Rename `MultiAgentUrgencyStrategy` to `McpGoldPanningStrategy`.
+    -   [ ] Implement `ConstraintOptimizationStrategy` skeleton.
+    -   [ ] Update `TaskManagerService` to instantiate `GoldPanning` or `ConstraintOptimization` strategy based on user settings.
 
 2.  **Phase 2: Remove Legacy Scheduling Paths (Branch Strategy)**
     -   [ ] Remove old scheduling paths and legacy scheduling tests that are being replaced.

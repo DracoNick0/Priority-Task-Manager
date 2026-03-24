@@ -8,38 +8,40 @@ This RFC focuses on the "Strategy Pattern" implementation, allowing users to swi
 ## 2. Target Architecture (Dual-Mode)
 The system will support two distinct scheduling strategies implementing a common `IUrgencyStrategy` interface:
 
-1.  **Legacy Strategy (`MultiAgentUrgencyStrategy`)**:
-    -   The current production implementation.
-    -   Preserved as-is (naming may be updated to `LegacyMcpStrategy`).
-    -   Default for existing users until V1 is stable.
+1.  **MCP Gold Panning Strategy (`McpGoldPanningStrategy`)**:
+    -   The current production implementation (formerly `MultiAgentUrgencyStrategy`).
+    -   Based on the "Gold Panning" concept (Gravity/Flow).
+    -   Default for existing users until the new strategy is stable.
 
-2.  **V1 Strategy (`OptimizationSchedulingStrategy`)**:
+2.  **Constraint Optimization Strategy (`ConstraintOptimizationStrategy`)**:
     -   The new solver-based implementation.
+    -   Optimizes a weighted objective function subject to hard and soft constraints.
     -   Follows the `SCHEDULING_SYSTEM_SPEC.md`.
 
 ## 3. Migration Principles
 1.  **Co-existence**: The new scheduler is additive. No legacy code is deleted until V2+ (deprecation phase).
 2.  **User Choice**: Users select their preferred scheduler via `UserProfile.SchedulingMode`.
-3.  **Safe Fallback**: If V1 fails or is incomplete, the user can instantly switch back to Legacy.
+3.  **Safe Fallback**: If the new strategy fails or is incomplete, the user can instantly switch back to Gold Panning.
 4.  **Deterministic**: Both strategies must be deterministic given the same inputs.
 
 ## 4. Work Breakdown
 
 ### Phase 1: Strategy Abstraction & Routing
 1.  Extract/Confirm `IUrgencyStrategy` interface.
-2.  Add `SchedulingMode` enum to `UserProfile` (Values: `Legacy`, `V1Optimization`).
+2.  Add `SchedulingMode` enum to `UserProfile` (Values: `GoldPanning`, `ConstraintOptimization`).
 3.  Update `TaskManagerService` to instantiate the correct strategy based on the user's profile.
-4.  Preserve all existing unit tests 100%.
+4.  Rename `MultiAgentUrgencyStrategy` to `McpGoldPanningStrategy`.
+5.  Preserve all existing unit tests 100%.
 
-### Phase 2: V1 Implementation (Optimization Planner)
-1.  Implement the V1 pipeline as defined in `SCHEDULING_SYSTEM_SPEC.md`.
-2.  Isolate V1 logic in a new namespace/directory to avoid polluting legacy code.
-3.  Add new unit tests specifically for V1 behavior.
+### Phase 2: Constraint Optimization Implementation
+1.  Implement the pipeline as defined in `SCHEDULING_SYSTEM_SPEC.md`.
+2.  Isolate new logic in `PriorityTaskManager/Scheduling/Optimization`.
+3.  Add new unit tests specifically for Constraint Optimization behavior.
 
 ### Phase 3: Gradual Rollout
 1.  Expose the `SchedulingMode` setting in the CLI (`settings` command).
-2.  Mark V1 as "Experimental" or "Preview" in the UI.
-3.  Collect feedback while keeping Legacy as the safe default.
+2.  Mark the new strategy as "Experimental" or "Preview" in the UI.
+3.  Collect feedback while keeping Gold Panning as the safe default.
 
 ## 5. Documentation Roadmap
 
