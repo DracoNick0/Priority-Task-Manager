@@ -37,7 +37,7 @@ Priority-Task-Manager/
 │   │   ├── Agents/
 │   │   ├── MCP.cs
 │   │   ├── MCPContext.cs
-│   │   └── MultiAgentUrgencyStrategy.cs
+│   │   └── McpGoldPanningStrategy.cs
 │   └── Scheduling/               <-- V1 Scheduler (New)
 │       ├── Core/                 <-- Interfaces
 │       └── Optimization/         <-- Optimization Strategy Implementation
@@ -103,7 +103,7 @@ The legacy pipeline is used when `SchedulerMode` is set to `GoldPanning`.
 
 The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility agents. This makes the system easier to modify, debug, and extend.
 
-The pipeline is defined and executed in `PriorityTaskManager/MCP/MultiAgentUrgencyStrategy.cs`.
+The pipeline is defined and executed in `PriorityTaskManager/MCP/McpGoldPanningStrategy.cs`.
 
 ### Agent Execution Order
 

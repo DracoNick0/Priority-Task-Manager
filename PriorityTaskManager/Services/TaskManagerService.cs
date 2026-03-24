@@ -12,7 +12,16 @@ namespace PriorityTaskManager.Services
         /// <returns>The prioritization result (tasks and history).</returns>
         public PrioritizationResult GetPrioritizedTasks(int listId, ITimeService timeService)
         {
-            IUrgencyStrategy strategy = new MCP.MultiAgentUrgencyStrategy(this.UserProfile, _data.Events, timeService);
+            IUrgencyStrategy strategy;
+            if (this.UserProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
+            {
+               throw new NotImplementedException("Constraint Optimization strategy is not yet implemented.");
+            }
+            else
+            {
+                strategy = new MCP.McpGoldPanningStrategy(this.UserProfile, _data.Events, timeService);
+            }
+            
             var rawTasks = GetAllTasks(listId);
             var result = strategy.CalculateUrgency(rawTasks.ToList());
             return result;

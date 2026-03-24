@@ -28,5 +28,10 @@ namespace PriorityTaskManager.Models
             DayOfWeek.Thursday,
             DayOfWeek.Friday
         };
+
+        /// <summary>
+        /// The scheduling algorithm to use. Defaults to GoldPanning (Legacy).
+        /// </summary>
+        public SchedulingMode SchedulingMode { get; set; } = SchedulingMode.GoldPanning;
     }
 }

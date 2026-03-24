@@ -5,7 +5,7 @@ using PriorityTaskManager.Services.Helpers;
 
 namespace PriorityTaskManager.MCP
 {
-    public class MultiAgentUrgencyStrategy : IUrgencyStrategy
+    public class McpGoldPanningStrategy : IUrgencyStrategy
     {
         private readonly UserProfile _userProfile;
         private readonly TaskAnalyzerAgent _taskAnalyzerAgent;
@@ -17,7 +17,7 @@ namespace PriorityTaskManager.MCP
         
         private readonly List<Event> _events;
 
-        public MultiAgentUrgencyStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService)
+        public McpGoldPanningStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService)
         {
             _userProfile = userProfile;
             _events = events;

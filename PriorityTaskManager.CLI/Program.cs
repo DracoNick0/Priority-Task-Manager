@@ -30,7 +30,7 @@ namespace PriorityTaskManager.CLI
 			var dataContainer = persistenceService.LoadData();
 			var timeService = new TimeService();
 
-			var urgencyStrategy = new PriorityTaskManager.MCP.MultiAgentUrgencyStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
+			var urgencyStrategy = new PriorityTaskManager.MCP.McpGoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
 

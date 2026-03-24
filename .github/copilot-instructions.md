@@ -17,7 +17,7 @@ applyTo: '**'
         *   **Constraint**: Contains NO business logic.
         *   **Constraint**: Catches exceptions from Core and displays user-friendly errors.
 *   **Agent System (MCP)**:
-    *   Scheduling/Prioritization logic belongs exclusively in **Agents** (`MCP/Agents`) and the **Strategy** (`MCP/MultiAgentUrgencyStrategy.cs`).
+    *   Scheduling/Prioritization logic belongs exclusively in **Agents** (`MCP/Agents`) and the **Strategy** (`MCP/McpGoldPanningStrategy.cs`).
     *   `TaskManagerService` is for CRUD only; it passes data to the Agent pipeline.
 *   **Agent Data Flow**: When an Agent processes data in `MCPContext`, prefer creating *new* transformed collections rather than mutating input collections in place.
 
