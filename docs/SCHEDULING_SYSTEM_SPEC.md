@@ -55,6 +55,8 @@ Required behavior-related fields:
 - AdaptiveMaxDays
 - AllowMustScheduleLateness
 - AllowMustScheduleOvertime
+- OvertimeScope (MustOnly or AllTasks)
+- AllowNonMustLateness
 - MinChunkSizeDefault
 - EnableRecoveryBuffers
 - RebalanceAggressiveness
@@ -109,6 +111,16 @@ Slack concept:
 - Low positive slack is penalized to reduce last-minute stress, especially for high-importance tasks.
 - Negative slack is lateness and is penalized by LatePenalty.
 
+Normalization guidance (V1):
+- Penalty terms should be normalized to comparable scales before weighting.
+- V1 keeps normalization as an implementation concern, but the planner must document effective ranges used in diagnostics.
+
+Null due-date handling (V1):
+- No aging urgency is applied in V1.
+- Null due-date tasks are treated as neutral backlog tasks.
+- They are considered only after must-schedule and due-dated urgency work has been placed.
+- Deterministic tie-break for null due-date tasks: higher importance, then shorter duration, then task ID.
+
 Tie-break order:
 1. Lower total penalty.
 2. More must-schedule coverage.
@@ -132,84 +144,88 @@ Note:
 - In-day sequencing and cross-day balancing run as internal sub-passes of OptimizationPlanner in V1.
 - They can be promoted back to standalone agents later if needed.
 
-### Stage 0: Input Validation and Normalization
+### Stage 1: PolicyCoordinator + Feasibility
 1. Remove completed tasks from candidate pool.
 2. Validate ranges and defaults (importance, cost, duration).
 3. Validate dependencies and detect cycles.
 4. Expand per-task preference overrides from user defaults.
+5. Resolve policy flags for lateness and overtime scope.
 
 Output:
 - Validated task set.
 - Invalid task diagnostics.
+- Effective run policy.
 
-### Stage 1: Horizon and Availability Construction
+### Stage 2: WindowBuilder
 1. Determine horizon:
 - Fixed mode: exactly N days (default 21).
-- Adaptive mode: start from baseline and expand within guardrails.
+- Adaptive mode: estimate required horizon from total remaining duration and effective capacity, then apply guardrails.
 2. Build work windows from workdays/hours.
 3. Subtract event blocks.
 4. Add overtime windows only when policy allows.
+5. Attach horizon advisories:
+- If estimated horizon exceeds 30 days, request user confirmation before proceeding.
+- If estimated horizon exceeds 90 days, emit high-horizon alert.
 
 Output:
 - Canonical schedule window set.
+- Estimated completion timeline summary.
+- Optional horizon advisories.
 
-### Stage 2: Dependency Layering
+### Stage 3: Dependency + Decomposition
 1. Build dependency DAG.
 2. Produce topological layers for FS ordering.
 3. Identify blocked tasks and impossible chains.
+4. For each divisible task, generate candidate chunk structure.
+5. Enforce min chunk size and any chunk count limits.
+6. For non-divisible tasks, preserve single-block requirement.
 
 Output:
 - Dependency-feasible candidate ordering constraints.
-
-### Stage 3: Task Decomposition
-1. For each divisible task, generate candidate chunk structure.
-2. Enforce min chunk size and any chunk count limits.
-3. For non-divisible tasks, preserve single-block requirement.
-
-Output:
 - Scheduling units (chunks or full tasks).
 
-### Stage 4: Prioritization and Weighting
-1. Compute urgency from due date proximity and slack risk.
+### Stage 4: Scoring
+1. Compute urgency from due date proximity and slack risk for due-dated tasks.
 2. Combine urgency with importance and must-schedule status.
 3. Apply continuity and balance preference weights.
+4. Keep null due-date tasks in a neutral backlog bucket for capacity-fill placement.
 
 Output:
 - Weighted candidate queue and solver objective coefficients.
 
-### Stage 5: Placement Optimization
-1. Place units into windows while enforcing hard constraints.
-2. Mark overtime placements explicitly.
-3. Mark late placements explicitly.
-4. If infeasible:
-- Keep must-schedule candidates in pool.
-- Drop only non-must tasks by lowest value first.
+### Stage 5: OptimizationPlanner
+1. Place units into normal work windows while enforcing hard constraints.
+2. If normal windows are exhausted and overtime is enabled, evaluate overtime windows according to OvertimeScope:
+- MustOnly: overtime is allowed only for must-schedule tasks.
+- AllTasks: overtime is available to all tasks; overdue must-schedule tasks are ordered ahead of overdue non-must tasks.
+3. Mark overtime placements explicitly.
+4. Mark late placements explicitly.
+5. Late policy:
+- Must-schedule tasks may be scheduled late only when AllowMustScheduleLateness is true.
+- Non-must tasks may be scheduled late only when AllowNonMustLateness is true.
+6. If a must-schedule task is impossible under current policy and windows:
+- Keep the task incomplete.
+- Mark as impossible or overdue as applicable.
+- Emit user-visible infeasibility diagnostics.
+7. If infeasible for non-must tasks:
+- Mark as unscheduled due to capacity.
+- Re-evaluate on future runs unless completed, deleted, or archived.
+8. Run in-day sequencing and cross-day balancing as internal, constraint-preserving sub-passes.
 
 Output:
-- Draft schedule + dropped set.
+- Draft schedule + unscheduled set.
+- Placement diagnostics including overtime and infeasibility markers.
 
-### Stage 6: In-Day Ordering Pass
-1. Reorder chunks within each day for descending cost where feasible.
-2. Do not violate dependency, lateness, or must-schedule feasibility.
-
-Output:
-- Energy-aware day sequences.
-
-### Stage 7: Cross-Day Balancing Pass
-1. Reduce large day-to-day cost spikes.
-2. Respect due-date risk thresholds while balancing.
-
-Output:
-- Smoothed weekly/horizon load profile.
-
-### Stage 8: Explanation and Result Packaging
+### Stage 6: Explanation
 1. Emit reason codes for each notable outcome:
 - ScheduledOnTime
 - ScheduledLate
 - ScheduledOvertime
-- DroppedNonMustCapacity
+- UnscheduledNonMustCapacity
 - BlockedByDependency
 - DeferredByPolicy
+- InfeasibleMustSchedule
+- TimeoutFallbackApplied (only when timeout fallback is enabled and used)
 2. Generate user-facing explanation summary.
 
 Output:
@@ -237,6 +253,10 @@ Ownership rules:
 - Only OptimizationPlanner decides final time placement, drop decisions, and overtime usage.
 6. Explanation ownership:
 - Only ExplanationAgent maps planner outcomes to user-facing reasoned summaries.
+
+Clarification:
+- Later stages may run constraint-preserving checks needed to avoid invalid placements.
+- Such checks do not transfer ownership of upstream business-rule validation.
 
 ### 9.1 PolicyCoordinator
 - Reads user preferences.
@@ -298,24 +318,34 @@ Hybrid approach:
 Solver-centered core with policy layer:
 - Use solver for hard constraints and objective optimization.
 - Keep agents for normalization, decomposition, and explanations.
-- Keep current planner as fallback under feature flag during migration.
+- On this branch, legacy fallback is handled by branch rollback strategy instead of in-branch feature flags.
 
 ## 11. Overload and Infeasibility Policy
 1. Must-schedule tasks:
 - Cannot be dropped.
-- May be scheduled late if needed.
-- May use overtime windows if allowed.
+- May be scheduled late only when AllowMustScheduleLateness is true.
+- May use overtime windows only when AllowMustScheduleOvertime is true.
+- If impossible under current policy and horizon, remain incomplete and emit InfeasibleMustSchedule.
 2. Non-must tasks:
-- Can be dropped when required by capacity pressure.
-- Stay incomplete and excluded from future cycles unless explicitly reactivated.
+- Can be marked unscheduled when required by capacity pressure.
+- Are excluded from the current run and re-evaluated on future runs unless completed, deleted, or archived.
+- If overdue and AllowNonMustLateness is false, remain unscheduled by policy.
 
 ## 12. Adaptive Horizon Policy
 1. Default start horizon: 21 days.
-2. Adaptive expansion allowed only within min/max guardrails.
-3. Expansion triggers can include:
+2. Adaptive mode estimates horizon to cover remaining work:
+- Estimate required days from total estimated remaining task duration and effective daily capacity.
+- Expand horizon in deterministic steps within min/max guardrails.
+3. User-facing guidance thresholds:
+- If estimated horizon exceeds 30 days, ask user to confirm proceeding.
+- If estimated horizon exceeds 90 days, emit high-horizon alert and show estimated timeline.
+4. Expansion triggers can include:
 - High must-schedule lateness risk.
-- Excess dropped non-must ratio.
-4. Must obey runtime/performance cap and fallback if exceeded.
+- Excess unscheduled non-must ratio.
+5. Must obey runtime/performance cap.
+6. Timeout fallback is optional in V1:
+- If enabled and timeout occurs, return partial deterministic result with TimeoutFallbackApplied.
+- If not enabled, omit timeout fallback reason codes.
 
 ## 13. Recovery and Buffer Policy
 1. Recovery buffers are opt-in.
@@ -327,6 +357,7 @@ Solver-centered core with policy layer:
 1. Same inputs and preferences should produce same output.
 2. Randomness is disallowed in V1 default mode.
 3. If future stochastic optimization is introduced, it must support fixed seed mode.
+4. Stage-level sorting and tie-break behavior must be stable, with final tie-break by task ID.
 
 ## 15. Output Contract (Conceptual)
 Result should include:
@@ -381,13 +412,12 @@ Mitigation:
 2. Implement explicit preference fields and defaults.
 3. Build canonical window/dependency/decomposition pipeline.
 4. Introduce optimization planner abstraction.
-5. Add solver-backed implementation behind feature flag.
-6. Run shadow-mode parity and performance checks.
-7. Promote solver planner to default once acceptance criteria are met.
+5. Implement solver-centered planner on this branch after legacy path removal.
+6. Validate behavior against migration test matrix and documentation contracts.
+7. Merge to shared branch only after acceptance criteria are met.
 
 ## 20. Related Documents
 - [docs/SCHEDULING_DISCUSSION_NOTES.md](docs/SCHEDULING_DISCUSSION_NOTES.md)
-- [docs/RFC_ELASTIC_SCHEDULING.md](docs/RFC_ELASTIC_SCHEDULING.md)
 - [docs/RFC_SOLVER_MIGRATION.md](docs/RFC_SOLVER_MIGRATION.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/STATUS.md](docs/STATUS.md)

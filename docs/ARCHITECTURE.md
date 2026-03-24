@@ -22,8 +22,12 @@ Priority-Task-Manager/
 ├── TODO.md
 ├── docs/
 │   ├── ARCHITECTURE.md
+│   ├── RFC_SOLVER_MIGRATION.md
+│   ├── SCHEDULING_DISCUSSION_NOTES.md
+│   ├── SCHEDULING_SYSTEM_SPEC.md
 │   ├── STATUS.md
 │   ├── TESTING_STRATEGY.md
+│   ├── TODO.md
 │   └── WORKFLOW.md
 ├── PriorityTaskManager/
 │   ├── PriorityTaskManager.csproj
@@ -169,6 +173,7 @@ The planner consumes a request with:
 2. User profile and scheduling preferences.
 3. Event blocks and work-window rules.
 4. Current time context via `ITimeService`.
+5. Overtime and lateness policy flags (`AllowMustScheduleLateness`, `AllowMustScheduleOvertime`, `OvertimeScope`, `AllowNonMustLateness`).
 
 ### Planner Output Contract
 The planner returns:
@@ -176,6 +181,8 @@ The planner returns:
 2. Unscheduled non-must tasks.
 3. Late and overtime classification metadata.
 4. Reason codes and explanation entries for user-facing output.
+5. Infeasibility diagnostics for must-schedule tasks that cannot be placed under current policy/horizon.
+6. Optional horizon advisories and timeline estimate metadata.
 
 ### Locked V1 Execution Pipeline
 The V1 execution order is:
@@ -205,6 +212,16 @@ The scoring model must include:
 4. In-day ordering penalty.
 5. Cross-day load balancing penalty.
 6. Switching penalty derived from schedule shape (transitions, fragmentation, tiny chunks).
+
+V1 due-date handling note:
+1. Null due-date tasks are treated as neutral backlog tasks in V1.
+2. No aging urgency is applied in V1.
+3. Null due-date tasks are considered as capacity-fill work after must-schedule and due-dated urgency work.
+
+V1 horizon behavior note:
+1. Adaptive mode estimates required horizon from remaining duration and effective capacity.
+2. If estimated horizon exceeds 30 days, the caller should request confirmation.
+3. If estimated horizon exceeds 90 days, the caller should emit a high-horizon alert with timeline estimate.
 
 ### Migration Policy on This Branch
 1. Legacy scheduling paths may be removed early on this branch.

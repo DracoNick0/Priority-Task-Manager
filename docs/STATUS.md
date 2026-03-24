@@ -18,6 +18,13 @@ Phase progress:
 - Phase 3 (New pipeline implementation): Planned.
 - Phase 4 (Migration test matrix): Planned.
 
+Recently clarified contract decisions:
+- Must-schedule tasks can be marked late only when policy allows and cannot be dropped.
+- Overtime is considered only after normal windows are exhausted, with scope control (must-only vs all tasks).
+- Null due-date tasks remain a neutral backlog in V1 (no aging urgency yet).
+- Unscheduled non-must tasks are excluded from the current run and re-evaluated on future runs unless completed, deleted, or archived.
+- Adaptive horizon may emit user confirmation/alert guidance when projected timelines become long.
+
 ## Feature Matrix
 
 | Feature Area | Status | Notes |
@@ -26,6 +33,7 @@ Phase progress:
 | **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
 | **Scheduling Logic** | 🟡 **Migration** | Legacy scheduling is being replaced by the V1 reduced pipeline contract. |
+| **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
 | **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
 | **Unit Tests** | 🟡 **Stable** | Core Agents are covered. Integration and CLI tests pending. |
