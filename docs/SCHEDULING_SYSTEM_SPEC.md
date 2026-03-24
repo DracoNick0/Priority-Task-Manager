@@ -375,6 +375,18 @@ Each explanation entry includes:
 - ShortMessage
 - Optional diagnostics metadata
 
+### 15.1 Canonical Reason Code Table (V1)
+| ReasonCode | Meaning | Typical Trigger |
+| :--- | :--- | :--- |
+| `ScheduledOnTime` | Task or chunk was scheduled without lateness. | Placement within allowed window and before due date. |
+| `ScheduledLate` | Task was scheduled but finishes after due date. | Due-date miss allowed by policy and no on-time feasible placement. |
+| `ScheduledOvertime` | Task was placed in overtime window. | Normal windows exhausted and overtime policy permits placement. |
+| `UnscheduledNonMustCapacity` | Non-must task excluded from current run due to capacity or policy. | Lower-priority non-must work cannot be placed without violating constraints. |
+| `BlockedByDependency` | Task could not be placed because dependency prerequisites were not met. | FS dependency ordering prevents legal placement. |
+| `DeferredByPolicy` | Task was not placed due to explicit policy settings. | Lateness disabled or overtime scope excludes the task type. |
+| `InfeasibleMustSchedule` | Must-schedule task cannot be placed under current policy/horizon. | No legal placement remains even after allowed overtime/lateness rules. |
+| `TimeoutFallbackApplied` | Planner timed out and returned deterministic fallback result. | Optional timeout fallback mode is enabled and timeout threshold reached. |
+
 ## 16. Testing Expectations
 Minimum scheduling test groups:
 1. Dependency correctness (FS ordering always preserved).
@@ -386,6 +398,15 @@ Minimum scheduling test groups:
 7. Cross-day balancing behavior.
 8. Adaptive horizon expansion within guardrails.
 9. Deterministic replay for identical inputs.
+
+TDD execution rule:
+1. Implement each scheduler feature via Red-Green-Refactor.
+2. Write failing behavior tests first from this specification.
+3. Keep feature slices small so each policy change maps to specific tests.
+
+TDD merge gate:
+1. No scheduler behavior change is complete without test-first evidence in the same PR.
+2. If a policy rule changes, corresponding tests must be added or updated in the same PR.
 
 ## 17. Operational Metrics
 Track per run:
@@ -404,7 +425,7 @@ Track per run:
 
 Mitigation:
 - Maintain contract-first docs.
-- Use shadow-mode comparisons.
+- Use migration test matrix and branch-level comparisons.
 - Enforce acceptance criteria before default switch.
 
 ## 19. Implementation Sequence (Recommended)

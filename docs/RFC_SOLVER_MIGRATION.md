@@ -11,7 +11,7 @@ The long-term architecture combines:
 - Solver core (constraints + objective optimization).
 - Explainability layer (why each scheduling decision happened).
 
-The existing MCP pipeline can remain as a fallback planner during migration.
+On this branch, legacy scheduler fallback is handled by branch rollback strategy.
 
 V1 execution baseline:
 - Use the reduced 6-stage pipeline defined in SCHEDULING_SYSTEM_SPEC.md.
@@ -89,10 +89,10 @@ Definition of Done:
 
 ### Phase 4: Rollout and Safety Plan
 Deliverables:
-1. Shadow-mode plan: run old and new planners side by side for comparison.
-2. Feature-flag rollout strategy.
-3. Regression test matrix for parity and policy correctness.
-4. Performance budget and timeout/fallback policy.
+1. Branch-strategy rollout plan (no in-branch legacy fallback requirement).
+2. Regression test matrix for policy correctness.
+3. Performance budget and timeout/fallback policy.
+4. Merge promotion gates from migration branch to shared branches.
 
 Definition of Done:
 - Clear go/no-go checklist for making solver planner the default.
@@ -110,6 +110,20 @@ Definition of Done:
 3. Write stage ownership contract and mutation boundaries.
 4. Write data schema migration notes and compatibility table.
 5. Write rollout policy and acceptance checklist.
+
+## 6.1 Data Compatibility Table (V1)
+| Field | Location | Default (if missing) | Backward-Compatibility Rule |
+| :--- | :--- | :--- | :--- |
+| `AllowMustScheduleLateness` | User preferences/profile | `true` | Missing field is treated as enabled for V1 migration behavior. |
+| `AllowMustScheduleOvertime` | User preferences/profile | `true` | Missing field is treated as enabled to preserve must-task completion attempts. |
+| `OvertimeScope` | User preferences/profile | `MustOnly` | Missing field defaults to safer scope to avoid broad overtime expansion. |
+| `AllowNonMustLateness` | User preferences/profile | `false` | Missing field defaults to stricter policy for non-must tasks. |
+| `PlanningHorizonMode` | User preferences/profile | `Fixed` | Missing field uses fixed horizon behavior. |
+| `FixedHorizonDays` | User preferences/profile | `21` | Missing field uses 21-day baseline. |
+| `AdaptiveMinDays` | User preferences/profile | `14` | Missing field uses lower guardrail default. |
+| `AdaptiveMaxDays` | User preferences/profile | `90` | Missing field uses upper guardrail default. |
+| `MinChunkSizeDefault` | User preferences/profile | `00:30:00` | Missing field uses 30-minute chunk minimum. |
+| `EnableRecoveryBuffers` | User preferences/profile | `false` | Missing field keeps recovery buffers opt-in. |
 
 ## 7. Risks to Address in Documentation
 1. Policy drift between docs and implementation.
@@ -138,6 +152,25 @@ Use this checklist before coding migration tasks:
 - New fields, defaults, and versioning rules are documented.
 - Overtime representation is documented.
 4. Rollout contract approved:
-- Feature flag behavior is documented.
-- Shadow-mode comparison metrics are documented.
+- Branch-strategy rollout behavior is documented.
+- Merge promotion metrics and gates are documented.
 - Go/no-go promotion gates are documented.
+
+## 10. TDD Policy (Required)
+Migration implementation follows test-driven development.
+
+Required workflow per feature slice:
+1. Red: add or update failing tests from the scheduling contract first.
+2. Green: implement the smallest change needed to pass.
+3. Refactor: improve structure without changing behavior.
+
+Minimum required first-test set:
+1. FS dependency correctness.
+2. Must-schedule overload behavior (late and overtime policy).
+3. Non-must unscheduled behavior (excluded in current run, re-evaluated in future runs).
+4. Slack protection for high-importance tasks.
+5. Deterministic replay for identical inputs.
+
+Merge gate:
+1. No migration implementation PR is considered complete without tests authored first and passing.
+2. Any policy change requires corresponding test updates in the same PR.

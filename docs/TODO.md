@@ -2,21 +2,14 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Phase 1: Document Solver-Centered Migration Plan (Docs First)**
-    -   Finalize planner contracts and outcome vocabulary in architecture docs.
-    -   Write formal hard/soft constraint catalog and scoring/tie-break spec.
-    -   Document objective terms including SlackRiskPenalty and SwitchingPenalty sources.
-    -   Document V1 stage ownership contracts (single owner per concern).
-    -   Define data migration and backward-compatibility rules for new scheduling fields.
-    -   Define shadow-mode rollout, feature-flag gates, and acceptance checklist.
-    -   Reference: [RFC_SOLVER_MIGRATION.md](RFC_SOLVER_MIGRATION.md)
-
-2.  **Phase 2: Remove Legacy Scheduling Paths (Branch Strategy)**
+1.  **Phase 2: Remove Legacy Scheduling Paths (Branch Strategy)**
     -   [ ] Remove old scheduling paths and legacy scheduling tests that are being replaced.
     -   [ ] Remove feature flags and compatibility branches tied to old scheduling behavior.
     -   [ ] Keep one short migration note in docs describing branch fallback strategy.
 
-3.  **Phase 3: Refine Scheduling Algorithm (Elastic Constraints)**
+2.  **Phase 3: Refine Scheduling Algorithm (Elastic Constraints)**
+    -   Follow TDD for each feature slice (Red-Green-Refactor).
+    -   Write failing tests before implementing behavior changes.
     -   Implement locked V1 reduced pipeline from SCHEDULING_SYSTEM_SPEC.md:
         - PolicyCoordinator + Feasibility
         - WindowBuilder
@@ -29,22 +22,23 @@
     -   Implement relative-density handling for backlog tasks.
     -   Enforce no-overlap ownership boundaries between stages.
 
-4.  **Phase 4: Build Migration Test Matrix (New Pipeline)**
+3.  **Phase 4: Build Migration Test Matrix (New Pipeline)**
+    -   [ ] Enforce merge gate: no behavior PR merges without test-first coverage.
     -   [ ] Add tests for FS dependency correctness in the new pipeline.
     -   [ ] Add tests for must-schedule overload behavior (late + overtime).
     -   [ ] Add tests for non-must dropping and exclusion policy.
     -   [ ] Add tests for slack protection on high-importance tasks.
     -   [ ] Add deterministic replay tests for identical inputs.
 
-5.  **Improve Event Scheduling & Command Consistency**
+4.  **Improve Event Scheduling & Command Consistency**
     -   Implement support for repeating events (e.g., daily, weekly).
     -   Make the event creation process more user-friendly.
     -   Standardize command naming conventions across the application (e.g., ensure `delete` is used consistently for all entities instead of a mix of `delete`, `remove`, etc.).
 
-6.  **Improve Settings Interface**
+5.  **Improve Settings Interface**
     -   Make the `settings` command more interactive and user-friendly for viewing and changing user profile settings.
 
-7.  **Improve Overall CLI User Experience**
+6.  **Improve Overall CLI User Experience**
     -   Review all commands to simplify their usage, improve prompts, and provide clearer, more helpful error messages.
 
 ---
