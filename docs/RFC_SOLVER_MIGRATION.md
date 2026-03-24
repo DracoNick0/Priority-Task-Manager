@@ -93,9 +93,20 @@ Deliverables:
 2. Regression test matrix for policy correctness.
 3. Performance budget and timeout/fallback policy.
 4. Merge promotion gates from migration branch to shared branches.
+5. Terminology migration checklist for renaming legacy MCP labels after V1 behavior stabilizes.
 
 Definition of Done:
 - Clear go/no-go checklist for making solver planner the default.
+
+### Phase 5: Terminology and Naming Cleanup (Post-V1 Stabilization)
+Deliverables:
+1. Rename scheduling-facing MCP names to pipeline-oriented names in core and CLI layers.
+2. Update documentation and command/help text to match finalized terminology.
+3. Keep temporary compatibility aliases only where needed to avoid unnecessary breakage.
+
+Definition of Done:
+- Naming reflects the implemented architecture without relying on historical context.
+- Renaming introduces no behavior changes.
 
 ## 5. Required New or Updated Documents
 1. New: Solver migration RFC (this document).

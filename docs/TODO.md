@@ -30,15 +30,20 @@
     -   [ ] Add tests for slack protection on high-importance tasks.
     -   [ ] Add deterministic replay tests for identical inputs.
 
-4.  **Improve Event Scheduling & Command Consistency**
+4.  **Phase 5: Terminology Cleanup (Post-Stabilization)**
+    -   [ ] Rename legacy MCP scheduling terminology to pipeline-oriented names.
+    -   [ ] Update docs and CLI help text to match the finalized architecture vocabulary.
+    -   [ ] Ensure naming-only changes do not alter runtime behavior.
+
+5.  **Improve Event Scheduling & Command Consistency**
     -   Implement support for repeating events (e.g., daily, weekly).
     -   Make the event creation process more user-friendly.
     -   Standardize command naming conventions across the application (e.g., ensure `delete` is used consistently for all entities instead of a mix of `delete`, `remove`, etc.).
 
-5.  **Improve Settings Interface**
+6.  **Improve Settings Interface**
     -   Make the `settings` command more interactive and user-friendly for viewing and changing user profile settings.
 
-6.  **Improve Overall CLI User Experience**
+7.  **Improve Overall CLI User Experience**
     -   Review all commands to simplify their usage, improve prompts, and provide clearer, more helpful error messages.
 
 ---
