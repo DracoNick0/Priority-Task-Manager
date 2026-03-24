@@ -3,11 +3,12 @@ using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 using PriorityTaskManager.MCP;
 using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests
+namespace PriorityTaskManager.Tests.LegacyMCP
 {
     public class SchedulePreProcessorAgentTests
     {

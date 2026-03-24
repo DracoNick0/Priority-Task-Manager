@@ -2,8 +2,9 @@ using Xunit;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 using PriorityTaskManager.MCP;
+using PriorityTaskManager.Tests.Infrastructure;
 
-namespace PriorityTaskManager.Tests
+namespace PriorityTaskManager.Tests.Integration
 {
     public class TaskManagerServiceTests
     {

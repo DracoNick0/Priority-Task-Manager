@@ -1,7 +1,7 @@
 using System;
 using PriorityTaskManager.Services;
 
-namespace PriorityTaskManager.Tests
+namespace PriorityTaskManager.Tests.Infrastructure
 {
     /// <summary>
     /// Mock implementation of ITimeService for controlling time in unit tests.

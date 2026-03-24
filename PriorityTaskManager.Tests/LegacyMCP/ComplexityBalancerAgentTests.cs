@@ -5,9 +5,10 @@ using PriorityTaskManager.Models;
 using PriorityTaskManager.MCP.Agents;
 using PriorityTaskManager.MCP;
 using PriorityTaskManager.Services;
+using PriorityTaskManager.Tests.Infrastructure;
 using Xunit;
 
-namespace PriorityTaskManager.Tests
+namespace PriorityTaskManager.Tests.LegacyMCP
 {
     public class ComplexityBalancerAgentTests
     {

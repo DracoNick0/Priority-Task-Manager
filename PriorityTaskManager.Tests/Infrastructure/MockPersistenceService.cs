@@ -1,7 +1,7 @@
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 
-namespace PriorityTaskManager.Tests
+namespace PriorityTaskManager.Tests.Infrastructure
 {
     /// <summary>
     /// In-memory mock implementation of IPersistenceService for unit testing.
