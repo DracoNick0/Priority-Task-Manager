@@ -2,12 +2,20 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Phase 2: Remove Legacy Scheduling Paths (Branch Strategy)**
+1.  **Phase 1: File Organization & Strategy Implementation**
+    -   [ ] Reorganize `PriorityTaskManager.Tests` folders (LegacyMCP, V1Optimization, Infrastructure, Integration).
+    -   [ ] Update test namespaces to match new folder structure.
+    -   [ ] Create `PriorityTaskManager/Scheduling` directory structure (Core, Optimization).
+    -   [ ] Add `SchedulingMode` to `UserProfile`.
+    -   [ ] Extract `IUrgencyStrategy` and implement `OptimizationSchedulingStrategy` skeleton.
+    -   [ ] Update `TaskManagerService` to use the Strategy Pattern based on `UserProfile` settings.
+
+2.  **Phase 2: Remove Legacy Scheduling Paths (Branch Strategy)**
     -   [ ] Remove old scheduling paths and legacy scheduling tests that are being replaced.
     -   [ ] Remove feature flags and compatibility branches tied to old scheduling behavior.
     -   [ ] Keep one short migration note in docs describing branch fallback strategy.
 
-2.  **Phase 3: Refine Scheduling Algorithm (Elastic Constraints)**
+3.  **Phase 3: Refine Scheduling Algorithm (Elastic Constraints)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
     -   Implement locked V1 reduced pipeline from SCHEDULING_SYSTEM_SPEC.md:

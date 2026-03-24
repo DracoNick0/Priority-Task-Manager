@@ -1,31 +1,47 @@
-# RFC: Solver-Centered Scheduling Migration
+# RFC: Dual-Scheduler Strategy & Migration
 
 ## 1. Purpose
-Define a documentation-first path to evolve the scheduling system toward a solver-centered architecture while keeping the current system operational.
+Define a documentation-first path to introduce a new solver-centered scheduling system alongside the existing Multi-Agent (MCP) system.
 
-This RFC focuses on planning artifacts, contracts, and migration governance before implementation.
+This RFC focuses on the "Strategy Pattern" implementation, allowing users to switch between the Legacy (current) and V1 (new) schedulers at runtime.
 
-## 2. Target Architecture (Summary)
-The long-term architecture combines:
-- Policy and orchestration layer (preferences, validation, fallback rules).
-- Solver core (constraints + objective optimization).
-- Explainability layer (why each scheduling decision happened).
+## 2. Target Architecture (Dual-Mode)
+The system will support two distinct scheduling strategies implementing a common `IUrgencyStrategy` interface:
 
-On this branch, legacy scheduler fallback is handled by branch rollback strategy.
+1.  **Legacy Strategy (`MultiAgentUrgencyStrategy`)**:
+    -   The current production implementation.
+    -   Preserved as-is (naming may be updated to `LegacyMcpStrategy`).
+    -   Default for existing users until V1 is stable.
 
-V1 execution baseline:
-- Use the reduced 6-stage pipeline defined in SCHEDULING_SYSTEM_SPEC.md.
-- Keep in-day sequencing and cross-day balancing as internal OptimizationPlanner sub-passes.
-- Enforce single-owner stage boundaries to prevent responsibility overlap.
+2.  **V1 Strategy (`OptimizationSchedulingStrategy`)**:
+    -   The new solver-based implementation.
+    -   Follows the `SCHEDULING_SYSTEM_SPEC.md`.
 
 ## 3. Migration Principles
-1. No big-bang rewrite.
-2. Maintain feature parity checkpoints.
-3. Keep outputs explainable.
-4. Preserve deterministic behavior for equal inputs and settings.
-5. Prefer additive schema changes first, destructive changes last.
+1.  **Co-existence**: The new scheduler is additive. No legacy code is deleted until V2+ (deprecation phase).
+2.  **User Choice**: Users select their preferred scheduler via `UserProfile.SchedulingMode`.
+3.  **Safe Fallback**: If V1 fails or is incomplete, the user can instantly switch back to Legacy.
+4.  **Deterministic**: Both strategies must be deterministic given the same inputs.
 
-## 4. Documentation Roadmap
+## 4. Work Breakdown
+
+### Phase 1: Strategy Abstraction & Routing
+1.  Extract/Confirm `IUrgencyStrategy` interface.
+2.  Add `SchedulingMode` enum to `UserProfile` (Values: `Legacy`, `V1Optimization`).
+3.  Update `TaskManagerService` to instantiate the correct strategy based on the user's profile.
+4.  Preserve all existing unit tests 100%.
+
+### Phase 2: V1 Implementation (Optimization Planner)
+1.  Implement the V1 pipeline as defined in `SCHEDULING_SYSTEM_SPEC.md`.
+2.  Isolate V1 logic in a new namespace/directory to avoid polluting legacy code.
+3.  Add new unit tests specifically for V1 behavior.
+
+### Phase 3: Gradual Rollout
+1.  Expose the `SchedulingMode` setting in the CLI (`settings` command).
+2.  Mark V1 as "Experimental" or "Preview" in the UI.
+3.  Collect feedback while keeping Legacy as the safe default.
+
+## 5. Documentation Roadmap
 
 ### Phase 0: Decision and Scope Lock
 Deliverables:

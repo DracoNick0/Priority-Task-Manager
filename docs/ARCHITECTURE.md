@@ -29,69 +29,26 @@ Priority-Task-Manager/
 │   ├── TESTING_STRATEGY.md
 │   ├── TODO.md
 │   └── WORKFLOW.md
-├── PriorityTaskManager/
+├── PriorityTaskManager/          <-- Core Logic
 │   ├── PriorityTaskManager.csproj
-│   ├── MCP/
+│   ├── Models/                   <-- Shared Domain Models
+│   ├── Services/                 <-- Shared Services
+│   ├── MCP/                      <-- LEGACY Scheduler (Strategies/Agents)
 │   │   ├── Agents/
-│   │   │   ├── ComplexityBalancerAgent.cs
-│   │   │   ├── PrioritizationAgent.cs
-│   │   │   ├── SchedulingAgent.cs
-│   │   │   └── TaskAnalyzerAgent.cs
-│   │   ├── IAgent.cs
 │   │   ├── MCP.cs
 │   │   ├── MCPContext.cs
 │   │   └── MultiAgentUrgencyStrategy.cs
-│   ├── Models/
-│   │   ├── DataContainer.cs
-│   │   ├── Event.cs
-│   │   ├── PrioritizationResult.cs
-│   │   ├── ScheduledChunk.cs
-│   │   ├── ScheduleWindow.cs
-│   │   ├── SortOption.cs
-│   │   ├── TaskItem.cs
-│   │   ├── TaskList.cs
-│   │   ├── TimeSlot.cs
-│   │   └── UserProfile.cs
-│   └── Services/
-│       ├── Helpers/
-│       ├── IPersistenceService.cs
-│       ├── ITaskMetricsService.cs
-│       ├── ITimeService.cs
-│       ├── IUrgencyService.cs
-│       ├── IUrgencyStrategy.cs
-│       ├── PersistenceService.cs
-│       ├── TaskManagerService.cs
-│       ├── TaskMetricsService.cs
-│       └── TimeService.cs
-├── PriorityTaskManager.CLI/
-│   ├── PriorityTaskManager.CLI.csproj
-│   ├── Program.cs
-│   ├── Handlers/
-│   │   ├── AddHandler.cs
-│   │   ├── CleanupHandler.cs
-│   │   ├── CompleteHandler.cs
-│   │   ├── DeleteHandler.cs
-│   │   ├── DependHandler.cs
-│   │   ├── EditHandler.cs
-│   │   ├── EventCommandHandler.cs
-│   │   ├── EventHandler.cs
-│   │   ├── HelpHandler.cs
-│   │   ├── ListHandler.cs
-│   │   ├── SettingsHandler.cs
-│   │   ├── TimeHandler.cs
-│   │   ├── UncompleteHandler.cs
-│   │   └── ViewHandler.cs
-│   ├── Interfaces/
-│   │   └── ICommandHandler.cs
-│   ├── MCP/
-│   │   └── Agents/
-│       │   └── Cleanup/
-│   └── Utils/
-│       ├── ConsoleHelper.cs
-│       └── ConsoleInputHelper.cs
-└── PriorityTaskManager.Tests/
+│   └── Scheduling/               <-- V1 Scheduler (New)
+│       ├── Core/                 <-- Interfaces
+│       └── Optimization/         <-- Optimization Strategy Implementation
+├── PriorityTaskManager.CLI/      <-- Command Line Interface
+│   ├── ...
+└── PriorityTaskManager.Tests/    <-- Unit Tests
     ├── PriorityTaskManager.Tests.csproj
-    └── ...
+    ├── Infrastructure/           <-- Shared Mocks/Helpers
+    ├── Integration/              <-- Service-Level Tests
+    ├── LegacyMCP/                <-- Legacy Agent Tests
+    └── V1Optimization/           <-- New V1 Tests
 ```
 
 ### Technology Stack
@@ -119,13 +76,30 @@ Before understanding the flow, it is helpful to define the core data objects pas
 4.  **`DataContainer`**: On application startup, the `PersistenceService` loads all data from the JSON files into a single `DataContainer` object.
 5.  **`TaskManagerService`**: This central service holds the `DataContainer` in memory. All business logic operations (adding tasks, updating events, etc.) are performed on the data within this container. When data is modified, `TaskManagerService` calls `PersistenceService.SaveData()` to write the changes back to the disk.
 
+## Scheduling Strategies (Dual-Mode)
+
+The application supports multiple scheduling algorithms, selectable by the user via `UserProfile.SchedulingMode`. This allows for safe evolution of the scheduling logic without breaking existing functionality. The common interface for all strategies is `IUrgencyStrategy`.
+
+### 1. Legacy Strategy (Multi-Agent Coordination Pattern - MCP)
+
+*   **Class**: `MultiAgentUrgencyStrategy` (or `LegacyMcpStrategy`)
+*   **Description**: The original agent-based pipeline. It breaks down scheduling into independent agents (TaskAnalyzer, Prioritization, ComplexityBalancer, Scheduling).
+*   **Status**: Maintenance Mode. Default for existing users.
+
+The flow for this strategy is defined below in "Legacy Agent Pipeline".
+
+### 2. V1 Optimization Strategy (Solver-Based)
+
+*   **Class**: `OptimizationSchedulingStrategy`
+*   **Description**: A new solver-centered approach focused on global optimization of the schedule.
+*   **Status**: Active Development.
+*   **Spec**: implementation details are strictly defined in `SCHEDULING_SYSTEM_SPEC.md`.
+
 ## Legacy Agent Pipeline (Multi-Agent Coordination Pattern - MCP)
 
-The most sophisticated part of the architecture is the agent-based pipeline used for task scheduling, which leverages a Multi-Agent Coordination Pattern (MCP).
+The legacy pipeline is used when `SchedulerMode` is set to `Legacy`.
 
 The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility agents. This makes the system easier to modify, debug, and extend.
-
-> Migration Note: On this branch, this pipeline is treated as legacy and is being replaced by the Phase 1 contract in the section "V1 Scheduling Contract (Phase 1 Baseline)" below.
 
 The pipeline is defined and executed in `PriorityTaskManager/MCP/MultiAgentUrgencyStrategy.cs`.
 
