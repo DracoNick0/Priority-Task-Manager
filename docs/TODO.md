@@ -7,7 +7,7 @@
     - [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated).
     - [ ] Create `ScheduleSpreaderAgentTests.cs` (to cover logic moved from old SchedulingAgent).
     - [ ] Create `DaySequencingAgentTests.cs` (to cover logic moved from old ComplexityBalancer).
-    - [ ] Ensure all `LegacyMCP` tests pass before starting V1 implementation.
+    - [ ] Ensure all `McpGoldPanningStrategy` tests pass before starting V1 implementation.
     - *Goal: Ensure we have a stable fallback before starting V1.*
 
 2.  **Phase 3: Critical UX & Settings Prep (Enable Migration)**

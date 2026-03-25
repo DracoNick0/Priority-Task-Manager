@@ -41,7 +41,7 @@ Recently clarified contract decisions:
 ## Current Capabilities
 
 ### Core Features
--   **Multi-Agent Scheduling**: Uses the `MultiAgentUrgencyStrategy` to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
+-   **Multi-Agent Scheduling**: Uses the `McpGoldPanningStrategy` to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
 -   **Command Line Interface**: A robust CLI loop (`PriorityTaskManager.CLI`) handles user input with clear feedback.
 -   **Workday Configuration**: Respects user-defined start/end times in `user_profile.json`.
 

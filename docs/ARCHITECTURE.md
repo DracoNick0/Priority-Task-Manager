@@ -47,8 +47,8 @@ Priority-Task-Manager/
     ├── PriorityTaskManager.Tests.csproj
     ├── Infrastructure/           <-- Shared Mocks/Helpers
     ├── Integration/              <-- Service-Level Tests
-    ├── LegacyMCP/                <-- Legacy Agent Tests
-    └── V1Optimization/           <-- New V1 Tests
+    ├── McpGoldPanningStrategy/   <-- Legacy Agent Tests
+    └── ConstraintOptimizationStrategy/ <-- New V1 Tests
 ```
 
 ### Technology Stack
@@ -212,8 +212,8 @@ The core library is built around a set of services and strategies, each with a s
 
 This section details the primary files in the core library and their interconnections. It is designed to help developers identify the correct file to modify for a specific task.
 
-#### 1. The Coordinator: `MultiAgentUrgencyStrategy.cs`
-*   **Path**: `PriorityTaskManager/MCP/MultiAgentUrgencyStrategy.cs`
+#### 1. The Coordinator: `McpGoldPanningStrategy.cs`
+*   **Path**: `PriorityTaskManager/MCP/McpGoldPanningStrategy.cs`
 *   **Role**: The **Orchestrator**. It defines the entire scheduling pipeline. It is responsible for instantiating the agents, defining their execution order, and passing the `MCPContext` between them.
 *   **Connections**:
     *   **Invokes**: ALL Agents (`TaskAnalyzerAgent`, `SchedulePreProcessorAgent`, etc.).

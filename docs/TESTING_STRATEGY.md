@@ -41,7 +41,7 @@ This is the most critical area to test. We need to test both the individual agen
 -   **`SchedulingAgent`**:
     -   Given a pre-ordered list of tasks and available slots, verify it generates the correct `ScheduledChunk`s.
     -   Test with tasks that are too large for any single slot and need to be split.
--   **`MultiAgentUrgencyStrategy` (Integration Test)**:
+-   **`McpGoldPanningStrategy` (Integration Test)**:
     -   Test the entire pipeline from end to end.
     -   Provide a set of tasks, a user profile, and events.
     -   Assert that the final `PrioritizationResult` contains a valid schedule and a logical history log from the agents.
@@ -58,5 +58,5 @@ This is the most critical area to test. We need to test both the individual agen
 1.  **Establish a Test Foundation**: Create a `MockPersistenceService` and a mockable `ITimeService` to be used across all tests.
 2.  **Fix `TaskManagerService` Tests**: Start by fixing the tests for the main service to ensure basic data operations are reliable.
 3.  **Test Individual Agents**: Write focused unit tests for each agent, mocking their dependencies.
-4.  **Write Pipeline Integration Tests**: Create tests for `MultiAgentUrgencyStrategy` that verify the end-to-end scheduling process.
+4.  **Write Pipeline Integration Tests**: Create tests for `McpGoldPanningStrategy` that verify the end-to-end scheduling process.
 5.  **Review and Update Existing Tests**: Go through all old test files, deleting what is no longer relevant and updating what can be salvaged.
