@@ -60,6 +60,28 @@ We "shake" the box (Iterate through Overloaded Days).
         *   *Result on a Busy Day*: The Stream Pressure is high. The 1.0 stones hold their ground. The 0.8 silt washes away.
         *   *Result on a Calm Day*: The Stream Pressure is low. The 0.8 silt is heavy enough to settle and stick.
         *   *User Control*: Users can boost this via the `Importance` attribute (e.g., turning Silt into a Pebble with Weight 1.2), allowing specific backlog items to fight for a slot.
+        
+## 5. Strategy Characteristics & Behavior
+
+The Gold Panning strategy prioritizes **Throughput** and **Energy Management** over strict deadline adherence. It is designed to maximize daily output based on cognitive load.
+
+### A. "Eat the Frog" overrides Importance (Day Sequencing)
+*   **Behavior**: Within a single day, tasks are sorted primarily by `Complexity` (High to Low), then by `Importance`.
+*   **Rationale**: High-complexity work requires peak mental energy (morning). High-importance low-complexity work (e.g., paying a bill) can technically be done anytime.
+*   **Consequence**: A low-importance but difficult task may be scheduled *before* a high-importance but easy task.
+*   **Mitigation**: Users who prefer "Business Value First" over "Energy Management First" may find this counter-intuitive. This is a known trade-off of the `DaySequencing` logic.
+
+### B. The "Sluice" Wash (Spreading)
+*   **Behavior**: Determining *which day* a task lands on is purely a function of **Capacity Pressure**.
+*   **Rationale**: You cannot do more work than fits in a day. The "lightest" tasks (lowest Urgency/Importance score) naturally wash downstream.
+*   **Consequence**: A task may be washed past its Due Date if the days prior are saturated with "heavier" tasks.
+*   **Limitation**: The current implementation warns via console ("Overflow"), but does not actively *reject* or *re-prioritize* based on a hard deadline stop. Late tasks simply appear on later dates.
+
+### C. Urgency Bias (Prioritization)
+*   **Behavior**: The scoring formula `(Urgency + Importance) * Density` heavily favors imminent deadlines.
+*   **Rationale**: Clearing immediate blockers prevents debt accumulation.
+*   **Consequence**: Long-term strategic work (High Importance, Low Urgency) risks being perpetually washed downstream by a stream of incoming fire-fighting tasks.
+*   **Mitigation**: The system relies on "Aging" (tasks getting more urgent as they approach deadline) to eventually force them through.
 
 ## 5. Summary
 *   **Gold Panning Algorithm**:

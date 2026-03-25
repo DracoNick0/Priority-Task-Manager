@@ -9,13 +9,14 @@ This document provides a high-level summary of the Priority Task Manager's curre
 
 Current branch strategy:
 1. Documentation-first migration.
-2. Early removal of legacy scheduling paths on this branch.
-3. Branch-level fallback for rollback.
+2. Stabilize Gold Panning Strategy (Green Tests).
+3. Implement V1 Core (Constraint Optimization Strategy).
+4. Migrate CLI and Verify (Dual-Mode Support).
 
 Phase progress:
-- Phase 1 (Docs and contracts): In progress.
-- Phase 2 (Legacy path removal): Planned.
-- Phase 3 (New pipeline implementation): Planned.
+- Phase 1 (Docs and contracts): Complete.
+- Phase 2 (Stabilize Gold Panning): Complete. All 70 tests are passing, covering Horizon, Prioritization, Balancing, Spreading, and Sequencing.
+- Phase 3 (New pipeline implementation): Ready to Start.
 - Phase 4 (Migration test matrix): Planned.
 
 Recently clarified contract decisions:

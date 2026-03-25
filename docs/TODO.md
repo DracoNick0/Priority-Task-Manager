@@ -2,17 +2,17 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Phase 2: Stabilize Legacy System (Critical Pre-requisite)**
-    - [ ] Fix `SchedulePreProcessorAgentTests.cs` (Horizon logic updated).
-    - [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated).
-    - [ ] Create `ScheduleSpreaderAgentTests.cs` (to cover logic moved from old SchedulingAgent).
-    - [ ] Create `DaySequencingAgentTests.cs` (to cover logic moved from old ComplexityBalancer).
-    - [ ] Ensure all `McpGoldPanningStrategy` tests pass before starting V1 implementation.
-    - *Goal: Ensure we have a stable fallback before starting V1.*
+1.  **Phase 2: Stabilize Gold Panning Strategy (COMPLETE)**
+    - [x] Fix `SchedulePreProcessorAgentTests.cs` (Horizon logic updated).
+    - [x] Fix `PrioritizationAgentTests.cs` (Weights logic updated).
+    - [x] Create `ScheduleSpreaderAgentTests.cs` (to cover logic moved from old SchedulingAgent).
+    - [x] Create `DaySequencingAgentTests.cs` (to cover logic moved from old ComplexityBalancer).
+    - [x] Ensure all `McpGoldPanningStrategy` tests pass before starting V1 implementation.
+    - *Goal: Ensure we have a stable fallback (Gold Panning) before starting V1. (70/70 Tests Passing)*
 
-2.  **Phase 3: Critical UX & Settings Prep (Enable Migration)**
+2.  **Phase 3: Critical UX & Settings Prep (Enable Dual-Mode)**
     - *Note: Follow TDD. Write `Handler` tests before modifying CLI logic.*
-    - [ ] **Improve Settings Interface**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode` so users can toggle strategies.
+    - [ ] **Improve Settings Interface**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode` so users can toggle between Gold Panning and Constraint Optimization.
     - [ ] **Improve Task Creation UI**: Streamline `AddHandler` prompts. Ensure inputs (Importance, Duration) align with V1 data needs.
     - [ ] **Standardize Commands**: Ensure consistent naming (e.g., `delete` vs `remove`) now to avoid breaking tests later.
 
@@ -24,7 +24,7 @@
         - WindowBuilder
         - Dependency + Decomposition
         - Scoring
-        - OptimizationPlanner (with internal in-day sequencing and cross-day balancing)
+        - OptimizationPlanner (Constraint-Based)
         - Explanation
     -   Implement slack-aware urgency scoring to avoid high-importance last-minute placement.
     -   Implement front-loading intra-day sequencing (Eat the Frog) as an OptimizationPlanner sub-pass.
@@ -39,13 +39,12 @@
     -   [ ] Add tests for slack protection on high-importance tasks.
     -   [ ] Add deterministic replay tests for identical inputs.
 
-5.  **Phase 6: Cleanup & Deprecation (Post-V1)**
-    -   [ ] Rename legacy MCP scheduling terminology to pipeline-oriented names.
-    -   [ ] Update docs and CLI help text to match the finalized architecture vocabulary.
-    -   [ ] Remove `GoldPanning` strategy and `MCP` folder (Post-V1 stability).
-    -   [ ] Rename `Scheduling/Optimization` to just `Scheduling`.
+5.  **Phase 6: Cleanup & Refinement**
+    -   [ ] Rename old MCP scheduling terminology to strategy-specific names (e.g., `GoldPanningAgent` vs `ConstraintAgent`).
+    -   [ ] Update docs and CLI help text to clarify the differences between strategies.
+    -   [ ] Rename `Scheduling/Optimization` to `Scheduling/Strategies`.
 
-6.  **Improve Event Scheduling (Post-Migration)**
+6.  **Improve Event Scheduling (Post-V1)**
     -   Implement support for repeating events (e.g., daily, weekly).
     -   Make the event creation process more user-friendly.
 
