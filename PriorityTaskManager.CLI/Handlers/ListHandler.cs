@@ -144,6 +144,13 @@ namespace PriorityTaskManager.CLI.Handlers
                     taskLetterMapping[task.Id] = currentLetter++;
                 }
 
+                var eventLetterMapping = new Dictionary<int, char>();
+                char currentEventLetter = 'a';
+                foreach (var ev in eventsForDay)
+                {
+                    eventLetterMapping[ev.Id] = currentEventLetter++;
+                }
+
                 // --- Generate Timeline ---
                 var totalWorkDuration = workEnd - workStart;
                 int meterWidth = (int)(totalWorkDuration.TotalMinutes / 15);
@@ -190,6 +197,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 // Assign events to blocks
                 foreach (var ev in eventsForDay)
                 {
+                    char eventChar = eventLetterMapping.ContainsKey(ev.Id) ? eventLetterMapping[ev.Id] : '?';
+                    bool firstBlockOfEvent = false;
                     var eventStart = ev.StartTime;
                     var eventEnd = ev.EndTime;
                     for (int b = 0; b < meterWidth; b++)
@@ -199,7 +208,15 @@ namespace PriorityTaskManager.CLI.Handlers
                         if (eventStart < blockEnd && eventEnd > blockStart)
                         {
                             blockOwners[b] = $"event:{ev.Id}";
-                            blockChars[b] = '■';
+                            if (!firstBlockOfEvent)
+                            {
+                                blockChars[b] = eventChar;
+                                firstBlockOfEvent = true;
+                            }
+                            else
+                            {
+                                blockChars[b] = '=';
+                            }
                         }
                     }
                 }
@@ -294,7 +311,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     else
                     {
-                        if (blockChars[i] == '■')
+                        if (blockOwners[i]?.StartsWith("event:") == true)
                         {
                             Console.ForegroundColor = ConsoleColor.Magenta; // Color for events
                             Console.Write(blockChars[i]);
@@ -348,10 +365,19 @@ namespace PriorityTaskManager.CLI.Handlers
             if (eventsForDay.Any())
             {
                 Console.WriteLine("\nScheduled Events:");
+                
+                var eventLetterMapping = new Dictionary<int, char>();
+                char currentEventLetter = 'a';
                 foreach (var ev in eventsForDay)
                 {
+                    eventLetterMapping[ev.Id] = currentEventLetter++;
+                }
+
+                foreach (var ev in eventsForDay)
+                {
+                    var letter = eventLetterMapping.ContainsKey(ev.Id) ? $"({eventLetterMapping[ev.Id]})" : "";
                     Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine($"      {ev.StartTime:HH:mm} - {ev.EndTime:HH:mm} | {ev.Name}");
+                    Console.WriteLine($"{letter,4} [ID: {ev.Id}] {ev.StartTime:HH:mm} - {ev.EndTime:HH:mm} | {ev.Name}");
                     Console.ResetColor();
                 }
             }
@@ -452,15 +478,18 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
             }
 
-            // Show completed tasks at the bottom
+            // Show completed tasks at the bottom (Max 3)
             var completedTasks = tasksToDisplay.Where(t => t.IsCompleted).ToList();
             if (completedTasks.Any())
             {
-                Console.WriteLine("\nCompleted Tasks:");
-                foreach (var task in completedTasks.OrderByDescending(t => t.ScheduledParts.Any() ? t.ScheduledParts.Max(p => p.EndTime) : DateTime.MinValue))
+                Console.ForegroundColor = ConsoleColor.DarkGreen;
+                Console.WriteLine($"\nCompleted Tasks (Last 3 of {completedTasks.Count}):");
+                
+                foreach (var task in completedTasks.OrderByDescending(t => t.Id).Take(3))
                 {
                     Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Completed)");
                 }
+                Console.ResetColor();
             }
         }
 
