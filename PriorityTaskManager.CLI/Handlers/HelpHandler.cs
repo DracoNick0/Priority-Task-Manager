@@ -99,8 +99,8 @@ namespace PriorityTaskManager.CLI.Handlers
                     break;
                 case "General Commands":
                     Console.WriteLine("help                - Display this help text");
-                    Console.WriteLine("mode [Mode]         - View or set the urgency strategy mode (SingleAgent, MultiAgent)");
-                    Console.WriteLine("settings            - Open interactive user settings");
+                    Console.WriteLine("mode [gold|constraint] - View or set scheduling strategy (GoldPanning or ConstraintOptimization)");
+                    Console.WriteLine("settings            - Open interactive menu for Profile, Cleanup, and Time");
                     Console.WriteLine("exit                - Exit the application");
                     break;
             }

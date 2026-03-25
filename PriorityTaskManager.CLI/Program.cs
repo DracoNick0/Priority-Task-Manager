@@ -48,9 +48,10 @@ namespace PriorityTaskManager.CLI
 				{ "depend", new DependHandler() },
 				{ "view", new ViewHandler() },
 				{ "cleanup", new CleanupHandler(service) },
-				{ "settings", new SettingsHandler() },
+				{ "settings", new SettingsHandler(timeService) },
 				{ "event", new EventCommandHandler() },
-				{ "time", new TimeHandler(timeService) }
+				{ "time", new TimeHandler(timeService) },
+				{ "mode", new ModeHandler() }
 			};
 
 			while (true)
