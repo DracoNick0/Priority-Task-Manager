@@ -159,6 +159,16 @@ namespace PriorityTaskManager.Services
             existingTask.IsCompleted = updatedTask.IsCompleted;
             existingTask.Dependencies = new List<int>(updatedTask.Dependencies);
 
+            // Update newly supported fields
+            existingTask.EstimatedDuration = updatedTask.EstimatedDuration;
+            existingTask.Complexity = updatedTask.Complexity;
+            existingTask.IsPinned = updatedTask.IsPinned;
+
+            // If critical scheduling parameters changed, we might want to clear the scheduled parts
+            // so they don't persist in an invalid state until the next schedule run.
+            // However, the system relies on the user running 'schedule', so we'll leave them as is
+            // but ensure the task itself has the new values.
+            
             SaveData();
 
             return true;
@@ -438,13 +448,21 @@ namespace PriorityTaskManager.Services
 
         public bool DeleteEvent(int id)
         {
-            var eventToDelete = _data.Events.Find(e => e.Id == id);
+            var eventToDelete = _data.Events.FirstOrDefault(e => e.Id == id);
             if (eventToDelete == null)
+            {
                 return false;
+            }
 
             _data.Events.Remove(eventToDelete);
             SaveData();
             return true;
+        }
+
+        public void ClearEvents()
+        {
+            _data.Events.Clear();
+            SaveData();
         }
     }
 }

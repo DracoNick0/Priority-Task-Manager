@@ -104,7 +104,9 @@ namespace PriorityTaskManager.MCP.Agents
                         dailyTasks.Remove(lightestTask);
                         // Mark as unscheduled?
                         lightestTask.ScheduledParts.Clear(); 
-                        break; 
+                        // Recalculate load after dropping
+                        currentLoad = dailyTasks.Sum(t => t.EstimatedDuration.TotalHours);
+                        continue; 
                     }
 
                     // Wash it downstream

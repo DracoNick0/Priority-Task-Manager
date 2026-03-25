@@ -33,6 +33,10 @@ namespace PriorityTaskManager.MCP
 
         public PrioritizationResult CalculateUrgency(List<TaskItem> tasks)
         {
+            // Filter out completed tasks so they are not scheduled
+            var completedTasks = tasks.Where(t => t.IsCompleted).ToList();
+            var activeTasks = tasks.Where(t => !t.IsCompleted).ToList();
+
             // NEW PIPELINE: TaskAnalyzer -> PreProcessor -> Prioritizer -> Spreader -> Sequencer
             var agentChain = new List<IAgent>
             {
@@ -43,9 +47,9 @@ namespace PriorityTaskManager.MCP
                 _daySequencingAgent
             };
 
-            // Create and populate the context
+            // Create and populate the context with only active tasks
             var context = new MCPContext();
-            context.SharedState["Tasks"] = tasks;
+            context.SharedState["Tasks"] = activeTasks;
             context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Events"] = _events;
 
@@ -53,13 +57,16 @@ namespace PriorityTaskManager.MCP
             var finalContext = MCP.Coordinate(agentChain, context);
 
             // Retrieve the final data
-            var finalTasks = finalContext.SharedState.ContainsKey("Tasks")
+            var scheduledActiveTasks = finalContext.SharedState.ContainsKey("Tasks")
                 ? (List<TaskItem>)finalContext.SharedState["Tasks"]
                 : new List<TaskItem>();
 
             var unschedulable = finalContext.SharedState.ContainsKey("UnschedulableTasks")
                 ? (List<TaskItem>)finalContext.SharedState["UnschedulableTasks"]
                 : new List<TaskItem>();
+
+            // Concatenate completed tasks back into the result for display purposes
+            var finalTasks = scheduledActiveTasks.Concat(completedTasks).ToList();
 
             var result = new PrioritizationResult
             {

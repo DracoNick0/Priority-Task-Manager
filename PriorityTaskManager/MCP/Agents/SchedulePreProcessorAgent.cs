@@ -153,10 +153,23 @@ namespace PriorityTaskManager.MCP.Agents
         private List<Event> MergeOverlappingEvents(List<Event> events)
         {
             if (events.Count <= 1)
-                return events;
+                return events.Select(e => new Event
+                {
+                    Id = e.Id,
+                    Name = e.Name,
+                    StartTime = e.StartTime,
+                    EndTime = e.EndTime
+                }).ToList(); // Clone to prevent mutation
 
             var mergedEvents = new List<Event>();
-            var currentEvent = events[0];
+            // Clone first event
+            var currentEvent = new Event 
+            { 
+                Id = events[0].Id, 
+                Name = events[0].Name, 
+                StartTime = events[0].StartTime, 
+                EndTime = events[0].EndTime 
+            };
 
             for (int i = 1; i < events.Count; i++)
             {
@@ -170,7 +183,15 @@ namespace PriorityTaskManager.MCP.Agents
                 {
                     // No overlap, add the completed event and start a new one
                     mergedEvents.Add(currentEvent);
-                    currentEvent = nextEvent;
+                    
+                    // Clone the next event
+                    currentEvent = new Event
+                    {
+                        Id = nextEvent.Id,
+                        Name = nextEvent.Name,
+                        StartTime = nextEvent.StartTime,
+                        EndTime = nextEvent.EndTime
+                    };
                 }
             }
             mergedEvents.Add(currentEvent); // Add the last event
