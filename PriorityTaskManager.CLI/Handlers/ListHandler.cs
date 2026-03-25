@@ -426,22 +426,43 @@ namespace PriorityTaskManager.CLI.Handlers
 
                     // Show all scheduled chunks for this task on the target day
                     var chunksForDay = task.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date).OrderBy(p => p.StartTime).ToList();
+                    
                     if (chunksForDay.Any())
                     {
-                        foreach (var chunk in chunksForDay)
+                        for (int i = 0; i < chunksForDay.Count; i++)
                         {
+                            var chunk = chunksForDay[i];
                             var start = chunk.StartTime.ToString("HH:mm");
                             var end = chunk.EndTime.ToString("HH:mm");
                             var duration = chunk.Duration.TotalHours.ToString("0.##");
-                            var due = FormatDate(task.DueDate);
-                            Console.WriteLine($"[ID: {task.DisplayId}] {start} - {end} | {task.Title} (Chunk: {duration}h, Due: {due})");
+                            
+                            // Only show ID and Title for the first chunk to reduce noise
+                            string idInfo = i == 0 ? $"[ID: {task.DisplayId}] " : $"{" ",-8}";
+                            string titleInfo = i == 0 ? $"| {task.Title} (Due: {FormatDate(task.DueDate)})" : "";
+                            
+                            Console.WriteLine($"{idInfo}{start} - {end} {titleInfo} (Chunk: {duration}h)");
                         }
                     }
                     else
                     {
-                        // Fallback if no chunk for today (shouldn't happen for scheduledTasksForDay)
+                        // Task is scheduled, but not for today
+                        var nextChunk = task.ScheduledParts.OrderBy(p => p.StartTime).FirstOrDefault(p => p.StartTime > targetDay.Date);
                         var due = FormatDate(task.DueDate);
-                        Console.WriteLine($"[ID: {task.DisplayId}] --:-- - --:-- | {task.Title} (Due: {due})");
+                        
+                        string scheduleInfo;
+                        if (nextChunk != null)
+                        {
+                            scheduleInfo = $"{nextChunk.StartTime:MM-dd HH:mm}";
+                        }
+                        else
+                        {
+                             // Should be impossible for 'scheduledTasks' list, but fallback safe
+                            scheduleInfo = "--:--";
+                        }
+                        
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        Console.WriteLine($"[ID: {task.DisplayId}] {scheduleInfo,-11} | {task.Title} (Due: {due}) [Future]");
+                        Console.ResetColor();
                     }
                 }
             }
