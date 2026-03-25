@@ -5,11 +5,19 @@ using System.Linq;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
+using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
     public class SettingsHandler : ICommandHandler
     {
+        private readonly ITimeService _timeService;
+
+        public SettingsHandler(ITimeService timeService)
+        {
+            _timeService = timeService;
+        }
+
         public void Execute(TaskManagerService service, string[] args)
         {
             if (args.Length == 0)
@@ -55,13 +63,24 @@ namespace PriorityTaskManager.CLI.Handlers
         private void RunInteractiveSettings(TaskManagerService service)
         {
             var userProfile = service.GetUserProfile();
-            var menuItems = new List<string> { "Working Days", "Working Hours", "Save and Exit" };
+            var menuItems = new List<string> 
+            { 
+                "Working Days", 
+                "Working Hours", 
+                $"Scheduling Strategy: [{userProfile.SchedulingMode}]",
+                "Set Simulated Time (Use 'Time' command for more options)",
+                "Run Cleanup (Archive/Re-Index)",
+                "Save and Exit" 
+            };
             int selectedIndex = 0;
 
             Console.CursorVisible = false;
             while (true)
             {
                 Console.Clear();
+                // Refresh dynamic menu items
+                menuItems[2] = $"Scheduling Strategy: [{userProfile.SchedulingMode}]";
+
                 PrintCurrentSettings(userProfile);
                 DrawMenu(menuItems, selectedIndex);
 
@@ -76,7 +95,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
                         break;
                     case ConsoleKey.Enter:
-                        if (selectedIndex == menuItems.Count - 1) // Save and Exit
+                        if (selectedIndex == 5) // Save and Exit
                         {
                             service.UpdateUserProfile(userProfile);
                             Console.Clear();
@@ -85,7 +104,7 @@ namespace PriorityTaskManager.CLI.Handlers
                             Console.CursorVisible = true;
                             return;
                         }
-                        HandleMenuSelection(selectedIndex, userProfile);
+                        HandleMenuSelection(selectedIndex, service, userProfile);
                         break;
                     case ConsoleKey.Escape:
                         Console.Clear();
@@ -96,7 +115,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void HandleMenuSelection(int selectedIndex, UserProfile userProfile)
+        private void HandleMenuSelection(int selectedIndex, TaskManagerService service, UserProfile userProfile)
         {
             switch (selectedIndex)
             {
@@ -105,14 +124,49 @@ namespace PriorityTaskManager.CLI.Handlers
                     break;
                 case 1: // Working Hours
                     Console.CursorVisible = true;
-                    Console.SetCursorPosition(0, Console.CursorTop + 3);
-                    Console.Write("Enter new working hours (e.g., 09:00-17:00): ");
-                    var hoursInput = Console.ReadLine();
-                    if (!string.IsNullOrWhiteSpace(hoursInput))
-                    {
-                        UpdateWorkingHours(userProfile, hoursInput);
-                    }
+                    // Start Time
+                    Console.WriteLine("\nSet Daily Work Start Time:");
+                    var today = DateTime.Today;
+                    var startDateTime = today.Add(userProfile.WorkStartTime.ToTimeSpan());
+                    var newStart = ConsoleInputHelper.HandleInteractiveTimeInput(startDateTime);
+                    
+                    // End Time
+                    Console.WriteLine("\nSet Daily Work End Time:");
+                    var endDateTime = today.Add(userProfile.WorkEndTime.ToTimeSpan());
+                    var newEnd = ConsoleInputHelper.HandleInteractiveTimeInput(endDateTime);
+
+                    userProfile.WorkStartTime = TimeOnly.FromDateTime(newStart);
+                    userProfile.WorkEndTime = TimeOnly.FromDateTime(newEnd);
+                    
                     Console.CursorVisible = false;
+                    break;
+                case 2: // Scheduling Strategy
+                    // Toggle between modes
+                    userProfile.SchedulingMode = userProfile.SchedulingMode == SchedulingMode.GoldPanning 
+                        ? SchedulingMode.ConstraintOptimization 
+                        : SchedulingMode.GoldPanning;
+                    break;
+                case 3: // Set Simulated Time
+                    // New Submenu for Time
+                    Console.WriteLine("\nSet Time: [1] Now [2] Custom");
+                    var key = Console.ReadKey(true);
+                    if (key.KeyChar == '1')
+                    {
+                        var timeHandler = new TimeHandler(_timeService);
+                        timeHandler.Execute(service, new[] { "now" });
+                        Console.ReadKey(true); // Pause to see result
+                    }
+                    else if (key.KeyChar == '2')
+                    {
+                        var timeHandler = new TimeHandler(_timeService);
+                        timeHandler.Execute(service, new[] { "custom" });
+                        Console.ReadKey(true); 
+                    }
+                    break;
+                case 4: // Run Cleanup
+                    var cleanupHandler = new CleanupHandler(service);
+                    cleanupHandler.Execute(service, new string[0]);
+                    Console.ReadKey(true);
                     break;
             }
         }
@@ -238,6 +292,7 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine("Current Settings:");
             Console.WriteLine($"  Working Days: {string.Join(", ", userProfile.WorkDays)}");
             Console.WriteLine($"  Working Hours: {userProfile.WorkStartTime} - {userProfile.WorkEndTime}");
+            Console.WriteLine($"  Scheduling Strategy: {userProfile.SchedulingMode}");
         }
     }
 }
