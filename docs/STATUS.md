@@ -36,7 +36,7 @@ Recently clarified contract decisions:
 | **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
 | **Scheduling Logic** | 🟡 **Migration** | Legacy scheduling is being replaced by the V1 reduced pipeline contract. |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
-| **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
+| **Event System** | � **Needs Overhaul** | Basic add/list exists, but UI needs significant improvement (interactive menus, smart shifting). |
 | **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
 | **Unit Tests** | 🟡 **Active** | Core Agents covered; Integration and CLI tests pending alignment with new contract. |
 
