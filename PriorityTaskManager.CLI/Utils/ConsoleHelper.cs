@@ -29,6 +29,8 @@ namespace PriorityTaskManager.CLI.Utils
                 }
                 Console.ResetColor();
             }
+            // Hint for Shift+Enter shortcut
+            Console.WriteLine("\n[Use Arrows to Navigate, Enter to Select, Shift+Enter to Save/Confirm]");
         }
     }
 }
