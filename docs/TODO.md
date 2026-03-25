@@ -2,14 +2,21 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-1.  **Phase 2: Stabilize McpGoldPanning (Legacy Strategy)**
-    -   [ ] Fix `SchedulePreProcessorAgentTests.cs` (Horizon logic updated).
-    -   [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated).
-    -   [ ] Create `ScheduleSpreaderAgentTests.cs` (to cover logic moved from old SchedulingAgent).
-    -   [ ] Create `DaySequencingAgentTests.cs` (to cover logic moved from old ComplexityBalancer).
-    -   [ ] Ensure all `LegacyMCP` tests pass before starting V1 implementation.
+1.  **Phase 2: Stabilize Legacy System (Critical Pre-requisite)**
+    - [ ] Fix `SchedulePreProcessorAgentTests.cs` (Horizon logic updated).
+    - [ ] Fix `PrioritizationAgentTests.cs` (Weights logic updated).
+    - [ ] Create `ScheduleSpreaderAgentTests.cs` (to cover logic moved from old SchedulingAgent).
+    - [ ] Create `DaySequencingAgentTests.cs` (to cover logic moved from old ComplexityBalancer).
+    - [ ] Ensure all `LegacyMCP` tests pass before starting V1 implementation.
+    - *Goal: Ensure we have a stable fallback before starting V1.*
 
-2.  **Phase 3: Implement Constraint Optimization (New Strategy)**
+2.  **Phase 3: Critical UX & Settings Prep (Enable Migration)**
+    - *Note: Follow TDD. Write `Handler` tests before modifying CLI logic.*
+    - [ ] **Improve Settings Interface**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode` so users can toggle strategies.
+    - [ ] **Improve Task Creation UI**: Streamline `AddHandler` prompts. Ensure inputs (Importance, Duration) align with V1 data needs.
+    - [ ] **Standardize Commands**: Ensure consistent naming (e.g., `delete` vs `remove`) now to avoid breaking tests later.
+
+3.  **Phase 4: Implement Constraint Optimization (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
     -   Implement locked V1 reduced pipeline from SCHEDULING_SYSTEM_SPEC.md:
@@ -24,7 +31,7 @@
     -   Implement relative-density handling for backlog tasks.
     -   Enforce no-overlap ownership boundaries between stages.
 
-3.  **Phase 4: Build Migration Test Matrix (New Pipeline)**
+4.  **Phase 5: Build Migration Test Matrix (New Pipeline)**
     -   [ ] Enforce merge gate: no behavior PR merges without test-first coverage.
     -   [ ] Add tests for FS dependency correctness in the new pipeline.
     -   [ ] Add tests for must-schedule overload behavior (late + overtime).
@@ -32,21 +39,15 @@
     -   [ ] Add tests for slack protection on high-importance tasks.
     -   [ ] Add deterministic replay tests for identical inputs.
 
-4.  **Phase 5: Terminology Cleanup (Post-Stabilization)**
+5.  **Phase 6: Cleanup & Deprecation (Post-V1)**
     -   [ ] Rename legacy MCP scheduling terminology to pipeline-oriented names.
     -   [ ] Update docs and CLI help text to match the finalized architecture vocabulary.
-    -   [ ] Ensure naming-only changes do not alter runtime behavior.
+    -   [ ] Remove `GoldPanning` strategy and `MCP` folder (Post-V1 stability).
+    -   [ ] Rename `Scheduling/Optimization` to just `Scheduling`.
 
-5.  **Improve Event Scheduling & Command Consistency**
+6.  **Improve Event Scheduling (Post-Migration)**
     -   Implement support for repeating events (e.g., daily, weekly).
     -   Make the event creation process more user-friendly.
-    -   Standardize command naming conventions across the application (e.g., ensure `delete` is used consistently for all entities instead of a mix of `delete`, `remove`, etc.).
-
-6.  **Improve Settings Interface**
-    -   Make the `settings` command more interactive and user-friendly for viewing and changing user profile settings.
-
-7.  **Improve Overall CLI User Experience**
-    -   Review all commands to simplify their usage, improve prompts, and provide clearer, more helpful error messages.
 
 ---
 
