@@ -3,13 +3,13 @@
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
 *   **Phase 3.5: User Feedback Refinements**
-    -   [ ] **Event System Overhaul**:
-        -   `event add <title>`: Remove time arguments; use interactive menu for details.
-        -   `event delete <id...>`: Support multiple IDs, rename from `remove`.
-        -   Add global `e` alias for `event` command (e.g., `e add`, `e list`, `e edit`, `e delete`).
+    -   [X] **Event System Overhaul**:
+        -   `event add <title>`: Removed time arguments; use interactive menu for details.
+        -   `event delete <id...>`: Supports multiple IDs.
+        -   Added global `e` alias for `event` command (e.g., `e add`, `e list`, `e edit`, `e delete`).
         -   Display: `(A) [ID: X] HH:mm - HH:mm | Name`.
-        -   **Smart Shifting**: Changing Start Date/Time shifts End Date/Time by same delta (preserving duration). Changing End Date/Time modifies duration.
-    -   [ ] **Completed Task Handling**:
+        -   **Smart Shifting**: Changing Start Date/Time shifts End Date/Time by same delta (preserving duration).
+    -   [X] **Completed Task Handling**:
         -   Do NOT schedule completed items.
         -   `ListHandler`: Only display last 3 completed tasks to reduce clutter while preserving undo.
     -   [ ] **Scheduler Spill-Over Logic**:
