@@ -3,17 +3,14 @@
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
 *   **Phase 3: Critical UX & Settings Prep (Enable Dual-Mode)**
-    - *Note: Follow TDD. Write `Handler` tests before modifying CLI logic.*
-    - [ ] **Improve Settings Interface (User Preferences)**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode` preference so users can toggle between Gold Panning and Constraint Optimization.
-    - [ ] **Improve Task Creation UI (`AddHandler`)**: 
-        -   Streamline prompts (Title, Annual Importance 1-10, Complexity 1-10, Must-Schedule/Pin, Estimated Duration, Due Date).
-        -   Remove Time/Description/Dependency prompts (default to end-of-day/empty).
-        -   Use interactive date picker.
-    - [ ] **Comprehensive Task Editing (`EditHandler`)**:
-        -   Implement interactive menu (up/down arrow navigation).
-        -   Allow editing all fields (including Time, Description, Dependencies).
-        -   Add "Move to List" option.
-    - [ ] **Standardize Commands**: Ensure consistent naming (e.g., `delete` vs `remove`) now to avoid breaking tests later.
+    - [x] **Improve Settings Interface (User Preferences)**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode`, `WorkDays`, `WorkHours`, and `Time`.
+    - [x] **Improve Task Creation UI (`AddHandler`)**: Streamlined prompts with defaults (EndOfDay) and interactive date picker.
+    - [x] **Comprehensive Task Editing (`EditHandler`)**:
+        -   Interactive menu (up/down arrow navigation, F10/Shift+Enter to save, Esc to cancel).
+        -   Enhanced Time Picker (split min/EndOfDay, Esc support).
+        -   Sub-menu for Dependencies (safe edit buffer).
+    - [x] **Standardize Commands**: Ensure consistent naming (e.g., `delete`, `mode`).
+    - [x] **Phase 3 Complete**: All critical UX components for dual-mode switching are live.
 
 *   **Phase 4: Implement Constraint Optimization (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
@@ -69,6 +66,7 @@
     -   *Option A (Maintenance Quota)*: Reserve a set percentage of daily capacity (e.g., 20%) specifically for non-urgent tasks.
     -   *Option B (Virtual Aging)*: Implement an "Effective Due Date" or "Age Score" that increases over time, eventually treating old backlog items as urgent.
     -   *Option C (Opportunistic Fill)*: Fill low-intensity days (e.g., <50% load) with backlog tasks to smooth out the complexity curve.
+
 -  **Additional Attributes for Scheduling**
     -   [ ] **Earliest Start Date (Start Not Earlier Than)**: Support tasks that cannot begin until a future date, separate from Due Date. 
     -   [ ] **Start Time preference**: While we have a due time, sometimes tasks must simply start at X, and continue to completion.

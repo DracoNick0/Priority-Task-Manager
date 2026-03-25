@@ -16,8 +16,8 @@ Current branch strategy:
 Phase progress:
 - Phase 1 (Docs and contracts): Complete.
 - Phase 2 (Stabilize Gold Panning): Complete. All 70 tests are passing, covering Horizon, Prioritization, Balancing, Spreading, and Sequencing.
-- Phase 3 (New pipeline implementation): Ready to Start.
-- Phase 4 (Migration test matrix): Planned.
+- Phase 3 (Critical UX & Settings Prep): Complete. Enhanced CLI with standardized interactive flows for Add, Edit, and Settings. Includes improved Time Picker (split minutes, End-of-Day shortcut) and Dependency Editor (submenu with cancel support).
+- Phase 4 (New pipeline implementation): Ready to Start.
 
 Recently clarified contract decisions:
 - Must-schedule tasks can be marked late only when policy allows and cannot be dropped.
@@ -30,18 +30,20 @@ Recently clarified contract decisions:
 
 | Feature Area | Status | Notes |
 | :--- | :--- | :--- |
-| **Task Management** | 🟢 **Stable** | Standard CRUD (Title, Importance, Complexity, DueDate) is solid. |
+| **Task Management** | 🟢 **Stable** | Standard CRUD (add, edit, list) is robust with enhanced interactive menus for Date, Time, and Dependencies. |
 | **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
+| **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
 | **Scheduling Logic** | 🟡 **Migration** | Legacy scheduling is being replaced by the V1 reduced pipeline contract. |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟡 **Limited** | Fixed blocks of time works. **No recurring events** (e.g., daily meetings). |
 | **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
-| **Unit Tests** | 🟡 **Stable** | Core Agents are covered. Integration and CLI tests pending. |
+| **Unit Tests** | 🟡 **Active** | Core Agents covered; Integration and CLI tests pending alignment with new contract. |
 
 ## Current Capabilities
 
 ### Core Features
+-   **Dual-Mode Scheduling Strategy**: Toggle between `GoldPanning` and `ConstraintOptimization` (In-Progress) via Settings.
 -   **Multi-Agent Scheduling**: Uses the `McpGoldPanningStrategy` to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
 -   **Command Line Interface**: A robust CLI loop (`PriorityTaskManager.CLI`) handles user input with clear feedback.
 -   **Workday Configuration**: Respects user-defined start/end times in `user_profile.json`.
@@ -91,11 +93,11 @@ Recently clarified contract decisions:
 ### System Commands
 | Command | Description |
 | :--- | :--- |
-| `mode` | Switch between `MultiAgent` and `SingleAgent` urgency modes. |
+| `mode` | Display current strategy, or set it via `mode gold` / `mode constraint`. |
 | `cleanup` | Archive completed tasks and re-index the list. |
 | `time` | View the current time (real or simulated). |
 | `time now` | Switch to using real-time. |
 | `time custom` | Interactively set a custom simulated time. |
-| `settings` | View and edit user profile settings. |
+| `settings` | Interactive menu for User Profile (Work Hours, Strategy), Cleanup, and Time configuration. |
 | `help` | Display a list of all commands. |
 | `exit` | Close the application. |
