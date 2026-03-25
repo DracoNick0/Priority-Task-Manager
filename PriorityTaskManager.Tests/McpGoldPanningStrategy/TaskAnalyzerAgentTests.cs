@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests.LegacyMCP
+namespace PriorityTaskManager.Tests.MCP.GoldPanning
 {
     public class TaskAnalyzerAgentTests
     {

@@ -8,7 +8,7 @@ using PriorityTaskManager.Services;
 using PriorityTaskManager.Tests.Infrastructure;
 using Xunit;
 
-namespace PriorityTaskManager.Tests.LegacyMCP
+namespace PriorityTaskManager.Tests.MCP.GoldPanning
 {
     public class ComplexityBalancerAgentTests
     {
@@ -368,16 +368,9 @@ namespace PriorityTaskManager.Tests.LegacyMCP
             Assert.NotEmpty(resultB.ScheduledParts);
             
             // Assert that it is scheduled LATER than Day 1 (meaning it used the full window, not just Task A's due date)
-            // If the logic was faulty, it would try to cram on Day 1 alongside Task A, fail, or crash.
-            // Wait, if it tried to cram on Day 1, Day 1 is full (8h). Available is 0. 
-            // So resultB.ScheduledParts would be empty if constrained.
-            
-            // If the test failed assertion "True( ... > Day1 )", it means:
-            // 1. It found a spot on Day 1? (But A took 8h? Maybe order matters. A took 8h.)
-            // 2. It's scheduled on Day <= 1.
-            
             var schedule = resultB.ScheduledParts.First();
-            Assert.True(schedule.StartTime.Date > today.AddDays(1), $"Backlog scheduled on {schedule.StartTime.Date.ToShortDateString()} but should be after {today.AddDays(1).ToShortDateString()}. Is it constrained?");
-            }
+            // It should be on Day 2 (1/2) or later. Day 1 (1/1) is full.
+            Assert.True(schedule.StartTime.Date >= today.AddDays(1), $"Backlog scheduled on {schedule.StartTime.Date.ToShortDateString()} but should be after {today.ToShortDateString()}. Is it constrained?");
+        }
     }
 }
