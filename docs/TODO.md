@@ -4,8 +4,15 @@
 
 *   **Phase 3: Critical UX & Settings Prep (Enable Dual-Mode)**
     - *Note: Follow TDD. Write `Handler` tests before modifying CLI logic.*
-    - [ ] **Improve Settings Interface**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode` so users can toggle between Gold Panning and Constraint Optimization.
-    - [ ] **Improve Task Creation UI**: Streamline `AddHandler` prompts. Ensure inputs (Importance, Duration) align with V1 data needs.
+    - [ ] **Improve Settings Interface (User Preferences)**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode` preference so users can toggle between Gold Panning and Constraint Optimization.
+    - [ ] **Improve Task Creation UI (`AddHandler`)**: 
+        -   Streamline prompts (Title, Annual Importance 1-10, Complexity 1-10, Must-Schedule/Pin, Estimated Duration, Due Date).
+        -   Remove Time/Description/Dependency prompts (default to end-of-day/empty).
+        -   Use interactive date picker.
+    - [ ] **Comprehensive Task Editing (`EditHandler`)**:
+        -   Implement interactive menu (up/down arrow navigation).
+        -   Allow editing all fields (including Time, Description, Dependencies).
+        -   Add "Move to List" option.
     - [ ] **Standardize Commands**: Ensure consistent naming (e.g., `delete` vs `remove`) now to avoid breaking tests later.
 
 *   **Phase 4: Implement Constraint Optimization (New Strategy)**
@@ -62,3 +69,6 @@
     -   *Option A (Maintenance Quota)*: Reserve a set percentage of daily capacity (e.g., 20%) specifically for non-urgent tasks.
     -   *Option B (Virtual Aging)*: Implement an "Effective Due Date" or "Age Score" that increases over time, eventually treating old backlog items as urgent.
     -   *Option C (Opportunistic Fill)*: Fill low-intensity days (e.g., <50% load) with backlog tasks to smooth out the complexity curve.
+-  **Additional Attributes for Scheduling**
+    -   [ ] **Earliest Start Date (Start Not Earlier Than)**: Support tasks that cannot begin until a future date, separate from Due Date. 
+    -   [ ] **Start Time preference**: While we have a due time, sometimes tasks must simply start at X, and continue to completion.
