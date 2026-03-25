@@ -68,7 +68,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 "Working Days", 
                 "Working Hours", 
                 $"Scheduling Strategy: [{userProfile.SchedulingMode}]",
-                "Set Simulated Time (Use 'Time' command for more options)",
+                "Set Simulated Time",
                 "Run Cleanup (Archive/Re-Index)",
                 "Save and Exit" 
             };

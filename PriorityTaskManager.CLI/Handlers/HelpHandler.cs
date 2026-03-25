@@ -91,11 +91,12 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine("time custom         - Interactively set a custom simulated time");
                     break;
                 case "Event Commands":
-                    Console.WriteLine("event add           - Interactively add a new event");
-                    Console.WriteLine("event add \"<Name>\" --from \"<DateTime>\" --to \"<DateTime>\" - Add a new event with details");
-                    Console.WriteLine("event list          - List all upcoming events");
-                    Console.WriteLine("event edit <Id>     - Interactively edit an event by its Id");
-                    Console.WriteLine("event remove <Id>   - Remove an event by its Id");
+                    Console.WriteLine("event (alias 'e')       - Base command for event operations");
+                    Console.WriteLine("e add [Name]            - Add a new event (interactive time selection)");
+                    Console.WriteLine("e list                  - List all events sorted by time");
+                    Console.WriteLine("e edit <Id>             - Edit an event (supports smart time shifting)");
+                    Console.WriteLine("e delete <Id1,Id2...>   - Remove one or more events");
+                    Console.WriteLine("e clear                 - delete ALL events");
                     break;
                 case "General Commands":
                     Console.WriteLine("help                - Display this help text");

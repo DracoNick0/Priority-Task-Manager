@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 
@@ -13,93 +14,77 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: event <add|list|edit|remove>");
+                HandleListEvents(service);
                 return;
             }
 
-            switch (args[0].ToLower())
+            string command = args[0].ToLower();
+            string[] subArgs = args.Skip(1).ToArray();
+
+            switch (command)
             {
                 case "add":
-                    HandleAddEvent(service, args.Skip(1).ToArray());
+                    HandleAddEvent(service, subArgs);
                     break;
                 case "list":
                     HandleListEvents(service);
                     break;
                 case "edit":
-                    HandleEditEvent(service, args.Skip(1).ToArray());
+                    HandleEditEvent(service, subArgs);
                     break;
                 case "remove":
-                    HandleRemoveEvent(service, args.Skip(1).ToArray());
+                case "delete":
+                    HandleRemoveEvent(service, subArgs);
+                    break;
+                case "clear":
+                    HandleClearEvents(service);
                     break;
                 default:
-                    Console.WriteLine("Usage: event <add|list|edit|remove>");
+                    Console.WriteLine("Unknown command. Usage: event <add|list|edit|delete|clear>");
                     break;
             }
         }
 
         private void HandleAddEvent(TaskManagerService service, string[] args)
         {
+            string name;
+            
+            // Allow "event add My Event Name"
             if (args.Length > 0)
             {
-                ParseAddEventArgs(service, args);
+                name = string.Join(" ", args);
             }
             else
             {
-                RunInteractiveAdd(service);
-            }
-        }
-
-        private void ParseAddEventArgs(TaskManagerService service, string[] args)
-        {
-            // ptm event add "My Event" --from "2025-12-01 10:00" --to "2025-12-01 11:00"
-            if (args.Length < 5 || !args[1].Equals("--from") || !args[3].Equals("--to"))
-            {
-                Console.WriteLine("Usage: event add \"<Event Name>\" --from \"<yyyy-MM-dd HH:mm>\" --to \"<yyyy-MM-dd HH:mm>\"");
-                return;
+                Console.WriteLine("Adding a new event (press Esc to cancel).");
+                Console.Write("Event Name: ");
+                string? input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("Event creation cancelled.");
+                    return;
+                }
+                name = input!;
             }
 
-            string name = args[0];
-            if (!DateTime.TryParse(args[2], out DateTime startTime) || !DateTime.TryParse(args[4], out DateTime endTime))
-            {
-                Console.WriteLine("Invalid date format. Please use 'yyyy-MM-dd HH:mm'.");
-                return;
-            }
-
-            var newEvent = new Event
-            {
-                Name = name,
-                StartTime = startTime,
-                EndTime = endTime
-            };
-
-            service.AddEvent(newEvent);
-            Console.WriteLine($"Event '{name}' added successfully.");
-        }
-
-        private void RunInteractiveAdd(TaskManagerService service)
-        {
-            Console.WriteLine("Adding a new event (press Esc to cancel).");
-
-            Console.Write("Event Name: ");
-            string? name = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(name))
+            DateTime? startTime = ConsoleInputHelper.GetDateTimeFromUser("Set event start time (Enter to confirm, Esc to cancel):", DateTime.Now);
+            if (startTime == null)
             {
                 Console.WriteLine("Event creation cancelled.");
                 return;
             }
 
-            DateTime? startTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set event start time:", DateTime.Now);
-            if (startTime == null)
+            DateTime? endTime = ConsoleInputHelper.GetDateTimeFromUser("Set event end time (Enter to confirm, Esc to cancel):", startTime.Value.AddHours(1));
+            if (endTime == null)
             {
-                Console.WriteLine("Event creation cancelled. A valid start time is required.");
+                Console.WriteLine("Event creation cancelled.");
                 return;
             }
 
-            DateTime? endTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set event end time:", startTime.Value.AddHours(1));
-            if (endTime == null)
+            if (endTime < startTime)
             {
-                Console.WriteLine("Event creation cancelled. A valid end time is required.");
-                return;
+                Console.WriteLine("Warning: End time is before start time. Swapping times.");
+                (startTime, endTime) = (endTime, startTime);
             }
 
             var newEvent = new Event
@@ -113,41 +98,22 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.WriteLine($"Event '{name}' added successfully.");
         }
 
-        private DateTime GetDateTimeFromUser(string prompt, DateTime? defaultTime = null)
-        {
-            DateTime result;
-            while (true)
-            {
-                Console.Write(prompt);
-                string? input = Console.ReadLine();
-                if (DateTime.TryParse(input, out result))
-                {
-                    return result;
-                }
-                else if (defaultTime.HasValue && string.IsNullOrWhiteSpace(input))
-                {
-                    return defaultTime.Value;
-                }
-                else
-                {
-                    Console.WriteLine("Invalid date/time format. Please try again.");
-                }
-            }
-        }
-
         private void HandleListEvents(TaskManagerService service)
         {
-            var events = service.GetAllEvents().OrderBy(e => e.StartTime);
+            var events = service.GetAllEvents().OrderBy(e => e.StartTime).ToList();
             if (!events.Any())
             {
-                Console.WriteLine("No scheduled events.");
+                Console.WriteLine("No scheduled events found.");
                 return;
             }
 
-            Console.WriteLine("Scheduled Events:");
+            Console.WriteLine($"{"ID",-5} {"Time",-35} {"Event",-40}");
+            Console.WriteLine(new string('-', 80));
+
             foreach (var ev in events)
             {
-                Console.WriteLine($"  [ID: {ev.Id}] {ev.Name} ({ev.StartTime:g} - {ev.EndTime:g})");
+                string timeString = $"{ev.StartTime:g} - {ev.EndTime:t}";
+                Console.WriteLine($"{ev.Id,-5} {timeString,-35} {ev.Name,-40}");
             }
         }
 
@@ -166,56 +132,159 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            Console.WriteLine($"Editing event: {existingEvent.Name} (ID: {existingEvent.Id})");
+            // Interactive Menu Loop
+            int selectedIndex = 0;
+            Console.CursorVisible = false;
 
-            Console.Write($"Event Name ({existingEvent.Name}): ");
-            string? newName = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(newName))
+            while (true)
             {
-                existingEvent.Name = newName;
-            }
-
-            DateTime? newStartTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event start time:", existingEvent.StartTime);
-            if (newStartTime.HasValue)
-            {
-                existingEvent.StartTime = newStartTime.Value;
-            }
-
-
-            DateTime? newEndTime = Utils.ConsoleInputHelper.GetDateTimeFromUser("Set new event end time:", existingEvent.EndTime);
-
-            if (newEndTime.HasValue)
-            {
-                if (newEndTime.Value < existingEvent.StartTime)
+                Console.Clear();
+                Console.WriteLine($"Editing event: {existingEvent.Name}");
+                
+                var displayItems = new List<string>
                 {
-                    Console.WriteLine("End time cannot be before start time. Adjusting end time.");
-                    existingEvent.EndTime = existingEvent.StartTime.AddHours(1);
-                }
-                else
+                    $"Name: {existingEvent.Name}",
+                    $"Start Time: {existingEvent.StartTime:yyyy-MM-dd HH:mm}",
+                    $"End Time: {existingEvent.EndTime:yyyy-MM-dd HH:mm}",
+                    "[Save & Exit]",
+                    "[Cancel]"
+                };
+
+                ConsoleHelper.DrawMenu(displayItems, selectedIndex);
+
+                var key = Console.ReadKey(true);
+
+                if (key.Key == ConsoleKey.Enter && (key.Modifiers & ConsoleModifiers.Shift) != 0)
                 {
-                    existingEvent.EndTime = newEndTime.Value;
+                    service.UpdateEvent(existingEvent);
+                    Console.CursorVisible = true;
+                    Console.WriteLine("\nEvent updated successfully.");
+                    return;
+                }
+
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = (selectedIndex - 1 + displayItems.Count) % displayItems.Count;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = (selectedIndex + 1) % displayItems.Count;
+                        break;
+                    case ConsoleKey.Enter:
+                        if (selectedIndex == displayItems.Count - 2) // Save & Exit
+                        {
+                            service.UpdateEvent(existingEvent);
+                            Console.CursorVisible = true;
+                            Console.WriteLine("\nEvent updated successfully.");
+                            return;
+                        }
+                        if (selectedIndex == displayItems.Count - 1) // Cancel
+                        {
+                            Console.CursorVisible = true;
+                            Console.WriteLine("\nEdit cancelled.");
+                            return;
+                        }
+
+                        // Handle property edits
+                        Console.CursorVisible = true;
+                        if (selectedIndex == 0) // Name
+                        {
+                             Console.Write($"\nNew Name ({existingEvent.Name}): ");
+                             string? input = Console.ReadLine();
+                             if (!string.IsNullOrWhiteSpace(input)) existingEvent.Name = input;
+                        }
+                        else if (selectedIndex == 1) // Start Time (Smart Shift)
+                        {
+                            TimeSpan originalDuration = existingEvent.EndTime - existingEvent.StartTime;
+                            DateTime? newStart = ConsoleInputHelper.GetDateTimeFromUser("\nSet new start time:", existingEvent.StartTime);
+                            if (newStart.HasValue)
+                            {
+                                existingEvent.StartTime = newStart.Value;
+                                existingEvent.EndTime = newStart.Value.Add(originalDuration); // Smart Shift
+                            }
+                        }
+                        else if (selectedIndex == 2) // End Time (Duration Change)
+                        {
+                            Console.CursorVisible = true;
+                            // Prompt for end time starting from current end time, but ensure context is clear
+                            DateTime? newEnd = ConsoleInputHelper.GetDateTimeFromUser("\nSet new end time:", existingEvent.EndTime);
+                            if (newEnd.HasValue)
+                            {
+                                if (newEnd.Value < existingEvent.StartTime)
+                                {
+                                    Console.WriteLine("Warning: End time cannot be before start time.");
+                                    Console.WriteLine("Press any key to continue...");
+                                    Console.ReadKey(true);
+                                }
+                                else
+                                {
+                                    existingEvent.EndTime = newEnd.Value;
+                                }
+                            }
+                        }
+                        Console.CursorVisible = false;
+                        break;
+                    case ConsoleKey.Escape:
+                        Console.CursorVisible = true;
+                        Console.WriteLine("\nEdit cancelled.");
+                        return;
                 }
             }
-
-            service.UpdateEvent(existingEvent);
-            Console.WriteLine($"Event '{existingEvent.Name}' updated successfully.");
         }
 
         private void HandleRemoveEvent(TaskManagerService service, string[] args)
         {
-            if (args.Length == 0 || !int.TryParse(args[0], out int id))
+            if (args.Length == 0)
             {
-                Console.WriteLine("Usage: event remove <ID>");
+                Console.WriteLine("Usage: event delete <ID> or <ID1,ID2,...>");
                 return;
             }
 
-            if (service.DeleteEvent(id))
+            string joinedArgs = string.Join(",", args);
+            var idStrings = joinedArgs.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            
+            int successCount = 0;
+            int failCount = 0;
+
+            foreach (var idStr in idStrings)
             {
-                Console.WriteLine($"Event with ID {id} removed successfully.");
+                if (int.TryParse(idStr.Trim(), out int id))
+                {
+                    if (service.DeleteEvent(id))
+                    {
+                        Console.WriteLine($"Event {id} deleted.");
+                        successCount++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Event {id} not found.");
+                        failCount++;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Invalid ID format: '{idStr}'");
+                    failCount++;
+                }
+            }
+
+            if (idStrings.Length > 1) 
+            {
+                Console.WriteLine($"Finished: {successCount} deleted, {failCount} failed.");
+            }
+        }
+
+        private void HandleClearEvents(TaskManagerService service)
+        {
+            Console.Write("Are you sure you want to delete ALL events? (y/n): ");
+            if (Console.ReadLine()?.Trim().ToLower() == "y")
+            {
+                service.ClearEvents();
+                Console.WriteLine("All events cleared.");
             }
             else
             {
-                Console.WriteLine($"Error: Event with ID {id} not found.");
+                Console.WriteLine("Operation cancelled.");
             }
         }
     }

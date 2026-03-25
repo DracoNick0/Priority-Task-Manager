@@ -50,6 +50,7 @@ namespace PriorityTaskManager.CLI
 				{ "cleanup", new CleanupHandler(service) },
 				{ "settings", new SettingsHandler(timeService) },
 				{ "event", new EventCommandHandler() },
+				{ "e", new EventCommandHandler() },
 				{ "time", new TimeHandler(timeService) },
 				{ "mode", new ModeHandler() }
 			};
