@@ -2,16 +2,6 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-*   **Phase 3: Critical UX & Settings Prep (Enable Dual-Mode)**
-    - [x] **Improve Settings Interface (User Preferences)**: Refactor `SettingsHandler` to be interactive. Expose `SchedulingMode`, `WorkDays`, `WorkHours`, and `Time`.
-    - [x] **Improve Task Creation UI (`AddHandler`)**: Streamlined prompts with defaults (EndOfDay) and interactive date picker.
-    - [x] **Comprehensive Task Editing (`EditHandler`)**:
-        -   Interactive menu (up/down arrow navigation, F10/Shift+Enter to save, Esc to cancel).
-        -   Enhanced Time Picker (split min/EndOfDay, Esc support).
-        -   Sub-menu for Dependencies (safe edit buffer).
-    - [x] **Standardize Commands**: Ensure consistent naming (e.g., `delete`, `mode`).
-    - [x] **Phase 3 Complete**: All critical UX components for dual-mode switching are live.
-
 *   **Phase 4: Implement Constraint Optimization (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
