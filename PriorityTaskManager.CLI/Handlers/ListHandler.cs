@@ -190,19 +190,19 @@ namespace PriorityTaskManager.CLI.Handlers
                 {
                     meterColor = ConsoleColor.DarkGray; // Overdue or broken schedule
                 }
-                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 0.5, closestTaskDurMin / 4.0))
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdDire, closestTaskDurMin / 4.0))
                 {
                     meterColor = ConsoleColor.Red;
                 }
-                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 1.0, closestTaskDurMin / 2.0))
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdPressing, closestTaskDurMin / 2.0))
                 {
                     meterColor = ConsoleColor.DarkYellow;
                 }
-                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 3.0, closestTaskDurMin))
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdFocus, closestTaskDurMin))
                 {
                     meterColor = ConsoleColor.Yellow;
                 }
-                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 5.0, closestTaskDurMin * 3.0))
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdSafe, closestTaskDurMin * 3.0))
                 {
                     meterColor = ConsoleColor.Green;
                 }
@@ -221,10 +221,10 @@ namespace PriorityTaskManager.CLI.Handlers
                     var dMin = task.EstimatedDuration.TotalMinutes;
                     
                     if (sMin < 0) taskColorMap[task.Id] = ConsoleColor.DarkGray;
-                    else if (sMin <= Math.Max(dailyWorkMinutes * 0.5, dMin / 4.0)) taskColorMap[task.Id] = ConsoleColor.Red;
-                    else if (sMin <= Math.Max(dailyWorkMinutes * 1.0, dMin / 2.0)) taskColorMap[task.Id] = ConsoleColor.DarkYellow;
-                    else if (sMin <= Math.Max(dailyWorkMinutes * 3.0, dMin)) taskColorMap[task.Id] = ConsoleColor.Yellow;
-                    else if (sMin <= Math.Max(dailyWorkMinutes * 5.0, dMin * 3.0)) taskColorMap[task.Id] = ConsoleColor.Green;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdDire, dMin / 4.0)) taskColorMap[task.Id] = ConsoleColor.Red;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdPressing, dMin / 2.0)) taskColorMap[task.Id] = ConsoleColor.DarkYellow;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdFocus, dMin)) taskColorMap[task.Id] = ConsoleColor.Yellow;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdSafe, dMin * 3.0)) taskColorMap[task.Id] = ConsoleColor.Green;
                     else taskColorMap[task.Id] = ConsoleColor.Cyan;
                 }
 
@@ -475,25 +475,25 @@ namespace PriorityTaskManager.CLI.Handlers
                         {
                             taskColor = ConsoleColor.DarkGray; // Overdue
                         }
-                        else if (slackMin <= Math.Max(dailyWorkMinutes * 0.5, durMin / 4.0))
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdDire, durMin / 4.0))
                         {
-                            taskColor = ConsoleColor.Red; // Dire (< 0.5 Days or < 25% buffer)
+                            taskColor = ConsoleColor.Red;
                         }
-                        else if (slackMin <= Math.Max(dailyWorkMinutes * 1.0, durMin / 2.0))
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdPressing, durMin / 2.0))
                         {
-                            taskColor = ConsoleColor.DarkYellow; // Pressing (< 1 Day or < 50% buffer) - Orange
+                            taskColor = ConsoleColor.DarkYellow;
                         }
-                        else if (slackMin <= Math.Max(dailyWorkMinutes * 3.0, durMin))
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdFocus, durMin))
                         {
-                            taskColor = ConsoleColor.Yellow; // Focus (< 3 Days or < 100% buffer)
+                            taskColor = ConsoleColor.Yellow;
                         }
-                        else if (slackMin <= Math.Max(dailyWorkMinutes * 5.0, durMin * 3.0))
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * userProfile.SlackThresholdSafe, durMin * 3.0))
                         {
-                            taskColor = ConsoleColor.Green; // Safe (< 5 Days or < 300% buffer)
+                            taskColor = ConsoleColor.Green;
                         }
                         else
                         {
-                            taskColor = ConsoleColor.Cyan; // Leisure (> 5 Days or > 300% buffer)
+                            taskColor = ConsoleColor.Cyan;
                         }
 
                         Console.ForegroundColor = taskColor;

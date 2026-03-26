@@ -33,5 +33,25 @@ namespace PriorityTaskManager.Models
         /// The scheduling algorithm to use. Defaults to GoldPanning (Legacy).
         /// </summary>
         public SchedulingMode SchedulingMode { get; set; } = SchedulingMode.GoldPanning;
+
+        /// <summary>
+        /// Multiplier of Average Work Day for 'Dire' (Red) urgency. Defaults to 0.5.
+        /// </summary>
+        public double SlackThresholdDire { get; set; } = 0.5;
+
+        /// <summary>
+        /// Multiplier of Average Work Day for 'Pressing' (DarkYellow) urgency. Defaults to 1.0.
+        /// </summary>
+        public double SlackThresholdPressing { get; set; } = 1.0;
+
+        /// <summary>
+        /// Multiplier of Average Work Day for 'Focus' (Yellow) urgency. Defaults to 3.0.
+        /// </summary>
+        public double SlackThresholdFocus { get; set; } = 3.0;
+
+        /// <summary>
+        /// Multiplier of Average Work Day for 'Safe' (Green) urgency. Defaults to 5.0.
+        /// </summary>
+        public double SlackThresholdSafe { get; set; } = 5.0;
     }
 }

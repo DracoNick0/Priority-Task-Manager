@@ -52,6 +52,24 @@ namespace PriorityTaskManager.CLI.Handlers
                             i++; // consume value
                         }
                         break;
+                    case "--set-slack":
+                        if (i + 4 < args.Length &&
+                            double.TryParse(args[i + 1], out double dire) &&
+                            double.TryParse(args[i + 2], out double pressing) &&
+                            double.TryParse(args[i + 3], out double focus) &&
+                            double.TryParse(args[i + 4], out double safe))
+                        {
+                            userProfile.SlackThresholdDire = dire;
+                            userProfile.SlackThresholdPressing = pressing;
+                            userProfile.SlackThresholdFocus = focus;
+                            userProfile.SlackThresholdSafe = safe;
+                            i += 4;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --set-slack requires 4 numeric arguments (Dire Pressing Focus Safe).");
+                        }
+                        break;
                 }
             }
 
@@ -63,23 +81,22 @@ namespace PriorityTaskManager.CLI.Handlers
         private void RunInteractiveSettings(TaskManagerService service)
         {
             var userProfile = service.GetUserProfile();
-            var menuItems = new List<string> 
-            { 
-                "Working Days", 
-                "Working Hours", 
-                $"Scheduling Strategy: [{userProfile.SchedulingMode}]",
-                "Set Simulated Time",
-                "Run Cleanup (Archive/Re-Index)",
-                "Save and Exit" 
-            };
             int selectedIndex = 0;
 
             Console.CursorVisible = false;
             while (true)
             {
                 Console.Clear();
-                // Refresh dynamic menu items
-                menuItems[2] = $"Scheduling Strategy: [{userProfile.SchedulingMode}]";
+                var menuItems = new List<string> 
+                { 
+                    "Working Days", 
+                    "Working Hours", 
+                    $"Scheduling Strategy: [{userProfile.SchedulingMode}]",
+                    "Urgency Thresholds (Slack)", // New Menu Item
+                    "Set Simulated Time",
+                    "Run Cleanup (Archive/Re-Index)",
+                    "Save and Exit" 
+                };
 
                 PrintCurrentSettings(userProfile);
                 DrawMenu(menuItems, selectedIndex);
@@ -95,7 +112,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
                         break;
                     case ConsoleKey.Enter:
-                        if (selectedIndex == 5) // Save and Exit
+                        if (selectedIndex == 6) // Save and Exit
                         {
                             service.UpdateUserProfile(userProfile);
                             Console.Clear();
@@ -146,7 +163,10 @@ namespace PriorityTaskManager.CLI.Handlers
                         ? SchedulingMode.ConstraintOptimization 
                         : SchedulingMode.GoldPanning;
                     break;
-                case 3: // Set Simulated Time
+                case 3: // Urgency Thresholds
+                    RunInteractiveSlackSelector(userProfile);
+                    break;
+                case 4: // Set Simulated Time
                     // New Submenu for Time
                     Console.WriteLine("\nSet Time: [1] Now [2] Custom");
                     var key = Console.ReadKey(true);
@@ -163,7 +183,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         Console.ReadKey(true); 
                     }
                     break;
-                case 4: // Run Cleanup
+                case 5: // Run Cleanup
                     var cleanupHandler = new CleanupHandler(service);
                     cleanupHandler.Execute(service, new string[0]);
                     Console.ReadKey(true);
@@ -232,6 +252,77 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 Console.WriteLine($"  [{(isSelected ? 'X' : ' ')}] {day}");
                 Console.ResetColor();
+            }
+        }
+
+        private void RunInteractiveSlackSelector(UserProfile userProfile)
+        {
+            int selectedIndex = 0;
+            double increment = 0.5;
+
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Adjust Urgency Thresholds (Multipliers of Average Work Day):");
+                Console.WriteLine("Use Left/Right to adjust values, Enter to save.");
+
+                // Map current values to display
+                var items = new List<string>
+                {
+                    $"Dire     (< {userProfile.SlackThresholdDire:F1} days) [Red]",
+                    $"Pressing (< {userProfile.SlackThresholdPressing:F1} days) [DarkYellow]",
+                    $"Focus    (< {userProfile.SlackThresholdFocus:F1} days) [Yellow]",
+                    $"Safe     (< {userProfile.SlackThresholdSafe:F1} days) [Green]",
+                    "Back to Settings"
+                };
+
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (i == selectedIndex)
+                    {
+                        Console.BackgroundColor = ConsoleColor.White;
+                        Console.ForegroundColor = ConsoleColor.Black;
+                        Console.WriteLine($"> {items[i]}");
+                    }
+                    else
+                    {
+                        Console.ResetColor();
+                        Console.WriteLine($"  {items[i]}");
+                    }
+                    Console.ResetColor();
+                }
+
+                var key = Console.ReadKey(true);
+
+                if (key.Key == ConsoleKey.UpArrow)
+                {
+                    selectedIndex = (selectedIndex - 1 + items.Count) % items.Count;
+                }
+                else if (key.Key == ConsoleKey.DownArrow)
+                {
+                    selectedIndex = (selectedIndex + 1) % items.Count;
+                }
+                else if (key.Key == ConsoleKey.Enter)
+                {
+                     // Return regardless of selection (values are live-updated in memory)
+                    return;
+                }
+                else if (selectedIndex < 4) // Adjust numeric values
+                {
+                    double currentVal = 0;
+                    if (selectedIndex == 0) currentVal = userProfile.SlackThresholdDire;
+                    if (selectedIndex == 1) currentVal = userProfile.SlackThresholdPressing;
+                    if (selectedIndex == 2) currentVal = userProfile.SlackThresholdFocus;
+                    if (selectedIndex == 3) currentVal = userProfile.SlackThresholdSafe;
+
+                    if (key.Key == ConsoleKey.LeftArrow) currentVal = Math.Max(0.1, currentVal - increment);
+                    if (key.Key == ConsoleKey.RightArrow) currentVal = currentVal + increment;
+                    
+                    if (selectedIndex == 0) userProfile.SlackThresholdDire = currentVal;
+                    if (selectedIndex == 1) userProfile.SlackThresholdPressing = currentVal;
+                    if (selectedIndex == 2) userProfile.SlackThresholdFocus = currentVal;
+                    if (selectedIndex == 3) userProfile.SlackThresholdSafe = currentVal;
+                }
             }
         }
 
