@@ -8,8 +8,9 @@ using System.Linq;
 namespace PriorityTaskManager.MCP.Agents
 {
     /// <summary>
-    /// Agent responsible for pre-processing tasks before scheduling.
-    /// It calculates the available time slots for work based on the user's profile, tasks, and existing events.
+    /// Agent responsible for preparing the canvas for scheduling.
+    /// It calculates the "Horizon" (how far into the future we need to look) based on total workload,
+    /// and generates concrete "Time Slots" by subtracting user events from their working hours.
     /// </summary>
     public class SchedulePreProcessorAgent : IAgent
     {
@@ -40,7 +41,7 @@ namespace PriorityTaskManager.MCP.Agents
             var now = _timeService.GetCurrentTime();
             var totalWorkloadDuration = TimeSpan.FromTicks(tasks.Sum(t => t.EstimatedDuration.Ticks));
 
-            // If there's no work to be done, there's no need to calculate slots.
+            // Optimization: No work = No slots needed.
             if (totalWorkloadDuration <= TimeSpan.Zero)
             {
                 context.History.Add("SchedulePreProcessorAgent: No tasks to schedule, no time slots generated.");
@@ -92,8 +93,7 @@ namespace PriorityTaskManager.MCP.Agents
                 }
             }
             
-            // Ensure horizon includes at least a week, even if workload is tiny.
-            // This prevents "No Available Days" issues when workload is small but scheduling needs bucket space.
+            // Ensure horizon includes at least a week to prevent empty bucket issues in Gold Panning
             if (horizonDate < now.Date.AddDays(7))
             {
                horizonDate = now.Date.AddDays(7);
@@ -126,7 +126,7 @@ namespace PriorityTaskManager.MCP.Agents
                 if (workStart >= workEnd)
                     continue;
 
-                // Merge overlapping events for the current day
+                // Merge overlapping events for the current day to simplify slot subtraction
                 var dayEvents = MergeOverlappingEvents(sortedEvents.Where(e => e.EndTime > workStart && e.StartTime < workEnd).ToList());
 
                 var currentStart = workStart;
@@ -162,7 +162,6 @@ namespace PriorityTaskManager.MCP.Agents
                 }).ToList(); // Clone to prevent mutation
 
             var mergedEvents = new List<Event>();
-            // Clone first event
             var currentEvent = new Event 
             { 
                 Id = events[0].Id, 
@@ -176,15 +175,14 @@ namespace PriorityTaskManager.MCP.Agents
                 var nextEvent = events[i];
                 if (nextEvent.StartTime < currentEvent.EndTime)
                 {
-                    // Overlap detected, merge by extending the current event's end time
+                    // Overlap detected: Extend current event
                     currentEvent.EndTime = nextEvent.EndTime > currentEvent.EndTime ? nextEvent.EndTime : currentEvent.EndTime;
                 }
                 else
                 {
-                    // No overlap, add the completed event and start a new one
+                    // No overlap: Commit current and start new
                     mergedEvents.Add(currentEvent);
                     
-                    // Clone the next event
                     currentEvent = new Event
                     {
                         Id = nextEvent.Id,
@@ -194,7 +192,7 @@ namespace PriorityTaskManager.MCP.Agents
                     };
                 }
             }
-            mergedEvents.Add(currentEvent); // Add the last event
+            mergedEvents.Add(currentEvent);
 
             return mergedEvents;
         }
