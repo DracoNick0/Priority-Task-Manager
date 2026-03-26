@@ -177,22 +177,43 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                 }
 
-                // Determine color
+                // Calculate User's Average Daily Capacity
+                var dailyWorkMinutes = (userProfile.WorkEndTime - userProfile.WorkStartTime).TotalMinutes;
+                if (dailyWorkMinutes <= 0) dailyWorkMinutes = 8 * 60; // Fallback to 8h
+
+                var closestTaskSlackMin = slack.TotalMinutes;
+                var closestTaskDurMin = closestTask.EstimatedDuration.TotalMinutes;
+
+                // Determine meter color (based on the task with least slack/highest pressure)
                 ConsoleColor meterColor;
-                if (slack.TotalMinutes < 0 || result.UnscheduledTasks.Any())
-                    meterColor = ConsoleColor.Black;
-                else if (slackPercentage > 0.25)
-                    meterColor = ConsoleColor.Green;
-                else if (slackPercentage > 0.10)
-                    meterColor = ConsoleColor.Yellow;
-                else
+                if (closestTaskSlackMin < 0 || result.UnscheduledTasks.Any())
+                {
+                    meterColor = ConsoleColor.DarkGray; // Overdue or broken schedule
+                }
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 0.5, closestTaskDurMin / 4.0))
+                {
                     meterColor = ConsoleColor.Red;
+                }
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 1.0, closestTaskDurMin / 2.0))
+                {
+                    meterColor = ConsoleColor.DarkYellow;
+                }
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 3.0, closestTaskDurMin))
+                {
+                    meterColor = ConsoleColor.Yellow;
+                }
+                else if (closestTaskSlackMin <= Math.Max(dailyWorkMinutes * 5.0, closestTaskDurMin * 3.0))
+                {
+                    meterColor = ConsoleColor.Green;
+                }
+                else
+                {
+                    meterColor = ConsoleColor.Cyan;
+                }
 
                 // Pre-calculate colors for tasks on the timeline
                 var taskColorMap = new Dictionary<int, ConsoleColor>();
-                var dailyWorkMinutes = (userProfile.WorkEndTime - userProfile.WorkStartTime).TotalMinutes;
-                if (dailyWorkMinutes <= 0) dailyWorkMinutes = 8 * 60;
-
+                
                 foreach (var task in scheduledTasksForDay)
                 {
                     var taskSlack = _taskMetricsService.CalculateRealisticSlack(task, userProfile);
