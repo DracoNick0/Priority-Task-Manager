@@ -1,16 +1,19 @@
 namespace PriorityTaskManager.Models
 {
+    /// <summary>
+    /// Defines the available scheduling algorithms that the user can choose from.
+    /// </summary>
     public enum SchedulingMode
     {
         /// <summary>
-        /// The legacy "Gold Panning" strategy (Multi-Agent Coordination Pattern).
-        /// Flows tasks through time based on gravity (Urgency/Importance).
+        /// The "Gold Panning" strategy, which uses the Master Control Program (MCP)
+        /// agent pipeline to flow tasks through time based on urgency and importance.
         /// </summary>
         GoldPanning,
 
         /// <summary>
-        /// The new V1 strategy (Constraint Solver).
-        /// Uses a solver to optimize the schedule against a set of constraints.
+        /// The "Constraint Solver" strategy.
+        /// It uses an optimization engine to find the best schedule that satisfies a set of rules and constraints.
         /// </summary>
         ConstraintOptimization
     }

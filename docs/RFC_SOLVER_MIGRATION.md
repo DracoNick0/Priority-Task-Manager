@@ -19,7 +19,7 @@ The system will support two distinct scheduling strategies implementing a common
     -   Follows the `SCHEDULING_SYSTEM_SPEC.md`.
 
 ## 3. Migration Principles
-1.  **Co-existence**: The new scheduler is additive. No legacy code is deleted until V2+ (deprecation phase).
+1.  **Co-existence**: The new scheduler is additive.
 2.  **User Choice**: Users select their preferred scheduler via `UserProfile.SchedulingMode`.
 3.  **Safe Fallback**: If the new strategy fails or is incomplete, the user can instantly switch back to Gold Panning.
 4.  **Deterministic**: Both strategies must be deterministic given the same inputs.

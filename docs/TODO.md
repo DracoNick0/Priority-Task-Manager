@@ -2,10 +2,6 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-*   **Phase 3: Code Cleanup & Comment Audit**
-    -   [ ] Go through all Agent files and improve/add comments for clarity.
-    -   [ ] Review other core logic files for comment quality.
-
 *   **Phase 4: Implement Constraint Solver (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
