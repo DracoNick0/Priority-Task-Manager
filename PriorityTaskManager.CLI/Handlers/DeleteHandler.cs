@@ -5,12 +5,11 @@ using PriorityTaskManager.CLI.Utils;
 namespace PriorityTaskManager.CLI.Handlers
 {
     /// <summary>
-    /// Handles the 'delete' command, allowing users to remove tasks by their ID.
+    /// Handles the 'delete' command.
+    /// Permanently removes one or more tasks from the active list using their display IDs.
     /// </summary>
     public class DeleteHandler : ICommandHandler
     {
-        public DeleteHandler() { }
-
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
@@ -19,9 +18,19 @@ namespace PriorityTaskManager.CLI.Handlers
 
             if (validTaskIds.Count == 0)
             {
-                Console.WriteLine("Usage: delete <Id>,<Id2>,...");
+                Console.WriteLine("No valid task IDs provided.");
+                Console.WriteLine("Usage: delete <Id1>,<Id2>,...");
                 return;
             }
+
+            // Optional: Add a confirmation step for safety.
+            // Console.Write($"You are about to delete {validTaskIds.Count} task(s). Are you sure? (y/n): ");
+            // if (Console.ReadKey().Key != ConsoleKey.Y)
+            // {
+            //     Console.WriteLine("\nDeletion cancelled.");
+            //     return;
+            // }
+            // Console.WriteLine();
 
             foreach (var id in validTaskIds)
             {
@@ -31,9 +40,11 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
                 else
                 {
-                    Console.WriteLine($"Task {id} not found.");
+                    // This case is unlikely if ParseAndValidateTaskIds is correct, but included for robustness.
+                    Console.WriteLine($"Error: Task {id} could not be found or deleted.");
                 }
             }
         }
     }
 }
+

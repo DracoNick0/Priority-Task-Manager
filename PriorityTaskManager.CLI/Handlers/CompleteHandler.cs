@@ -5,12 +5,11 @@ using PriorityTaskManager.CLI.Utils;
 namespace PriorityTaskManager.CLI.Handlers
 {
     /// <summary>
-    /// Handles the 'complete' command, marking tasks as complete by their ID.
+    /// Handles the 'complete' command.
+    /// Marks one or more tasks as complete using their display IDs.
     /// </summary>
     public class CompleteHandler : ICommandHandler
     {
-        public CompleteHandler() { }
-
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
@@ -19,7 +18,8 @@ namespace PriorityTaskManager.CLI.Handlers
 
             if (validTaskIds.Count == 0)
             {
-                Console.WriteLine("Usage: complete <Id>,<Id2>,...");
+                Console.WriteLine("No valid task IDs provided.");
+                Console.WriteLine("Usage: complete <Id1>,<Id2>,...");
                 return;
             }
 
@@ -31,7 +31,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
                 else
                 {
-                    Console.WriteLine($"Task {id} not found.");
+                    // This case is unlikely if ParseAndValidateTaskIds is correct, but included for robustness.
+                    Console.WriteLine($"Error: Task {id} could not be found or updated.");
                 }
             }
         }

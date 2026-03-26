@@ -8,7 +8,8 @@ using PriorityTaskManager.CLI.Utils;
 namespace PriorityTaskManager.CLI.Handlers
 {
     /// <summary>
-    /// Handles the 'add' command, allowing users to quickly add new tasks using a streamlined flow.
+    /// Handles the 'add' command.
+    /// Guides the user through a series of prompts to create a new task with all necessary details.
     /// </summary>
     public class AddHandler : ICommandHandler
     {
@@ -21,6 +22,7 @@ namespace PriorityTaskManager.CLI.Handlers
         public void Execute(TaskManagerService service, string[] args)
         {
             string title;
+            // If the title is provided as an argument, use it. Otherwise, prompt the user.
             if (args.Length > 0)
             {
                 title = string.Join(" ", args);
@@ -39,47 +41,27 @@ namespace PriorityTaskManager.CLI.Handlers
 
             Console.WriteLine($"Adding task: '{title}'");
 
-            // 1. Importance (1-10)
+            // --- Gather Task Details Interactively ---
             int importance = ConsoleInputHelper.PromptForInt("Importance", 1, 10, DefaultImportance);
-
-            // 2. Complexity (1-10)
             int complexity = ConsoleInputHelper.PromptForInt("Complexity", 1, 10, DefaultComplexity);
-
-            // 3. Must Schedule (IsPinned)
             bool isPinned = ConsoleInputHelper.PromptForBool("Must Schedule Today?", DefaultPinned);
-
-            // 4. Duration
             TimeSpan duration = ConsoleInputHelper.PromptForDuration("Duration", DefaultDuration);
-
-            // 5. Due Date (Interactive)
+            
             Console.WriteLine("Due Date (use arrows to adjust, Enter to confirm):");
             DateTime? dueDate = ConsoleInputHelper.HandleInteractiveDateInput(null);
             
-            // Set time
+            // If a due date is provided, set the time to the end of that day (23:59:59).
+            // This ensures the task is due by the end of the selected day.
             if (dueDate.HasValue)
             {
-                // Default to End of Day, but allow user to change it if they want? 
-                // The requirements were to "apply this time thing to settings too".
-                // I should probably offer time adjustment here as well for consistency, 
-                // or at least make it clear it is end of day.
-                // However, user asked for AddHandler prompt streamlining.
-                // Let's stick to the current plan for Add: Date input, default to EOD.
-                // But wait, the user said "For edit, lets separate the field...". 
-                // And "I'd also like to apply this time thing to settings too."
-                // They didn't explicitly ask for AddHandler change, but "Streamline prompts" was the goal.
-                
-                // Let's just ensure it defaults to EOD properly.
                 dueDate = dueDate.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
             }
 
-            // Defaults for other fields
-            string description = "";
-            List<int> dependencies = new List<int>();
-
+            // Create the new task object with the collected information.
             var task = new TaskItem
             {
                 Title = title,
-                Description = description,
+                Description = "", // Description is left empty for quick add. Can be added via 'edit'.
                 Importance = importance,
                 Complexity = (double)complexity,
                 IsPinned = isPinned,
@@ -87,13 +69,14 @@ namespace PriorityTaskManager.CLI.Handlers
                 IsCompleted = false,
                 EstimatedDuration = duration,
                 Progress = 0.0,
-                Dependencies = dependencies,
+                Dependencies = new List<int>(),
                 ListId = service.GetActiveListId()
             };
 
+            // Add the task to the system via the TaskManagerService.
             service.AddTask(task);
 
-            Console.WriteLine($"\nTask '{task.Title}' added successfully (ID: {task.Id}).");
+            Console.WriteLine($"\nTask '{task.Title}' added successfully (ID: {task.DisplayId}).");
         }
     }
 }

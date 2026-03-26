@@ -5,7 +5,8 @@ using PriorityTaskManager.Models;
 namespace PriorityTaskManager.CLI.Handlers
 {
     /// <summary>
-    /// Handles the 'list' command, displaying all tasks sorted by urgency.
+    /// Handles the 'list' command and its sub-commands.
+    /// Manages task lists, including viewing, creating, switching, deleting, and sorting.
     /// </summary>
     public class ListHandler : ICommandHandler
     {
@@ -21,55 +22,52 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
+            // Ensure an active list is set. If not, default to the "General" list or the first available one.
             if (service.GetActiveListId() == 0)
             {
                 var generalList = service.GetListByName("General");
-                if (generalList != null)
-                    service.SetActiveListId(generalList.Id);
-                else
-                    service.SetActiveListId(1);
+                service.SetActiveListId(generalList?.Id ?? 1);
             }
 
-            if (args.Length == 0 || args[0].Equals("view", StringComparison.OrdinalIgnoreCase))
+            // Command routing
+            var command = args.Length > 0 ? args[0].ToLower() : "view";
+            var commandArgs = args.Skip(1).ToArray();
+
+            switch (command)
             {
-                HandleViewTasksInActiveList(service);
-            }
-            else if (args[0].Equals("all", StringComparison.OrdinalIgnoreCase))
-            {
-                HandleViewAllLists(service);
-            }
-            else if (args[0].Equals("create", StringComparison.OrdinalIgnoreCase))
-            {
-                HandleCreateList(service, args.Skip(1).ToArray());
-            }
-            else if (args[0].Equals("switch", StringComparison.OrdinalIgnoreCase))
-            {
-                if (args.Length > 1)
-                {
-                    HandleSwitchList(service, args.Skip(1).ToArray());
-                }
-                else
-                {
-                    HandleInteractiveSwitch(service);
-                }
-            }
-            else if (args[0].Equals("delete", StringComparison.OrdinalIgnoreCase))
-            {
-                HandleDeleteList(service, args.Skip(1).ToArray());
-            }
-            else if (args[0].Equals("sort", StringComparison.OrdinalIgnoreCase))
-            {
-                HandleSetSortOption(service, args.Skip(1).ToArray());
-            }
-            else
-            {
-                Console.WriteLine("Usage: list [view|all|create|switch|delete|sort <option>]");
+                case "view":
+                    HandleViewTasksInActiveList(service);
+                    break;
+                case "all":
+                    HandleViewAllLists(service);
+                    break;
+                case "create":
+                    HandleCreateList(service, commandArgs);
+                    break;
+                case "switch":
+                    if (commandArgs.Length > 0)
+                        HandleSwitchList(service, commandArgs);
+                    else
+                        HandleInteractiveSwitch(service);
+                    break;
+                case "delete":
+                    HandleDeleteList(service, commandArgs);
+                    break;
+                case "sort":
+                    HandleSetSortOption(service, commandArgs);
+                    break;
+                default:
+                    Console.WriteLine("Usage: list [view|all|create|switch|delete|sort <option>]");
+                    break;
             }
         }
 
         /// <summary>
-        /// Finds the task closest to its due date across all tasks.
+        /// Finds the incomplete task that is closest to its due date among a collection of tasks.
+        /// This is used to identify the most immediate deadline.
         /// </summary>
+        /// <param name="tasks">A collection of tasks to search through.</param>
+        /// <returns>The <see cref="TaskItem"/> closest to its due date, or null if no suitable task is found.</returns>
         public TaskItem? FindClosestTaskToDueDate(IEnumerable<TaskItem> tasks)
         {
             return tasks
@@ -94,12 +92,12 @@ namespace PriorityTaskManager.CLI.Handlers
             var activeList = service.GetAllLists().FirstOrDefault(l => l.Id == service.GetActiveListId());
             if (activeList == null)
             {
-                Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
+                Console.WriteLine($"Error: Active list with ID '{service.GetActiveListId()}' could not be found.");
                 return;
             }
-            var result = service.GetPrioritizedTasks(service.GetActiveListId(), _timeService);
-            var tasksToDisplay = result.Tasks;
-            var incompleteTasks = tasksToDisplay.Where(t => !t.IsCompleted).ToList();
+
+            var result = service.GetPrioritizedTasks(activeList.Id, _timeService);
+            var incompleteTasks = result.Tasks.Where(t => !t.IsCompleted).ToList();
 
             var userProfile = service.UserProfile;
             var events = service.GetAllEvents().ToList();
@@ -109,9 +107,9 @@ namespace PriorityTaskManager.CLI.Handlers
             var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
 
             var eventsForDay = events
-                    .Where(e => e.StartTime.Date == targetDay.Date)
-                    .OrderBy(e => e.StartTime)
-                    .ToList();
+                .Where(e => e.StartTime.Date == targetDay.Date)
+                .OrderBy(e => e.StartTime)
+                .ToList();
 
             var closestTask = FindClosestTaskToDueDate(incompleteTasks);
             if (closestTask != null && closestTask.ScheduledParts.Any())
@@ -123,8 +121,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 // Calculate schedule pressure
                 var totalWorkTime = (workEnd - workStart).TotalHours;
                 var scheduledTime = incompleteTasks
-                        .SelectMany(t => t.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date))
-                        .Sum(p => p.Duration.TotalHours);
+                    .SelectMany(t => t.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date))
+                    .Sum(p => p.Duration.TotalHours);
 
                 var eventTime = eventsForDay.Sum(e => (e.EndTime - e.StartTime).TotalHours);
 
