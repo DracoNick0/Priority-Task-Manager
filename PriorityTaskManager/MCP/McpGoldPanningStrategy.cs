@@ -58,6 +58,7 @@ namespace PriorityTaskManager.MCP
             context.SharedState["Tasks"] = pipelineTasks;
             context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Events"] = _events;
+            context.SharedState["TimeService"] = _timeService;
 
             // Execute the agent chain
             var finalContext = MCP.Coordinate(agentChain, context);

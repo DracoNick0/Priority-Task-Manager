@@ -88,8 +88,8 @@ namespace PriorityTaskManager.MCP.Agents
                 
                 Console.WriteLine($"  -> Filling Day {currentDay.ToShortDateString()} (Capacity {dayCapacity:F1}h)...");
 
-                // Iterate backwards to allow removal
-                for (int j = remainingTasks.Count - 1; j >= 0; j--)
+                // Iterate forwards (High Priority first)
+                for (int j = 0; j < remainingTasks.Count; j++)
                 {
                     var task = remainingTasks[j];
                     double taskDuration = task.EstimatedDuration.TotalHours;
@@ -106,6 +106,7 @@ namespace PriorityTaskManager.MCP.Agents
                         dailyBucket.Add(task);
                         currentLoad += taskDuration;
                         remainingTasks.RemoveAt(j);
+                        j--; // Adjust index since we removed an item
                         Console.WriteLine($"    -> Added '{task.Title}' ({taskDuration:F1}h)");
                     }
                     else

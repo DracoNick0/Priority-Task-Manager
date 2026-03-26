@@ -17,12 +17,16 @@ namespace PriorityTaskManager.MCP.Agents
             }
 
             var weights = new Dictionary<int, double>();
-            var today = DateTime.Today; // Assuming local time for simple calculation, preferably use TimeService in future refactor
-
-            // Provide access to TimeService if available for more accurate 'Today'
+            
+            // Use TimeService to get the current date
+            DateTime today;
             if (context.SharedState.TryGetValue("TimeService", out var tsObj) && tsObj is Services.ITimeService timeService)
             {
                 today = timeService.GetCurrentTime().Date;
+            }
+            else
+            {
+                today = DateTime.Today;
             }
 
             Console.WriteLine($"  -> Calculating weights for {tasks.Count} tasks relative to {today.ToShortDateString()}.");

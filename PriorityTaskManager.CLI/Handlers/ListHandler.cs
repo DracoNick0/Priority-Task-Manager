@@ -283,7 +283,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
 
                 // --- Display combined output ---
-                string headerText = targetDay.Date == DateTime.Today.Date
+                string headerText = targetDay.Date == now.Date
                     ? "Today's Schedule:"
                     : $"{targetDay:dddd}'s Schedule:";
                 
