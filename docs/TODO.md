@@ -6,7 +6,7 @@
     -   [ ] Go through all Agent files and improve/add comments for clarity.
     -   [ ] Review other core logic files for comment quality.
 
-*   **Phase 4: Implement Constraint Optimization (New Strategy)**
+*   **Phase 4: Implement Constraint Solver (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
     -   Implement locked V1 reduced pipeline from SCHEDULING_SYSTEM_SPEC.md:

@@ -9,8 +9,8 @@ This document provides a high-level summary of the Priority Task Manager's curre
 
 Current branch strategy:
 1. Documentation-first migration.
-2. Stabilize Gold Panning Strategy (Green Tests).
-3. Implement V1 Core (Constraint Optimization Strategy).
+2. Stabilize Gold Panning (Green Tests).
+3. Implement V1 Core (Constraint Solver).
 4. Migrate CLI and Verify (Dual-Mode Support).
 
 Phase progress:
@@ -35,7 +35,7 @@ Recently clarified contract decisions:
 | **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
 | **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
-| **Scheduling Logic** | 🟡 **Migration** | Constraint Optimization Strategy is being added alongside the MCP Gold Panning Strategy |
+| Scheduling Logic | 🟡 **Migration** | Constraint Solver is being added alongside the Gold Panning strategy |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟢 **Stable** | Interactive Add/Edit/List, Smart Shifting, Multi-delete, Global 'e' alias. |
 | **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
@@ -44,8 +44,8 @@ Recently clarified contract decisions:
 ## Current Capabilities
 
 ### Core Features
--   **Dual-Mode Scheduling Strategy**: Toggle between `GoldPanning` and `ConstraintOptimization` (In-Progress) via Settings.
--   **Multi-Agent Scheduling**: Uses the `McpGoldPanningStrategy` to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
+-   **Dual-Mode Scheduling Strategy**: Toggle between `GoldPanning` and `ConstraintSolver` (In-Progress) via Settings.
+-   **Multi-Agent Scheduling**: Uses the **Gold Panning** strategy to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
 -   **Command Line Interface**: A robust CLI loop (`PriorityTaskManager.CLI`) handles user input with clear feedback.
 -   **Workday Configuration**: Respects user-defined start/end times in `user_profile.json`.
 
@@ -94,7 +94,7 @@ Recently clarified contract decisions:
 ### System Commands
 | Command | Description |
 | :--- | :--- |
-| `mode` | Display current strategy, or set it via `mode gold` / `mode constraint`. |
+| `mode` | Display current strategy, or set it via `mode gold` / `mode solver`. |
 | `cleanup` | Archive completed tasks and re-index the list. |
 | `time` | View the current time (real or simulated). |
 | `time now` | Switch to using real-time. |

@@ -15,7 +15,7 @@ namespace PriorityTaskManager.Services
             IUrgencyStrategy strategy;
             if (this.UserProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
             {
-               throw new NotImplementedException("Constraint Optimization strategy is not yet implemented.");
+                    throw new NotImplementedException("Constraint Solver strategy is not yet implemented.");
             }
             else
             {

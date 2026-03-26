@@ -80,16 +80,16 @@ Before understanding the flow, it is helpful to define the core data objects pas
 
 The application supports multiple scheduling algorithms, selectable by the user via `UserProfile.SchedulingMode`. This allows for safe evolution of the scheduling logic without breaking existing functionality. The common interface for all strategies is `IUrgencyStrategy`.
 
-### 1. MCP Gold Panning Strategy (Legacy)
+### 1. Gold Panning (Legacy)
 
-*   **Class**: `McpGoldPanningStrategy` (formerly `MultiAgentUrgencyStrategy`)
+*   **Class**: `McpGoldPanningStrategy`
 *   **Concept**: "Gold Panning". Tasks flow through time like material in a sluice box. Heavy items (Urgent/Important) settle early; light items (Backlog) wash downstream.
-*   **Architecture**: Multi-Agent Coordination Pattern (MCP).
+*   **Architecture**: **Master Control Program (MCP)**. This is a "Blackboard" system where a central `MCPContext` object is passed sequentially between independent "Agent" components. Each agent acts on the context, transforming the data before passing it to the next agent in the chain.
 *   **Status**: Maintenance Mode. Default for existing users.
 
-The flow for this strategy is defined below in "Legacy Agent Pipeline".
+The flow for this strategy is defined below in "Gold Panning Agent Pipeline".
 
-### 2. Constraint Optimization Strategy (New)
+### 2. Constraint Solver (New)
 
 *   **Class**: `ConstraintOptimizationStrategy`
 *   **Concept**: "Solver". The scheduler treats the calendar as a constraint satisfaction problem. It optimizes for an objective function (minimizing lateness, maximizing balance) while respecting hard limits.
@@ -97,7 +97,7 @@ The flow for this strategy is defined below in "Legacy Agent Pipeline".
 *   **Status**: Active Development.
 *   **Spec**: implementation details are strictly defined in `SCHEDULING_SYSTEM_SPEC.md`.
 
-## Legacy Agent Pipeline (MCP Gold Panning)
+## Gold Panning Agent Pipeline
 
 The legacy pipeline is used when `SchedulerMode` is set to `GoldPanning`.
 
@@ -107,27 +107,27 @@ The pipeline is defined and executed in `PriorityTaskManager/MCP/McpGoldPanningS
 
 ### Agent Execution Order
 
-When `list` is called, the agents are executed in the following sequence. This order is designed to progressively refine the task list before the final schedule is generated, following a **Prioritize -> Balance -> Schedule** workflow. Each agent passes an `MCPContext` object containing the shared data to the next agent in the chain.
+When `list` is called with the `GoldPanning` strategy, the agents are executed in the following sequence. This order is designed to progressively refine the task list before the final schedule is generated, following a **Analyze -> Prepare -> Prioritize -> Distribute -> Sequence** workflow. Each agent passes an `MCPContext` object containing the shared data to the next agent in the chain.
 
 1.  **`TaskAnalyzerAgent`**:
-    -   **Purpose**: Analyzes and adjusts task properties before prioritization.
-    -   **Action**: Currently, its primary role is to calculate the `EffectiveImportance` of each task.
+    -   **Purpose**: Cleans up and applies default values to task data before processing.
+    -   **Action**: Ensures all tasks are in a consistent state. For example, it might assign a default `EffectiveImportance`.
 
 2.  **`SchedulePreProcessorAgent`**:
-    -   **Purpose**: Prepares the user's schedule by identifying all available time slots for the upcoming scheduling.
-    -   **Action**: It looks at the user's defined work hours (from `UserProfile`) and any existing `Events`. It then generates a list of `AvailableScheduleWindow` objects representing the free time slots.
+    -   **Purpose**: Prepares the user's schedule by identifying all available time slots.
+    -   **Action**: It looks at the user's defined work hours (from `UserProfile`) and any existing `Events`. It then generates a list of `ScheduleWindow` objects representing the free time slots and stores them in the context.
 
 3.  **`PrioritizationAgent`**:
-    -   **Purpose**: To perform an initial, high-level sort of the master task list into a logical order.
-    -   **Action**: It sorts the tasks first by their `DueDate` (ascending) and then by their `Complexity` (descending). This provides a baseline priority for the next agent.
+    -   **Purpose**: To perform the "Weighing" phase of the Gold Panning strategy.
+    -   **Action**: It sorts the master task list based on a calculated weight of urgency and importance, placing the most critical tasks first.
 
-4.  **`ComplexityBalancerAgent`**:
-    -   **Purpose**: To intelligently re-order the prioritized task list to distribute complexity. This happens *before* final scheduling.
-    -   **Action**: It reviews the sorted list from the `PrioritizationAgent` and the available time slots. Its goal is to re-order the tasks to: 1) Distribute high-complexity tasks across different days to prevent overload, while respecting due dates. 2) Within any single day, move complex tasks earlier in the work window. The output is the final, balanced task order.
+4.  **`ScheduleSpreaderAgent`**:
+    -   **Purpose**: To perform the "Distribution" phase. It packs the prioritized tasks into daily buckets.
+    -   **Action**: It iterates through the sorted task list and fits tasks into the available `ScheduleWindow`s. If a task is too large for a remaining time slot, this agent is responsible for **splitting** it into smaller `ScheduledChunk`s across multiple days.
 
-5.  **`SchedulingAgent`**:
-    -   **Purpose**: As the **final** agent, its sole authority is to execute the plan and create the detailed schedule.
-    -   **Action**: It takes the perfectly ordered list of tasks from the `ComplexityBalancerAgent` and performs a "greedy" placement into the available time slots. It has no complex logic; it simply populates the schedule based on the final task order.
+5.  **`DaySequencingAgent`**:
+    -   **Purpose**: As the **final** agent, it arranges the tasks *within* each day to optimize for user energy and focus.
+    -   **Action**: It takes the tasks assigned to a specific day and sorts them to implement the "Eat the Frog" principle: tasks due today are handled first, followed by the most complex tasks, which are scheduled for the morning.
 
 ### Future Vision
 
@@ -253,16 +253,16 @@ This section details the primary files in the core library and their interconnec
     *   **Input**: `UserProfile`, `Events`.
     *   **Output**: Populates `MCPContext.AvailableWindows`.
 *   **`PrioritizationAgent.cs`**:
-    *   **Role**: Sorting. Determines the *ideal* order of tasks ignoring time constraints.
+    *   **Role**: Sorting/Weighing. Determines the *ideal* order of tasks based on urgency and importance.
     *   **Input**: Unsorted `TaskItem`s.
     *   **Output**: Sorted `TaskItem`s.
-*   **`ComplexityBalancerAgent.cs`**:
-    *   **Role**: Optimization. Re-shuffles the sorted list to prevent burnout (e.g., not doing 3 hard tasks in a row).
+*   **`ScheduleSpreaderAgent.cs`**:
+    *   **Role**: Distribution/Packing. Places tasks into daily buckets and splits them if necessary.
     *   **Input**: Sorted `TaskItem`s, `AvailableWindows`.
-    *   **Output**: Optimally re-ordered `TaskItem`s.
-*   **`SchedulingAgent.cs`**:
-    *   **Role**: Execution. Places tasks into slots. **Dumb logic**—it just follows the order given by the previous agent.
-    *   **Input**: Optimally ordered `TaskItem`s, `AvailableWindows`.
-    *   **Output**: `ScheduledChunk`s assigned to specific times.
+    *   **Output**: `TaskItem`s with populated `ScheduledParts`.
+*   **`DaySequencingAgent.cs`**:
+    *   **Role**: Intra-Day Optimization. Arranges tasks within a single day for optimal energy management ("Eat the Frog").
+    *   **Input**: Tasks assigned to a day.
+    *   **Output**: `ScheduledChunk`s with final start/end times.
 
 -   **`Services/Helpers`**: This directory contains helper classes that perform specific, isolated tasks for the services. For example, `DependencyGraphHelper` provides functions for working with task dependencies.

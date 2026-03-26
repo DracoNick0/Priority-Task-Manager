@@ -17,7 +17,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Current Scheduling Mode: {userProfile.SchedulingMode}");
                 if (userProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
                 {
-                    Console.WriteLine("(Note: Constraint Optimization strategy is currently under development)");
+                    Console.WriteLine("(Note: Constraint Solver strategy is currently under development)");
                 }
                 Console.WriteLine("Use 'mode gold' or 'mode constraint' to change.");
                 return;
@@ -45,7 +45,7 @@ namespace PriorityTaskManager.CLI.Handlers
             
             if (userProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
             {
-                Console.WriteLine("(Note: Constraint Optimization strategy is currently under development)");
+                Console.WriteLine("(Note: Constraint Solver strategy is currently under development)");
             }
         }
     }

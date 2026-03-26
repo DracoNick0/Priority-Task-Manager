@@ -1,4 +1,4 @@
-# RFC: "Gold Panning" Scheduling Algorithm
+# Gold Panning Scheduling Algorithm
 
 ## 1. Core Concept (The Sluice Box)
 We treat the schedule as a river of time flowing through a **Sluice Box** (The Scheduling Engine).
@@ -27,29 +27,29 @@ Large/Important items are more likely to get caught in the riffles.
 *   **Selection**: The Pressure pushes the "Lightest" items (Lowest Importance/Urgency) downstream first, preserving the "Gold" (High Priority) in the current day.
 *   **Constructive Fill**: Unlike a real river, we don't just let things wash away randomly. We actively pack the day. If a day has a 30-minute gap, and the next "Gold Nugget" is 2 hours long, we **Hammer** (Split) that nugget. We put 30 minutes of it in the gap, and the remaining 1.5 hours washes to the next day.
 
-## 3. The Execution Flow (The Masonry)
+## 3. The Execution Flow (The Agent Pipeline)
 
-### Step 1: The Sort (The Sift)
-We sort all active tasks by their "Weight" (Urgency + Importance). The heaviest items are at the top of the stack.
+The "Gold Panning" strategy is implemented via a series of agents, each performing a distinct step in the process. A central `MCPContext` object is passed from one agent to the next.
 
-### Step 2: The Fill (Bin Packing)
-We treat each Day as a Bucket with fixed capacity (e.g., 8 hours).
-*   **Iterate**: We take the top task from the sorted stack.
+### Step 1: The Sort (The Sift) - `PrioritizationAgent`
+First, we sort all active tasks by their "Weight" (a combination of Urgency and Importance). The heaviest items (most critical) are moved to the top of the stack. This is handled by the `PrioritizationAgent`.
+
+### Step 2: The Fill (Bin Packing) - `ScheduleSpreaderAgent`
+Next, we treat each available day as a bucket with a fixed capacity (e.g., 8 hours). The `ScheduleSpreaderAgent` iterates through the prioritized task list and packs them into these daily buckets.
+*   **Iterate**: Take the top task from the sorted stack.
 *   **Fit Check**: Does it fit in the current day's remaining space?
     *   **Yes**: Place it in.
     *   **No**:
         *   **Gap Analysis**: Is the remaining space usable (e.g., > 15 mins)?
-        *   **The Hammer**: If yes, we **Split** the task. Part A fills the gap perfectly. Part B returns to the top of the stack for the next day.
-        *   **Skip**: If the gap is too small, we might skip it or look for a tiny "pebble" (short task) later in the list to fill it.
+        *   **The Hammer (Task Splitting)**: If yes, the agent **splits** the task. Part A fills the gap perfectly. Part B is effectively returned to the top of the stack to be scheduled on the next day.
+        *   **Skip**: If the gap is too small, the agent moves to the next day.
 
-### Step 3: The Mosaic (Energy Management)
-*   **Goal**: Optimize for Cognitive Load *within* the day.
-*   Once the "Bucket" for Day 1 is full, we arrange the specific start times.
-*   **Strategy**: "Front-Loading".
-    *   Human energy/focus is typically highest at the start of the day.
-    *   We Sort the daily list by `Complexity DESC`.
-    *   **Schedule**: `High Complexity (Morning) -> Medium Complexity (Mid-Day) -> Low Complexity (Afternoon)`.
-    *   *Result*: "Eat the frog" first, then settle into easier administrative work as fatigue sets in.
+### Step 3: The Mosaic (Energy Management) - `DaySequencingAgent`
+Finally, once the tasks for each day ("bucket") have been determined, the `DaySequencingAgent` arranges the specific start and end times for the tasks *within* each day to optimize for cognitive load.
+*   **Goal**: Optimize for human energy levels and focus.
+*   **Strategy**: "Eat The Frog" combined with deadline safety.
+    *   The agent sorts the tasks for a single day, first by tasks due *today*, and then by `Complexity` in descending order.
+    *   **Result**: Critical deadlines are handled first. For the remaining time, high-complexity work is scheduled for the morning, with lower-complexity tasks filling the afternoon as energy naturally wanes.
 
 ## 4. Why this works for your Questions
 *   **"Recalculate?"**: Yes. Every time you run the scheduler, we re-weigh the gold and re-pack the buckets.

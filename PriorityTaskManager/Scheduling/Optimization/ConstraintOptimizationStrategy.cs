@@ -28,7 +28,7 @@ namespace PriorityTaskManager.Scheduling.Optimization
             return new PrioritizationResult
             {
                 Tasks = new List<TaskItem>(), // Was ScheduledTasks
-                History = new List<string> { "Constraint Optimization Strategy initialized but not yet implemented." }, // Was PlanLogs
+                History = new List<string> { "Constraint Solver strategy initialized but not yet implemented." }, // Was PlanLogs
                 UnscheduledTasks = tasks // Treat all as unscheduled for now
             };
         }

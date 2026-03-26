@@ -1,7 +1,7 @@
 # Scheduling System Specification
 
 ## 1. Purpose
-This document defines the complete scheduling design for the **Constraint Optimization Strategy** (New).
+This document defines the complete scheduling design for the **Constraint Solver** strategy.
 
 It consolidates requirements, algorithm behavior, workflow stages, agent responsibilities, data contracts, preference effects, fallback behavior, and expected outputs.
 

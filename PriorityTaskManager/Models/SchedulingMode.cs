@@ -9,7 +9,7 @@ namespace PriorityTaskManager.Models
         GoldPanning,
 
         /// <summary>
-        /// The new V1 strategy (Constraint Optimization).
+        /// The new V1 strategy (Constraint Solver).
         /// Uses a solver to optimize the schedule against a set of constraints.
         /// </summary>
         ConstraintOptimization

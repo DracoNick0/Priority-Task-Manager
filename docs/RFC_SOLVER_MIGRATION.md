@@ -8,12 +8,12 @@ This RFC focuses on the "Strategy Pattern" implementation, allowing users to swi
 ## 2. Target Architecture (Dual-Mode)
 The system will support two distinct scheduling strategies implementing a common `IUrgencyStrategy` interface:
 
-1.  **MCP Gold Panning Strategy (`McpGoldPanningStrategy`)**:
-    -   The current production implementation (formerly `MultiAgentUrgencyStrategy`).
+1.  **Gold Panning (`McpGoldPanningStrategy`)**:
+    -   The current production implementation.
     -   Based on the "Gold Panning" concept (Gravity/Flow).
     -   Default for existing users until the new strategy is stable.
 
-2.  **Constraint Optimization Strategy (`ConstraintOptimizationStrategy`)**:
+2.  **Constraint Solver (`ConstraintOptimizationStrategy`)**:
     -   The new solver-based implementation.
     -   Optimizes a weighted objective function subject to hard and soft constraints.
     -   Follows the `SCHEDULING_SYSTEM_SPEC.md`.
@@ -33,10 +33,10 @@ The system will support two distinct scheduling strategies implementing a common
 4.  Rename `MultiAgentUrgencyStrategy` to `McpGoldPanningStrategy`.
 5.  Preserve all existing unit tests 100%.
 
-### Phase 2: Constraint Optimization Implementation
+### Phase 2: Constraint Solver Implementation
 1.  Implement the pipeline as defined in `SCHEDULING_SYSTEM_SPEC.md`.
 2.  Isolate new logic in `PriorityTaskManager/Scheduling/Optimization`.
-3.  Add new unit tests specifically for Constraint Optimization behavior.
+3.  Add new unit tests specifically for Constraint Solver behavior.
 
 ### Phase 3: Gradual Rollout
 1.  Expose the `SchedulingMode` setting in the CLI (`settings` command).

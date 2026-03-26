@@ -32,12 +32,12 @@ Detailed documentation for developers and users can be found in the `docs/` dire
 
 ## Core Architecture
 
-The solution uses a **Multi-Agent Coordination Pattern (MCP)** to separate concerns:
+The solution uses a **Master Control Program (MCP)** architecture to separate concerns:
 
 *   **PriorityTaskManager (Core)**: Contains all business logic and the agent pipeline.
 *   **PriorityTaskManager.CLI**: Handles user interaction and command parsing.
 
-The scheduling pipeline follows a **Prioritize -> Balance -> Schedule** workflow, breaking down complex scheduling decisions into small, single-responsibility agents. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full diagram and details.
+The **Gold Panning** scheduling strategy follows a **Prioritize -> Balance -> Schedule** workflow, breaking down complex scheduling decisions into small, single-responsibility agents. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full diagram and details.
 
 ## Contributing
 
