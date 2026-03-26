@@ -7,16 +7,19 @@ using System.Linq;
 namespace PriorityTaskManager.MCP.Agents
 {
     /// <summary>
-    /// Agent responsible for spreading work across days using the "Gold Panning" algorithm.
-    /// It balances Daily Capacity ("Water Pressure") by displacing low-weight tasks ("Silt")
-    /// to future dates, while keeping high-weight tasks ("Gold") in their ideal slots.
+    /// Agent responsible for distributing tasks across the available schedule horizon.
+    /// This agent implements a "Constructive Fill" strategy, which is a form of greedy
+    /// knapsack algorithm with item splitting. It iterates through each day, filling it
+    /// with the highest-priority tasks. If a task is too large to fit in the remaining
+    /// capacity of a day, it is split into two parts: one that fills the day, and a
+    /// remainder that is carried over to be scheduled on subsequent days.
     /// </summary>
     public class ScheduleSpreaderAgent : IAgent
     {
         public MCPContext Act(MCPContext context)
         {
-            context.History.Add("Phase 4: Spreading tasks (Gold Panning Algorithm)...");
-            Console.WriteLine("--- PHASE 4: SPREADER (PANNING) ---");
+            context.History.Add("Phase 4: Spreading tasks (Constructive Fill)...");
+            Console.WriteLine("--- PHASE 4: SPREADER (CONSTRUCTIVE FILL) ---");
 
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks || tasks.Count == 0)
             {
@@ -36,13 +39,9 @@ namespace PriorityTaskManager.MCP.Agents
 
             Console.WriteLine($"  -> Spreading {tasks.Count} tasks over window.");
 
-            // --- Step 1: The Dump ---
-            // Group tasks by their "Ideal Date".
-            // For now, Ideal Date is effectively "First Available Slot" (Today).
-            // In future, this could be 'DependenciesCompletedDate'.
+            // --- Step 1: Prepare Daily Buckets ---
+            // Create a dictionary to hold the list of tasks scheduled for each day.
             var buckets = new Dictionary<DateTime, List<TaskItem>>();
-            
-            // Get all unique days in window
             var windowDays = scheduleWindow.AvailableSlots
                 .Select(s => s.StartTime.Date)
                 .Distinct()
@@ -52,34 +51,26 @@ namespace PriorityTaskManager.MCP.Agents
             if (windowDays.Count == 0) 
             {
                  Console.WriteLine("  -> No Available Days in Window.");
-                 return context; // No window
+                 return context;
             }
 
-            // Initial Pour: Everything goes into the first bucket (Day 1)
-            // or if it has a specific constraint like `LatestPossibleStartDate`, it might affect this,
-            // but for Gold Panning, we dump upstream and let it wash down.
-            buckets[windowDays[0]] = new List<TaskItem>(tasks);
-            Console.WriteLine($"  -> Dumped all {tasks.Count} tasks into Paydirt (Day 1: {windowDays[0].ToShortDateString()}).");
-
-            // Initialize other buckets
-            foreach (var day in windowDays.Skip(1))
+            // Initialize a list for each day in the scheduling window.
+            foreach (var day in windowDays)
             {
                 buckets[day] = new List<TaskItem>();
             }
 
-            // --- Step 2: The Constructive Fill Loop (Greedy Knapsack with Splitting) ---
-            // We actively select tasks to fill each day's capacity.
-            // If a task causes overflow, we split it to fill the remaining space.
-
-            // Sort by Priority (Weights)
+            // --- Step 2: The Constructive Fill Loop ---
+            // Sort tasks by their calculated weight to ensure high-priority items are scheduled first.
             var remainingTasks = tasks.OrderByDescending(t => weights != null && weights.ContainsKey(t.Id) ? weights[t.Id] : 0).ToList();
             
+            // Iterate through each day in the scheduling window.
             for (int i = 0; i < windowDays.Count; i++)
             {
                 var currentDay = windowDays[i];
                 var dailyBucket = new List<TaskItem>();
                 
-                // Calculate Capacity (Water Pressure)
+                // Calculate the total available work time (capacity) for the current day.
                 double dayCapacity = scheduleWindow.AvailableSlots
                     .Where(s => s.StartTime.Date == currentDay)
                     .Sum(s => s.Duration.TotalHours);
@@ -88,67 +79,62 @@ namespace PriorityTaskManager.MCP.Agents
                 
                 Console.WriteLine($"  -> Filling Day {currentDay.ToShortDateString()} (Capacity {dayCapacity:F1}h)...");
 
-                // Iterate forwards (High Priority first)
+                // Iterate through the prioritized list of remaining tasks.
                 for (int j = 0; j < remainingTasks.Count; j++)
                 {
                     var task = remainingTasks[j];
                     double taskDuration = task.EstimatedDuration.TotalHours;
                     double availableSpace = dayCapacity - currentLoad;
 
-                    if (availableSpace <= 0.01) // Day is full
+                    // If the day is full, stop trying to add more tasks.
+                    if (availableSpace <= 0.01) // Using a small tolerance for floating point inaccuracies.
                     {
                         break;
                     }
                     
+                    // If the task fits completely in the remaining space, add it.
                     if (taskDuration <= availableSpace)
                     {
-                        // It fits! Add it.
                         dailyBucket.Add(task);
                         currentLoad += taskDuration;
                         remainingTasks.RemoveAt(j);
-                        j--; // Adjust index since we removed an item
+                        j--; // Adjust index as the list size has changed.
                         Console.WriteLine($"    -> Added '{task.Title}' ({taskDuration:F1}h)");
                     }
                     else
                     {
-                        // It doesn't fit entirely. Can we split it?
-                        // Only split if the chunk is meaningful (e.g. > 15 mins)
-                        if (availableSpace > 0.25) 
+                        // If the task is too big, split it if the remaining space is meaningful.
+                        if (availableSpace > 0.25) // e.g., Don't create a 5-minute sub-task.
                         {
                             Console.WriteLine($"    -> Splitting '{task.Title}' to fill {availableSpace:F1}h gap.");
                             
-                            // Create the part that stays (Part 1)
-                            // We modify the current task instance (which is a clone from the Strategy)
-                            var part1 = task.Clone(); 
-                            // Create the remainder (Part 2) BEFORE modifying Part 1
-                            var part2 = task.Clone();
-                            
-                            // Adjust durations
+                            // Create the part that fits in today's remaining time.
+                            var part1 = task.Clone();
                             part1.EstimatedDuration = TimeSpan.FromHours(availableSpace);
+                            
+                            // Create the remainder part to be scheduled later.
+                            var part2 = task.Clone();
                             part2.EstimatedDuration = TimeSpan.FromHours(taskDuration - availableSpace);
                             
-                            // Add Part 1 to today
+                            // Add Part 1 to today's schedule.
                             dailyBucket.Add(part1);
                             currentLoad += availableSpace;
                             
-                            // Replace original in remaining list with Part 2
+                            // Replace the original task in the list with the remainder.
                             remainingTasks.RemoveAt(j);
                             remainingTasks.Insert(j, part2);
                             
-                            // Since day is full, break inner loop to move to next day
+                            // The day is now full, so break to move to the next day.
                             break;
                         }
-                        else
-                        {
-                            // Gap is too small to split a task into. Skip this task for today.
-                            // Continue searching for a smaller task that might fit?
-                            // For now, we just skip it.
-                        }
+                        // If the remaining space is too small, skip this task and try to find
+                        // a smaller one that might fit.
                     }
                 }
                 
                 buckets[currentDay] = dailyBucket;
 
+                // If all tasks have been scheduled, exit the loop.
                 if (remainingTasks.Count == 0)
                 {
                     Console.WriteLine("  -> All tasks scheduled.");
@@ -157,6 +143,8 @@ namespace PriorityTaskManager.MCP.Agents
             }
 
             // --- Step 3: Handling Leftovers ---
+            // If any tasks remain after the loop, they could not fit in the schedule.
+            // As a fallback, add them to the last day, which may cause over-scheduling.
             if (remainingTasks.Count > 0)
             {
                 var lastDay = windowDays.Last();
@@ -164,16 +152,11 @@ namespace PriorityTaskManager.MCP.Agents
                 Console.WriteLine($"  -> Warning: {remainingTasks.Count} tasks did not fit in window. Pushed to {lastDay.ToShortDateString()} (Overfill).");
             }
 
-            // --- Step 3: Commit to Shared State ---
-            // At this point, `buckets` contains the final decision of WHICH Date each task belongs to.
-            // We flatten this back into a list, but attached with metadata if needed.
-            // For now, we update the `ScheduledParts` locally just to persist the DATE decision,
-            // but the TIME decision is left for the next agent (Mosaic).
-            
-            // We can just leave the grouped tasks in SharedState for the Sequencing Agent.
+            // --- Step 4: Commit to Shared State ---
+            // The 'DailyBuckets' are passed to the next agent (DaySequencingAgent) for fine-grained scheduling.
             context.SharedState["DailyBuckets"] = buckets;
             
-            // Also update the main list effectively (remove unscheduled ones)
+            // Update the main 'Tasks' list to reflect the new reality of split and scheduled tasks.
             var allScheduled = buckets.Values.SelectMany(t => t).ToList();
             context.SharedState["Tasks"] = allScheduled;
 
