@@ -188,6 +188,25 @@ namespace PriorityTaskManager.CLI.Handlers
                 else
                     meterColor = ConsoleColor.Red;
 
+                // Pre-calculate colors for tasks on the timeline
+                var taskColorMap = new Dictionary<int, ConsoleColor>();
+                var dailyWorkMinutes = (userProfile.WorkEndTime - userProfile.WorkStartTime).TotalMinutes;
+                if (dailyWorkMinutes <= 0) dailyWorkMinutes = 8 * 60;
+
+                foreach (var task in scheduledTasksForDay)
+                {
+                    var taskSlack = _taskMetricsService.CalculateRealisticSlack(task, userProfile);
+                    var sMin = taskSlack.TotalMinutes;
+                    var dMin = task.EstimatedDuration.TotalMinutes;
+                    
+                    if (sMin < 0) taskColorMap[task.Id] = ConsoleColor.DarkGray;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * 0.5, dMin / 4.0)) taskColorMap[task.Id] = ConsoleColor.Red;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * 1.0, dMin / 2.0)) taskColorMap[task.Id] = ConsoleColor.DarkYellow;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * 3.0, dMin)) taskColorMap[task.Id] = ConsoleColor.Yellow;
+                    else if (sMin <= Math.Max(dailyWorkMinutes * 5.0, dMin * 3.0)) taskColorMap[task.Id] = ConsoleColor.Green;
+                    else taskColorMap[task.Id] = ConsoleColor.Cyan;
+                }
+
                 // --- Meter bar with task letters ---
                 // --- Robust per-block ownership and transition detection ---
                 var blockOwners = new string[meterWidth]; // "task:<id>", "event:<id>", or null
@@ -317,6 +336,20 @@ namespace PriorityTaskManager.CLI.Handlers
                             Console.Write(blockChars[i]);
                             Console.ForegroundColor = meterColor; // Revert to meter color
                         }
+                        else if (blockOwners[i]?.StartsWith("task:") == true)
+                        {
+                            var parts = blockOwners[i].Split(':');
+                            if (parts.Length > 1 && int.TryParse(parts[1], out int tId) && taskColorMap.ContainsKey(tId))
+                            {
+                                Console.ForegroundColor = taskColorMap[tId];
+                                Console.Write(blockChars[i]);
+                                Console.ForegroundColor = meterColor; // Revert to meter color
+                            }
+                            else
+                            {
+                                Console.Write(blockChars[i]);
+                            }
+                        }
                         else
                         {
                             Console.Write(blockChars[i]);
@@ -406,17 +439,39 @@ namespace PriorityTaskManager.CLI.Handlers
                     if (!string.IsNullOrEmpty(letter))
                     {
                         var realisticSlackForTask = _taskMetricsService.CalculateRealisticSlack(task, userProfile);
-                        var slackPercentageForTask = task.EstimatedDuration.TotalMinutes > 0 ? realisticSlackForTask.TotalMinutes / task.EstimatedDuration.TotalMinutes : 0;
+                        
+                        // Calculate User's Average Daily Capacity
+                        var dailyWorkMinutes = (userProfile.WorkEndTime - userProfile.WorkStartTime).TotalMinutes;
+                        if (dailyWorkMinutes <= 0) dailyWorkMinutes = 8 * 60; // Fallback to 8h
+
+                        var slackMin = realisticSlackForTask.TotalMinutes;
+                        var durMin = task.EstimatedDuration.TotalMinutes;
 
                         ConsoleColor taskColor;
-                        if (realisticSlackForTask.TotalMinutes <= 0)
-                            taskColor = ConsoleColor.Red;
-                        else if (slackPercentageForTask > 0.25)
-                            taskColor = ConsoleColor.Green;
-                        else if (slackPercentageForTask > 0.10)
-                            taskColor = ConsoleColor.Yellow;
+                        if (slackMin < 0)
+                        {
+                            taskColor = ConsoleColor.DarkGray; // Overdue
+                        }
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * 0.5, durMin / 4.0))
+                        {
+                            taskColor = ConsoleColor.Red; // Dire (< 0.5 Days or < 25% buffer)
+                        }
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * 1.0, durMin / 2.0))
+                        {
+                            taskColor = ConsoleColor.DarkYellow; // Pressing (< 1 Day or < 50% buffer) - Orange
+                        }
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * 3.0, durMin))
+                        {
+                            taskColor = ConsoleColor.Yellow; // Focus (< 3 Days or < 100% buffer)
+                        }
+                        else if (slackMin <= Math.Max(dailyWorkMinutes * 5.0, durMin * 3.0))
+                        {
+                            taskColor = ConsoleColor.Green; // Safe (< 5 Days or < 300% buffer)
+                        }
                         else
-                            taskColor = ConsoleColor.Red;
+                        {
+                            taskColor = ConsoleColor.Cyan; // Leisure (> 5 Days or > 300% buffer)
+                        }
 
                         Console.ForegroundColor = taskColor;
                         Console.Write(letter);
