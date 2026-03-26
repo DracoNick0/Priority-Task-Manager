@@ -377,8 +377,10 @@ namespace PriorityTaskManager.CLI.Handlers
                         }
                     }
                 }
-
-                Console.WriteLine($"] {slackTime:F1} hours free");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write($"]");
+                Console.ForegroundColor = meterColor;
+                Console.WriteLine($" {slackTime:F1} hours free");
                 Console.ResetColor();
 
                 // Calculate realistic slack
