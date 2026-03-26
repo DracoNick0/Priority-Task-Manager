@@ -7,9 +7,10 @@ using System.Linq;
 namespace PriorityTaskManager.MCP.Agents
 {
     /// <summary>
-    /// Agent responsible for sequencing tasks within a specific day (The "Mosaic").
-    /// Uses a "Front-Loading" strategy ("Eat the Frog") to schedule high complexity tasks
-    /// earlier in the day when energy is high.
+    /// Agent responsible for the final sequencing of tasks within each day. This is the "Mosaic"
+    /// phase, where the individual tasks (stones) from each daily bucket are arranged into the
+    /// available time slots (the mosaic grid) for that day. It uses a "Front-Loading" or
+    /// "Eat the Frog" strategy, scheduling the most complex tasks earlier in the day.
     /// </summary>
     public class DaySequencingAgent : IAgent
     {
@@ -18,22 +19,24 @@ namespace PriorityTaskManager.MCP.Agents
             context.History.Add("Phase 5: Sequencing tasks within days (Mosaic/Front-Loading)...");
             Console.WriteLine("--- PHASE 5: SEQUENCING (MOSAIC) ---");
 
+            // Retrieve the daily buckets created by the ScheduleSpreaderAgent.
             if (!context.SharedState.TryGetValue("DailyBuckets", out var bucketsObj) || 
                 bucketsObj is not Dictionary<DateTime, List<TaskItem>> dailyBuckets)
             {
-                // Fallback: If Spreader didn't run or produce buckets, we can't sequence.
                 context.History.Add("  -> No daily buckets found. Skipping sequencing.");
                 Console.WriteLine("  -> No Buckets Found.");
                 return context;
             }
 
+            // Retrieve the schedule window to get the actual time slots.
             if (!context.SharedState.TryGetValue("AvailableScheduleWindow", out var scheduleWindowObj) || 
                 scheduleWindowObj is not ScheduleWindow scheduleWindow)
             {
+                context.History.Add("  -> No AvailableScheduleWindow found. Cannot determine time slots for sequencing.");
                 return context;
             }
 
-            // Iterate through each day that has work
+            // Iterate through each day that has tasks assigned to it.
             foreach (var date in dailyBuckets.Keys.OrderBy(d => d))
             {
                 var tasksForDay = dailyBuckets[date];
@@ -41,18 +44,19 @@ namespace PriorityTaskManager.MCP.Agents
 
                 Console.WriteLine($"  -> Sequencing {date.ToShortDateString()} ({tasksForDay.Count} tasks)...");
 
-                // Sort tasks for the day: 
-                // 1. Safety: Tasks due on/before this day come first to avoid last-minute panic.
-                // 2. Efficiency: High Complexity -> Low Complexity ("Eat the Frog") purely for energy management.
+                // Sort tasks for the day based on the sequencing strategy:
+                // 1. Urgency: Tasks that are due on or before this day are prioritized to ensure they are completed in time.
+                // 2. Complexity ("Eat the Frog"): High-complexity tasks are scheduled first, when energy levels are typically highest.
+                // 3. Importance: If urgency and complexity are equal, the more important task goes first.
                 var sequence = tasksForDay
                     .OrderByDescending(t => t.DueDate.HasValue && t.DueDate.Value.Date <= date.Date) // Critical for this day
                     .ThenByDescending(t => t.Complexity)
-                    .ThenByDescending(t => t.EffectiveImportance) // Tiebreaker: Importance
+                    .ThenByDescending(t => t.EffectiveImportance) // Tiebreaker
                     .ToList();
                 
                 Console.WriteLine($"    Order: {string.Join(" -> ", sequence.Select(t => $"{t.Title}({t.Complexity})"))}");
 
-                // Find the TimeSlots for this specific date
+                // Get all available time slots for the current day, ordered chronologically.
                 var slotsForDay = scheduleWindow.AvailableSlots
                     .Where(s => s.StartTime.Date == date)
                     .OrderBy(s => s.StartTime)
@@ -65,32 +69,33 @@ namespace PriorityTaskManager.MCP.Agents
                     continue;
                 }
 
-                // Simple Sequencer: Fill slots linearly
-                // NOTE: This assumes slots are contiguous or we just jump gaps.
-                
+                // This sequencer fills the available time slots linearly with the prioritized tasks.
+                // It will fill one slot and, if a task is larger than the slot, continue into the next available slot.
                 int currentSlotIndex = 0;
                 TimeSpan currentSlotUsed = TimeSpan.Zero;
                 
                 foreach (var task in sequence)
                 {
                     TimeSpan remainingTaskDuration = task.EstimatedDuration;
-                    task.ScheduledParts.Clear(); // Clear old scheduling
+                    task.ScheduledParts.Clear(); // Clear any previous scheduling data before creating new chunks.
 
+                    // Continue scheduling parts of the task until its full duration is accounted for.
                     while (remainingTaskDuration > TimeSpan.Zero && currentSlotIndex < slotsForDay.Count)
                     {
                         var slot = slotsForDay[currentSlotIndex];
-                        var slotDuration = slot.Duration - currentSlotUsed;
+                        var availableSlotDuration = slot.Duration - currentSlotUsed;
                         var slotStartTime = slot.StartTime + currentSlotUsed;
 
-                        if (slotDuration <= TimeSpan.Zero)
+                        // If the current slot is already full, move to the next one.
+                        if (availableSlotDuration <= TimeSpan.Zero)
                         {
                             currentSlotIndex++;
                             currentSlotUsed = TimeSpan.Zero;
                             continue;
                         }
 
-                        // Determine chunk size
-                        var chunkDuration = (remainingTaskDuration < slotDuration) ? remainingTaskDuration : slotDuration;
+                        // The chunk to be scheduled is the smaller of the remaining task duration or the available slot space.
+                        var chunkDuration = (remainingTaskDuration < availableSlotDuration) ? remainingTaskDuration : availableSlotDuration;
 
                         var chunk = new ScheduledChunk
                         {
@@ -100,11 +105,11 @@ namespace PriorityTaskManager.MCP.Agents
                         task.ScheduledParts.Add(chunk);
                         Console.WriteLine($"      [{chunk.StartTime:HH:mm}-{chunk.EndTime:HH:mm}] {task.Title}");
 
-                        // Update counters
+                        // Update counters for the current task and slot.
                         remainingTaskDuration -= chunkDuration;
                         currentSlotUsed += chunkDuration;
 
-                        // If slot is full, move to next
+                        // If the current slot is now full, advance to the next slot.
                         if (currentSlotUsed >= slot.Duration)
                         {
                             currentSlotIndex++;
@@ -112,17 +117,18 @@ namespace PriorityTaskManager.MCP.Agents
                         }
                     }
 
-                    if (remainingTaskDuration > TimeSpan.FromMinutes(1)) // Using distinct tolerance to avoid float errors
+                    // If a task has remaining duration, it means there wasn't enough capacity in the schedule.
+                    // This can happen due to floating-point inaccuracies or if the SpreaderAgent's capacity calculation
+                    // didn't perfectly align with the available slots.
+                    if (remainingTaskDuration > TimeSpan.FromMinutes(1))
                     {
-                        // Needs to push to next day? Or just mark incomplete?
-                        // Spreader *should* have guaranteed capacity, but floating point math might cause tiny overflows.
-                        context.History.Add($"  -> Warning: Task {task.Title} could not fully fit on {date.ToShortDateString()} during sequencing.");
+                        context.History.Add($"  -> Warning: Task '{task.Title}' could not fully fit on {date.ToShortDateString()} during sequencing.");
                          Console.WriteLine($"      ! ERROR: Could not schedule remaining {remainingTaskDuration.TotalMinutes}m of {task.Title}");
                     }
                 }
             }
 
-            // Update main list order to reflect the new schedule
+            // After sequencing, flatten the daily buckets back into a single list, ordered by their actual start time.
             var finalOrderedList = dailyBuckets.Values
                 .SelectMany(list => list.OrderBy(t => t.ScheduledParts.FirstOrDefault()?.StartTime ?? DateTime.MaxValue))
                 .ToList();
