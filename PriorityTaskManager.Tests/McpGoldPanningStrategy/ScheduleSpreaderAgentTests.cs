@@ -82,7 +82,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             // Day 1 Cap: 8h.
             // Task A: 5h. Task B: 5h. Total 10h.
             // Task A is Heavier (Imp 5) than B (Imp 1).
-            // Expect: A stays on Day 1. B moves to Day 2.
+            // Expect: A stays on Day 1. B splits across Day 1 and Day 2.
             
             var taskA = new TaskItem { Id = 1, Title = "Heavy", EstimatedDuration = TimeSpan.FromHours(5), Importance = 5 };
             var taskB = new TaskItem { Id = 2, Title = "Light", EstimatedDuration = TimeSpan.FromHours(5), Importance = 1 };
@@ -94,10 +94,13 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             var day1 = _timeService.GetCurrentTime().Date;
             var day2 = day1.AddDays(1);
 
-            Assert.Single(buckets[day1]);
-            Assert.Single(buckets[day2]);
+            // Day 1: "Heavy" (5h) + "Light" (3h part) -> 2 items
+            Assert.Equal(2, buckets[day1].Count);
+            Assert.Contains(buckets[day1], t => t.Title == "Heavy");
+            Assert.Contains(buckets[day1], t => t.Title == "Light");
             
-            Assert.Equal("Heavy", buckets[day1][0].Title);
+            // Day 2: "Light" (2h remainder) -> 1 item
+            Assert.Single(buckets[day2]);
             Assert.Equal("Light", buckets[day2][0].Title);
         }
 
@@ -106,10 +109,9 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         {
             // Day Cap 8h.
             // Tasks: A(5h, Imp 10), B(5h, Imp 5), C(5h, Imp 1). Total 15h.
-            // Day 1: A (5h). Rem: 3h. B (5h) -> Overflow.
-            // B moves to Day 2.
-            // Day 2: B (5h). Rem: 3h. C (5h) -> Overflow.
-            // C moves to Day 3.
+            // Day 1: A (5h). Rem: 3h. B splits (3h). -> Day 1 full with A, B(part)
+            // Day 2: B (2h rem). Rem: 6h. C (5h) fits completely. -> Day 2 with B(rem), C.
+            // Day 3: Empty.
             
             var taskA = new TaskItem { Id = 1, Title = "Heaviest", EstimatedDuration = TimeSpan.FromHours(5), Importance = 10 };
             var taskB = new TaskItem { Id = 2, Title = "Medium", EstimatedDuration = TimeSpan.FromHours(5), Importance = 5 };
@@ -121,9 +123,18 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             var buckets = result.SharedState["DailyBuckets"] as Dictionary<DateTime, List<TaskItem>>;
             var today = _timeService.GetCurrentTime().Date;
             
-            Assert.Equal("Heaviest", buckets[today][0].Title);
-            Assert.Equal("Medium", buckets[today.AddDays(1)][0].Title);
-            Assert.Equal("Lightest", buckets[today.AddDays(2)][0].Title);
+            // Check Day 1
+            Assert.Equal(2, buckets[today].Count);
+            Assert.Contains(buckets[today], t => t.Title == "Heaviest");
+            Assert.Contains(buckets[today], t => t.Title == "Medium");
+
+            // Check Day 2
+            Assert.Equal(2, buckets[today.AddDays(1)].Count);
+            Assert.Contains(buckets[today.AddDays(1)], t => t.Title == "Medium");
+            Assert.Contains(buckets[today.AddDays(1)], t => t.Title == "Lightest");
+
+            // Check Day 3 (should be empty as C fit on Day 2)
+            Assert.Empty(buckets[today.AddDays(2)]);
         }
 
         [Fact]
@@ -131,7 +142,8 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         {
             // Window: 1 Day. Cap 8h.
             // Task: 10h.
-            // Expect: Warning/Drop (since it can't fit in window).
+            // Expect: Task splits. 8h fills Day 1. 2h remainder overflows.
+            // Since window ends, remainder is pushed back to Day 1 (Overfill).
             
             var task = new TaskItem { Id = 1, Title = "Too Big", EstimatedDuration = TimeSpan.FromHours(10), Importance = 5 };
             var context = CreateContext(new List<TaskItem> { task }, days: 1); // Only 1 day window
@@ -139,11 +151,15 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             var result = _agent.Act(context);
             var buckets = result.SharedState["DailyBuckets"] as Dictionary<DateTime, List<TaskItem>>;
             
-            // It might be removed from buckets entirely if dropped.
             var day1 = _timeService.GetCurrentTime().Date;
-            Assert.Empty(buckets[day1]);
             
-            Assert.Contains(result.History, h => h.Contains("OVERFLOW") || h.Contains("Overflow"));
+            // Expect 2 parts of "Too Big" on Day 1 (8h + 2h overflow)
+            Assert.Equal(2, buckets[day1].Count);
+            Assert.All(buckets[day1], t => Assert.Equal("Too Big", t.Title));
+
+            // Verify total duration is preserved (8 + 2 = 10)
+            var totalDuration = buckets[day1].Sum(t => t.EstimatedDuration.TotalHours);
+            Assert.Equal(10, totalDuration, 1);
         }
     }
 }
