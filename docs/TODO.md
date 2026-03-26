@@ -2,20 +2,6 @@
 
 > **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
 
-*   **Phase 3.5: User Feedback Refinements**
-    -   [X] **Event System Overhaul**:
-        -   `event add <title>`: Removed time arguments; use interactive menu for details.
-        -   `event delete <id...>`: Supports multiple IDs.
-        -   Added global `e` alias for `event` command (e.g., `e add`, `e list`, `e edit`, `e delete`).
-        -   Display: `(A) [ID: X] HH:mm - HH:mm | Name`.
-        -   **Smart Shifting**: Changing Start Date/Time shifts End Date/Time by same delta (preserving duration).
-    -   [X] **Completed Task Handling**:
-        -   Do NOT schedule completed items.
-        -   `ListHandler`: Only display last 3 completed tasks to reduce clutter while preserving undo.
-    -   [ ] **Scheduler Spill-Over Logic**:
-        -   Investigate why tasks aren't breaking across days.
-        -   **Enhancement**: Split highest-value divisible tasks to fill remaining daily gaps before spilling to next day.
-
 *   **Phase 4: Implement Constraint Optimization (New Strategy)**
     -   Follow TDD for each feature slice (Red-Green-Refactor).
     -   Write failing tests before implementing behavior changes.
