@@ -23,26 +23,28 @@ Large/Important items are more likely to get caught in the riffles.
 *   High Importance Task = Large Rock. Even if not urgent, it's heavy enough to settle early if there's room.
 
 ### C. Flow (Congestion) - "The Water Pressure"
-*   The **Stream Power** is purely the **Time Capacity** of the day.
-*   If Day 1 is 8 hours long and we dump 12 hours of tasks into it, the "Water Pressure" becomes irresistible.
-*   **Result**: The Pressure *must* displace 4 hours of material to Day 2.
+*   **The Stream Power**: Purely the **Time Capacity** of the day.
 *   **Selection**: The Pressure pushes the "Lightest" items (Lowest Importance/Urgency) downstream first, preserving the "Gold" (High Priority) in the current day.
-*   *Note*: The schedule is natively **front-loaded**. We fill Day 1 completely before spilling to Day 2. Free time only exists at the end of the schedule (i.e., after all active tasks are complete).
+*   **Constructive Fill**: Unlike a real river, we don't just let things wash away randomly. We actively pack the day. If a day has a 30-minute gap, and the next "Gold Nugget" is 2 hours long, we **Hammer** (Split) that nugget. We put 30 minutes of it in the gap, and the remaining 1.5 hours washes to the next day.
 
-## 3. The Execution Flow (The Pour and Sift)
+## 3. The Execution Flow (The Masonry)
 
-### Step 1: The Dump (Initial Layout)
-We dump all tasks into their "Ideal Spot" (Usually Day 1 or their Start Date).
+### Step 1: The Sort (The Sift)
+We sort all active tasks by their "Weight" (Urgency + Importance). The heaviest items are at the top of the stack.
 
-### Step 2: The Sift (Time Displacement)
-We "shake" the box (Iterate through Overloaded Days).
-*   **Condition**: Is `TotalHours > Capacity`?
-*   **Action**: Identify the lightest tasks (Lowest Weight).
-*   **Result**: Wash them downstream to availability.
+### Step 2: The Fill (Bin Packing)
+We treat each Day as a Bucket with fixed capacity (e.g., 8 hours).
+*   **Iterate**: We take the top task from the sorted stack.
+*   **Fit Check**: Does it fit in the current day's remaining space?
+    *   **Yes**: Place it in.
+    *   **No**:
+        *   **Gap Analysis**: Is the remaining space usable (e.g., > 15 mins)?
+        *   **The Hammer**: If yes, we **Split** the task. Part A fills the gap perfectly. Part B returns to the top of the stack for the next day.
+        *   **Skip**: If the gap is too small, we might skip it or look for a tiny "pebble" (short task) later in the list to fill it.
 
 ### Step 3: The Mosaic (Energy Management)
 *   **Goal**: Optimize for Cognitive Load *within* the day.
-*   Once the "Gold Pan" determines *which* tasks are on Day 1, we arrange their specific start times.
+*   Once the "Bucket" for Day 1 is full, we arrange the specific start times.
 *   **Strategy**: "Front-Loading".
     *   Human energy/focus is typically highest at the start of the day.
     *   We Sort the daily list by `Complexity DESC`.
@@ -50,32 +52,27 @@ We "shake" the box (Iterate through Overloaded Days).
     *   *Result*: "Eat the frog" first, then settle into easier administrative work as fatigue sets in.
 
 ## 4. Why this works for your Questions
-*   **"Recalculate?"**: Yes, the "Sand" washes from riffle to riffle until it finds a calm spot.
-*   **"What dictates the day?"**: The specific gravity of the task vs. the pressure of the day.
-*   **"Important vs Low Priority"**: Important = Heavier. It settles earlier than light tasks.
-*   **"No Due Date"**: This is fine Silt. It will wash all the way to the end of the sluice box unless there is a calm spot (empty day) early on where it can settle.
-    *   **Anti-Starvation (Relative Density)**:
-        *   Assign "No Due Date" tasks a **Static Weight** (Density) that is slightly lighter than a Standard Tasks.
-        *   *Example*: Standard Task Weight = 1.0. Backlog Task Weight = 0.8.
-        *   *Result on a Busy Day*: The Stream Pressure is high. The 1.0 stones hold their ground. The 0.8 silt washes away.
-        *   *Result on a Calm Day*: The Stream Pressure is low. The 0.8 silt is heavy enough to settle and stick.
-        *   *User Control*: Users can boost this via the `Importance` attribute (e.g., turning Silt into a Pebble with Weight 1.2), allowing specific backlog items to fight for a slot.
-        
+*   **"Recalculate?"**: Yes. Every time you run the scheduler, we re-weigh the gold and re-pack the buckets.
+*   **"What dictates the day?"**: The specific gravity of the task vs. the capacity of the current bucket.
+*   **"Splitting?"**: We prefer filling a day 100% over keeping a task whole. This ensures maximum throughput (no "Swiss Cheese" schedules).
+*   **"No Due Date"**: This is fine Silt. It is light, so it naturally ends up in the last buckets (future dates) after all the heavy Gold is packed.
+
 ## 5. Strategy Characteristics & Behavior
 
-The Gold Panning strategy prioritizes **Throughput** and **Energy Management** over strict deadline adherence. It is designed to maximize daily output based on cognitive load.
+The Gold Panning strategy prioritizes **Throughput** (filling the day) and **Energy Management** (ordering the day).
 
 ### A. "Eat the Frog" overrides Importance (Day Sequencing)
-*   **Behavior**: Within a single day, tasks are sorted primarily by `Complexity` (High to Low), then by `Importance`.
-*   **Rationale**: High-complexity work requires peak mental energy (morning). High-importance low-complexity work (e.g., paying a bill) can technically be done anytime.
-*   **Consequence**: A low-importance but difficult task may be scheduled *before* a high-importance but easy task.
-*   **Mitigation**: Users who prefer "Business Value First" over "Energy Management First" may find this counter-intuitive. This is a known trade-off of the `DaySequencing` logic.
+*   **Behavior**: Within a single day, we use **Deadline Anchoring**.
+    *   **Tie-Breaker 1: Deadline Safety**: Tasks due *Today* (or Overdue) are pinned to the start of the day. This prevents last-minute stress.
+    *   **Tie-Breaker 2: Energy Management**: For all other tasks (flexible for the day), we sort by `Complexity DESC`.
+*   **Rationale**: High-complexity work requires peak mental energy (morning), but *Deadlines* require safety. We clear the MUST-DOs first, then optimize the rest of the day.
+*   **Consequence**: A low-complexity task due today will be scheduled *before* a high-complexity task due next week. This is an intentional deviation from pure "Eat the Frog" to ensure reliability.
 
-### B. The "Sluice" Wash (Spreading)
-*   **Behavior**: Determining *which day* a task lands on is purely a function of **Capacity Pressure**.
-*   **Rationale**: You cannot do more work than fits in a day. The "lightest" tasks (lowest Urgency/Importance score) naturally wash downstream.
-*   **Consequence**: A task may be washed past its Due Date if the days prior are saturated with "heavier" tasks.
-*   **Limitation**: The current implementation warns via console ("Overflow"), but does not actively *reject* or *re-prioritize* based on a hard deadline stop. Late tasks simply appear on later dates.
+### B. The "Hammer" (Splitting)
+*   **Behavior**: We ruthlessly split tasks to eliminate wasted time gaps.
+*   **Rationale**: Time is a non-renewable resource. Leaving 45 minutes empty because "the next task takes an hour" is waste.
+*   **Consequence**: Users may see a large task broken across 2 or 3 days.
+*   **Mitigation**: The UI explicitly links these chunks (e.g., "Part 1", "Part 2") so the user understands strictly that it is one task.
 
 ### C. Urgency Bias (Prioritization)
 *   **Behavior**: The scoring formula `(Urgency + Importance) * Density` heavily favors imminent deadlines.

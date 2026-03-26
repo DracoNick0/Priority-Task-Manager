@@ -41,9 +41,12 @@ namespace PriorityTaskManager.MCP.Agents
 
                 Console.WriteLine($"  -> Sequencing {date.ToShortDateString()} ({tasksForDay.Count} tasks)...");
 
-                // Sort tasks for the day: High Complexity -> Low Complexity
+                // Sort tasks for the day: 
+                // 1. Safety: Tasks due on/before this day come first to avoid last-minute panic.
+                // 2. Efficiency: High Complexity -> Low Complexity ("Eat the Frog") purely for energy management.
                 var sequence = tasksForDay
-                    .OrderByDescending(t => t.Complexity)
+                    .OrderByDescending(t => t.DueDate.HasValue && t.DueDate.Value.Date <= date.Date) // Critical for this day
+                    .ThenByDescending(t => t.Complexity)
                     .ThenByDescending(t => t.EffectiveImportance) // Tiebreaker: Importance
                     .ToList();
                 

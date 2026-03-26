@@ -47,17 +47,23 @@ namespace PriorityTaskManager.MCP
                 _daySequencingAgent
             };
 
-            // Create and populate the context with only active tasks
+            // Clone tasks for the pipeline so we don't mutate the originals during splitting/optimization
+            var pipelineTasks = activeTasks.Select(t => t.Clone()).ToList();
+            
+            // Initial clear of scheduled parts on clones
+            foreach (var t in pipelineTasks) t.ScheduledParts.Clear();
+
+            // Create and populate the context with only active tasks (Clones)
             var context = new MCPContext();
-            context.SharedState["Tasks"] = activeTasks;
+            context.SharedState["Tasks"] = pipelineTasks;
             context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Events"] = _events;
 
             // Execute the agent chain
             var finalContext = MCP.Coordinate(agentChain, context);
 
-            // Retrieve the final data
-            var scheduledActiveTasks = finalContext.SharedState.ContainsKey("Tasks")
+            // Re-Aggregate result
+            var scheduledFragments = finalContext.SharedState.ContainsKey("Tasks")
                 ? (List<TaskItem>)finalContext.SharedState["Tasks"]
                 : new List<TaskItem>();
 
@@ -65,8 +71,31 @@ namespace PriorityTaskManager.MCP
                 ? (List<TaskItem>)finalContext.SharedState["UnschedulableTasks"]
                 : new List<TaskItem>();
 
-            // Concatenate completed tasks back into the result for display purposes
-            var finalTasks = scheduledActiveTasks.Concat(completedTasks).ToList();
+            // --- Re-Aggregate Scheduled Parts back to Original Tasks ---
+            // Clear old scheduling from originals
+            foreach (var task in activeTasks)
+            {
+                task.ScheduledParts.Clear();
+            }
+
+            // Map fragments by ID
+            var fragmentMap = scheduledFragments.GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.ToList());
+
+            // Iterate active tasks and pull parts from fragments
+            foreach (var originalTask in activeTasks)
+            {
+                if (fragmentMap.TryGetValue(originalTask.Id, out var fragments))
+                {
+                    foreach (var fragment in fragments)
+                    {
+                        originalTask.ScheduledParts.AddRange(fragment.ScheduledParts);
+                    }
+                    // Sort chunks by time
+                    originalTask.ScheduledParts.Sort((a, b) => a.StartTime.CompareTo(b.StartTime));
+                }
+            }
+
+            var finalTasks = activeTasks.Concat(completedTasks).ToList();
 
             var result = new PrioritizationResult
             {

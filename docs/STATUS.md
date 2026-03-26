@@ -17,7 +17,7 @@ Phase progress:
 - Phase 1 (Docs and contracts): Complete.
 - Phase 2 (Stabilize Gold Panning): Complete. All 70 tests are passing, covering Horizon, Prioritization, Balancing, Spreading, and Sequencing.
 - Phase 3 (Critical UX & Settings Prep): Complete. Enhanced CLI with standardized interactive flows for Add, Edit, and Settings. Includes improved Time Picker (split minutes, End-of-Day shortcut) and Dependency Editor (submenu with cancel support).
-- Phase 3.5 (User Feedback Refinements): Complete. Polished Event system (interactive + Smart Shift), fixed Scheduler spill-over, improved Completed task handling.
+- Phase 3.5 (User Feedback Refinements): Complete. Polished Event system (interactive + Smart Shift), fixed Scheduler spill-over and gaps (Constructive Fill), improved Split Task visibility.
 - Phase 4 (New pipeline implementation): Ready to Start.
 
 Recently clarified contract decisions:
@@ -35,7 +35,7 @@ Recently clarified contract decisions:
 | **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
 | **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
-| **Scheduling Logic** | 🟡 **Migration** | Legacy scheduling is being replaced by the V1 reduced pipeline contract. |
+| **Scheduling Logic** | 🟡 **Migration** | Constraint Optimization Strategy is being added alongside the MCP Gold Panning Strategy |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟢 **Stable** | Interactive Add/Edit/List, Smart Shifting, Multi-delete, Global 'e' alias. |
 | **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |

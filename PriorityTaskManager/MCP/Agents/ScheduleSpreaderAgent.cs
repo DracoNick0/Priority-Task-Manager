@@ -67,56 +67,100 @@ namespace PriorityTaskManager.MCP.Agents
                 buckets[day] = new List<TaskItem>();
             }
 
-            // --- Step 2: The Sift Loop ---
-            // Iterate through the river of time
+            // --- Step 2: The Constructive Fill Loop (Greedy Knapsack with Splitting) ---
+            // We actively select tasks to fill each day's capacity.
+            // If a task causes overflow, we split it to fill the remaining space.
+
+            // Sort by Priority (Weights)
+            var remainingTasks = tasks.OrderByDescending(t => weights != null && weights.ContainsKey(t.Id) ? weights[t.Id] : 0).ToList();
+            
             for (int i = 0; i < windowDays.Count; i++)
             {
                 var currentDay = windowDays[i];
-                var nextDay = (i + 1 < windowDays.Count) ? windowDays[i + 1] : (DateTime?)null;
-                
-                var dailyTasks = buckets[currentDay];
+                var dailyBucket = new List<TaskItem>();
                 
                 // Calculate Capacity (Water Pressure)
                 double dayCapacity = scheduleWindow.AvailableSlots
                     .Where(s => s.StartTime.Date == currentDay)
                     .Sum(s => s.Duration.TotalHours);
 
-                double currentLoad = dailyTasks.Sum(t => t.EstimatedDuration.TotalHours);
+                double currentLoad = 0;
                 
-                Console.WriteLine($"  -> Day {currentDay.ToShortDateString()}: Load {currentLoad:F1}h / Capacity {dayCapacity:F1}h. (Tasks: {dailyTasks.Count})");
+                Console.WriteLine($"  -> Filling Day {currentDay.ToShortDateString()} (Capacity {dayCapacity:F1}h)...");
 
-                // While Pressure is too high (Overflow)
-                while (currentLoad > dayCapacity && dailyTasks.Count > 0)
+                // Iterate backwards to allow removal
+                for (int j = remainingTasks.Count - 1; j >= 0; j--)
                 {
-                    // Find the lightest task (Silt) to displace
-                    // Sort by Weight Ascending
-                    var lightestTask = dailyTasks
-                        .OrderBy(t => weights != null && weights.ContainsKey(t.Id) ? weights[t.Id] : 0)
-                        .First();
-                    
-                    double weight = weights != null && weights.ContainsKey(lightestTask.Id) ? weights[lightestTask.Id] : 0;
+                    var task = remainingTasks[j];
+                    double taskDuration = task.EstimatedDuration.TotalHours;
+                    double availableSpace = dayCapacity - currentLoad;
 
-                    // If we can't move it (e.g. End of Window), we have an Overflow problem.
-                    if (nextDay == null)
+                    if (availableSpace <= 0.01) // Day is full
                     {
-                        context.History.Add($"WARNING: Schedule Sluice Overflow. Task '{lightestTask.Title}' pushed off the end of the calendar.");
-                        Console.WriteLine($"    ! OVERFLOW: Dropping '{lightestTask.Title}' (Weight {weight:F1}) - End of Window.");
-                        dailyTasks.Remove(lightestTask);
-                        // Mark as unscheduled?
-                        lightestTask.ScheduledParts.Clear(); 
-                        // Recalculate load after dropping
-                        currentLoad = dailyTasks.Sum(t => t.EstimatedDuration.TotalHours);
-                        continue; 
+                        break;
                     }
-
-                    // Wash it downstream
-                    dailyTasks.Remove(lightestTask);
-                    buckets[nextDay.Value].Add(lightestTask);
-                    Console.WriteLine($"    -> Washing '{lightestTask.Title}' (Weight {weight:F1}) to {nextDay.Value.ToShortDateString()}");
-
-                    // Recalculate Load
-                    currentLoad = dailyTasks.Sum(t => t.EstimatedDuration.TotalHours);
+                    
+                    if (taskDuration <= availableSpace)
+                    {
+                        // It fits! Add it.
+                        dailyBucket.Add(task);
+                        currentLoad += taskDuration;
+                        remainingTasks.RemoveAt(j);
+                        Console.WriteLine($"    -> Added '{task.Title}' ({taskDuration:F1}h)");
+                    }
+                    else
+                    {
+                        // It doesn't fit entirely. Can we split it?
+                        // Only split if the chunk is meaningful (e.g. > 15 mins)
+                        if (availableSpace > 0.25) 
+                        {
+                            Console.WriteLine($"    -> Splitting '{task.Title}' to fill {availableSpace:F1}h gap.");
+                            
+                            // Create the part that stays (Part 1)
+                            // We modify the current task instance (which is a clone from the Strategy)
+                            var part1 = task.Clone(); 
+                            // Create the remainder (Part 2) BEFORE modifying Part 1
+                            var part2 = task.Clone();
+                            
+                            // Adjust durations
+                            part1.EstimatedDuration = TimeSpan.FromHours(availableSpace);
+                            part2.EstimatedDuration = TimeSpan.FromHours(taskDuration - availableSpace);
+                            
+                            // Add Part 1 to today
+                            dailyBucket.Add(part1);
+                            currentLoad += availableSpace;
+                            
+                            // Replace original in remaining list with Part 2
+                            remainingTasks.RemoveAt(j);
+                            remainingTasks.Insert(j, part2);
+                            
+                            // Since day is full, break inner loop to move to next day
+                            break;
+                        }
+                        else
+                        {
+                            // Gap is too small to split a task into. Skip this task for today.
+                            // Continue searching for a smaller task that might fit?
+                            // For now, we just skip it.
+                        }
+                    }
                 }
+                
+                buckets[currentDay] = dailyBucket;
+
+                if (remainingTasks.Count == 0)
+                {
+                    Console.WriteLine("  -> All tasks scheduled.");
+                    break;
+                }
+            }
+
+            // --- Step 3: Handling Leftovers ---
+            if (remainingTasks.Count > 0)
+            {
+                var lastDay = windowDays.Last();
+                buckets[lastDay].AddRange(remainingTasks);
+                Console.WriteLine($"  -> Warning: {remainingTasks.Count} tasks did not fit in window. Pushed to {lastDay.ToShortDateString()} (Overfill).");
             }
 
             // --- Step 3: Commit to Shared State ---

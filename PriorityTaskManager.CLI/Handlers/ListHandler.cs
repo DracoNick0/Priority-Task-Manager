@@ -426,6 +426,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
                     // Show all scheduled chunks for this task on the target day
                     var chunksForDay = task.ScheduledParts.Where(p => p.StartTime.Date == targetDay.Date).OrderBy(p => p.StartTime).ToList();
+                    var futureChunks = task.ScheduledParts.Where(p => p.StartTime.Date > targetDay.Date).OrderBy(p => p.StartTime).ToList();
                     
                     if (chunksForDay.Any())
                     {
@@ -441,6 +442,26 @@ namespace PriorityTaskManager.CLI.Handlers
                             string titleInfo = i == 0 ? $"| {task.Title} (Due: {FormatDate(task.DueDate)})" : "";
                             
                             Console.WriteLine($"{idInfo}{start} - {end} {titleInfo} (Chunk: {duration}h)");
+                        }
+
+                        // Check for future chunks to provide context on where the rest of the task is
+                        if (futureChunks.Any())
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkGray;
+                            foreach (var chunk in futureChunks)
+                            {
+                                var dateStr = chunk.StartTime.ToString("MM-dd");
+                                var start = chunk.StartTime.ToString("HH:mm");
+                                var end = chunk.EndTime.ToString("HH:mm");
+                                var duration = chunk.Duration.TotalHours.ToString("0.##");
+                                
+                                // Indent based on ID length: (digits + 2) spaces
+                                int idDigits = task.DisplayId.ToString().Length;
+                                string indent = new string(' ', idDigits + 2);
+                                
+                                Console.WriteLine($"{indent}-> {dateStr} {start} - {end} (Part: {duration}h)");
+                            }
+                            Console.ResetColor();
                         }
                     }
                     else
