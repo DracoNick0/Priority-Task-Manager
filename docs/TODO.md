@@ -47,6 +47,13 @@
     -   [ ] `PersistenceServiceTests.cs` (Integration)
 
 -  **User-Driven Scheduling Enhancements**
+    -   [ ] **Dynamic/Custom Work Hours**: Allow different work hours per day (e.g., Mon 9-5, Tue 10-6) and potentially non-recurring weekly schedules (e.g., specific shifts).
+    -   [ ] **Dynamic Slack Awareness**: Implement user-focused slack alerts based on "Work Days" rather than fixed hours.
+        -   Calculate `AvgDailyWorkCapacity` from user profile.
+        -   *Dark Red*: Slack <= 0.5 * AvgDay (Dire)
+        -   *Red*: Slack <= 1.0 * AvgDay (Pressing)
+        -   *Yellow*: Slack <= 3.0 * AvgDay (Focus)
+        -   *Green*: Slack <= 5.0 * AvgDay (Safe)
     -   [ ] Allow user to set their current energy level to influence scheduling of complex tasks.
     -   [ ] Implement a 'put off' feature so users can defer a task to a later day.
     -   [ ] Warn user when calculated Daily Load exceeds a 'MaxDailyComplexityLoad' threshold (e.g. 50), rather than refusing to schedule.
