@@ -119,6 +119,7 @@ namespace PriorityTaskManager.CLI.Utils
         /// </summary>
         /// <param name="initialDate">The initial date to start the adjustment from. Can be null.</param>
         /// <returns>The adjusted and confirmed date, or original if cancelled.</returns>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static DateTime? HandleInteractiveDateInput(DateTime? initialDate)
         {
             DateTime date = initialDate ?? DateTime.Today;

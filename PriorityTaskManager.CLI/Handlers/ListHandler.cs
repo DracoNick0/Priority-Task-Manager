@@ -407,7 +407,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.ResetColor();
             }
 
-            if (!tasksToDisplay.Any() && !result.UnscheduledTasks.Any())
+            if (!result.Tasks.Any() && !result.UnscheduledTasks.Any())
             {
                 Console.WriteLine("No tasks found in this list.");
                 return;
@@ -567,7 +567,7 @@ namespace PriorityTaskManager.CLI.Handlers
             // Show unschedulable/overdue tasks (incomplete, no scheduled start)
             // Show all overdue tasks (scheduled and unscheduled)
             var unscheduledTasksToDisplay = result.UnscheduledTasks ?? new List<TaskItem>();
-            var overdueTasksToDisplay = tasksToDisplay
+            var overdueTasksToDisplay = result.Tasks
                 .Where(t => !t.IsCompleted && t.DueDate < DateTime.Now)
                 .ToList();
 
@@ -597,10 +597,9 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             // Show completed tasks at the bottom (Max 3)
-            var completedTasks = tasksToDisplay.Where(t => t.IsCompleted).ToList();
+            var completedTasks = result.Tasks.Where(t => t.IsCompleted).ToList();
             if (completedTasks.Any())
             {
-                Console.ForegroundColor = ConsoleColor.DarkGreen;
                 Console.WriteLine($"\nCompleted Tasks (Last 3 of {completedTasks.Count}):");
                 
                 foreach (var task in completedTasks.OrderByDescending(t => t.Id).Take(3))
