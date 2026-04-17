@@ -126,9 +126,6 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 var eventTime = eventsForDay.Sum(e => (e.EndTime - e.StartTime).TotalHours);
 
-                // Adjust slackTime to reflect only hours free within the target day
-                var slackTime = Math.Max(0, totalWorkTime - scheduledTime - eventTime);
-
                 // --- Timeline and Task Letter Assignment ---
                 var scheduledTasksForDay = incompleteTasks
                     .Where(t => t.ScheduledParts.Any(p => p.StartTime.Date == targetDay.Date))
@@ -376,9 +373,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                 }
                 Console.ForegroundColor = ConsoleColor.DarkGray;
-                Console.Write($"]");
-                Console.ForegroundColor = meterColor;
-                Console.WriteLine($" {slackTime:F1} hours free");
+                Console.WriteLine($"]");
                 Console.ResetColor();
 
                 // Calculate realistic slack
