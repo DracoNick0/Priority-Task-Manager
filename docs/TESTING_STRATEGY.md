@@ -2,12 +2,14 @@
 
 This document outlines the strategy for testing the Priority Task Manager application. The goal is to ensure the application is robust, reliable, and that all components function as expected.
 
-## Guiding Principles
+## Guiding Principles: The Hybrid Testing Strategy
 
--   **Test Core Logic Thoroughly**: The primary focus of our testing efforts will be on the `PriorityTaskManager` core library, which contains all business logic.
--   **Leverage Dependency Injection**: Use mock objects for dependencies (like `IPersistenceService` and `ITimeService`) to isolate components under test.
--   **Test for Edge Cases**: Ensure tests cover not just the "happy path" but also edge cases, invalid inputs, and potential failure scenarios.
--   **Use the `TimeService`**: All tests for time-sensitive logic (scheduling, due dates, etc.) **must** use a mocked or controlled `ITimeService` to ensure deterministic and repeatable results.
+Because this application blends deterministic CRUD operations with complex, evolving optimization algorithms, we use a hybrid testing strategy:
+
+-   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`), data models, and CLI handlers have highly predictable inputs and outputs. We use Test-Driven Development here to enforce rigid constraints and ensure a stable sandbox.
+-   **Exploratory Spiking for Algorithms**: Development of scheduling algorithms (`ConstraintOptimizationStrategy`, `McpGoldPanningStrategy`) is done via exploratory programming first. We rely on sample datasets and human verification to tune the heuristics before locking them down.
+-   **Property-Based & Invariant Testing**: Instead of writing brittle assertions for precise algorithm outputs (e.g., "Task A must be at 9:00 AM"), we write invariant tests that check if the algorithm violated core rules (e.g., "No task is scheduled before its dependency", "Must-schedule tasks are never dropped").
+-   **Use the `TimeService`**: All time-sensitive logic must use a mocked `ITimeService` to guarantee deterministic boundaries.
 
 ## Areas to Test
 
@@ -23,28 +25,18 @@ This document outlines the strategy for testing the Priority Task Manager applic
     -   Test `SetSimulatedTime` and `ClearSimulatedTime`.
     -   Verify `GetCurrentTime` returns the correct time in both real and simulated modes.
 
-### 2. The Agent Pipeline (MCP)
+### 2. Scheduling Algorithms (Constraint Solver & Gold Panning)
 
-This is the most critical area to test. We need to test both the individual agents and their integration.
+This is the most complex area of the application. We avoid brittle unit tests that assert exact schedules, as the objective functions are constantly being tuned.
 
--   **`SchedulePreProcessorAgent`**:
-    -   Given a `UserProfile` and a list of `Events`, verify it generates the correct `AvailableScheduleWindow`.
-    -   Use a simulated `ITimeService` to test scenarios where the current time is inside, outside, or during a workday.
-    -   Test with no events, one event, multiple events, and overlapping events.
--   **`TaskAnalyzerAgent`**:
-    -   Verify it correctly calculates `EffectiveImportance`.
--   **`PrioritizationAgent`**:
-    -   Verify it correctly sorts tasks by `DueDate` and then `Complexity`.
--   **`ComplexityBalancerAgent`**:
-    -   Test that it moves high-complexity tasks earlier in a day.
-    -   Test that it distributes complexity across multiple days while respecting due dates.
--   **`SchedulingAgent`**:
-    -   Given a pre-ordered list of tasks and available slots, verify it generates the correct `ScheduledChunk`s.
-    -   Test with tasks that are too large for any single slot and need to be split.
--   **`McpGoldPanningStrategy` (Integration Test)**:
-    -   Test the entire pipeline from end to end.
-    -   Provide a set of tasks, a user profile, and events.
-    -   Assert that the final `PrioritizationResult` contains a valid schedule and a logical history log from the agents.
+-   **Invariant Rules (Property-Based Testing)**: 
+    -   *Dependency Chain*: A dependent task is never scheduled before its prerequisites.
+    -   *Time Bounds*: Total scheduled time in a day never exceeds the user's defined `ScheduleWindow` limits (unless authorized by specific Overtime flags).
+    -   *Task Dropping*: `MustSchedule` tasks are prioritized and never placed in the unscheduled bucket unless totally unfeasible.
+-   **Snapshot / Characterization Tests**:
+    -   For stable algorithm outputs, we save the generated schedule against a complex benchmark dataset. Future refactors test against these text-based snapshots to catch unintended regressions in scheduling shape.
+-   **Agent Pipeline Context**:
+    -   Isolated tests for distinct deterministic agents (e.g., verifying `TaskAnalyzerAgent` correctly calculates `EffectiveImportance` modifiers).
 
 ### 3. CLI Handlers
 
@@ -55,8 +47,8 @@ This is the most critical area to test. We need to test both the individual agen
 
 ## Test Overhaul Plan
 
-1.  **Establish a Test Foundation**: Create a `MockPersistenceService` and a mockable `ITimeService` to be used across all tests.
-2.  **Fix `TaskManagerService` Tests**: Start by fixing the tests for the main service to ensure basic data operations are reliable.
-3.  **Test Individual Agents**: Write focused unit tests for each agent, mocking their dependencies.
-4.  **Write Pipeline Integration Tests**: Create tests for `McpGoldPanningStrategy` that verify the end-to-end scheduling process.
-5.  **Review and Update Existing Tests**: Go through all old test files, deleting what is no longer relevant and updating what can be salvaged.
+1. Reliable Core**: Enforce TDD on the `TaskManagerService` and `PersistenceService` to guarantee safe data manipulation.
+2.  **Define Pipeline Invariants**: Write the rule-based property tests for scheduling (e.g., dependency ordering, timeframe limits).
+3.  **Create Benchmark Datasets**: Assemble complex `tasks.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
+4.  **Implement Snapshot Testing**: Generate baseline schedule expectations for the benchmark datasets using both the V1 Solver and Legacy Gold Panning.
+5.  **Refactor CLI Handlers**: Implement Behavior-Driven (BDD) style testing for the CLI sequence paths using mock dependencies

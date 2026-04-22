@@ -16,7 +16,7 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 1.  **Reference Definitions**: Use the terms defined in `ARCHITECTURE.md` (e.g., "Ask the SchedulingAgent to...", not "Ask the thing that puts tasks on the calendar").
 2.  **Consult Documentation First**: As per `copilot.instructions.md`, always ask the AI to verify its plan against `ARCHITECTURE.md` and `STATUS.md`.
 3.  **Update Documentation**: If you or the AI refactor code, you **must** update the corresponding documentation. The AI is instructed to help with this.
-4.  **TDD**: Instruct the AI to write the failing test *before* implementing the logic, enhancing reliability.
+4.  **Hybrid Testing**: Instruct the AI to use strict TDD for deterministic code (Core services, CLI), but use exploratory spiking and property-based invariant testing for scheduling algorithms (see `TESTING_STRATEGY.md`).
 
 ## Standard Workflow
 

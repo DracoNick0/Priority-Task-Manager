@@ -28,8 +28,8 @@
 - [ ] **Implement relative-density handling for backlog tasks.**
 
 ### Phase 4: Implement Constraint Solver (New Strategy)
--   Follow TDD for each feature slice (Red-Green-Refactor).
--   Write failing tests before implementing behavior changes.
+-   Follow Hybrid Testing (Exploratory Spiking + Invariants) for the algorithm logic.
+-   Write snapshot/characterization tests to lock down stable scheduling shapes.
 -   Implement locked V1 reduced pipeline from `SCHEDULING_SYSTEM_SPEC.md`:
     - PolicyCoordinator + Feasibility
     - WindowBuilder
