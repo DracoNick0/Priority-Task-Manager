@@ -18,10 +18,8 @@ namespace PriorityTaskManager.MCP.Agents
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("Phase 3: Calculating Task Weights (Gold Panning)...");
-            Console.WriteLine("--- PHASE 3: PRIORITIZATION (WEIGHING) ---");
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks || tasks.Count == 0)
             {
-                Console.WriteLine("  -> No Tasks found in context.");
                 return context;
             }
 
@@ -38,13 +36,10 @@ namespace PriorityTaskManager.MCP.Agents
                 today = DateTime.Today;
             }
 
-            Console.WriteLine($"  -> Calculating weights for {tasks.Count} tasks relative to {today.ToShortDateString()}.");
-
             foreach (var task in tasks)
             {
                 double weight = CalculateGoldPanningWeight(task, today);
                 weights[task.Id] = weight;
-                Console.WriteLine($"    Task [{task.Id}] '{task.Title}': Weight = {weight:F2} (Due: {task.DueDate?.ToShortDateString() ?? "None"}, Imp: {task.Importance})");
             }
 
             // Store the calculated weights in the shared context for the Spreader Agent to use.

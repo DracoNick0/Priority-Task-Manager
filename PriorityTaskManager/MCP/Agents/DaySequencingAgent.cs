@@ -17,14 +17,12 @@ namespace PriorityTaskManager.MCP.Agents
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("Phase 5: Sequencing tasks within days (Mosaic/Front-Loading)...");
-            Console.WriteLine("--- PHASE 5: SEQUENCING (MOSAIC) ---");
 
             // Retrieve the daily buckets created by the ScheduleSpreaderAgent.
             if (!context.SharedState.TryGetValue("DailyBuckets", out var bucketsObj) || 
                 bucketsObj is not Dictionary<DateTime, List<TaskItem>> dailyBuckets)
             {
                 context.History.Add("  -> No daily buckets found. Skipping sequencing.");
-                Console.WriteLine("  -> No Buckets Found.");
                 return context;
             }
 
@@ -42,8 +40,6 @@ namespace PriorityTaskManager.MCP.Agents
                 var tasksForDay = dailyBuckets[date];
                 if (tasksForDay.Count == 0) continue;
 
-                Console.WriteLine($"  -> Sequencing {date.ToShortDateString()} ({tasksForDay.Count} tasks)...");
-
                 // Sort tasks for the day based on the sequencing strategy:
                 // 1. Urgency: Tasks that are due on or before this day are prioritized to ensure they are completed in time.
                 // 2. Complexity ("Eat the Frog"): High-complexity tasks are scheduled first, when energy levels are typically highest.
@@ -53,8 +49,6 @@ namespace PriorityTaskManager.MCP.Agents
                     .ThenByDescending(t => t.Complexity)
                     .ThenByDescending(t => t.EffectiveImportance) // Tiebreaker
                     .ToList();
-                
-                Console.WriteLine($"    Order: {string.Join(" -> ", sequence.Select(t => $"{t.Title}({t.Complexity})"))}");
 
                 // Get all available time slots for the current day, ordered chronologically.
                 var slotsForDay = scheduleWindow.AvailableSlots
@@ -65,7 +59,6 @@ namespace PriorityTaskManager.MCP.Agents
                 if (slotsForDay.Count == 0)
                 {
                     context.History.Add($"  -> Warning: Work assigned to {date.ToShortDateString()} but no slots available.");
-                    Console.WriteLine($"    ! Warning: Tasks assigned but no time slots found on this day.");
                     continue;
                 }
 
@@ -103,7 +96,6 @@ namespace PriorityTaskManager.MCP.Agents
                             EndTime = slotStartTime + chunkDuration
                         };
                         task.ScheduledParts.Add(chunk);
-                        Console.WriteLine($"      [{chunk.StartTime:HH:mm}-{chunk.EndTime:HH:mm}] {task.Title}");
 
                         // Update counters for the current task and slot.
                         remainingTaskDuration -= chunkDuration;
@@ -123,7 +115,6 @@ namespace PriorityTaskManager.MCP.Agents
                     if (remainingTaskDuration > TimeSpan.FromMinutes(1))
                     {
                         context.History.Add($"  -> Warning: Task '{task.Title}' could not fully fit on {date.ToShortDateString()} during sequencing.");
-                         Console.WriteLine($"      ! ERROR: Could not schedule remaining {remainingTaskDuration.TotalMinutes}m of {task.Title}");
                     }
                 }
             }

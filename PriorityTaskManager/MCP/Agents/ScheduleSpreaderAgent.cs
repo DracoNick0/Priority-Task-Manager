@@ -19,25 +19,20 @@ namespace PriorityTaskManager.MCP.Agents
         public MCPContext Act(MCPContext context)
         {
             context.History.Add("Phase 4: Spreading tasks (Constructive Fill)...");
-            Console.WriteLine("--- PHASE 4: SPREADER (CONSTRUCTIVE FILL) ---");
 
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks || tasks.Count == 0)
             {
-                Console.WriteLine("  -> No Tasks to spread.");
                 return context;
             }
 
             if (!context.SharedState.TryGetValue("AvailableScheduleWindow", out var scheduleWindowObj) || scheduleWindowObj is not ScheduleWindow scheduleWindow)
             {
-                 Console.WriteLine("  -> No Schedule Window found.");
                 return context;
             }
 
             var weights = context.SharedState.TryGetValue("TaskWeights", out var weightsObj) 
                 ? weightsObj as Dictionary<int, double> 
                 : new Dictionary<int, double>();
-
-            Console.WriteLine($"  -> Spreading {tasks.Count} tasks over window.");
 
             // --- Step 1: Prepare Daily Buckets ---
             // Create a dictionary to hold the list of tasks scheduled for each day.
@@ -50,7 +45,6 @@ namespace PriorityTaskManager.MCP.Agents
 
             if (windowDays.Count == 0) 
             {
-                 Console.WriteLine("  -> No Available Days in Window.");
                  return context;
             }
 
@@ -76,8 +70,6 @@ namespace PriorityTaskManager.MCP.Agents
                     .Sum(s => s.Duration.TotalHours);
 
                 double currentLoad = 0;
-                
-                Console.WriteLine($"  -> Filling Day {currentDay.ToShortDateString()} (Capacity {dayCapacity:F1}h)...");
 
                 // Iterate through the prioritized list of remaining tasks.
                 for (int j = 0; j < remainingTasks.Count; j++)
@@ -99,14 +91,12 @@ namespace PriorityTaskManager.MCP.Agents
                         currentLoad += taskDuration;
                         remainingTasks.RemoveAt(j);
                         j--; // Adjust index as the list size has changed.
-                        Console.WriteLine($"    -> Added '{task.Title}' ({taskDuration:F1}h)");
                     }
                     else
                     {
                         // If the task is too big, split it if the remaining space is meaningful.
                         if (availableSpace > 0.25) // e.g., Don't create a 5-minute sub-task.
                         {
-                            Console.WriteLine($"    -> Splitting '{task.Title}' to fill {availableSpace:F1}h gap.");
                             
                             // Create the part that fits in today's remaining time.
                             var part1 = task.Clone();
@@ -137,7 +127,6 @@ namespace PriorityTaskManager.MCP.Agents
                 // If all tasks have been scheduled, exit the loop.
                 if (remainingTasks.Count == 0)
                 {
-                    Console.WriteLine("  -> All tasks scheduled.");
                     break;
                 }
             }
@@ -149,7 +138,6 @@ namespace PriorityTaskManager.MCP.Agents
             {
                 var lastDay = windowDays.Last();
                 buckets[lastDay].AddRange(remainingTasks);
-                Console.WriteLine($"  -> Warning: {remainingTasks.Count} tasks did not fit in window. Pushed to {lastDay.ToShortDateString()} (Overfill).");
             }
 
             // --- Step 4: Commit to Shared State ---
