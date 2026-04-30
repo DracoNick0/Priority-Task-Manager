@@ -18,7 +18,7 @@ Phase progress:
 - Phase 2 (Stabilize Gold Panning): Complete. All 70 tests are passing, covering Horizon, Prioritization, Balancing, Spreading, and Sequencing.
 - Phase 3 (Critical UX & Settings Prep): Complete. Enhanced CLI with standardized interactive flows for Add, Edit, and Settings. Includes improved Time Picker (split minutes, End-of-Day shortcut) and Dependency Editor (submenu with cancel support).
 - Phase 3.5 (User Feedback Refinements): Complete. Polished Event system (interactive + Smart Shift), fixed Scheduler spill-over and gaps (Constructive Fill), improved Split Task visibility.
-- Phase 4 (New pipeline implementation): Ready to Start.
+- Phase 4 (New pipeline implementation): Deferred until the remaining Gold Panning refinements are complete.
 
 Recently clarified contract decisions:
 - Must-schedule tasks can be marked late only when policy allows and cannot be dropped.
@@ -32,12 +32,12 @@ Recently clarified contract decisions:
 | Feature Area | Status | Notes |
 | :--- | :--- | :--- |
 | **Task Management** | 🟢 **Stable** | Standard CRUD (add, edit, list) is robust with enhanced interactive menus for Date, Time, and Dependencies. |
-| **List Management** | 🟢 **Stable** | Creating, switching, and deleting lists works as expected. |
+| **List Management** | 🟡 **Under Review** | Core create/switch/delete flows work, but the list model is still under review for richer semantics and sorting support. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
 | **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
 | Scheduling Logic | 🟡 **Migration** | Constraint Solver is being added alongside the Gold Panning strategy |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
-| **Event System** | 🟢 **Stable** | Interactive Add/Edit/List, Smart Shifting, Multi-delete, Global 'e' alias. |
+| **Event System** | 🟡 **Under Review** | Interactive Add/Edit/List and Smart Shifting work, but past-event retention and the main schedule-view UX still need refinement. |
 | **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
 | **Unit Tests** | 🟡 **Active** | Core Agents covered; Integration and CLI tests pending alignment with new contract. |
 
@@ -57,6 +57,8 @@ Recently clarified contract decisions:
 ## Known Issues & Technical Debt
 
 *   **Migration Churn**: Scheduling internals are actively being replaced; temporary instability is expected during Phase 2 and Phase 3.
+*   **Legacy UX Refinements**: List semantics and event history/display behavior still need follow-up work in the Gold Panning path.
+*   **Gold Panning Backlog**: Slack-aware urgency, focus-window sequencing, and anti-starvation logic are still pending before Phase 4.
 *   **Dependency Management**: FS enforcement is a priority in the new migration test matrix and target pipeline.
 *   **Unit Tests**: Existing tests are still being realigned to the new scheduling contract.
 
