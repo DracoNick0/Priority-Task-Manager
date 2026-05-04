@@ -569,13 +569,23 @@ namespace PriorityTaskManager.CLI.Handlers
             var scheduledTaskIds = scheduledTasks.Select(t => t.Id).ToHashSet();
 
             // Combine both sets, avoid duplicates and already scheduled items
-            var unscheduledAndOverdueTasks = unscheduledTasksToDisplay
+            var unscheduledAndOverdueTasksQuery = unscheduledTasksToDisplay
                 .Concat(result.Tasks.Where(t => !t.IsCompleted && t.DueDate < nowTime))
                 .Where(t => !scheduledTaskIds.Contains(t.Id))
                 .GroupBy(t => t.Id)
-                .Select(g => g.First())
-                .OrderBy(t => t.DueDate)
-                .ToList();
+                .Select(g => g.First());
+
+            // Apply list sorting option
+            var currentActiveList = service.GetAllLists().FirstOrDefault(l => l.Id == service.GetActiveListId());
+            var sortOption = currentActiveList?.SortOption ?? SortOption.Default;
+            
+            var unscheduledAndOverdueTasks = sortOption switch
+            {
+                SortOption.Alphabetical => unscheduledAndOverdueTasksQuery.OrderBy(t => t.Title).ToList(),
+                SortOption.Id => unscheduledAndOverdueTasksQuery.OrderBy(t => t.Id).ToList(),
+                SortOption.DueDate => unscheduledAndOverdueTasksQuery.OrderBy(t => t.DueDate ?? DateTime.MaxValue).ToList(),
+                _ => unscheduledAndOverdueTasksQuery.OrderBy(t => t.DueDate).ToList() // Default fallback
+            };
 
             if (unscheduledAndOverdueTasks.Any())
             {
@@ -707,7 +717,18 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            if (!Enum.TryParse<SortOption>(args[0], true, out var sortOption))
+            // Map user-friendly strings to enum
+            var sortStr = args[0].ToLowerInvariant();
+            var targetSortOption = sortStr switch
+            {
+                "alpha" or "alphabetical" => SortOption.Alphabetical,
+                "due" or "duedate" => SortOption.DueDate,
+                "id" => SortOption.Id,
+                "default" => SortOption.Default,
+                _ => default(SortOption?)
+            };
+
+            if (targetSortOption == null)
             {
                 Console.WriteLine("Error: Invalid sort option. Valid options are: Default, Alphabetical, DueDate, Id.");
                 return;
@@ -719,9 +740,9 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
                 return;
             }
-            activeList.SortOption = sortOption;
+            activeList.SortOption = targetSortOption.Value;
             service.UpdateList(activeList);
-            Console.WriteLine($"Sort option for list '{activeList.Name}' updated to {sortOption}.");
+            Console.WriteLine($"Sort option for list '{activeList.Name}' updated to {targetSortOption.Value}.");
         }
 
         private void HandleInteractiveSwitch(TaskManagerService service)
