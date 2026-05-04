@@ -73,6 +73,16 @@ namespace PriorityTaskManager.Services
         public void SaveData() => _persistenceService.SaveData(_data);
 
         /// <summary>
+        /// Adjusts NextDisplayId if needed.
+        /// </summary>
+        public void SyncNextDisplayId()
+        {
+            int maxId = _data.Tasks.Any() ? _data.Tasks.Max(t => t.DisplayId) : 0;
+            _data.NextDisplayId = maxId + 1;
+            SaveData();
+        }
+
+        /// <summary>
         /// Calculates urgency for all tasks using the urgency strategy.
         /// </summary>
         public void CalculateUrgencyForAllTasks()

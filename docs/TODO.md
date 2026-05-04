@@ -5,8 +5,8 @@
 ---
 
 ### Core Fixes & Refinements
-- [ ] **Fix `cleanup` command ID generation.**
-    - *Description*: After a `cleanup`, the next new task's `DisplayId` should be `[highest_existing_id + 1]`, not continuing from the pre-cleanup sequence.
+- [ ] **Fix duplicate tasks appearing in both scheduled and unscheduled/overdue outputs.**
+    - *Description*: Certain tasks (e.g., ID 1 and 5) are being listed in both the "Scheduled Tasks" view and the "Unscheduled/Overdue Tasks" section simultaneously. Additionally, tasks appear to be incorrectly marked as `[OVERDUE]` even when the current simulated time is before their due date.
 - [ ] **Rethink the purpose and functionality of "Lists".**
     - *Description*: The concept of task lists is currently underutilized. Explore ways to make them more meaningful, such as associating different settings, views, or even scheduling strategies per list.
     - Consider adding more sorting options to the `list` command as well.
