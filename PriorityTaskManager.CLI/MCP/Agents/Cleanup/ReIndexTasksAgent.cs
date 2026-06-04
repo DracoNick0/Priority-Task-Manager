@@ -34,6 +34,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
                 newDisplayId++;
             }
 
+            _taskManagerService.SyncNextDisplayId();
             _taskManagerService.SaveData();
 
             context.SharedState["IdMap"] = idMap;

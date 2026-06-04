@@ -22,8 +22,22 @@ namespace PriorityTaskManager.Services
                 strategy = new MCP.McpGoldPanningStrategy(this.UserProfile, _data.Events, timeService);
             }
             
-            var rawTasks = GetAllTasks(listId);
-            var result = strategy.CalculateUrgency(rawTasks.ToList());
+            var rawTasks = GetAllTasks(listId).ToList();
+
+            // Apply the list's intrinsic sort option before scheduling so tie-breakers align with user intent
+            var currentList = _data.Lists.FirstOrDefault(l => l.Id == listId);
+            if (currentList != null && currentList.SortOption != SortOption.Default)
+            {
+                rawTasks = currentList.SortOption switch
+                {
+                    SortOption.Alphabetical => rawTasks.OrderBy(t => t.Title).ToList(),
+                    SortOption.DueDate => rawTasks.OrderBy(t => t.DueDate ?? DateTime.MaxValue).ToList(),
+                    SortOption.Id => rawTasks.OrderBy(t => t.Id).ToList(),
+                    _ => rawTasks
+                };
+            }
+
+            var result = strategy.CalculateUrgency(rawTasks);
             return result;
         }
 
@@ -71,6 +85,16 @@ namespace PriorityTaskManager.Services
         }
 
         public void SaveData() => _persistenceService.SaveData(_data);
+
+        /// <summary>
+        /// Adjusts NextDisplayId if needed.
+        /// </summary>
+        public void SyncNextDisplayId()
+        {
+            int maxId = _data.Tasks.Any() ? _data.Tasks.Max(t => t.DisplayId) : 0;
+            _data.NextDisplayId = maxId + 1;
+            SaveData();
+        }
 
         /// <summary>
         /// Calculates urgency for all tasks using the urgency strategy.

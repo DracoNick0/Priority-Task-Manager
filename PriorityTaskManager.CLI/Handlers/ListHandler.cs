@@ -398,7 +398,11 @@ namespace PriorityTaskManager.CLI.Handlers
             if (criticalTasks.Any())
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Critical Tasks: {criticalTasks.Count} tasks overdue by user preferences");
+                Console.WriteLine($"Critical Tasks ({criticalTasks.Count} tasks overdue by user preferences):");
+                foreach (var task in criticalTasks)
+                {
+                    Console.WriteLine($"  [ID: {task.DisplayId}] {task.Title} (Due: {FormatDate(task.DueDate)})");
+                }
                 Console.ResetColor();
             }
 
@@ -560,19 +564,28 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             // Show unschedulable/overdue tasks (incomplete, no scheduled start)
-            // Show all overdue tasks (scheduled and unscheduled)
+            var nowTime = _timeService.GetCurrentTime();
             var unscheduledTasksToDisplay = result.UnscheduledTasks ?? new List<TaskItem>();
-            var overdueTasksToDisplay = result.Tasks
-                .Where(t => !t.IsCompleted && t.DueDate < DateTime.Now)
-                .ToList();
+            var scheduledTaskIds = scheduledTasks.Select(t => t.Id).ToHashSet();
 
-            // Combine both sets, avoid duplicates
-            var unscheduledAndOverdueTasks = unscheduledTasksToDisplay
-                .Concat(overdueTasksToDisplay)
+            // Combine both sets, avoid duplicates and already scheduled items
+            var unscheduledAndOverdueTasksQuery = unscheduledTasksToDisplay
+                .Concat(result.Tasks.Where(t => !t.IsCompleted && t.DueDate < nowTime))
+                .Where(t => !scheduledTaskIds.Contains(t.Id))
                 .GroupBy(t => t.Id)
-                .Select(g => g.First())
-                .OrderBy(t => t.DueDate)
-                .ToList();
+                .Select(g => g.First());
+
+            // Apply list sorting option
+            var currentActiveList = service.GetAllLists().FirstOrDefault(l => l.Id == service.GetActiveListId());
+            var sortOption = currentActiveList?.SortOption ?? SortOption.Default;
+            
+            var unscheduledAndOverdueTasks = sortOption switch
+            {
+                SortOption.Alphabetical => unscheduledAndOverdueTasksQuery.OrderBy(t => t.Title).ToList(),
+                SortOption.Id => unscheduledAndOverdueTasksQuery.OrderBy(t => t.Id).ToList(),
+                SortOption.DueDate => unscheduledAndOverdueTasksQuery.OrderBy(t => t.DueDate ?? DateTime.MaxValue).ToList(),
+                _ => unscheduledAndOverdueTasksQuery.OrderBy(t => t.DueDate).ToList() // Default fallback
+            };
 
             if (unscheduledAndOverdueTasks.Any())
             {
@@ -582,26 +595,13 @@ namespace PriorityTaskManager.CLI.Handlers
                     var duration = task.EstimatedDuration.TotalHours.ToString("0.##");
                     var due = FormatDate(task.DueDate);
                     var labels = new List<string>();
-                    if (task.DueDate < DateTime.Now) labels.Add("OVERDUE");
+                    if (task.DueDate < nowTime) labels.Add("OVERDUE");
                     if (unscheduledTasksToDisplay.Any(u => u.Id == task.Id)) labels.Add("UNSCHEDULED");
                     var labelText = labels.Count > 0 ? $"[{string.Join(", ", labels)}] " : "";
                     Console.ForegroundColor = labels.Contains("OVERDUE") ? ConsoleColor.Red : ConsoleColor.Yellow;
                     Console.WriteLine($"[ID: {task.DisplayId}] {labelText}{task.Title} (Due: {due}, Duration: {duration}h)");
                     Console.ResetColor();
                 }
-            }
-
-            // Show completed tasks at the bottom (Max 3)
-            var completedTasks = result.Tasks.Where(t => t.IsCompleted).ToList();
-            if (completedTasks.Any())
-            {
-                Console.WriteLine($"\nCompleted Tasks (Last 3 of {completedTasks.Count}):");
-                
-                foreach (var task in completedTasks.OrderByDescending(t => t.Id).Take(3))
-                {
-                    Console.WriteLine($"[ID: {task.DisplayId}] {task.Title} (Completed)");
-                }
-                Console.ResetColor();
             }
         }
 
@@ -612,7 +612,7 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 return "No date";
             }
-            var now = DateTime.Now;
+            var now = _timeService.GetCurrentTime();
             if (date.Value.Year == now.Year)
                 return date.Value.ToString("MM-dd");
             else
@@ -717,7 +717,18 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            if (!Enum.TryParse<SortOption>(args[0], true, out var sortOption))
+            // Map user-friendly strings to enum
+            var sortStr = args[0].ToLowerInvariant();
+            var targetSortOption = sortStr switch
+            {
+                "alpha" or "alphabetical" => SortOption.Alphabetical,
+                "due" or "duedate" => SortOption.DueDate,
+                "id" => SortOption.Id,
+                "default" => SortOption.Default,
+                _ => default(SortOption?)
+            };
+
+            if (targetSortOption == null)
             {
                 Console.WriteLine("Error: Invalid sort option. Valid options are: Default, Alphabetical, DueDate, Id.");
                 return;
@@ -729,9 +740,9 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
                 return;
             }
-            activeList.SortOption = sortOption;
+            activeList.SortOption = targetSortOption.Value;
             service.UpdateList(activeList);
-            Console.WriteLine($"Sort option for list '{activeList.Name}' updated to {sortOption}.");
+            Console.WriteLine($"Sort option for list '{activeList.Name}' updated to {targetSortOption.Value}.");
         }
 
         private void HandleInteractiveSwitch(TaskManagerService service)
