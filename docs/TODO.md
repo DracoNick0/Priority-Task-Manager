@@ -5,10 +5,10 @@
 ---
 
 ### Core Fixes & Refinements
-- [ ] **Rethink the purpose and functionality of "Lists".**
-    - *Description*: The concept of task lists is currently underutilized. Explore ways to make them more meaningful, such as associating different settings, views, or even scheduling strategies per list.
-    - Consider adding more sorting options to the `list` command as well.
-        - *Description*: Enhance `list sort` to include strategies like `alphabetical`, `due date`, or `ID`.
+- [ ] **Extend per-list configurations.**
+    - *Description*: Build upon the list scheduling overrides by allowing different scheduling windows (e.g., work hours) per list and additional per-list settings to further separate contexts.
+- [ ] **Combine list settings commands.**
+    - *Description*: Combine the separate `list sort` and `list mode` commands into a unified `list settings` or `list set <property>` command to streamline list configuration.
 
 ### Scheduling Related & Event Enhancements
 - [ ] **Improve Event Scheduling System.**
