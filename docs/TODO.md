@@ -4,8 +4,21 @@
 
 ---
 
+## UI/UX Improvements
+- [ ] **Create a persistent, top-aligned schedule view.**
+    - *Description*: Implement a default dashboard-style console flow where the schedule stays locked to the top of the terminal. For each command, clear the screen, reprint the current schedule header, then print the command output below it so the schedule never gets pushed off-screen.
+    - *Notes*: Cache the rendered schedule between commands so the CLI does not rerun the scheduling algorithm unnecessarily on every command. Only regenerate the schedule when a command changes scheduling inputs, list settings, or other schedule-affecting state. Any automatic refresh must preserve the last command output and must not wipe partially typed user input; if the console flow cannot reliably guarantee that, the auto-refresh behavior should be dropped or replaced with a non-destructive update approach.
+
+### Core Fixes & Refinements
+- [ ] **Extend per-list configurations.**
+    - *Description*: Build upon the list scheduling overrides by allowing different scheduling windows (e.g., work hours) per list and additional per-list settings such as name, description, and sort option to further separate contexts.
+    - *Notes*: Prefer an interactive settings menu navigable with arrow keys, while still allowing direct commands for faster editing when needed.
+- [ ] **Combine list settings commands.**
+    - *Description*: Combine the separate `list sort` commands into a unified `list settings` experience so list configuration is managed from one interactive place instead of scattered commands.
+    - *Notes*: Keep direct command forms available as an optional shortcut, not the only way to access settings.
+
 - [ ] **Implement mock schedules**
-    - *Description*: Provide selectable mock scenarios that temporarily replace the current list of assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
+    - *Description*: Provide selectable mock scenarios that temporarily replace the current assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
     - *Notes*: Mock runs must be isolated (in-memory or separate temp storage), configurable via CLI, reversible, and easy to discover from the terminal.
     - *Plan*:
         - Add a `mock` CLI command family with `mock list`, `mock run <scenario>`, and an interactive scenario picker.
@@ -14,20 +27,10 @@
         - Reuse the normal schedule output renderer, but label mock results clearly as simulations.
         - Add tests for scenario loading, command parsing, and persistence isolation.
 
-### Core Fixes & Refinements
-- [ ] **Extend per-list configurations.**
-    - *Description*: Build upon the list scheduling overrides by allowing different scheduling windows (e.g., work hours) per list and additional per-list settings to further separate contexts.
-- [ ] **Combine list settings commands.**
-    - *Description*: Combine the separate `list sort` and `list mode` commands into a unified `list settings` or `list set <property>` command to streamline list configuration.
-
 ### Scheduling Related & Event Enhancements
 - [ ] **Improve Event Scheduling System.**
     - *Description*: The `event` command UI needs a visual and usability overhaul. Past events should be retained but hidden from the main schedule view.
     - *New Command*: Implement an `event all` (or similar) command to display a comprehensive list of both past and future events.
-
-## UI/UX Improvements
-- [ ] **Create a persistent, top-aligned schedule view.**
-    - *Description*: Implement a "dashboard" mode where the schedule view stays locked to the top of the terminal. When commands are run, their output should appear in a scrolling region below the schedule, preventing the schedule from being pushed off-screen. The view should also auto-refresh periodically (e.g., every 15 minutes).
 
 ### User-Driven Scheduling Enhancements
 - [ ] **Dynamic/Custom Work Hours**: Allow different work hours per day.
