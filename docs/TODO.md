@@ -4,6 +4,16 @@
 
 ---
 
+- [ ] **Implement mock schedules**
+    - *Description*: Provide selectable mock scenarios that temporarily replace the current list of assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
+    - *Notes*: Mock runs must be isolated (in-memory or separate temp storage), configurable via CLI, reversible, and easy to discover from the terminal.
+    - *Plan*:
+        - Add a `mock` CLI command family with `mock list`, `mock run <scenario>`, and an interactive scenario picker.
+        - Define scenario files in `PriorityTaskManager.CLI/MockScenarios/` with sample tasks, events, work-hour overrides, and optional simulated time.
+        - Build an in-memory sandbox around the active data container so mock runs never touch persisted JSON data.
+        - Reuse the normal schedule output renderer, but label mock results clearly as simulations.
+        - Add tests for scenario loading, command parsing, and persistence isolation.
+
 ### Core Fixes & Refinements
 - [ ] **Extend per-list configurations.**
     - *Description*: Build upon the list scheduling overrides by allowing different scheduling windows (e.g., work hours) per list and additional per-list settings to further separate contexts.
@@ -14,9 +24,6 @@
 - [ ] **Improve Event Scheduling System.**
     - *Description*: The `event` command UI needs a visual and usability overhaul. Past events should be retained but hidden from the main schedule view.
     - *New Command*: Implement an `event all` (or similar) command to display a comprehensive list of both past and future events.
-- [ ] **Implement mock schedules**
-    - *Description*: Provide selectable mock scenarios that temporarily replace the current list of assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
-    - *Notes*: Mock runs must be isolated (in-memory or separate temp storage), configurable via CLI (e.g., `mock run <scenario>`), and reversible.
 
 ## UI/UX Improvements
 - [ ] **Create a persistent, top-aligned schedule view.**
