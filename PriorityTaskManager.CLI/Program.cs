@@ -37,6 +37,9 @@ namespace PriorityTaskManager.CLI
 			var scheduleSnapshotProvider = new ScheduleSnapshotProvider(service, taskMetricsService, timeService);
 			scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
 
+			var backgroundRefreshScheduler = new BackgroundRefreshScheduler(scheduleSnapshotProvider);
+			backgroundRefreshScheduler.Start();
+
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 
 			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
@@ -74,6 +77,7 @@ namespace PriorityTaskManager.CLI
 
 				if (command.Equals("exit", StringComparison.OrdinalIgnoreCase))
 				{
+					backgroundRefreshScheduler.Stop();
 					Console.WriteLine("Goodbye!");
 					break;
 				}

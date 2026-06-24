@@ -8,6 +8,25 @@ namespace PriorityTaskManager.CLI.Utils
 {
     public static class ConsoleHelper
     {
+        /// <summary>
+        /// Clears the console and renders the current schedule dashboard from the cached snapshot.
+        /// This wrapper ensures the schedule is always displayed at the top without rerunning the scheduler.
+        /// </summary>
+        public static void ClearAndRenderDashboard(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            Console.Clear();
+
+            if (snapshotProvider.TryGetLatestSnapshot(out var snapshot) && snapshot != null)
+            {
+                RenderSchedule(snapshot, taskMetricsService);
+                Console.WriteLine("\n---");
+            }
+            else
+            {
+                Console.WriteLine("Warning: Schedule snapshot unavailable.");
+            }
+        }
+
         public static void RenderSchedule(ScheduleSnapshot snapshot, ITaskMetricsService taskMetricsService)
         {
             var result = snapshot.Result;
