@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
+using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI
 {
@@ -33,13 +34,15 @@ namespace PriorityTaskManager.CLI
 			var urgencyStrategy = new PriorityTaskManager.MCP.McpGoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
+			var scheduleSnapshotProvider = new ScheduleSnapshotProvider(service, taskMetricsService, timeService);
+			scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 
 			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ "add", new AddHandler() },
-				{ "list", new ListHandler(taskMetricsService, timeService) },
+				{ "list", new ListHandler(taskMetricsService, timeService, scheduleSnapshotProvider) },
 				{ "edit", new EditHandler() },
 				{ "delete", new DeleteHandler() },
 				{ "complete", new CompleteHandler() },

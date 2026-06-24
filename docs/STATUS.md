@@ -35,6 +35,7 @@ Recently clarified contract decisions:
 | **List Management** | 🟡 **Under Review** | Core create/switch/delete flows work, but the list model is still under review for richer semantics and sorting support. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
 | **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
+| **CLI Schedule Dashboard Foundation** | 🟡 **In Progress** | Added snapshot caching (`ScheduleSnapshotProvider`) and snapshot-based rendering (`ConsoleHelper.RenderSchedule`) to support persistent top-aligned schedule redraws without rerunning scheduling every repaint. |
 | Scheduling Logic | 🟡 **Migration** | Constraint Solver is being added alongside the Gold Panning strategy |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟡 **Under Review** | Interactive Add/Edit/List and Smart Shifting work, but past-event retention and the main schedule-view UX still need refinement. |

@@ -8,6 +8,7 @@
 - [ ] **Create a persistent, top-aligned schedule view.**
     - *Description*: Implement a default dashboard-style console flow where the schedule stays locked to the top of the terminal. For each command, clear the screen, reprint the current schedule header, then print the command output below it so the schedule never gets pushed off-screen.
     - *Notes*: Cache the rendered schedule between commands so the CLI does not rerun the scheduling algorithm unnecessarily on every command. Only regenerate the schedule when a command changes scheduling inputs, list settings, or other schedule-affecting state. Any automatic refresh must preserve the last command output and must not wipe partially typed user input; if the console flow cannot reliably guarantee that, the auto-refresh behavior should be dropped or replaced with a non-destructive update approach.
+    - *Progress (2026-06-23)*: Added a cached schedule snapshot provider and moved schedule rendering into `ConsoleHelper.RenderSchedule(...)` so the UI can redraw from cached data without rerunning `TaskManagerService.GetPrioritizedTasks(...)` on every render.
 
 ### Core Fixes & Refinements
 - [ ] **Extend per-list configurations.**
