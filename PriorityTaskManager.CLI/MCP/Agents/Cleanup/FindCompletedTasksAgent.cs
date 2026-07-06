@@ -1,10 +1,10 @@
 using System;
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 {
-    public class FindCompletedTasksAgent : IAgent
+    public class FindCompletedTasksAgent : ISchedulingStage
     {
         private readonly TaskManagerService _taskManagerService;
 
@@ -13,7 +13,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
             _taskManagerService = taskManagerService;
         }
 
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             context.History.Add("Finding all completed tasks...");
 

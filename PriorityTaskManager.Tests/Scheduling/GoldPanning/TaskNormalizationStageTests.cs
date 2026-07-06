@@ -1,15 +1,15 @@
 using Xunit;
 using PriorityTaskManager.Models;
-using PriorityTaskManager.MCP;
-using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Scheduling.GoldPanning;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests.MCP.GoldPanning
+namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
-    public class TaskAnalyzerAgentTests
+    public class TaskNormalizationStageTests
     {
         /*
          * === Test Coverage for TaskAnalyzerAgent ===
@@ -23,24 +23,24 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
          * [✓] Zero Importance: A task with importance explicitly set to 0 is correctly defaulted.
         */
 
-        private readonly TaskAnalyzerAgent _agent;
+        private readonly TaskNormalizationStage _agent;
 
-        public TaskAnalyzerAgentTests()
+        public TaskNormalizationStageTests()
         {
-            _agent = new TaskAnalyzerAgent();
+            _agent = new TaskNormalizationStage();
         }
 
         [Fact]
         public void Act_WhenContextHasNoTasks_ShouldReturnContextWithHistory()
         {
             // Arrange
-            var context = new MCPContext();
+            var context = new SchedulingContext();
 
             // Act
             var resultContext = _agent.Act(context);
 
             // Assert
-            Assert.Contains("TaskAnalyzerAgent: No valid task list found in context.", resultContext.History);
+            Assert.Contains("TaskNormalizationStage: No valid task list found in context. Nothing to normalize.", resultContext.History);
             Assert.False(resultContext.SharedState.ContainsKey("Tasks"));
         }
 
@@ -48,7 +48,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         public void Act_WhenTasksListIsEmpty_ShouldReturnContextWithHistory()
         {
             // Arrange
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem>();
 
             // Act
@@ -58,7 +58,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             // Assert
             Assert.NotNull(resultTasks);
             Assert.Empty(resultTasks);
-            Assert.Contains("TaskAnalyzerAgent: Tasks analyzed and defaults applied.", resultContext.History);
+            Assert.Contains("TaskNormalizationStage: Task normalization complete. Defaults applied.", resultContext.History);
         }
 
         [Fact]
@@ -72,7 +72,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
                 EstimatedDuration = TimeSpan.FromMinutes(30),
                 Complexity = 2.5
             };
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
 
             // Act
@@ -97,7 +97,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
                 EstimatedDuration = TimeSpan.Zero, // Should become 1 hour
                 Complexity = 0.0 // Should become 1.0
             };
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
 
             // Act
@@ -120,7 +120,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
                 Title = "Zero Importance Task",
                 Importance = 0 // Should become 1
             };
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
 
             // Act
@@ -141,7 +141,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
                 Title = "Negative Duration Task",
                 EstimatedDuration = TimeSpan.FromMinutes(-30) // Should become 1 hour
             };
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
 
             // Act
@@ -162,7 +162,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
                 Title = "Negative Complexity Task",
                 Complexity = -10.0 // Should become 1.0
             };
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
 
             // Act
@@ -181,7 +181,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             var defaultTask = new TaskItem { Title = "Default" }; // This will have constructor defaults: Importance=5, Duration=1hr, Complexity=1.0
             var zeroValueTask = new TaskItem { Title = "Zeroes", Importance = 0, EstimatedDuration = TimeSpan.Zero, Complexity = -1 };
             var definedTask = new TaskItem { Title = "Defined", Importance = 3, EstimatedDuration = TimeSpan.FromDays(1), Complexity = 5 };
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { defaultTask, zeroValueTask, definedTask };
 
             // Act
@@ -222,7 +222,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             var resultContext = _agent.Act(context);
 
             // Assert
-            Assert.Contains("TaskAnalyzerAgent: No valid task list found in context.", resultContext.History);
+            Assert.Contains("TaskNormalizationStage: No valid task list found in context. Nothing to normalize.", resultContext.History);
             Assert.False(resultContext.SharedState.ContainsKey("Tasks"));
         }
     }

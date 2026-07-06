@@ -8,7 +8,7 @@ For details on **Quantifying Task Complexity**, please refer to [COMPLEXITY_GUID
 
 The solution is divided into three main projects to ensure a clean separation of concerns:
 
--   `PriorityTaskManager/`: The **core library**. This project contains all business logic, data models, services, and the agent-based scheduling engine. It is completely independent of any user interface and can be reused by other front-ends (e.g., a future GUI or web application).
+-   `PriorityTaskManager/`: The **core library**. This project contains all business logic, data models, services, and the staged scheduling engine. It is completely independent of any user interface and can be reused by other front-ends (e.g., a future GUI or web application).
 -   `PriorityTaskManager.CLI/`: The **command-line interface**. This project is responsible for parsing user commands, interacting with the `TaskManagerService` from the core library, and displaying output to the console.
 -   `PriorityTaskManager.Tests/`: The **unit testing project**. This contains xUnit tests for the core library. **Note:** These tests are currently outdated due to recent refactoring and require a complete overhaul.
 
@@ -33,11 +33,13 @@ Priority-Task-Manager/
 │   ├── PriorityTaskManager.csproj
 │   ├── Models/                   <-- Shared Domain Models
 │   ├── Services/                 <-- Shared Services
-│   ├── MCP/                      <-- LEGACY Scheduler (Strategies/Agents)
-│   │   ├── Agents/
-│   │   ├── MCP.cs
-│   │   ├── MCPContext.cs
-│   │   └── McpGoldPanningStrategy.cs
+│   ├── Scheduling/
+│   │   └── GoldPanning/
+│   │       ├── Stages/
+│   │       ├── GoldPanningStrategy.cs
+│   │       ├── ISchedulingStage.cs
+│   │       ├── PipelineCoordinator.cs
+│   │       └── SchedulingContext.cs
 │   └── Scheduling/               <-- V1 Scheduler (New)
 │       ├── Core/                 <-- Interfaces
 │       └── Optimization/         <-- Optimization Strategy Implementation
@@ -47,7 +49,7 @@ Priority-Task-Manager/
     ├── PriorityTaskManager.Tests.csproj
     ├── Infrastructure/           <-- Shared Mocks/Helpers
     ├── Integration/              <-- Service-Level Tests
-    ├── McpGoldPanningStrategy/   <-- Legacy Agent Tests
+    ├── Scheduling/GoldPanning/   <-- Gold Panning Stage Tests
     └── ConstraintOptimizationStrategy/ <-- New V1 Tests
 ```
 
@@ -68,7 +70,7 @@ Before understanding the flow, it is helpful to define the core data objects pas
 *   **`ScheduledChunk`**: A specific allocation of time for a `TaskItem`. A large task might be split into multiple `ScheduledChunk`s across different days.
 *   **`ScheduleWindow`**: A period of available time (start to end) derived from the `UserProfile`'s work hours, minus any `Event`s.
 *   **`DataContainer`**: The master state object held by `TaskManagerService`. It wraps all lists, tasks, events, and user settings.
-*   **`MCPContext`**: The context object passed heavily through the Agent pipeline. It contains the `Tasks` being processed, the `AvailableWindows`, and a `SharedState` dictionary for inter-agent communication. It implies a functional style: agents act on this context to produce a *new* or modified state.
+*   **`SchedulingContext`**: The context object passed heavily through the stage pipeline. It contains the `Tasks` being processed, the `AvailableWindows`, and a `SharedState` dictionary for inter-stage communication. It implies a functional style: stages act on this context to produce a *new* or modified state.
 
 1.  **Data Source**: All application data (tasks, lists, events, user profile) is stored in `.json` files located in the `PriorityTaskManager/Data/` directory.
 2.  **Build Process**: The `.csproj` file for the `PriorityTaskManager` project is configured to copy these `Data` files to the output directory during the build process.
@@ -80,14 +82,14 @@ Before understanding the flow, it is helpful to define the core data objects pas
 
 The application supports multiple scheduling algorithms, selectable by the user via `UserProfile.SchedulingMode`. This allows for safe evolution of the scheduling logic without breaking existing functionality. The common interface for all strategies is `IUrgencyStrategy`.
 
-### 1. Gold Panning (Legacy)
+### 1. Gold Panning (First)
 
-*   **Class**: `McpGoldPanningStrategy`
+*   **Class**: `GoldPanningStrategy`
 *   **Concept**: "Gold Panning". Tasks flow through time like material in a sluice box. Heavy items (Urgent/Important) settle early; light items (Backlog) wash downstream.
-*   **Architecture**: **Master Control Program (MCP)**. This is a "Blackboard" system where a central `MCPContext` object is passed sequentially between independent "Agent" components. Each agent acts on the context, transforming the data before passing it to the next agent in the chain.
+*   **Architecture**: **Staged Pipeline**. This is a sequential pipeline where a central `SchedulingContext` object is passed between independent processing stages. Each stage acts on the context, transforming the data before passing it to the next stage in the chain.
 *   **Status**: Maintenance Mode. Default for existing users.
 
-The flow for this strategy is defined below in "Gold Panning Agent Pipeline".
+The flow for this strategy is defined below in "Gold Panning Stage Pipeline".
 
 ### 2. Constraint Solver (New)
 
@@ -97,47 +99,47 @@ The flow for this strategy is defined below in "Gold Panning Agent Pipeline".
 *   **Status**: Active Development.
 *   **Spec**: implementation details are strictly defined in `SCHEDULING_SYSTEM_SPEC.md`.
 
-## Gold Panning Agent Pipeline
+## Gold Panning Stage Pipeline
 
-The legacy pipeline is used when `SchedulerMode` is set to `GoldPanning`.
+The first pipeline is used when `SchedulerMode` is set to `GoldPanning`.
 
-The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility agents. This makes the system easier to modify, debug, and extend.
+The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility stages. This makes the system easier to modify, debug, and extend.
 
-The pipeline is defined and executed in `PriorityTaskManager/MCP/McpGoldPanningStrategy.cs`.
+The pipeline is defined and executed in `PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs`.
 
-### Agent Execution Order
+### Stage Execution Order
 
-When `list` is called with the `GoldPanning` strategy, the agents are executed in the following sequence. This order is designed to progressively refine the task list before the final schedule is generated, following a **Analyze -> Prepare -> Prioritize -> Distribute -> Sequence** workflow. Each agent passes an `MCPContext` object containing the shared data to the next agent in the chain.
+When `list` is called with the `GoldPanning` strategy, the stages are executed in the following sequence. This order is designed to progressively refine the task list before the final schedule is generated, following a **Normalize -> Prepare -> Rank -> Distribute -> Sequence** workflow. Each stage passes a `SchedulingContext` object containing the shared data to the next stage in the chain.
 
-1.  **`TaskAnalyzerAgent`**:
+1.  **`TaskNormalizationStage`**:
     -   **Purpose**: Cleans up and applies default values to task data before processing.
     -   **Action**: Ensures all tasks are in a consistent state. For example, it might assign a default `EffectiveImportance`.
 
-2.  **`SchedulePreProcessorAgent`**:
+2.  **`AvailabilityWindowStage`**:
     -   **Purpose**: Prepares the user's schedule by identifying all available time slots.
     -   **Action**: It looks at the user's defined work hours (from `UserProfile`) and any existing `Events`. It then generates a list of `ScheduleWindow` objects representing the free time slots and stores them in the context.
 
-3.  **`PrioritizationAgent`**:
+3.  **`TaskRankingStage`**:
     -   **Purpose**: To perform the "Weighing" phase of the Gold Panning strategy.
     -   **Action**: It sorts the master task list based on a calculated weight of urgency and importance, placing the most critical tasks first.
 
-4.  **`ScheduleSpreaderAgent`**:
+4.  **`TaskDistributionStage`**:
     -   **Purpose**: To perform the "Distribution" phase. It packs the prioritized tasks into daily buckets.
-    -   **Action**: It iterates through the sorted task list and fits tasks into the available `ScheduleWindow`s. If a task is too large for a remaining time slot, this agent is responsible for **splitting** it into smaller `ScheduledChunk`s across multiple days.
+    -   **Action**: It iterates through the sorted task list and fits tasks into the available `ScheduleWindow`s. If a task is too large for a remaining time slot, this stage is responsible for **splitting** it into smaller `ScheduledChunk`s across multiple days.
 
-5.  **`DaySequencingAgent`**:
-    -   **Purpose**: As the **final** agent, it arranges the tasks *within* each day to optimize for user energy and focus.
+5.  **`DailySequencingStage`**:
+    -   **Purpose**: As the **final** stage, it arranges the tasks *within* each day to optimize for user energy and focus.
     -   **Action**: It takes the tasks assigned to a specific day and sorts them to implement the "Eat the Frog" principle: tasks due today are handled first, followed by the most complex tasks, which are scheduled for the morning.
 
 ### Future Vision
 
-The current MCP framework provides a strong foundation for future enhancements. The key long-term goals are:
+The current staged scheduling framework provides a strong foundation for future enhancements. The key long-term goals are:
 
 1.  **Multi-Platform Support**: The clean separation between the core logic and the UI is intentional, paving the way for future front-ends on platforms like Web, Desktop, iOS, and Android.
 
 2.  **Calendar Integration**: Integrate with external calendar services (e.g., Google Calendar, Outlook) to get a more accurate, real-time view of the user's availability. This would replace the manual `Events` system and improve scheduling accuracy.
 
-3.  **Refining the Multi-Agent System**: While the system is already multi-agent, the vision is to enhance it by adding more specialized agents. These could analyze tasks from different perspectives (e.g., user habits, energy levels, long-term goals) to provide a more adaptive and context-aware prioritization.
+3.  **Refining the Staged Scheduling System**: While the system is already modular, the vision is to enhance it by adding more specialized stages. These could analyze tasks from different perspectives (e.g., user habits, energy levels, long-term goals) to provide a more adaptive and context-aware prioritization.
 
 ## V1 Scheduling Contract (Phase 1 Baseline)
 
@@ -200,9 +202,8 @@ V1 horizon behavior note:
 3. If estimated horizon exceeds 90 days, the caller should emit a high-horizon alert with timeline estimate.
 
 ### Migration Policy on This Branch
-1. Legacy scheduling paths may be removed early on this branch.
-2. Branch-level fallback is the rollback strategy.
-3. Documentation contracts must be completed before implementation tasks.
+1. Branch-level fallback is the rollback strategy.
+2. Documentation contracts must be completed before implementation tasks.
 
 ## Core Services and Strategies
 
@@ -212,13 +213,13 @@ The core library is built around a set of services and strategies, each with a s
 
 This section details the primary files in the core library and their interconnections. It is designed to help developers identify the correct file to modify for a specific task.
 
-#### 1. The Coordinator: `McpGoldPanningStrategy.cs`
-*   **Path**: `PriorityTaskManager/MCP/McpGoldPanningStrategy.cs`
-*   **Role**: The **Orchestrator**. It defines the entire scheduling pipeline. It is responsible for instantiating the agents, defining their execution order, and passing the `MCPContext` between them.
+#### 1. The Coordinator: `GoldPanningStrategy.cs`
+*   **Path**: `PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs`
+*   **Role**: The **Orchestrator**. It defines the entire scheduling pipeline. It is responsible for instantiating the stages, defining their execution order, and passing the `SchedulingContext` between them.
 *   **Connections**:
-    *   **Invokes**: ALL Agents (`TaskAnalyzerAgent`, `SchedulePreProcessorAgent`, etc.).
+    *   **Invokes**: ALL stages (`TaskNormalizationStage`, `AvailabilityWindowStage`, etc.).
     *   **Invoked By**: `TaskManagerService.GetPrioritizedTasks()`.
-*   **Developer Note**: If you add a new Agent, **you must** register it here in the `_agents` list, or it will never run. If you want to change the order of execution, this is the file to edit.
+*   **Developer Note**: If you add a new stage, **you must** register it here in the stage chain, or it will never run. If you want to change the order of execution, this is the file to edit.
 
 #### 2. The Facade: `TaskManagerService.cs`
 *   **Path**: `PriorityTaskManager/Services/TaskManagerService.cs`
@@ -239,28 +240,28 @@ This section details the primary files in the core library and their interconnec
 *   **Path**: `PriorityTaskManager/Services/TimeService.cs`
 *   **Role**: The **Clock**. It abstracts `DateTime.Now`. It supports a "Simulated Time" mode for testing logic that depends on specific dates/times.
 *   **Connections**:
-    *   **Invoked By**: `TaskManagerService`, `SchedulePreProcessorAgent`, `TaskAnalyzerAgent`.
+    *   **Invoked By**: `TaskManagerService`, `AvailabilityWindowStage`, `TaskNormalizationStage`.
 *   **Developer Note**: **NEVER** use `DateTime.Now` directly in the Core library. Always inject `ITimeService`.
 
-### Agent Responsibilities
+### Stage Responsibilities
 
-*   **`TaskAnalyzerAgent.cs`**:
+*   **`TaskNormalizationStage.cs`**:
     *   **Role**: Pure logic calculation on individual tasks (e.g., `EffectiveImportance`).
     *   **Input**: Raw `TaskItem`s.
     *   **Output**: Modified `TaskItem`s with updated properties.
-*   **`SchedulePreProcessorAgent.cs`**:
+*   **`AvailabilityWindowStage.cs`**:
     *   **Role**: Environment analysis. Calculates *when* work can happen.
     *   **Input**: `UserProfile`, `Events`.
-    *   **Output**: Populates `MCPContext.AvailableWindows`.
-*   **`PrioritizationAgent.cs`**:
+    *   **Output**: Populates `SchedulingContext.AvailableWindows`.
+*   **`TaskRankingStage.cs`**:
     *   **Role**: Sorting/Weighing. Determines the *ideal* order of tasks based on urgency and importance.
     *   **Input**: Unsorted `TaskItem`s.
     *   **Output**: Sorted `TaskItem`s.
-*   **`ScheduleSpreaderAgent.cs`**:
+*   **`TaskDistributionStage.cs`**:
     *   **Role**: Distribution/Packing. Places tasks into daily buckets and splits them if necessary.
     *   **Input**: Sorted `TaskItem`s, `AvailableWindows`.
     *   **Output**: `TaskItem`s with populated `ScheduledParts`.
-*   **`DaySequencingAgent.cs`**:
+*   **`DailySequencingStage.cs`**:
     *   **Role**: Intra-Day Optimization. Arranges tasks within a single day for optimal energy management ("Eat the Frog").
     *   **Input**: Tasks assigned to a day.
     *   **Output**: `ScheduledChunk`s with final start/end times.

@@ -1,12 +1,12 @@
 using System;
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Services;
 using System.Linq;
 using System.Collections.Generic;
 
 namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 {
-    public class ReIndexTasksAgent : IAgent
+    public class ReIndexTasksAgent : ISchedulingStage
     {
         private readonly TaskManagerService _taskManagerService;
 
@@ -15,7 +15,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
             _taskManagerService = taskManagerService;
         }
 
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             context.History.Add("Re-indexing remaining tasks...");
 

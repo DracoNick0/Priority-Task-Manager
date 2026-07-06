@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using PriorityTaskManager.Models;
-using PriorityTaskManager.MCP.Agents;
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Services;
 using PriorityTaskManager.Tests.Infrastructure;
 using Xunit;
 
-namespace PriorityTaskManager.Tests.MCP.GoldPanning
+namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
-    public class ComplexityBalancerAgentTests
+    public class WorkloadBalancingStageTests
     {
         private readonly MockTimeService _mockTimeService;
 
@@ -20,9 +20,9 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             _mockTimeService.SetCurrentTime(new DateTime(2024, 1, 1, 9, 0, 0));
         }
 
-        private MCPContext CreateContextWithDependencies(List<TaskItem> tasks, int daysCount = 30)
+        private SchedulingContext CreateContextWithDependencies(List<TaskItem> tasks, int daysCount = 30)
         {
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = tasks;
             context.SharedState["TimeService"] = _mockTimeService;
 
@@ -47,7 +47,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_PinnedTasksAreAlwaysScheduled_EvenInConflict()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             var today = _mockTimeService.GetCurrentTime().Date;
             
             // Setup: Only 1 Day available, with 2 hours capacity? 
@@ -112,7 +112,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_NoTaskScheduledAfterDueDate()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             var today = _mockTimeService.GetCurrentTime().Date;
             var task = new TaskItem { Title = "Due Soon", Complexity = 2.0, DueDate = today.AddDays(1), EstimatedDuration = TimeSpan.FromHours(2) };
             
@@ -135,7 +135,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_ComplexityDensityIsBalancedAcrossDays()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             var today = _mockTimeService.GetCurrentTime().Date;
             
             // Setup: 2 Days capacity (8h each).
@@ -185,7 +185,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_DivisibleTasksAreSplitIfNeeded()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             var today = _mockTimeService.GetCurrentTime().Date;
             // A task that requires 10 hours. Our slot window is 8 hours/day. It MUST split.
             var task = new TaskItem { Title = "Big Divisible", Complexity = 8.0, EstimatedDuration = TimeSpan.FromHours(10), DueDate = today.AddDays(2), IsDivisible = true };
@@ -203,7 +203,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_DistributesMixedWorkloadEvenly_TheBurnoutWeek()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             var today = _mockTimeService.GetCurrentTime().Date;
             
             // Setup: 5 Days (Mon-Fri), 8 hours each.
@@ -272,7 +272,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_NonDivisibleTask_ExceedingDailyCapacity_IsSkipped()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             // Setup: 8 hour days.
             // Task: 10 Hours, Not Divisible.
             // It physically cannot fit into any single day.
@@ -313,7 +313,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_InsufficientTotalCapacity_SchedulesPartialAndWarns()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             
             // Setup: 1 Day Window (8 hours).
             // Task: 10 Hours, Divisible.

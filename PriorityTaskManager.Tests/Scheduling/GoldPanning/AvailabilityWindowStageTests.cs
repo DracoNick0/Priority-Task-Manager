@@ -1,16 +1,16 @@
 using Xunit;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
-using PriorityTaskManager.MCP;
-using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Scheduling.GoldPanning;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests.MCP.GoldPanning
+namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
-    public class SchedulePreProcessorAgentTests
+    public class AvailabilityWindowStageTests
     {
         /*
          * === Test Coverage for SchedulePreProcessorAgent ===
@@ -33,7 +33,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         private readonly MockTimeService _timeService;
         private readonly UserProfile _userProfile;
 
-        public SchedulePreProcessorAgentTests()
+        public AvailabilityWindowStageTests()
         {
             _timeService = new MockTimeService();
             _userProfile = new UserProfile
@@ -44,9 +44,9 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             };
         }
 
-        private MCPContext CreateInitialContext(List<TaskItem> tasks, List<Event>? events = null)
+        private SchedulingContext CreateInitialContext(List<TaskItem> tasks, List<Event>? events = null)
         {
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Tasks"] = tasks;
             if (events != null)
@@ -60,8 +60,8 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         public void Act_WhenUserProfileIsMissing_ShouldReturnContextUnchanged()
         {
             // Arrange
-            var agent = new SchedulePreProcessorAgent(_timeService);
-            var context = new MCPContext();
+            var agent = new AvailabilityWindowStage(_timeService);
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem>();
 
             // Act
@@ -75,8 +75,8 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         public void Act_WhenTasksAreMissing_ShouldReturnContextUnchanged()
         {
             // Arrange
-            var agent = new SchedulePreProcessorAgent(_timeService);
-            var context = new MCPContext();
+            var agent = new AvailabilityWindowStage(_timeService);
+            var context = new SchedulingContext();
             context.SharedState["UserProfile"] = _userProfile;
 
             // Act
@@ -90,7 +90,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         public void Act_WithNoTasks_ShouldProduceNoSlots()
         {
             // Arrange
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             var context = CreateInitialContext(new List<TaskItem>());
 
             // Act
@@ -108,7 +108,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         {
             // Monday, Jan 1, 2024, at 8:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(4) } };
             var context = CreateInitialContext(tasks);
 
@@ -131,7 +131,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             // Monday, Jan 1, 2024, at 12:00 PM
             var now = new DateTime(2024, 1, 1, 12, 0, 0);
             _timeService.SetCurrentTime(now);
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
             var context = CreateInitialContext(tasks);
 
@@ -153,7 +153,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         {
             // Thursday, Jan 4, 2024, at 10:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 4, 10, 0, 0));
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             // 12 hours = 7 on Thursday, 5 on Friday. Horizon should end on Friday.
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(12) } };
             var context = CreateInitialContext(tasks);
@@ -180,7 +180,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         {
             // Monday, Jan 1, 2024, at 8:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
             var events = new List<Event>
             {
@@ -209,7 +209,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         {
             // Monday, Jan 1, 2024, at 8:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
             var events = new List<Event>
             {

@@ -1,11 +1,11 @@
 using System;
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Services;
 using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 {
-    public class ArchiveTasksAgent : IAgent
+    public class ArchiveTasksAgent : ISchedulingStage
     {
         private readonly TaskManagerService _taskManagerService;
 
@@ -14,7 +14,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
             _taskManagerService = taskManagerService;
         }
 
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             var tasksToArchive = context.SharedState["CompletedTasks"] as List<TaskItem>;
 

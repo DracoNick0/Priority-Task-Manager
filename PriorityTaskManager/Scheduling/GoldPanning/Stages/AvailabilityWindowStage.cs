@@ -1,28 +1,28 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Agent responsible for preparing the canvas for scheduling.
+    /// Stage responsible for preparing the canvas for scheduling.
     /// It calculates the "Horizon" (how far into the future we need to look) based on total workload,
     /// and generates concrete "Time Slots" by subtracting user events from their working hours.
     /// </summary>
-    public class SchedulePreProcessorAgent : IAgent
+    public class AvailabilityWindowStage : ISchedulingStage
     {
         private readonly ITimeService _timeService;
 
-        public SchedulePreProcessorAgent(ITimeService timeService)
+        public AvailabilityWindowStage(ITimeService timeService)
         {
             _timeService = timeService;
         }
 
         /// <inheritdoc />
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             context.History.Add("Phase 1: Analyzing user's schedule constraints...");
 
@@ -44,7 +44,7 @@ namespace PriorityTaskManager.MCP.Agents
             // Optimization: No work = No slots needed.
             if (totalWorkloadDuration <= TimeSpan.Zero)
             {
-                context.History.Add("SchedulePreProcessorAgent: No tasks to schedule, no time slots generated.");
+                context.History.Add("AvailabilityWindowStage: No tasks to schedule, no time slots generated.");
                 context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow { AvailableSlots = new List<TimeSlot>() };
                 context.SharedState["TotalAvailableTime"] = TimeSpan.Zero;
                 return context;
@@ -102,7 +102,7 @@ namespace PriorityTaskManager.MCP.Agents
             return horizonDate;
         }
 
-        private List<TimeSlot> GenerateAvailableSlots(DateTime now, DateTime coreHorizonEndDate, UserProfile userProfile, MCPContext context)
+        private List<TimeSlot> GenerateAvailableSlots(DateTime now, DateTime coreHorizonEndDate, UserProfile userProfile, SchedulingContext context)
         {
             var slots = new List<TimeSlot>();
             var events = (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<Event> ev) ? ev : new List<Event>();

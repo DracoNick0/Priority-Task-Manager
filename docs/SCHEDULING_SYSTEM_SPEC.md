@@ -313,7 +313,7 @@ Rationale:
 
 ### 10.1 Near-Term (Current Codebase)
 Hybrid approach:
-- Keep MCP-style orchestration and explainability.
+- Keep pipeline-style orchestration and explainability.
 - Improve weighting and constraints within staged agents.
 
 ### 10.2 Scalable Direction

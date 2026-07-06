@@ -2,14 +2,14 @@
 
 An intelligent command-line application designed to solve decision fatigue in task management through a sophisticated, agent-based scheduling engine.
 
-This project transforms a simple to-do list into a smart assistant that generates a detailed, optimized schedule by analyzing tasks based on due dates, complexity, and dependencies.
+This project transforms a simple to-do list into a smart assistant that generates a detailed, optimized schedule by analyzing tasks based on importance, due dates, complexity, and dependencies.
 
 ## Documentation
 
 Detailed documentation for developers and users can be found in the `docs/` directory:
 
 *   **[Project Status & Features](docs/STATUS.md)**: Current capabilities, command reference, and known issues.
-*   **[Architecture](docs/ARCHITECTURE.md)**: High-level design, agent pipeline (MCP), and core services.
+*   **[Architecture](docs/ARCHITECTURE.md)**: High-level design and core services.
 *   **[Development Workflow](docs/WORKFLOW.md)**: How to build, run, and contribute to the project.
 *   **[Testing Strategy](docs/TESTING_STRATEGY.md)**: Plan for unit and integration testing.
 *   **[Roadmap](docs/TODO.md)**: Active tasks and future improvements.
@@ -29,15 +29,6 @@ Detailed documentation for developers and users can be found in the `docs/` dire
     cd PriorityTaskManager.CLI
     dotnet run
     ```
-
-## Core Architecture
-
-The solution uses a **Master Control Program (MCP)** architecture to separate concerns:
-
-*   **PriorityTaskManager (Core)**: Contains all business logic and the agent pipeline.
-*   **PriorityTaskManager.CLI**: Handles user interaction and command parsing.
-
-The **Gold Panning** scheduling strategy follows a **Prioritize -> Balance -> Schedule** workflow, breaking down complex scheduling decisions into small, single-responsibility agents. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full diagram and details.
 
 ## Contributing
 

@@ -1,29 +1,29 @@
 using Xunit;
 using PriorityTaskManager.Models;
-using PriorityTaskManager.MCP;
-using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Scheduling.GoldPanning;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests.MCP.GoldPanning
+namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
-    public class DaySequencingAgentTests
+    public class DailySequencingStageTests
     {
-        private readonly DaySequencingAgent _agent;
+        private readonly DailySequencingStage _agent;
         private readonly MockTimeService _timeService;
 
-        public DaySequencingAgentTests()
+        public DailySequencingStageTests()
         {
-            _agent = new DaySequencingAgent();
+            _agent = new DailySequencingStage();
             _timeService = new MockTimeService();
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
         }
 
-        private MCPContext CreateContext(Dictionary<DateTime, List<TaskItem>> buckets)
+        private SchedulingContext CreateContext(Dictionary<DateTime, List<TaskItem>> buckets)
         {
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["DailyBuckets"] = buckets;
 
             // Create window matching the buckets
@@ -47,7 +47,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         [Fact]
         public void Act_NoBuckets_ShouldReturnContextUnchanged()
         {
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             var result = _agent.Act(context);
             Assert.DoesNotContain("Sequencing complete", result.History);
         }

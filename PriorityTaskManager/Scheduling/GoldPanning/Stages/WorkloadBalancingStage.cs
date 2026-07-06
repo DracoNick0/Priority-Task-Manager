@@ -1,42 +1,42 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Agent responsible for balancing the workload across available days.
+    /// Stage responsible for balancing the workload across available days.
     /// It attempts to fit tasks into days based on their complexity (load) and duration.
     /// If a task cannot fit, it enters a logic flow to split the task across multiple days.
     /// </summary>
-    public class ComplexityBalancerAgent : IAgent
+    public class WorkloadBalancingStage : ISchedulingStage
     {
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks)
             {
-                context.History.Add("ComplexityBalancerAgent: No valid task list found in context.");
+                context.History.Add("WorkloadBalancingStage: No valid task list found in context.");
                 return context;
             }
 
             if (!context.SharedState.TryGetValue("TimeService", out var timeServiceObj) || timeServiceObj is not PriorityTaskManager.Services.ITimeService timeService)
             {
-                context.History.Add("ComplexityBalancerAgent: No ITimeService found in context.");
+                context.History.Add("WorkloadBalancingStage: No ITimeService found in context.");
                 return context;
             }
             var now = timeService.GetCurrentTime();
 
             if (!context.SharedState.TryGetValue("AvailableScheduleWindow", out var windowObj) || windowObj is not ScheduleWindow scheduleWindow)
             {
-                context.History.Add("ComplexityBalancerAgent: No available schedule window found in context.");
+                context.History.Add("WorkloadBalancingStage: No available schedule window found in context.");
                 return context;
             }
             var slots = scheduleWindow.AvailableSlots;
             if (slots.Count == 0)
             {
-                context.History.Add("ComplexityBalancerAgent: No available time slots to schedule tasks.");
+                context.History.Add("WorkloadBalancingStage: No available time slots to schedule tasks.");
                 return context;
             }
 
@@ -95,12 +95,12 @@ namespace PriorityTaskManager.MCP.Agents
 
                         if (task.IsPinned)
                         {
-                            context.History.Add($"ComplexityBalancerAgent: Could not schedule Pinned Task '{task.Title}'. No day has enough capacity.");
+                            context.History.Add($"WorkloadBalancingStage: Could not schedule pinned task '{task.Title}'. No day has enough capacity.");
                             continue;
                         }
                         else
                         {
-                            context.History.Add($"ComplexityBalancerAgent: Could not schedule '{task.Title}' before due date.");
+                            context.History.Add($"WorkloadBalancingStage: Could not schedule '{task.Title}' before due date.");
                             continue;
                         }
                     }
@@ -154,7 +154,7 @@ namespace PriorityTaskManager.MCP.Agents
 
                     if (hoursLeft > 0.001 && !task.IsPinned)
                     {
-                        context.History.Add($"ComplexityBalancerAgent: Could not fully schedule '{task.Title}'. Remaining: {hoursLeft}h");
+                        context.History.Add($"WorkloadBalancingStage: Could not fully schedule '{task.Title}'. Remaining: {hoursLeft}h");
                     }
                     
                     if (chunks.Any())
@@ -166,7 +166,7 @@ namespace PriorityTaskManager.MCP.Agents
             }
 
             context.SharedState["Tasks"] = scheduledTasks;
-            context.History.Add("ComplexityBalancerAgent: Scheduling complete.");
+            context.History.Add("WorkloadBalancingStage: Scheduling complete.");
             return context;
         }
     }

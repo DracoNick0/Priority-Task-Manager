@@ -1,14 +1,14 @@
 # RFC: Dual-Scheduler Strategy & Migration
 
 ## 1. Purpose
-Define a documentation-first path to introduce a new solver-centered scheduling system alongside the existing Multi-Agent (MCP) system.
+Define a documentation-first path to introduce a new solver-centered scheduling system alongside the existing staged Gold Panning system.
 
 This RFC focuses on the "Strategy Pattern" implementation, allowing users to switch between the Legacy (current) and V1 (new) schedulers at runtime.
 
 ## 2. Target Architecture (Dual-Mode)
 The system will support two distinct scheduling strategies implementing a common `IUrgencyStrategy` interface:
 
-1.  **Gold Panning (`McpGoldPanningStrategy`)**:
+1.  **Gold Panning (`GoldPanningStrategy`)**:
     -   The current production implementation.
     -   Based on the "Gold Panning" concept (Gravity/Flow).
     -   Default for existing users until the new strategy is stable.
@@ -30,7 +30,7 @@ The system will support two distinct scheduling strategies implementing a common
 1.  Extract/Confirm `IUrgencyStrategy` interface.
 2.  Add `SchedulingMode` enum to `UserProfile` (Values: `GoldPanning`, `ConstraintOptimization`).
 3.  Update `TaskManagerService` to instantiate the correct strategy based on the user's profile.
-4.  Rename `MultiAgentUrgencyStrategy` to `McpGoldPanningStrategy`.
+4.  Rename `MultiAgentUrgencyStrategy` to `GoldPanningStrategy`.
 5.  Preserve all existing unit tests 100%.
 
 ### Phase 2: Constraint Solver Implementation
@@ -111,14 +111,14 @@ Deliverables:
 2. Regression test matrix for policy correctness.
 3. Performance budget and timeout/fallback policy.
 4. Merge promotion gates from migration branch to shared branches.
-5. Terminology migration checklist for renaming legacy MCP labels after V1 behavior stabilizes.
+5. Terminology migration checklist for renaming old Gold Panning labels after V1 behavior stabilizes.
 
 Definition of Done:
 - Clear go/no-go checklist for making solver planner the default.
 
 ### Phase 5: Terminology and Naming Cleanup (Post-V1 Stabilization)
 Deliverables:
-1. Rename scheduling-facing MCP names to pipeline-oriented names in core and CLI layers.
+1. Rename scheduling-facing pipeline names in core and CLI layers.
 2. Update documentation and command/help text to match finalized terminology.
 3. Keep temporary compatibility aliases only where needed to avoid unnecessary breakage.
 

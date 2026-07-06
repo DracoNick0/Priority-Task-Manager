@@ -1,23 +1,23 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
-    public class SchedulingAgent : IAgent
+    public class DependencyAwarePlacementStage : ISchedulingStage
     {
         private readonly DependencyGraphHelper _dependencyGraphHelper;
         private readonly bool _enableMultiBump = true; // Feature flag for advanced bumping
 
-        public SchedulingAgent(DependencyGraphHelper? dependencyGraphHelper = null)
+        public DependencyAwarePlacementStage(DependencyGraphHelper? dependencyGraphHelper = null)
         {
             _dependencyGraphHelper = dependencyGraphHelper ?? new DependencyGraphHelper();
         }
 
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             context.History.Add("Phase 4.1: Sorting tasks and checking dependencies...");
 
@@ -340,7 +340,7 @@ namespace PriorityTaskManager.MCP.Agents
             return context;
         }
 
-        private void ScheduleFlexibleTask(TaskItem task, List<TimeSlot> availableSlots, List<TaskItem> scheduledTasks, List<TaskItem> unscheduledTasks, MCPContext context)
+        private void ScheduleFlexibleTask(TaskItem task, List<TimeSlot> availableSlots, List<TaskItem> scheduledTasks, List<TaskItem> unscheduledTasks, SchedulingContext context)
         {
             var durationToSchedule = task.EstimatedDuration;
             var slotsToRemove = new List<TimeSlot>();
@@ -451,7 +451,7 @@ namespace PriorityTaskManager.MCP.Agents
             return bestFitSlot;
         }
 
-        private void ScheduleInSlot(TaskItem task, TimeSlot slot, List<TaskItem> scheduledTasks, List<TimeSlot> availableSlots, MCPContext context)
+        private void ScheduleInSlot(TaskItem task, TimeSlot slot, List<TaskItem> scheduledTasks, List<TimeSlot> availableSlots, SchedulingContext context)
         {
             var newChunk = new ScheduledChunk
             {

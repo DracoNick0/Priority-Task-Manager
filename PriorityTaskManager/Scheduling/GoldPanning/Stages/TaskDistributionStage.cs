@@ -1,24 +1,24 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Agent responsible for distributing tasks across the available schedule horizon.
+    /// Stage responsible for distributing tasks across the available schedule horizon.
     /// This agent implements a "Constructive Fill" strategy, which is a form of greedy
     /// knapsack algorithm with item splitting. It iterates through each day, filling it
     /// with the highest-priority tasks. If a task is too large to fit in the remaining
     /// capacity of a day, it is split into two parts: one that fills the day, and a
     /// remainder that is carried over to be scheduled on subsequent days.
     /// </summary>
-    public class ScheduleSpreaderAgent : IAgent
+    public class TaskDistributionStage : ISchedulingStage
     {
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
-            context.History.Add("Phase 4: Spreading tasks (Constructive Fill)...");
+            context.History.Add("Phase 4: Distributing tasks (Constructive Fill)...");
 
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks || tasks.Count == 0)
             {
@@ -141,14 +141,14 @@ namespace PriorityTaskManager.MCP.Agents
             }
 
             // --- Step 4: Commit to Shared State ---
-            // The 'DailyBuckets' are passed to the next agent (DaySequencingAgent) for fine-grained scheduling.
+            // The 'DailyBuckets' are passed to the next stage (DailySequencingStage) for fine-grained scheduling.
             context.SharedState["DailyBuckets"] = buckets;
             
             // Update the main 'Tasks' list to reflect the new reality of split and scheduled tasks.
             var allScheduled = buckets.Values.SelectMany(t => t).ToList();
             context.SharedState["Tasks"] = allScheduled;
 
-            context.History.Add("  -> Gold Pan Complete. Tasks distributed across days.");
+            context.History.Add("  -> Distribution complete. Tasks allocated across days.");
 
             return context;
         }

@@ -1,27 +1,27 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using System;
 using System.Collections.Generic;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
     /// An agent responsible for cleaning and normalizing task data before it enters the main scheduling pipeline.
     /// It ensures that tasks have sensible default values for critical properties like Importance,
     /// Estimated Duration, and Complexity, preventing errors in downstream calculations.
     /// </summary>
-    public class TaskAnalyzerAgent : IAgent
+    public class TaskNormalizationStage : ISchedulingStage
     {
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             // Retrieve the tasks list from the shared context.
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks)
             {
-                context.History.Add("TaskAnalyzerAgent: No valid task list found in context. Nothing to analyze.");
+                context.History.Add("TaskNormalizationStage: No valid task list found in context. Nothing to normalize.");
                 return context;
             }
 
-            context.History.Add("TaskAnalyzerAgent: Analyzing tasks and applying default values...");
+            context.History.Add("TaskNormalizationStage: Normalizing tasks and applying default values...");
 
             foreach (var task in tasks)
             {
@@ -38,7 +38,7 @@ namespace PriorityTaskManager.MCP.Agents
                     task.Complexity = 1.0;
             }
 
-            context.History.Add("TaskAnalyzerAgent: Task analysis complete. Defaults applied.");
+            context.History.Add("TaskNormalizationStage: Task normalization complete. Defaults applied.");
 
             return context;
         }

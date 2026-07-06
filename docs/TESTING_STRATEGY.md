@@ -7,7 +7,7 @@ This document outlines the strategy for testing the Priority Task Manager applic
 Because this application blends deterministic CRUD operations with complex, evolving optimization algorithms, we use a hybrid testing strategy:
 
 -   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`), data models, and CLI handlers have highly predictable inputs and outputs. We use Test-Driven Development here to enforce rigid constraints and ensure a stable sandbox.
--   **Exploratory Spiking for Algorithms**: Development of scheduling algorithms (`ConstraintOptimizationStrategy`, `McpGoldPanningStrategy`) is done via exploratory programming first. We rely on sample datasets and human verification to tune the heuristics before locking them down.
+-   **Exploratory Spiking for Algorithms**: Development of scheduling algorithms (`ConstraintOptimizationStrategy`, `GoldPanningStrategy`) is done via exploratory programming first. We rely on sample datasets and human verification to tune the heuristics before locking them down.
 -   **Property-Based & Invariant Testing**: Instead of writing brittle assertions for precise algorithm outputs (e.g., "Task A must be at 9:00 AM"), we write invariant tests that check if the algorithm violated core rules (e.g., "No task is scheduled before its dependency", "Must-schedule tasks are never dropped").
 -   **Use the `TimeService`**: All time-sensitive logic must use a mocked `ITimeService` to guarantee deterministic boundaries.
 
@@ -35,8 +35,8 @@ This is the most complex area of the application. We avoid brittle unit tests th
     -   *Task Dropping*: `MustSchedule` tasks are prioritized and never placed in the unscheduled bucket unless totally unfeasible.
 -   **Snapshot / Characterization Tests**:
     -   For stable algorithm outputs, we save the generated schedule against a complex benchmark dataset. Future refactors test against these text-based snapshots to catch unintended regressions in scheduling shape.
--   **Agent Pipeline Context**:
-    -   Isolated tests for distinct deterministic agents (e.g., verifying `TaskAnalyzerAgent` correctly calculates `EffectiveImportance` modifiers).
+-   **Stage Pipeline Context**:
+    -   Isolated tests for distinct deterministic stages (e.g., verifying `TaskNormalizationStage` correctly calculates `EffectiveImportance` modifiers).
 
 ### 3. CLI Handlers
 

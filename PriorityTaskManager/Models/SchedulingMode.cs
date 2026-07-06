@@ -6,8 +6,7 @@ namespace PriorityTaskManager.Models
     public enum SchedulingMode
     {
         /// <summary>
-        /// The "Gold Panning" strategy, which uses the Master Control Program (MCP)
-        /// agent pipeline to flow tasks through time based on urgency and importance.
+        /// The "Gold Panning" strategy, which uses a staged scheduling pipeline to flow tasks through time based on urgency and importance.
         /// </summary>
         GoldPanning,
 

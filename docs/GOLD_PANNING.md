@@ -27,28 +27,28 @@ Large/Important items are more likely to get caught in the riffles.
 *   **Selection**: The Pressure pushes the "Lightest" items (Lowest Importance/Urgency) downstream first, preserving the "Gold" (High Priority) in the current day.
 *   **Constructive Fill**: Unlike a real river, we don't just let things wash away randomly. We actively pack the day. If a day has a 30-minute gap, and the next "Gold Nugget" is 2 hours long, we **Hammer** (Split) that nugget. We put 30 minutes of it in the gap, and the remaining 1.5 hours washes to the next day.
 
-## 3. The Execution Flow (The Agent Pipeline)
+## 3. The Execution Flow (The Stage Pipeline)
 
-The "Gold Panning" strategy is implemented via a series of agents, each performing a distinct step in the process. A central `MCPContext` object is passed from one agent to the next.
+The "Gold Panning" strategy is implemented via a series of stages, each performing a distinct step in the process. A central `SchedulingContext` object is passed from one stage to the next.
 
-### Step 1: The Sort (The Sift) - `PrioritizationAgent`
-First, we sort all active tasks by their "Weight" (a combination of Urgency and Importance). The heaviest items (most critical) are moved to the top of the stack. This is handled by the `PrioritizationAgent`.
+### Step 1: The Sort (The Sift) - `TaskRankingStage`
+First, we sort all active tasks by their "Weight" (a combination of Urgency and Importance). The heaviest items (most critical) are moved to the top of the stack. This is handled by the `TaskRankingStage`.
 
-### Step 2: The Fill (Bin Packing) - `ScheduleSpreaderAgent`
-Next, we treat each available day as a bucket with a fixed capacity (e.g., 8 hours). The `ScheduleSpreaderAgent` iterates through the prioritized task list and packs them into these daily buckets.
+### Step 2: The Fill (Bin Packing) - `TaskDistributionStage`
+Next, we treat each available day as a bucket with a fixed capacity (e.g., 8 hours). The `TaskDistributionStage` iterates through the prioritized task list and packs them into these daily buckets.
 *   **Iterate**: Take the top task from the sorted stack.
 *   **Fit Check**: Does it fit in the current day's remaining space?
     *   **Yes**: Place it in.
     *   **No**:
         *   **Gap Analysis**: Is the remaining space usable (e.g., > 15 mins)?
-        *   **The Hammer (Task Splitting)**: If yes, the agent **splits** the task. Part A fills the gap perfectly. Part B is effectively returned to the top of the stack to be scheduled on the next day.
-        *   **Skip**: If the gap is too small, the agent moves to the next day.
+        *   **The Hammer (Task Splitting)**: If yes, the stage **splits** the task. Part A fills the gap perfectly. Part B is effectively returned to the top of the stack to be scheduled on the next day.
+        *   **Skip**: If the gap is too small, the stage moves to the next day.
 
-### Step 3: The Mosaic (Energy Management) - `DaySequencingAgent`
-Finally, once the tasks for each day ("bucket") have been determined, the `DaySequencingAgent` arranges the specific start and end times for the tasks *within* each day to optimize for cognitive load.
+### Step 3: The Mosaic (Energy Management) - `DailySequencingStage`
+Finally, once the tasks for each day ("bucket") have been determined, the `DailySequencingStage` arranges the specific start and end times for the tasks *within* each day to optimize for cognitive load.
 *   **Goal**: Optimize for human energy levels and focus.
 *   **Strategy**: "Eat The Frog" combined with deadline safety.
-    *   The agent sorts the tasks for a single day, first by tasks due *today*, and then by `Complexity` in descending order.
+    *   The stage sorts the tasks for a single day, first by tasks due *today*, and then by `Complexity` in descending order.
     *   **Result**: Critical deadlines are handled first. For the remaining time, high-complexity work is scheduled for the morning, with lower-complexity tasks filling the afternoon as energy naturally wanes.
 
 ## 4. Why this works for your Questions

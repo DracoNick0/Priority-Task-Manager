@@ -1,15 +1,15 @@
 using Xunit;
 using PriorityTaskManager.Models;
-using PriorityTaskManager.MCP;
-using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Scheduling.GoldPanning;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests.MCP.GoldPanning
+namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
-    public class PrioritizationAgentTests
+    public class TaskRankingStageTests
     {
         /*
          * === Test Coverage for PrioritizationAgent ===
@@ -20,18 +20,18 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
          * [ ] Mixed Data: A comprehensive test with a mix of due dates and complexities is sorted correctly.
         */
 
-        private readonly PrioritizationAgent _agent;
+        private readonly TaskRankingStage _agent;
 
-        public PrioritizationAgentTests()
+        public TaskRankingStageTests()
         {
-            _agent = new PrioritizationAgent();
+            _agent = new TaskRankingStage();
         }
 
         [Fact]
         public void Act_WhenContextHasNoTasks_ShouldReturnContextUnchanged()
         {
             // Arrange
-            var context = new MCPContext();
+            var context = new SchedulingContext();
 
             // Act
             var resultContext = _agent.Act(context);
@@ -45,7 +45,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
         public void Act_WhenTasksListIsEmpty_ShouldReturnContextUnchanged()
         {
             // Arrange
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             var tasks = new List<TaskItem>();
             context.SharedState["Tasks"] = tasks;
 
@@ -169,9 +169,9 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             Assert.Equal(expectedOrder, resultTitles);
         }
 
-        private MCPContext CreateContextWithTime()
+        private SchedulingContext CreateContextWithTime()
         {
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["TimeService"] = new MockTimeService(); 
             return context;
         }

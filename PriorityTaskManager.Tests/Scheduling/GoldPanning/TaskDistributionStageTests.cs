@@ -1,29 +1,29 @@
 using Xunit;
 using PriorityTaskManager.Models;
-using PriorityTaskManager.MCP;
-using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Scheduling.GoldPanning;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.Tests.MCP.GoldPanning
+namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
-    public class ScheduleSpreaderAgentTests
+    public class TaskDistributionStageTests
     {
-        private readonly ScheduleSpreaderAgent _agent;
+        private readonly TaskDistributionStage _agent;
         private readonly MockTimeService _timeService;
 
-        public ScheduleSpreaderAgentTests()
+        public TaskDistributionStageTests()
         {
-            _agent = new ScheduleSpreaderAgent();
+            _agent = new TaskDistributionStage();
             _timeService = new MockTimeService();
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0)); // Monday
         }
 
-        private MCPContext CreateContext(List<TaskItem> tasks, int days = 5, int hoursPerDay = 8)
+        private SchedulingContext CreateContext(List<TaskItem> tasks, int days = 5, int hoursPerDay = 8)
         {
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = tasks;
 
             // Create window
@@ -40,7 +40,7 @@ namespace PriorityTaskManager.Tests.MCP.GoldPanning
             }
             context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow { AvailableSlots = slots };
 
-            // Create weights (simulate PrioritizationAgent output)
+            // Create weights (simulate TaskRankingStage output)
             var weights = new Dictionary<int, double>();
             foreach (var task in tasks)
             {

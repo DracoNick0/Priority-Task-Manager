@@ -18,6 +18,6 @@ This guide provides a standardized way to quantify task complexity on a scale of
 | **9-10**| **Severe** | Full cognitive load. "Flow state" required. Research heavy or high risk. | • Distributed system architecture <br>• Debugging intermittent race condition <br>• Cryptography implementation | • Legal defense strategy <br>• Advanced scientific research <br>• Writing a book chapter |
 
 ## Usage in Priority Task Manager
-When inputting complexity for the `ComplexityBalancerAgent`:
+When inputting complexity for the `WorkloadBalancingStage`:
 *   **10** will be treated as a "Primary Focus" for the day. The user should not have many of these back-to-back.
 *   **1** is treated as "Filler" that can be slotted into small gaps or tired periods.

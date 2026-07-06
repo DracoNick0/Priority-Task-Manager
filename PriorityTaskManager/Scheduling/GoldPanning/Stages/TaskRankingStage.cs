@@ -1,23 +1,23 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Agent responsible for the "Weighing" phase of the Gold Panning Strategy.
+    /// Stage responsible for the "Weighing" phase of the Gold Panning Strategy.
     /// It calculates a "weight" for each task, representing its scheduling priority. This weight
     /// is a combination of urgency (proximity to due date) and user-defined importance.
     /// High-weight tasks are considered "Gold" (heavy, sinks to the top), while low-weight
     /// tasks are "Silt" (light, easily washed downstream to later dates).
     /// </summary>
-    public class PrioritizationAgent : IAgent
+    public class TaskRankingStage : ISchedulingStage
     {
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
-            context.History.Add("Phase 3: Calculating Task Weights (Gold Panning)...");
+            context.History.Add("Phase 3: Calculating task rankings (Gold Panning)...");
             if (!context.SharedState.TryGetValue("Tasks", out var tasksObj) || tasksObj is not List<TaskItem> tasks || tasks.Count == 0)
             {
                 return context;
@@ -51,7 +51,7 @@ namespace PriorityTaskManager.MCP.Agents
             var sortedTasks = tasks.OrderByDescending(t => weights[t.Id]).ToList();
             context.SharedState["Tasks"] = sortedTasks;
             
-            context.History.Add($"  -> Calculated weights for {tasks.Count} tasks.");
+            context.History.Add($"  -> Calculated rankings for {tasks.Count} tasks.");
 
             return context;
         }

@@ -1,41 +1,41 @@
-using PriorityTaskManager.MCP.Agents;
+using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 using PriorityTaskManager.Services.Helpers;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP
+namespace PriorityTaskManager.Scheduling.GoldPanning
 {
     /// <summary>
-    /// Implements the "Gold Panning" scheduling strategy using the MCP (Master Control Program) agent pipeline.
-    /// This strategy orchestrates a series of agents to transform a raw list of tasks into a concrete,
+    /// Implements the "Gold Panning" scheduling strategy using a staged pipeline.
+    /// This strategy orchestrates a series of stages to transform a raw list of tasks into a concrete,
     /// day-by-day schedule.
     /// </summary>
-    public class McpGoldPanningStrategy : IUrgencyStrategy
+    public class GoldPanningStrategy : IUrgencyStrategy
     {
         private readonly UserProfile _userProfile;
         private readonly List<Event> _events;
         private readonly ITimeService _timeService;
         
-        // The sequence of agents that defines the Gold Panning pipeline.
-        private readonly List<IAgent> _agentChain;
+        // The sequence of stages that defines the Gold Panning pipeline.
+        private readonly List<ISchedulingStage> _stageChain;
 
-        public McpGoldPanningStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService)
+        public GoldPanningStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService)
         {
             _userProfile = userProfile;
             _events = events;
             _timeService = timeService;
 
-            // The agent chain defines the step-by-step process of the scheduling strategy.
-            // Each agent performs a specific transformation on the data.
-            _agentChain = new List<IAgent>
+            // The stage chain defines the step-by-step process of the scheduling strategy.
+            // Each stage performs a specific transformation on the data.
+            _stageChain = new List<ISchedulingStage>
             {
-                new TaskAnalyzerAgent(),          // 1. Cleans up task data (applies defaults).
-                new SchedulePreProcessorAgent(timeService), // 2. Calculates available time slots.
-                new PrioritizationAgent(),        // 3. "Weighs" tasks based on urgency and importance.
-                new ScheduleSpreaderAgent(),      // 4. Distributes tasks into daily buckets.
-                new DaySequencingAgent()          // 5. Arranges tasks within each day.
+                new TaskNormalizationStage(),          // 1. Cleans up task data (applies defaults).
+                new AvailabilityWindowStage(timeService), // 2. Calculates available time slots.
+                new TaskRankingStage(),        // 3. "Weighs" tasks based on urgency and importance.
+                new TaskDistributionStage(),      // 4. Distributes tasks into daily buckets.
+                new DailySequencingStage()          // 5. Arranges tasks within each day.
             };
         }
 
@@ -58,16 +58,16 @@ namespace PriorityTaskManager.MCP
             // Ensure cloned tasks start with a clean slate for scheduling.
             foreach (var t in pipelineTasks) t.ScheduledParts.Clear();
 
-            // Create the initial context for the MCP, providing all necessary data.
-            var context = new MCPContext();
+            // Create the initial context for the pipeline, providing all necessary data.
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = pipelineTasks;
             context.SharedState["UserProfile"] = _userProfile;
             context.SharedState["Events"] = _events;
             context.SharedState["TimeService"] = _timeService;
 
             // --- Pipeline Execution ---
-            // The MCP coordinates the agent chain, passing the context from one agent to the next.
-            var finalContext = MCP.Coordinate(_agentChain, context);
+            // The pipeline coordinates the stage chain, passing the context from one stage to the next.
+            var finalContext = PipelineCoordinator.Coordinate(_stageChain, context);
 
             // --- Result Aggregation ---
             // After the pipeline runs, the scheduled tasks (including any split fragments) are retrieved.

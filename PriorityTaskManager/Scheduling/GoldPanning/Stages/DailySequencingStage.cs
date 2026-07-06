@@ -1,24 +1,24 @@
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PriorityTaskManager.MCP.Agents
+namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Agent responsible for the final sequencing of tasks within each day. This is the "Mosaic"
+    /// Stage responsible for the final sequencing of tasks within each day. This is the "Mosaic"
     /// phase, where the individual tasks (stones) from each daily bucket are arranged into the
     /// available time slots (the mosaic grid) for that day. It uses a "Front-Loading" or
     /// "Eat the Frog" strategy, scheduling the most complex tasks earlier in the day.
     /// </summary>
-    public class DaySequencingAgent : IAgent
+    public class DailySequencingStage : ISchedulingStage
     {
-        public MCPContext Act(MCPContext context)
+        public SchedulingContext Act(SchedulingContext context)
         {
             context.History.Add("Phase 5: Sequencing tasks within days (Mosaic/Front-Loading)...");
 
-            // Retrieve the daily buckets created by the ScheduleSpreaderAgent.
+            // Retrieve the daily buckets created by the TaskDistributionStage.
             if (!context.SharedState.TryGetValue("DailyBuckets", out var bucketsObj) || 
                 bucketsObj is not Dictionary<DateTime, List<TaskItem>> dailyBuckets)
             {
@@ -110,7 +110,7 @@ namespace PriorityTaskManager.MCP.Agents
                     }
 
                     // If a task has remaining duration, it means there wasn't enough capacity in the schedule.
-                    // This can happen due to floating-point inaccuracies or if the SpreaderAgent's capacity calculation
+                    // This can happen due to floating-point inaccuracies or if the distribution stage's capacity calculation
                     // didn't perfectly align with the available slots.
                     if (remainingTaskDuration > TimeSpan.FromMinutes(1))
                     {

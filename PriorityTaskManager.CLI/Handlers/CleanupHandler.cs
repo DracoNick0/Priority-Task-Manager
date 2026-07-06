@@ -1,7 +1,7 @@
 using System;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.Services;
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.CLI.MCP.Agents.Cleanup;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.CLI.Utils;
@@ -33,7 +33,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            var agentChain = new List<IAgent>
+            var agentChain = new List<ISchedulingStage>
             {
                 new FindCompletedTasksAgent(_taskManagerService),
                 new ArchiveTasksAgent(_taskManagerService),
@@ -42,10 +42,10 @@ namespace PriorityTaskManager.CLI.Handlers
                 new UpdateDependenciesAgent(_taskManagerService)
             };
 
-            var initialContext = new MCPContext();
+            var initialContext = new SchedulingContext();
             initialContext.History.Add("Cleanup command initiated by user.");
 
-            var finalContext = PriorityTaskManager.MCP.MCP.Coordinate(agentChain, initialContext);
+            var finalContext = PipelineCoordinator.Coordinate(agentChain, initialContext);
 
             if (finalContext.LastError != null)
             {

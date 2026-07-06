@@ -19,7 +19,7 @@ namespace PriorityTaskManager.Services
             }
             else
             {
-                strategy = new MCP.McpGoldPanningStrategy(this.UserProfile, _data.Events, timeService);
+                strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(this.UserProfile, _data.Events, timeService);
             }
             
             var rawTasks = GetAllTasks(listId).ToList();

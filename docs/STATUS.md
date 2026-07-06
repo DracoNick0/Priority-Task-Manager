@@ -17,13 +17,13 @@ This document provides a high-level summary of the Priority Task Manager's curre
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟡 **Under Review** | Interactive Add/Edit/List and Smart Shifting work, but past-event retention and the main schedule-view UX still need refinement. |
 | **Task Dependencies** | 🟡 **Fixing** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
-| **Unit Tests** | 🔴 **Outdated** | Core Agents covered; Integration and CLI tests pending alignment with new contract. |
+| **Unit Tests** | 🔴 **Outdated** | Core stages covered; Integration and CLI tests pending alignment with the new contract. |
 
 ## Current Capabilities
 
 ### Core Features
 -   **Dual-Mode Scheduling Strategy**: Toggle between `GoldPanning` and `ConstraintSolver` (In-Progress) via Settings.
--   **Multi-Agent Scheduling**: Uses the **Gold Panning** strategy to prioritize tasks based on Due Date and Complexity, then slots them into available functionality.
+-   **Staged Scheduling**: Uses the **Gold Panning** strategy to prioritize tasks based on Due Date and Complexity, then slots them into available time windows.
 -   **Command Line Interface**: A robust CLI loop (`PriorityTaskManager.CLI`) handles user input with clear feedback.
 -   **Workday Configuration**: Respects user-defined start/end times in `user_profile.json`.
 
