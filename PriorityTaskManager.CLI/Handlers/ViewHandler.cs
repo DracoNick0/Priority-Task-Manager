@@ -1,17 +1,30 @@
-using PriorityTaskManager.Services;
-using PriorityTaskManager.Models;
-using PriorityTaskManager.CLI.Interfaces;
 using System;
 using System.Linq;
+using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
+using PriorityTaskManager.Models;
+using PriorityTaskManager.Services;
 
 /// <summary>
 /// Handles the 'view' command, displaying all details of a specific task by Id.
 /// </summary>
 public class ViewHandler : ICommandHandler
 {
+    private readonly ScheduleSnapshotProvider _snapshotProvider;
+    private readonly ITaskMetricsService _taskMetricsService;
+
+    public ViewHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+    {
+        _snapshotProvider = snapshotProvider;
+        _taskMetricsService = taskMetricsService;
+    }
+
     /// <inheritdoc/>
     public void Execute(TaskManagerService service, string[] args)
     {
+        _snapshotProvider.RefreshActiveListSnapshot(out _);
+        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+        
         if (args.Length != 1 || !int.TryParse(args[0], out int id))
         {
             Console.WriteLine("Usage: view <Id>");

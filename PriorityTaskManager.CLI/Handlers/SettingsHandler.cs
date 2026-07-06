@@ -12,10 +12,14 @@ namespace PriorityTaskManager.CLI.Handlers
     public class SettingsHandler : ICommandHandler
     {
         private readonly ITimeService _timeService;
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
 
-        public SettingsHandler(ITimeService timeService)
+        public SettingsHandler(ITimeService timeService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             _timeService = timeService;
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
         }
 
         public void Execute(TaskManagerService service, string[] args)
@@ -34,6 +38,9 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             var userProfile = service.GetUserProfile();
 
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -86,7 +93,7 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.CursorVisible = false;
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 var menuItems = new List<string> 
                 { 
                     "Working Days", 
@@ -115,7 +122,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         if (selectedIndex == 6) // Save and Exit
                         {
                             service.UpdateUserProfile(userProfile);
-                            Console.Clear();
+                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                             Console.WriteLine("Settings saved.");
                             PrintCurrentSettings(userProfile);
                             Console.CursorVisible = true;
@@ -124,7 +131,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         HandleMenuSelection(selectedIndex, service, userProfile);
                         break;
                     case ConsoleKey.Escape:
-                        Console.Clear();
+                        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                         Console.WriteLine("Settings update cancelled.");
                         Console.CursorVisible = true;
                         return;
@@ -172,19 +179,19 @@ namespace PriorityTaskManager.CLI.Handlers
                     var key = Console.ReadKey(true);
                     if (key.KeyChar == '1')
                     {
-                        var timeHandler = new TimeHandler(_timeService);
+                        var timeHandler = new TimeHandler(_timeService, _snapshotProvider, _taskMetricsService);
                         timeHandler.Execute(service, new[] { "now" });
                         Console.ReadKey(true); // Pause to see result
                     }
                     else if (key.KeyChar == '2')
                     {
-                        var timeHandler = new TimeHandler(_timeService);
+                        var timeHandler = new TimeHandler(_timeService, _snapshotProvider, _taskMetricsService);
                         timeHandler.Execute(service, new[] { "custom" });
                         Console.ReadKey(true); 
                     }
                     break;
                 case 5: // Run Cleanup
-                    var cleanupHandler = new CleanupHandler(service);
+                    var cleanupHandler = new CleanupHandler(service, _snapshotProvider, _taskMetricsService);
                     cleanupHandler.Execute(service, new string[0]);
                     Console.ReadKey(true);
                     break;
@@ -200,7 +207,7 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.CursorVisible = false;
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine("Select your working days (Space to toggle, Enter to save, Esc to cancel):");
                 DrawDaySelector(allDays, userProfile.WorkDays, selectedDayIndex);
 
@@ -262,7 +269,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine("Adjust Urgency Thresholds (Multipliers of Average Work Day):");
                 Console.WriteLine("Use Left/Right to adjust values, Enter to save.");
 
@@ -381,7 +388,7 @@ namespace PriorityTaskManager.CLI.Handlers
         private void PrintCurrentSettings(UserProfile userProfile)
         {
             Console.WriteLine("Current Settings:");
-            Console.WriteLine($"  Working Days: {string.Join(", ", userProfile.WorkDays)}");
+            Console.WriteLine($"  Working Days: {string.Join(", ", userProfile.WorkDays.OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d))}");
             Console.WriteLine($"  Working Hours: {userProfile.WorkStartTime} - {userProfile.WorkEndTime}");
             Console.WriteLine($"  Scheduling Strategy: {userProfile.SchedulingMode}");
         }

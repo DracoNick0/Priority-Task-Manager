@@ -1,6 +1,7 @@
 using PriorityTaskManager.Services;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
 using System;
 using System.Linq;
 
@@ -9,6 +10,15 @@ using System.Linq;
 /// </summary>
 public class DependHandler : ICommandHandler
 {
+    private readonly ScheduleSnapshotProvider _snapshotProvider;
+    private readonly ITaskMetricsService _taskMetricsService;
+
+    public DependHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+    {
+        _snapshotProvider = snapshotProvider;
+        _taskMetricsService = taskMetricsService;
+    }
+
     /// <summary>
     /// Executes the 'depend' command, routing to add or remove dependency logic.
     /// </summary>
@@ -37,6 +47,9 @@ public class DependHandler : ICommandHandler
 
     private void HandleAddDependency(TaskManagerService service, string[] args)
     {
+        _snapshotProvider.RefreshActiveListSnapshot(out _);
+        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+        
         if (args.Length != 3)
         {
             Console.WriteLine("Usage: depend add <childId> <parentId>");
@@ -84,6 +97,9 @@ public class DependHandler : ICommandHandler
 
     private void HandleRemoveDependency(TaskManagerService service, string[] args)
     {
+        _snapshotProvider.RefreshActiveListSnapshot(out _);
+        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+
         if (args.Length != 3)
         {
             Console.WriteLine("Usage: depend remove <childId> <parentId>");
@@ -98,9 +114,19 @@ public class DependHandler : ICommandHandler
 
         var childTask = service.GetTaskById(childId);
         var parentTask = service.GetTaskById(parentId);
+        
+        if (childTask == null)
+        {
+            Console.WriteLine($"{childId} does not exist.");
+        }
+
+        if (parentTask == null)
+        {
+            Console.WriteLine($"{parentId} does not exist.");
+        }
+
         if (childTask == null || parentTask == null)
         {
-            Console.WriteLine("One or both task IDs do not exist.");
             return;
         }
 
@@ -117,6 +143,9 @@ public class DependHandler : ICommandHandler
 
     private void PrintUsage()
     {
+        _snapshotProvider.RefreshActiveListSnapshot(out _);
+        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+
         Console.WriteLine("Usage:");
         Console.WriteLine("  depend add <childId> <parentId>    - Add a dependency (child depends on parent)");
         Console.WriteLine("  depend remove <childId> <parentId> - Remove a dependency");

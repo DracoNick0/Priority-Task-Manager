@@ -1,5 +1,6 @@
 using System;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 
@@ -7,10 +8,22 @@ namespace PriorityTaskManager.CLI.Handlers
 {
     public class ModeHandler : ICommandHandler
     {
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public ModeHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         public void Execute(TaskManagerService service, string[] args)
         {
             var userProfile = service.UserProfile;
 
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            
             if (args.Length == 0)
             {
                 // Just display current mode if no argument provided

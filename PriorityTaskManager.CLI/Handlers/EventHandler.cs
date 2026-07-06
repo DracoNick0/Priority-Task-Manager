@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using PriorityTaskManager.CLI.Interfaces;
+using PriorityTaskManager.CLI.Utils;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 
@@ -9,6 +10,15 @@ namespace PriorityTaskManager.CLI.Handlers
 {
     public class EventHandler : ICommandHandler
     {
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public EventHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         public void Execute(TaskManagerService service, string[] args)
         {
             if (args.Length == 0)
@@ -36,6 +46,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleAddEvent(TaskManagerService service, string[] args)
         {
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            
             // ptm event add "My Event" --from "2025-12-01 10:00" --to "2025-12-01 11:00"
             if (args.Length < 5 || !args[1].Equals("--from") || !args[3].Equals("--to"))
             {
@@ -79,6 +92,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleRemoveEvent(TaskManagerService service, string[] args)
         {
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+
             if (args.Length == 0 || !int.TryParse(args[0], out int id))
             {
                 Console.WriteLine("Usage: event remove <ID>");

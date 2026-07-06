@@ -10,6 +10,15 @@ namespace PriorityTaskManager.CLI.Handlers
 {
     public class EventCommandHandler : ICommandHandler
     {
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public EventCommandHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         public void Execute(TaskManagerService service, string[] args)
         {
             if (args.Length == 0)
@@ -95,6 +104,8 @@ namespace PriorityTaskManager.CLI.Handlers
             };
 
             service.AddEvent(newEvent);
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
             Console.WriteLine($"Event '{name}' added successfully.");
         }
 
@@ -138,7 +149,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine($"Editing event: {existingEvent.Name}");
                 
                 var displayItems = new List<string>
@@ -158,6 +169,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 {
                     service.UpdateEvent(existingEvent);
                     Console.CursorVisible = true;
+                    _snapshotProvider.RefreshActiveListSnapshot(out _);
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                     Console.WriteLine("\nEvent updated successfully.");
                     return;
                 }
@@ -175,6 +188,8 @@ namespace PriorityTaskManager.CLI.Handlers
                         {
                             service.UpdateEvent(existingEvent);
                             Console.CursorVisible = true;
+                            _snapshotProvider.RefreshActiveListSnapshot(out _);
+                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                             Console.WriteLine("\nEvent updated successfully.");
                             return;
                         }
@@ -234,6 +249,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleRemoveEvent(TaskManagerService service, string[] args)
         {
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+
             if (args.Length == 0)
             {
                 Console.WriteLine("Usage: event delete <ID> or <ID1,ID2,...>");
@@ -276,6 +294,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleClearEvents(TaskManagerService service)
         {
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            
             Console.Write("Are you sure you want to delete ALL events? (y/n): ");
             if (Console.ReadLine()?.Trim().ToLower() == "y")
             {

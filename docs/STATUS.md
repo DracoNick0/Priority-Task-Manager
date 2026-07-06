@@ -5,42 +5,19 @@
 
 This document provides a high-level summary of the Priority Task Manager's current capabilities. It is the distinct source of truth for what is working, what is in progress, and what is broken.
 
-## Migration Snapshot (Scheduling Overhaul)
-
-Current branch strategy:
-1. Documentation-first migration.
-2. Stabilize Gold Panning (Green Tests).
-3. Implement V1 Core (Constraint Solver).
-4. Migrate CLI and Verify (Dual-Mode Support).
-
-Phase progress:
-- Phase 1 (Docs and contracts): Complete.
-- Phase 2 (Stabilize Gold Panning): Complete. All 70 tests are passing, covering Horizon, Prioritization, Balancing, Spreading, and Sequencing.
-- Phase 3 (Critical UX & Settings Prep): Complete. Enhanced CLI with standardized interactive flows for Add, Edit, and Settings. Includes improved Time Picker (split minutes, End-of-Day shortcut) and Dependency Editor (submenu with cancel support).
-- Phase 3.5 (User Feedback Refinements): Complete. Polished Event system (interactive + Smart Shift), fixed Scheduler spill-over and gaps (Constructive Fill), improved Split Task visibility.
-- Phase 4 (New pipeline implementation): Deferred until the remaining Gold Panning refinements are complete.
-
-Recently clarified contract decisions:
-- Must-schedule tasks can be marked late only when policy allows and cannot be dropped.
-- Overtime is considered only after normal windows are exhausted, with scope control (must-only vs all tasks).
-- Null due-date tasks remain a neutral backlog in V1 (no aging urgency yet).
-- Unscheduled non-must tasks are excluded from the current run and re-evaluated on future runs unless completed, deleted, or archived.
-- Adaptive horizon may emit user confirmation/alert guidance when projected timelines become long.
-
 ## Feature Matrix
 
 | Feature Area | Status | Notes |
 | :--- | :--- | :--- |
-| **Task Management** | 🟢 **Stable** | Standard CRUD (add, edit, list) is robust with enhanced interactive menus for Date, Time, and Dependencies. |
+| **Task Management** | 🟢 **Dependencies Feature Needs Review** | Standard CRUD (add, edit, list) is robust with enhanced interactive menus for Date, Time, and Dependencies. |
 | **List Management** | 🟡 **Under Review** | Core create/switch/delete flows work, but the list model is still under review for richer semantics and sorting support. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
-| **Settings & Config** | 🟢 **Enhanced** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
-| **CLI Schedule Dashboard Foundation** | 🟡 **Phase 2 Complete** | Snapshot caching (`ScheduleSnapshotProvider`), snapshot-based rendering (`ConsoleHelper.RenderSchedule`), quarter-hour background refresh (`BackgroundRefreshScheduler`), and clear-and-render wrapper (`ConsoleHelper.ClearAndRenderDashboard`). Ready for handler integration. |
-| Scheduling Logic | 🟡 **Migration** | Constraint Solver is being added alongside the Gold Panning strategy |
+| **Settings & Config** | 🟢 **Stable** | Interactive `settings` to toggle strategy (Gold Panning vs Constraint), set work hours, and adjust time. |
+| Scheduling Logic | 🟢 **Stable - New Alg in Progress** | Constraint Solver is being added alongside the Gold Panning strategy |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟡 **Under Review** | Interactive Add/Edit/List and Smart Shifting work, but past-event retention and the main schedule-view UX still need refinement. |
-| **Dependencies** | 🟡 **Migration** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
-| **Unit Tests** | 🟡 **Active** | Core Agents covered; Integration and CLI tests pending alignment with new contract. |
+| **Task Dependencies** | 🟡 **Fixing** | FS dependency correctness is part of the migration test matrix and new pipeline contract. |
+| **Unit Tests** | 🔴 **Outdated** | Core Agents covered; Integration and CLI tests pending alignment with new contract. |
 
 ## Current Capabilities
 
@@ -57,9 +34,7 @@ Recently clarified contract decisions:
 
 ## Known Issues & Technical Debt
 
-*   **Migration Churn**: Scheduling internals are actively being replaced; temporary instability is expected during Phase 2 and Phase 3.
-*   **Legacy UX Refinements**: List semantics and event history/display behavior still need follow-up work in the Gold Panning path.
-*   **Gold Panning Backlog**: Slack-aware urgency, focus-window sequencing, and anti-starvation logic are still pending before Phase 4.
+*   **Gold Panning Backlog**: Slack-aware urgency, focus-window sequencing, and anti-starvation logic are still pending.
 *   **Dependency Management**: FS enforcement is a priority in the new migration test matrix and target pipeline.
 *   **Unit Tests**: Existing tests are still being realigned to the new scheduling contract.
 

@@ -13,6 +13,15 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class EditHandler : ICommandHandler
     {
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public EditHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
@@ -42,6 +51,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 string? directValue = args.Length > 2 ? string.Join(" ", args.Skip(2)) : null;
                 HandleTargetedUpdate(task, attribute, directValue);
                 service.UpdateTask(task);
+                _snapshotProvider.RefreshActiveListSnapshot(out _);
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine("Task updated successfully.");
                 return;
             }
@@ -60,7 +71,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine($"Editing Task: {currentTask.Title} (ID: {currentTask.Id})");
                 Console.WriteLine("---------------------------------------------");
                 
@@ -89,6 +100,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 {
                     service.UpdateTask(currentTask);
                     Console.CursorVisible = true;
+                    _snapshotProvider.RefreshActiveListSnapshot(out _);
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                     Console.WriteLine("\nTask updated successfully (Shift+Enter).");
                     return;
                 }
@@ -106,6 +119,8 @@ namespace PriorityTaskManager.CLI.Handlers
                         {
                             service.UpdateTask(currentTask);
                             Console.CursorVisible = true;
+                            _snapshotProvider.RefreshActiveListSnapshot(out _);
+                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                             Console.WriteLine("\nTask updated successfully.");
                             return;
                         }
@@ -195,7 +210,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine($"Editing Dependencies for '{task.Title}'");
                 Console.WriteLine("-------------------------------------");
 

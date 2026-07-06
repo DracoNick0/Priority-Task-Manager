@@ -4,24 +4,19 @@
 
 ---
 
-## UI/UX Improvements
-- [ ] **Create a persistent, top-aligned schedule view.**
-    - *Description*: Implement a default dashboard-style console flow where the schedule stays locked to the top of the terminal. For each command, clear the screen, reprint the current schedule header, then print the command output below it so the schedule never gets pushed off-screen.
-    - *Notes*: Cache the rendered schedule between commands so the CLI does not rerun the scheduling algorithm unnecessarily on every command. Only regenerate the schedule when a command changes scheduling inputs, list settings, or other schedule-affecting state. Any automatic refresh must preserve the last command output and must not wipe partially typed user input; if the console flow cannot reliably guarantee that, the auto-refresh behavior should be dropped or replaced with a non-destructive update approach.
-    - *Progress (2026-06-23)*:
-      - Phase 1: Added cached schedule snapshot provider and snapshot-based rendering in ConsoleHelper.
-      - Phase 2: Added quarter-hour aligned background refresh scheduler (`BackgroundRefreshScheduler`), console clear-and-render wrapper (`ConsoleHelper.ClearAndRenderDashboard`), and input-safe state tracking (`ConsoleUIState`).
-      - Next: Integrate clear-and-render wrapper into handlers that would benefit from persistent top-aligned redraw (e.g., `add`, `edit`, `complete`, `delete`). Start with opt-in usage and evaluate UX before making it default.
+### Minor Fix
+- **Interactive menu re-draw fix:**
+    - For interactive select menus, use Console.SetCursorPosition() (refer to ListHandler's DrawListMenu method) to reduce clearing the whole console and reprinting (refer to HelpHandler's RunInteractiveHelp method).
 
 ### Core Fixes & Refinements
-- [ ] **Extend per-list configurations.**
+- **Extend per-list configurations.**
     - *Description*: Build upon the list scheduling overrides by allowing different scheduling windows (e.g., work hours) per list and additional per-list settings such as name, description, and sort option to further separate contexts.
     - *Notes*: Prefer an interactive settings menu navigable with arrow keys, while still allowing direct commands for faster editing when needed.
-- [ ] **Combine list settings commands.**
+- **Combine list settings commands.**
     - *Description*: Combine the separate `list sort` commands into a unified `list settings` experience so list configuration is managed from one interactive place instead of scattered commands.
     - *Notes*: Keep direct command forms available as an optional shortcut, not the only way to access settings.
 
-- [ ] **Implement mock schedules**
+- **Implement mock schedules**
     - *Description*: Provide selectable mock scenarios that temporarily replace the current assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
     - *Notes*: Mock runs must be isolated (in-memory or separate temp storage), configurable via CLI, reversible, and easy to discover from the terminal.
     - *Plan*:
@@ -32,22 +27,22 @@
         - Add tests for scenario loading, command parsing, and persistence isolation.
 
 ### Scheduling Related & Event Enhancements
-- [ ] **Improve Event Scheduling System.**
+- **Improve Event Scheduling System.**
     - *Description*: The `event` command UI needs a visual and usability overhaul. Past events should be retained but hidden from the main schedule view.
     - *New Command*: Implement an `event all` (or similar) command to display a comprehensive list of both past and future events.
 
 ### User-Driven Scheduling Enhancements
-- [ ] **Dynamic/Custom Work Hours**: Allow different work hours per day.
+- **Dynamic/Custom Work Hours**: Allow different work hours per day.
     - Calculate `AvgDailyWorkCapacity` from user profile for dynamic slack awareness.
-- [ ] Allow user to set their current energy level to influence scheduling.
-- [ ] Implement a 'put off' feature to defer a task.
-- [ ] Warn user when Daily Load exceeds a `MaxDailyComplexityLoad` threshold.
+- Allow user to set their current energy level to influence scheduling.
+- Implement a 'put off' feature to defer a task.
+- Warn user when Daily Load exceeds a `MaxDailyComplexityLoad` threshold.
 
 ### Gold Panning Strategy Refinements (Pre-Phase 4)
-- [ ] **Implement slack-aware urgency** to avoid high-importance last-minute placement.
-- [ ] **Utilize User Focus Windows Intelligently.**
+- **Implement slack-aware urgency** to avoid high-importance last-minute placement.
+- **Utilize User Focus Windows Intelligently.**
     - *Description*: Instead of simply front-loading all complex tasks ("Eat the Frog"), revise the intra-day sequencing. The goal is to place high-complexity tasks during the user's defined high-focus windows, while ensuring that tasks due today (or finishing on their due date) are always prioritized to prevent last-mianute placement and deadline risk.
-- [ ] **Anti-Starvation Logic for Backlog Tasks**
+- **Anti-Starvation Logic for Backlog Tasks**
     - Address the issue where tasks with no due date are perpetually pushed to the end of the schedule by urgent tasks.
     - *Option A (Maintenance Quota)*: Reserve a set percentage of daily capacity (e.g., 20%) specifically for non-urgent tasks.
     - *Option B (Virtual Aging)*: Implement an "Effective Due Date" or "Age Score" that increases over time, eventually treating old backlog items as urgent.
@@ -67,27 +62,27 @@
 -   Enforce no-overlap ownership boundaries between stages.
 
 ### Phase 5: Build Migration Test Matrix (New Pipeline)
--   [ ] Enforce merge gate: no behavior PR merges without test-first coverage.
--   [ ] Add tests for FS dependency correctness in the new pipeline.
--   [ ] Add tests for must-schedule overload behavior (late + overtime).
--   [ ] Add tests for non-must dropping and exclusion policy.
--   [ ] Add tests for slack protection on high-importance tasks.
--   [ ] Add deterministic replay tests for identical inputs.
+-   Enforce merge gate: no behavior PR merges without test-first coverage.
+-   Add tests for FS dependency correctness in the new pipeline.
+-   Add tests for must-schedule overload behavior (late + overtime).
+-   Add tests for non-must dropping and exclusion policy.
+-   Add tests for slack protection on high-importance tasks.
+-   Add deterministic replay tests for identical inputs.
 
 ### Future UI/UX Expansions
 -  **Implement CLI Handler Test Suite**
-    -   [ ] `AddHandlerTests.cs`
-    -   [ ] `ListHandlerTests.cs`
-    -   [ ] `EditHandlerTests.cs`, `DeleteHandlerTests.cs`, etc.
+    -   `AddHandlerTests.cs`
+    -   `ListHandlerTests.cs`
+    -   `EditHandlerTests.cs`, `DeleteHandlerTests.cs`, etc.
 
 ### Future API & Service Expansions
-- [ ] **Add a mobile interface (Android/iOS).**
+- **Add a mobile interface (Android/iOS).**
     - *Description*: Develop a cross-platform mobile application (e.g., using React Native) which will require creating a web API to serve data from the core C# application.
-- [ ] **Integrate an LLM for conversational control.**
+- **Integrate an LLM for conversational control.**
     - *Description*: Allow users to manage tasks via natural language. This would involve creating an API that an LLM can call to translate commands into application actions.
 -  **Implement Infrastructure Test Suite**
-    -   [ ] `PersistenceServiceTests.cs` (Integration)
+    -   `PersistenceServiceTests.cs` (Integration)
 
 -  **Additional Attributes for Scheduling**
-    -   [ ] **Earliest Start Date**: Support tasks that cannot begin until a future date.
-    -   [ ] **Start Time preference**: Support tasks that must start at a specific time.
+    -   **Earliest Start Date**: Support tasks that cannot begin until a future date.
+    -   **Start Time preference**: Support tasks that must start at a specific time.

@@ -4,16 +4,21 @@ using PriorityTaskManager.Services;
 using PriorityTaskManager.MCP;
 using PriorityTaskManager.CLI.MCP.Agents.Cleanup;
 using PriorityTaskManager.Models;
+using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
     public class CleanupHandler : ICommandHandler
     {
         private readonly TaskManagerService _taskManagerService;
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
 
-        public CleanupHandler(TaskManagerService taskManagerService)
+        public CleanupHandler(TaskManagerService taskManagerService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             _taskManagerService = taskManagerService;
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
         }
 
         public void Handle(string[] args)
@@ -46,6 +51,12 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 Console.WriteLine("An error occurred during the cleanup operation:");
                 Console.WriteLine(finalContext.LastError.Message);
+            }
+
+            if (finalContext.LastError == null)
+            {
+                _snapshotProvider.RefreshActiveListSnapshot(out _);
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
             }
 
             Console.WriteLine("Cleanup Operation Log:");

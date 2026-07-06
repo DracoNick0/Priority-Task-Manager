@@ -10,6 +10,15 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class HelpHandler : ICommandHandler
     {
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public HelpHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
@@ -24,7 +33,7 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.CursorVisible = false;
             while (true)
             {
-                Console.Clear();
+                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                 Console.WriteLine("Select a category to see available commands:");
                 ConsoleHelper.DrawMenu(categories, selectedIndex);
 
@@ -41,7 +50,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     case ConsoleKey.Enter:
                         if (selectedIndex == categories.Count - 1) // Exit
                         {
-                            Console.Clear();
+                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                             Console.CursorVisible = true;
                             return;
                         }
@@ -50,7 +59,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         Console.ReadKey(true);
                         break;
                     case ConsoleKey.Escape:
-                        Console.Clear();
+                        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                         Console.CursorVisible = true;
                         return;
                 }
@@ -59,7 +68,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void ShowCategoryHelp(string category)
         {
-            Console.Clear();
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
             Console.WriteLine($"{category}:\n");
 
             switch (category)

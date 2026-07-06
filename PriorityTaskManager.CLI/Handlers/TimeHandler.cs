@@ -1,16 +1,20 @@
+using PriorityTaskManager.CLI.Utils;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.Services;
-using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
     public class TimeHandler : ICommandHandler
     {
         private readonly ITimeService _timeService;
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
 
-        public TimeHandler(ITimeService timeService)
+        public TimeHandler(ITimeService timeService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             _timeService = timeService;
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
         }
 
         public void Execute(TaskManagerService service, string[] args)
@@ -35,6 +39,8 @@ namespace PriorityTaskManager.CLI.Handlers
 
                 case "now":
                     _timeService.ClearSimulatedTime();
+                    _snapshotProvider.RefreshActiveListSnapshot(out _);
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                     Console.WriteLine("Time simulation cleared. Using current real-time.");
                     break;
 
@@ -42,6 +48,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 case "cus":
                     var simulatedTime = ConsoleInputHelper.GetDateTimeFromUser("Enter the simulated date and time");
                     _timeService.SetSimulatedTime(simulatedTime);
+                    _snapshotProvider.RefreshActiveListSnapshot(out _);
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                     Console.WriteLine($"Time is now simulated. Current simulated time: {simulatedTime:yyyy-MM-dd HH:mm}");
                     break;
 

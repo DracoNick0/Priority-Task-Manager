@@ -18,6 +18,15 @@ namespace PriorityTaskManager.CLI.Handlers
         private const bool DefaultPinned = false;
         private static readonly TimeSpan DefaultDuration = TimeSpan.FromHours(1);
 
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public AddHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
@@ -75,6 +84,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
             // Add the task to the system via the TaskManagerService.
             service.AddTask(task);
+
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
 
             Console.WriteLine($"\nTask '{task.Title}' added successfully (ID: {task.DisplayId}).");
         }

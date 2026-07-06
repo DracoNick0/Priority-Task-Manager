@@ -10,11 +10,23 @@ namespace PriorityTaskManager.CLI.Handlers
     /// </summary>
     public class DeleteHandler : ICommandHandler
     {
+        private readonly ScheduleSnapshotProvider _snapshotProvider;
+        private readonly ITaskMetricsService _taskMetricsService;
+
+        public DeleteHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+        {
+            _snapshotProvider = snapshotProvider;
+            _taskMetricsService = taskMetricsService;
+        }
+
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
             int activeListId = service.GetActiveListId();
             var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args, activeListId);
+
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
 
             if (validTaskIds.Count == 0)
             {

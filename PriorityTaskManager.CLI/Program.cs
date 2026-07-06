@@ -44,21 +44,21 @@ namespace PriorityTaskManager.CLI
 
 			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
 			{
-				{ "add", new AddHandler() },
+				{ "add", new AddHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "list", new ListHandler(taskMetricsService, timeService, scheduleSnapshotProvider) },
-				{ "edit", new EditHandler() },
-				{ "delete", new DeleteHandler() },
-				{ "complete", new CompleteHandler() },
-				{ "uncomplete", new UncompleteHandler() },
-				{ "help", new HelpHandler() },
-				{ "depend", new DependHandler() },
-				{ "view", new ViewHandler() },
-				{ "cleanup", new CleanupHandler(service) },
-				{ "settings", new SettingsHandler(timeService) },
-				{ "event", new EventCommandHandler() },
-				{ "e", new EventCommandHandler() },
-				{ "time", new TimeHandler(timeService) },
-				{ "mode", new ModeHandler() }
+				{ "edit", new EditHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "delete", new DeleteHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "complete", new CompleteHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "uncomplete", new UncompleteHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "depend", new DependHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "view", new ViewHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "cleanup", new CleanupHandler(service, scheduleSnapshotProvider, taskMetricsService) },
+				{ "help", new HelpHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "settings", new SettingsHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
+				{ "event", new EventCommandHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "e", new EventCommandHandler(scheduleSnapshotProvider, taskMetricsService) },
+				{ "time", new TimeHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
+				{ "mode", new ModeHandler(scheduleSnapshotProvider, taskMetricsService) }
 			};
 
 			while (true)

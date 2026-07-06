@@ -95,19 +95,13 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleViewTasksInActiveList(TaskManagerService service)
         {
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+
             if (!_scheduleSnapshotProvider.RefreshActiveListSnapshot(out var refreshError))
             {
                 Console.WriteLine(refreshError);
                 return;
             }
-
-            if (!_scheduleSnapshotProvider.TryGetLatestSnapshot(out var snapshot) || snapshot == null)
-            {
-                Console.WriteLine("Error: Failed to load schedule snapshot.");
-                return;
-            }
-
-            ConsoleHelper.RenderSchedule(snapshot, _taskMetricsService);
         }
 
         // Helper to format dates as MM-dd or MM-dd-yyyy if not current year
@@ -136,6 +130,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleCreateList(TaskManagerService service, string[] args)
         {
+            _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+
             var listName = string.Join(" ", args);
             if (string.IsNullOrWhiteSpace(listName))
             {
@@ -156,6 +153,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleSwitchList(TaskManagerService service, string[] args)
         {
+            _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+
             var listName = string.Join(" ", args);
             if (string.IsNullOrWhiteSpace(listName))
             {
@@ -177,6 +177,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleDeleteList(TaskManagerService service, string[] args)
         {
+            _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+
             var listName = string.Join(" ", args);
             if (string.IsNullOrWhiteSpace(listName))
             {
@@ -216,6 +219,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleSetSortOption(TaskManagerService service, string[] args)
         {
+            _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+            
             if (args.Length < 1)
             {
                 Console.WriteLine("Error: Missing sort option. Valid options are: Default, Alphabetical, DueDate, Id.");
@@ -252,6 +258,9 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleInteractiveSwitch(TaskManagerService service)
         {
+            _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+
             var lists = service.GetAllLists().ToList();
             if (!lists.Any())
             {
@@ -284,11 +293,9 @@ namespace PriorityTaskManager.CLI.Handlers
                         break;
                     case ConsoleKey.Enter:
                         service.SetActiveListId(lists[selectedIndex].Id);
-                        Console.SetCursorPosition(0, initialTop + lists.Count);
                         Console.WriteLine($"Switched to list '{lists[selectedIndex].Name}'.");
                         return;
                     case ConsoleKey.Escape:
-                        Console.SetCursorPosition(0, initialTop + lists.Count);
                         Console.WriteLine("Switch cancelled.");
                         return;
                 }
