@@ -119,7 +119,6 @@ namespace PriorityTaskManager.CLI.Utils
         /// </summary>
         /// <param name="initialDate">The initial date to start the adjustment from. Can be null.</param>
         /// <returns>The adjusted and confirmed date, or original if cancelled.</returns>
-        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static DateTime? HandleInteractiveDateInput(DateTime? initialDate)
         {
             DateTime date = initialDate ?? DateTime.Today;
@@ -133,91 +132,80 @@ namespace PriorityTaskManager.CLI.Utils
                 date = DateTime.Today;
             }
 
-            // Hide cursor for cleaner UI
-            bool originalCursorVisible = Console.CursorVisible;
-            Console.CursorVisible = false;
-
-            try
+            while (true)
             {
-                while (true)
+                Console.SetCursorPosition(left, top);
+                
+                // Clear line
+                Console.Write(new string(' ', Console.WindowWidth - 1));
+                Console.SetCursorPosition(left, top);
+
+                string modeStr = mode.ToString();
+                if (mode == IncrementMode.NoDueDate) { modeStr = "No Due Date"; }
+
+                if (mode == IncrementMode.NoDueDate)
                 {
-                    Console.SetCursorPosition(left, top);
-                    
-                    // Clear line
-                    Console.Write(new string(' ', Console.WindowWidth - 1));
-                    Console.SetCursorPosition(left, top);
-
-                    string modeStr = mode.ToString();
-                    if (mode == IncrementMode.NoDueDate) { modeStr = "No Due Date"; }
-
-                    if (mode == IncrementMode.NoDueDate)
-                    {
-                        Console.Write($"[Mode: {modeStr}] (Press Enter to confirm, Esc to cancel)      ");
-                    }
-                    else
-                    {
-                        Console.Write($"[Mode: {modeStr}] {date:yyyy-MM-dd dddd} (Arrows to adjust, Enter to confirm, Esc to cancel)");
-                    }
-
-                    var key = Console.ReadKey(true);
-
-                    switch (key.Key)
-                    {
-                        case ConsoleKey.RightArrow:
-                            if (mode != IncrementMode.NoDueDate)
-                            {
-                                switch (mode)
-                                {
-                                    case IncrementMode.Day: date = date.AddDays(1); break;
-                                    case IncrementMode.Week: date = date.AddDays(7); break;
-                                    case IncrementMode.Month: date = date.AddMonths(1); break;
-                                    case IncrementMode.Year: date = date.AddYears(1); break;
-                                }
-                            }
-                            break;
-                        case ConsoleKey.LeftArrow:
-                            if (mode != IncrementMode.NoDueDate)
-                            {
-                                switch (mode)
-                                {
-                                    case IncrementMode.Day: date = date.AddDays(-1); break;
-                                    case IncrementMode.Week: date = date.AddDays(-7); break;
-                                    case IncrementMode.Month: date = date.AddMonths(-1); break;
-                                    case IncrementMode.Year: date = date.AddYears(-1); break;
-                                }
-                            }
-                            break;
-                        case ConsoleKey.UpArrow:
-                            // Cycle through modes: Day -> Week -> Month -> Year -> No Due Date -> Day
-                            int nextMode = ((int)mode + 1);
-                            if (nextMode > 4) nextMode = 0; // Assuming NoDueDate is 4 or similar, need to check enum
-                            // Re-implementing simplified toggle
-                            if (mode == IncrementMode.NoDueDate) mode = IncrementMode.Day;
-                            else if (mode == IncrementMode.Year) mode = IncrementMode.NoDueDate;
-                            else mode = (IncrementMode)((int)mode + 1);
-                            break;
-                        case ConsoleKey.DownArrow:
-                             // Cycle backwards
-                            if (mode == IncrementMode.Day) mode = IncrementMode.NoDueDate;
-                            else if (mode == IncrementMode.NoDueDate) mode = IncrementMode.Year;
-                            else mode = (IncrementMode)((int)mode - 1);
-                            break;
-                        case ConsoleKey.Enter:
-                            Console.WriteLine();
-                            if (mode == IncrementMode.NoDueDate)
-                            {
-                                return null;
-                            }
-                            return date;
-                        case ConsoleKey.Escape:
-                            Console.WriteLine();
-                            return initialDate; // Return original unchanged
-                    }
+                    Console.Write($"[Mode: {modeStr}] (Press Enter to confirm, Esc to cancel)      ");
                 }
-            }
-            finally
-            {
-                Console.CursorVisible = originalCursorVisible;
+                else
+                {
+                    Console.Write($"[Mode: {modeStr}] {date:yyyy-MM-dd dddd} (Arrows to adjust, Enter to confirm, Esc to cancel)");
+                }
+
+                var key = Console.ReadKey(true);
+
+                switch (key.Key)
+                {
+                    case ConsoleKey.RightArrow:
+                        if (mode != IncrementMode.NoDueDate)
+                        {
+                            switch (mode)
+                            {
+                                case IncrementMode.Day: date = date.AddDays(1); break;
+                                case IncrementMode.Week: date = date.AddDays(7); break;
+                                case IncrementMode.Month: date = date.AddMonths(1); break;
+                                case IncrementMode.Year: date = date.AddYears(1); break;
+                            }
+                        }
+                        break;
+                    case ConsoleKey.LeftArrow:
+                        if (mode != IncrementMode.NoDueDate)
+                        {
+                            switch (mode)
+                            {
+                                case IncrementMode.Day: date = date.AddDays(-1); break;
+                                case IncrementMode.Week: date = date.AddDays(-7); break;
+                                case IncrementMode.Month: date = date.AddMonths(-1); break;
+                                case IncrementMode.Year: date = date.AddYears(-1); break;
+                            }
+                        }
+                        break;
+                    case ConsoleKey.UpArrow:
+                        // Cycle through modes: Day -> Week -> Month -> Year -> No Due Date -> Day
+                        int nextMode = ((int)mode + 1);
+                        if (nextMode > 4) nextMode = 0; // Assuming NoDueDate is 4 or similar, need to check enum
+                        // Re-implementing simplified toggle
+                        if (mode == IncrementMode.NoDueDate) mode = IncrementMode.Day;
+                        else if (mode == IncrementMode.Year) mode = IncrementMode.NoDueDate;
+                        else mode = (IncrementMode)((int)mode + 1);
+                        break;
+                    case ConsoleKey.DownArrow:
+                            // Cycle backwards
+                        if (mode == IncrementMode.Day) mode = IncrementMode.NoDueDate;
+                        else if (mode == IncrementMode.NoDueDate) mode = IncrementMode.Year;
+                        else mode = (IncrementMode)((int)mode - 1);
+                        break;
+                    case ConsoleKey.Enter:
+                        Console.WriteLine();
+                        if (mode == IncrementMode.NoDueDate)
+                        {
+                            return null;
+                        }
+                        return date;
+                    case ConsoleKey.Escape:
+                        Console.WriteLine();
+                        return initialDate; // Return original unchanged
+                }
             }
         }
 
