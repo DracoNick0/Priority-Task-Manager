@@ -46,11 +46,7 @@ Priority-Task-Manager/
 ├── PriorityTaskManager.CLI/      <-- Command Line Interface
 │   ├── ...
 └── PriorityTaskManager.Tests/    <-- Unit Tests
-    ├── PriorityTaskManager.Tests.csproj
-    ├── Infrastructure/           <-- Shared Mocks/Helpers
-    ├── Integration/              <-- Service-Level Tests
-    ├── Scheduling/GoldPanning/   <-- Gold Panning Stage Tests
-    └── ConstraintOptimizationStrategy/ <-- New V1 Tests
+    ├── ...
 ```
 
 ### Technology Stack
