@@ -6,7 +6,7 @@
 
 ### Minor Fix
 - **Interactive menu re-draw fix:**
-    - For interactive select menus, use Console.SetCursorPosition() (refer to ListHandler's DrawListMenu method) to reduce clearing the whole console and reprinting (refer to HelpHandler's RunInteractiveHelp method).
+    - For interactive select menus, prefer `Console.SetCursorPosition()`-based redraws (see `ListHandler`'s `DrawListMenu` method) so we only refresh the affected menu area instead of clearing and reprinting the entire console (see `HelpHandler`'s `RunInteractiveHelp` method).
 
 ### Core Fixes & Refinements
 - **Extend per-list configurations.**
@@ -15,6 +15,14 @@
 - **Combine list settings commands.**
     - *Description*: Combine the separate `list sort` commands into a unified `list settings` experience so list configuration is managed from one interactive place instead of scattered commands.
     - *Notes*: Keep direct command forms available as an optional shortcut, not the only way to access settings.
+
+- **Overhaul the testing strategy.**
+    - *Description*: Rebuild the testing approach across the solution by following `docs/TESTING_STRATEGY.md`, including strict TDD for deterministic core and CLI logic, invariant/property-based coverage for scheduling behavior, and snapshot/characterization tests where schedule shape needs to stay stable.
+    - *Notes*: Treat this as a broad test-suite migration rather than a narrow bug fix; align the existing `PriorityTaskManager.Tests` project with the current architecture and replace outdated coverage incrementally.
+
+- **Revise the documentation and rewrite the README.**
+    - *Description*: Perform a complete update of the project documentation so `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, `docs/WORKFLOW.md`, and related docs reflect the current codebase, then replace the root `README.md` with a fresh, accurate overview of the project.
+    - *Notes*: Treat this as a full documentation pass, not a light edit; remove stale references, align terminology with the current architecture, and make the README suitable as the first entry point for new contributors.
 
 - **Implement mock schedules**
     - *Description*: Provide selectable mock scenarios that temporarily replace the current assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
@@ -38,7 +46,7 @@
 - Implement a 'put off' feature to defer a task.
 - Warn user when Daily Load exceeds a `MaxDailyComplexityLoad` threshold.
 
-### Gold Panning Strategy Refinements (Pre-Phase 4)
+### 1/3: Gold Panning Strategy Refinements (Pre-Constraint-Solver)
 - **Implement slack-aware urgency** to avoid high-importance last-minute placement.
 - **Utilize User Focus Windows Intelligently.**
     - *Description*: Instead of simply front-loading all complex tasks ("Eat the Frog"), revise the intra-day sequencing. The goal is to place high-complexity tasks during the user's defined high-focus windows, while ensuring that tasks due today (or finishing on their due date) are always prioritized to prevent last-mianute placement and deadline risk.
@@ -48,7 +56,7 @@
     - *Option B (Virtual Aging)*: Implement an "Effective Due Date" or "Age Score" that increases over time, eventually treating old backlog items as urgent.
     - *Option C (Opportunistic Fill)*: Fill low-intensity days (e.g., <50% load) with backlog tasks to smooth out the complexity curve.
 
-### Phase 4: Implement Constraint Solver (New Strategy)
+### 2/3: Implement Constraint Solver (New Strategy)
 -   Complete the Gold Panning refinements above before starting this phase.
 -   Follow Hybrid Testing (Exploratory Spiking + Invariants) for the algorithm logic.
 -   Write snapshot/characterization tests to lock down stable scheduling shapes.
@@ -61,7 +69,7 @@
     - Explanation
 -   Enforce no-overlap ownership boundaries between stages.
 
-### Phase 5: Build Migration Test Matrix (New Pipeline)
+### 3/3: Build Migration Test Matrix (New Pipeline)
 -   Enforce merge gate: no behavior PR merges without test-first coverage.
 -   Add tests for FS dependency correctness in the new pipeline.
 -   Add tests for must-schedule overload behavior (late + overtime).
@@ -69,19 +77,11 @@
 -   Add tests for slack protection on high-importance tasks.
 -   Add deterministic replay tests for identical inputs.
 
-### Future UI/UX Expansions
--  **Implement CLI Handler Test Suite**
-    -   `AddHandlerTests.cs`
-    -   `ListHandlerTests.cs`
-    -   `EditHandlerTests.cs`, `DeleteHandlerTests.cs`, etc.
-
 ### Future API & Service Expansions
-- **Add a mobile interface (Android/iOS).**
-    - *Description*: Develop a cross-platform mobile application (e.g., using React Native) which will require creating a web API to serve data from the core C# application.
+- **Add a mobile and Windows interface (Android/iOS).**
+    - *Description*: Develop a cross-platform application (e.g., using React Native) which will require creating a web API to serve data from the core C# application.
 - **Integrate an LLM for conversational control.**
     - *Description*: Allow users to manage tasks via natural language. This would involve creating an API that an LLM can call to translate commands into application actions.
--  **Implement Infrastructure Test Suite**
-    -   `PersistenceServiceTests.cs` (Integration)
 
 -  **Additional Attributes for Scheduling**
     -   **Earliest Start Date**: Support tasks that cannot begin until a future date.
