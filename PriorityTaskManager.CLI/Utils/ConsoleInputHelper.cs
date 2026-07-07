@@ -119,7 +119,7 @@ namespace PriorityTaskManager.CLI.Utils
         /// </summary>
         /// <param name="initialDate">The initial date to start the adjustment from. Can be null.</param>
         /// <returns>The adjusted and confirmed date, or original if cancelled.</returns>
-        public static DateTime? HandleInteractiveDateInput(DateTime? initialDate)
+        public static DateTime? InteractiveDateInput(DateTime? initialDate)
         {
             DateTime date = initialDate ?? DateTime.Today;
             int left = Console.CursorLeft;
@@ -265,16 +265,16 @@ namespace PriorityTaskManager.CLI.Utils
         public static DateTime? GetDateTimeFromUser(string prompt, DateTime? defaultTime = null)
         {
             Console.WriteLine(prompt);
-            DateTime? datePart = HandleInteractiveDateInput(defaultTime ?? DateTime.Now);
+            DateTime? datePart = InteractiveDateInput(defaultTime ?? DateTime.Now);
             if (datePart == null)
             {
                 return null;
             }
-            DateTime timePart = HandleInteractiveTimeInput(defaultTime ?? datePart.Value);
+            DateTime timePart = InteractiveTimeInput(defaultTime ?? datePart.Value);
             return datePart.Value.Date + timePart.TimeOfDay;
         }
 
-        public static DateTime HandleInteractiveTimeInput(DateTime initialTime)
+        public static DateTime InteractiveTimeInput(DateTime initialTime)
         {
             DateTime time = initialTime;
             int left = Console.CursorLeft;

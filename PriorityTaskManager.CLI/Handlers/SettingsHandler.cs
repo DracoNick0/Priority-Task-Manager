@@ -32,7 +32,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             if (args.Length == 0)
             {
-                RunInteractiveSettings(service);
+                InteractiveSettings(service);
             }
             else
             {
@@ -110,7 +110,7 @@ namespace PriorityTaskManager.CLI.Handlers
             PrintCurrentSettings(userProfile);
         }
 
-        private void RunInteractiveSettings(TaskManagerService service)
+        private void InteractiveSettings(TaskManagerService service)
         {
             var userProfile = service.GetUserProfile();
             int selectedIndex = 0;
@@ -168,7 +168,7 @@ namespace PriorityTaskManager.CLI.Handlers
             switch (selectedIndex)
             {
                 case 0: // Working Days
-                    RunInteractiveDaySelector(userProfile);
+                    InteractiveDaySelector(userProfile);
                     break;
                 case 1: // Working Hours
                     Console.CursorVisible = true;
@@ -176,12 +176,12 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine("\nSet Daily Work Start Time:");
                     var today = DateTime.Today;
                     var startDateTime = today.Add(userProfile.WorkStartTime.ToTimeSpan());
-                    var newStart = ConsoleInputHelper.HandleInteractiveTimeInput(startDateTime);
+                    var newStart = ConsoleInputHelper.InteractiveTimeInput(startDateTime);
                     
                     // End Time
                     Console.WriteLine("\nSet Daily Work End Time:");
                     var endDateTime = today.Add(userProfile.WorkEndTime.ToTimeSpan());
-                    var newEnd = ConsoleInputHelper.HandleInteractiveTimeInput(endDateTime);
+                    var newEnd = ConsoleInputHelper.InteractiveTimeInput(endDateTime);
 
                     userProfile.WorkStartTime = TimeOnly.FromDateTime(newStart);
                     userProfile.WorkEndTime = TimeOnly.FromDateTime(newEnd);
@@ -205,7 +205,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         : SchedulingMode.GoldPanning;
                     break;
                 case 4: // Urgency Thresholds
-                    RunInteractiveSlackSelector(userProfile);
+                    InteractiveSlackSelector(userProfile);
                     break;
             }
         }
@@ -229,7 +229,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void RunInteractiveDaySelector(UserProfile userProfile)
+        private void InteractiveDaySelector(UserProfile userProfile)
         {
             var allDays = Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList();
             int selectedDayIndex = 0;
@@ -293,7 +293,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void RunInteractiveSlackSelector(UserProfile userProfile)
+        private void InteractiveSlackSelector(UserProfile userProfile)
         {
             int selectedIndex = 0;
             double increment = 0.5;

@@ -58,10 +58,10 @@ namespace PriorityTaskManager.CLI.Handlers
             }
 
             // Interactive Mode
-            RunInteractiveEdit(service, task);
+            InteractiveEdit(service, task);
         }
 
-        private void RunInteractiveEdit(TaskManagerService service, TaskItem task)
+        private void InteractiveEdit(TaskManagerService service, TaskItem task)
         {
             // Clone task to avoid modifying original until save
             var currentTask = task.Clone();
@@ -171,7 +171,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     break;
                 case 6: // Due Date
                     Console.WriteLine("Adjust Due Date:");
-                    var newDate = ConsoleInputHelper.HandleInteractiveDateInput(task.DueDate);
+                    var newDate = ConsoleInputHelper.InteractiveDateInput(task.DueDate);
                     if (newDate.HasValue)
                     {
                         // Preserve time if date was already set, otherwise default to end of day
@@ -187,7 +187,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine("Adjust Due Time:");
                     if (task.DueDate.HasValue)
                     {
-                         var newTime = ConsoleInputHelper.HandleInteractiveTimeInput(task.DueDate.Value);
+                         var newTime = ConsoleInputHelper.InteractiveTimeInput(task.DueDate.Value);
                          task.DueDate = task.DueDate.Value.Date + newTime.TimeOfDay;
                     }
                     else

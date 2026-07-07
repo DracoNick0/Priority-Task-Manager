@@ -22,10 +22,10 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
-            RunInteractiveHelp();
+            InteractiveHelp();
         }
 
-        private void RunInteractiveHelp()
+        private void InteractiveHelp()
         {
             var categories = new List<string> { "Task Commands", "List Commands", "Dependency Commands", "Event Commands", "Time Commands", "General Commands", "Exit" };
             int selectedIndex = 0;

@@ -4,6 +4,10 @@
 
 ---
 
+### Minor CLI Interactive Menu Fix
+- **Interactive menu re-draw fix:**
+    - For interactive select menus, prefer `Console.SetCursorPosition()`-based redraws (see `ListHandler`'s `DrawListMenu` method) so we only refresh the affected menu area instead of clearing and reprinting the entire console (see `HelpHandler`'s `InteractiveHelp` method).
+
 ### Core Fixes & Refinements
 - **Overhaul the testing strategy.**
     - *Description*: Rebuild the testing approach across the solution by following `docs/TESTING_STRATEGY.md`, including strict TDD for deterministic core and CLI logic, invariant/property-based coverage for scheduling behavior, and snapshot/characterization tests where schedule shape needs to stay stable.
@@ -24,10 +28,6 @@
 - Allow user to set their current energy level to influence scheduling.
 - Implement a 'put off' feature to defer a task.
 - Warn user when Daily Load exceeds a `MaxDailyComplexityLoad` threshold.
-
-### Minor CLI Interactive Menu Fix
-- **Interactive menu re-draw fix:**
-    - For interactive select menus, prefer `Console.SetCursorPosition()`-based redraws (see `ListHandler`'s `DrawListMenu` method) so we only refresh the affected menu area instead of clearing and reprinting the entire console (see `HelpHandler`'s `RunInteractiveHelp` method).
 
 ### 1/3: Gold Panning Strategy Refinements (Pre-Constraint-Solver)
 - **Implement slack-aware urgency** to avoid high-importance last-minute placement.

@@ -57,7 +57,7 @@ namespace PriorityTaskManager.CLI.Handlers
             TimeSpan duration = ConsoleInputHelper.PromptForDuration("Duration", DefaultDuration);
             
             Console.WriteLine("Due Date (use arrows to adjust, Enter to confirm):");
-            DateTime? dueDate = ConsoleInputHelper.HandleInteractiveDateInput(null);
+            DateTime? dueDate = ConsoleInputHelper.InteractiveDateInput(null);
             
             // If a due date is provided, set the time to the end of that day (23:59:59).
             // This ensures the task is due by the end of the selected day.

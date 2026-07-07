@@ -47,7 +47,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     if (commandArgs.Length > 0)
                         HandleSwitchList(service, commandArgs);
                     else
-                        HandleInteractiveSwitch(service);
+                        InteractiveSwitch(service);
                     break;
                 case "delete":
                     HandleDeleteList(service, commandArgs);
@@ -256,7 +256,7 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             if (args.Length == 0)
             {
-                RunInteractiveListSettings(service);
+                InteractiveListSettings(service);
                 return;
             }
 
@@ -299,7 +299,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void RunInteractiveListSettings(TaskManagerService service)
+        private void InteractiveListSettings(TaskManagerService service)
         {
             var activeList = service.GetListById(service.GetActiveListId());
             if (activeList == null)
@@ -429,16 +429,16 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     break;
                 case 4:
-                    RunInteractiveListDaySelector(service, workingList);
+                    InteractiveListDaySelector(service, workingList);
                     break;
                 case 5:
-                    RunInteractiveListWorkHours(service, workingList);
+                    InteractiveListWorkHours(service, workingList);
                     break;
                 case 6:
-                    RunInteractiveListSlackSelector(service, workingList);
+                    InteractiveListSlackSelector(service, workingList);
                     break;
                 case 7:
-                    RunInteractiveListTimeSelector(workingList);
+                    InteractiveListTimeSelector(workingList);
                     break;
             }
         }
@@ -469,7 +469,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void RunInteractiveListDaySelector(TaskManagerService service, TaskList workingList)
+        private void InteractiveListDaySelector(TaskManagerService service, TaskList workingList)
         {
             var allDays = Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList();
             int selectedDayIndex = 0;
@@ -515,23 +515,23 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void RunInteractiveListWorkHours(TaskManagerService service, TaskList workingList)
+        private void InteractiveListWorkHours(TaskManagerService service, TaskList workingList)
         {
             Console.CursorVisible = true;
             var today = DateTime.Today;
             var startDateTime = today.Add((workingList.WorkStartTime ?? service.GetUserProfile().WorkStartTime).ToTimeSpan());
-            var newStart = ConsoleInputHelper.HandleInteractiveTimeInput(startDateTime);
+            var newStart = ConsoleInputHelper.InteractiveTimeInput(startDateTime);
 
             Console.WriteLine("\nSet Daily Work End Time:");
             var endDateTime = today.Add((workingList.WorkEndTime ?? service.GetUserProfile().WorkEndTime).ToTimeSpan());
-            var newEnd = ConsoleInputHelper.HandleInteractiveTimeInput(endDateTime);
+            var newEnd = ConsoleInputHelper.InteractiveTimeInput(endDateTime);
 
             workingList.WorkStartTime = TimeOnly.FromDateTime(newStart);
             workingList.WorkEndTime = TimeOnly.FromDateTime(newEnd);
             Console.CursorVisible = false;
         }
 
-        private void RunInteractiveListSlackSelector(TaskManagerService service, TaskList workingList)
+        private void InteractiveListSlackSelector(TaskManagerService service, TaskList workingList)
         {
             int selectedIndex = 0;
             const double increment = 0.5;
@@ -620,7 +620,7 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void RunInteractiveListTimeSelector(TaskList workingList)
+        private void InteractiveListTimeSelector(TaskList workingList)
         {
             Console.CursorVisible = true;
             Console.WriteLine("\nSet list simulated time: [1] Real-time [2] Custom");
@@ -957,7 +957,7 @@ namespace PriorityTaskManager.CLI.Handlers
             return TimeOnly.TryParse(parts[0].Trim(), out start) && TimeOnly.TryParse(parts[1].Trim(), out end);
         }
 
-        private void HandleInteractiveSwitch(TaskManagerService service)
+        private void InteractiveSwitch(TaskManagerService service)
         {
             ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
 
