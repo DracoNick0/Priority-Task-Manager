@@ -1,9 +1,6 @@
 using PriorityTaskManager.Services;
-using PriorityTaskManager.Models;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.CLI.Utils;
-using System;
-using System.Linq;
 
 /// <summary>
 /// Handles the 'depend' command, allowing users to add or remove dependencies between tasks.
@@ -56,41 +53,41 @@ public class DependHandler : ICommandHandler
             return;
         }
 
-        if (!int.TryParse(args[1], out int childId) || !int.TryParse(args[2], out int parentId))
+        if (!int.TryParse(args[1], out int childDisplayId) || !int.TryParse(args[2], out int parentDisplayId))
         {
             Console.WriteLine("Both childId and parentId must be valid integers.");
             return;
         }
 
-        if (childId == parentId)
+        if (childDisplayId == parentDisplayId)
         {
             Console.WriteLine("A task cannot depend on itself.");
             return;
         }
 
-        var childTask = service.GetTaskById(childId);
-        var parentTask = service.GetTaskById(parentId);
+        var childTask = service.GetTaskByDisplayId(childDisplayId, service.GetActiveListId());
+        var parentTask = service.GetTaskByDisplayId(parentDisplayId, service.GetActiveListId());
         if (childTask == null || parentTask == null)
         {
-            Console.WriteLine("One or both task IDs do not exist.");
+            Console.WriteLine("One or both tasks do not exist.");
             return;
         }
 
-        if (childTask.Dependencies.Contains(parentId))
+        if (childTask.Dependencies.Contains(parentTask.Id))
         {
-            Console.WriteLine($"Task {childId} already depends on task {parentId}.");
+            Console.WriteLine($"Task {childDisplayId} already depends on task {parentDisplayId}.");
             return;
         }
 
-        childTask.Dependencies.Add(parentId);
+        childTask.Dependencies.Add(parentTask.Id);
         try
         {
             service.UpdateTask(childTask);
-            Console.WriteLine($"Added dependency: Task {childId} now depends on Task {parentId}.");
+            Console.WriteLine($"Added dependency: Task {childDisplayId} now depends on Task {parentDisplayId}.");
         }
         catch (InvalidOperationException)
         {
-            childTask.Dependencies.Remove(parentId); // Rollback
+            childTask.Dependencies.Remove(parentTask.Id); // Rollback
             Console.WriteLine("Error: This action would create a circular dependency and was rejected.");
         }
     }
@@ -106,23 +103,23 @@ public class DependHandler : ICommandHandler
             return;
         }
 
-        if (!int.TryParse(args[1], out int childId) || !int.TryParse(args[2], out int parentId))
+        if (!int.TryParse(args[1], out int childDisplayId) || !int.TryParse(args[2], out int parentDisplayId))
         {
             Console.WriteLine("Both childId and parentId must be valid integers.");
             return;
         }
 
-        var childTask = service.GetTaskById(childId);
-        var parentTask = service.GetTaskById(parentId);
+        var childTask = service.GetTaskByDisplayId(childDisplayId, service.GetActiveListId());
+        var parentTask = service.GetTaskByDisplayId(parentDisplayId, service.GetActiveListId());
         
         if (childTask == null)
         {
-            Console.WriteLine($"{childId} does not exist.");
+            Console.WriteLine($"{childDisplayId} does not exist.");
         }
 
         if (parentTask == null)
         {
-            Console.WriteLine($"{parentId} does not exist.");
+            Console.WriteLine($"{parentDisplayId} does not exist.");
         }
 
         if (childTask == null || parentTask == null)
@@ -130,15 +127,15 @@ public class DependHandler : ICommandHandler
             return;
         }
 
-        if (!childTask.Dependencies.Contains(parentId))
+        if (!childTask.Dependencies.Contains(parentTask.Id))
         {
-            Console.WriteLine($"Task {childId} does not depend on task {parentId}.");
+            Console.WriteLine($"Task {childDisplayId} does not depend on task {parentDisplayId}.");
             return;
         }
 
-        childTask.Dependencies.Remove(parentId);
+        childTask.Dependencies.Remove(parentTask.Id);
         service.UpdateTask(childTask);
-        Console.WriteLine($"Removed dependency: Task {childId} no longer depends on Task {parentId}.");
+        Console.WriteLine($"Removed dependency: Task {childDisplayId} no longer depends on Task {parentDisplayId}.");
     }
 
     private void PrintUsage()

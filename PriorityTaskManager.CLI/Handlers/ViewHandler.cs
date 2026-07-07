@@ -1,8 +1,5 @@
-using System;
-using System.Linq;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.CLI.Utils;
-using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 
 /// <summary>
@@ -31,7 +28,7 @@ public class ViewHandler : ICommandHandler
             return;
         }
 
-        var task = service.GetTaskById(id);
+        var task = service.GetTaskByDisplayId(id, service.GetActiveListId());
         if (task == null)
         {
             Console.WriteLine("Task not found.");
