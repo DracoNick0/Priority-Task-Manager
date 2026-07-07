@@ -74,6 +74,25 @@ Before understanding the flow, it is helpful to define the core data objects pas
 4.  **`DataContainer`**: On application startup, the `PersistenceService` loads all data from the JSON files into a single `DataContainer` object.
 5.  **`TaskManagerService`**: This central service holds the `DataContainer` in memory. All business logic operations (adding tasks, updating events, etc.) are performed on the data within this container. When data is modified, `TaskManagerService` calls `PersistenceService.SaveData()` to write the changes back to the disk.
 
+## List-Scoped Settings Model
+
+Each `TaskList` now carries its own copied settings snapshot for scheduling and presentation. A list can store its own sort option, scheduling mode, work hours, work days, urgency thresholds, description, and optional simulated time preference.
+
+The intended behavior is copy-on-create:
+
+1. New lists copy the current global defaults from `UserProfile` when they are created.
+2. Later changes to the global defaults do not retroactively rewrite existing lists.
+3. `TaskManagerService.BuildEffectiveUserProfile(...)` resolves the active list's settings into the effective profile used by scheduling and the dashboard.
+4. `TaskManagerService.ApplyListTimePreference(...)` applies the active list's saved simulated time when switching lists.
+
+This keeps the list settings UI focused on the active list while still letting the global settings screen define the defaults used for new lists.
+
+The CLI now makes that split explicit:
+
+1. `user defaults` is the global/defaults surface.
+2. `list settings` is the active-list surface.
+3. The defaults screen is for values copied into new lists, not for live list mutation.
+
 ## Scheduling Strategies (Dual-Mode)
 
 The application supports multiple scheduling algorithms, selectable by the user via `UserProfile.SchedulingMode`. This allows for safe evolution of the scheduling logic without breaking existing functionality. The common interface for all strategies is `IUrgencyStrategy`.

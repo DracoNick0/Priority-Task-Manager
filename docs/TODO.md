@@ -5,13 +5,6 @@
 ---
 
 ### Core Fixes & Refinements
-- **Extend per-list configurations.**
-    - *Description*: Build upon the list scheduling overrides by allowing different scheduling windows (e.g., work hours) per list and additional per-list settings such as name, description, and sort option to further separate contexts.
-    - *Notes*: Prefer an interactive settings menu navigable with arrow keys, while still allowing direct commands for faster editing when needed.
-- **Combine list settings commands.**
-    - *Description*: Combine the separate `list sort` commands into a unified `list settings` experience so list configuration is managed from one interactive place instead of scattered commands.
-    - *Notes*: Keep direct command forms available as an optional shortcut, not the only way to access settings.
-
 - **Overhaul the testing strategy.**
     - *Description*: Rebuild the testing approach across the solution by following `docs/TESTING_STRATEGY.md`, including strict TDD for deterministic core and CLI logic, invariant/property-based coverage for scheduling behavior, and snapshot/characterization tests where schedule shape needs to stay stable.
     - *Notes*: Treat this as a broad test-suite migration rather than a narrow bug fix; align the existing `PriorityTaskManager.Tests` project with the current architecture and replace outdated coverage incrementally.

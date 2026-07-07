@@ -55,7 +55,7 @@ namespace PriorityTaskManager.CLI
 				{ "view", new ViewHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "cleanup", new CleanupHandler(service, scheduleSnapshotProvider, taskMetricsService) },
 				{ "help", new HelpHandler(scheduleSnapshotProvider, taskMetricsService) },
-				{ "settings", new SettingsHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
+				{ "user", new SettingsHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
 				{ "event", new EventCommandHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "e", new EventCommandHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "time", new TimeHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },

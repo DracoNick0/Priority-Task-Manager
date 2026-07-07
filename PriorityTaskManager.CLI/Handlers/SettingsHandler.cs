@@ -24,6 +24,12 @@ namespace PriorityTaskManager.CLI.Handlers
 
         public void Execute(TaskManagerService service, string[] args)
         {
+            if (args.Length > 0 && args[0].Equals("defaults", StringComparison.OrdinalIgnoreCase))
+            {
+                ParseArguments(service, args.Skip(1).ToArray());
+                return;
+            }
+
             if (args.Length == 0)
             {
                 RunInteractiveSettings(service);
@@ -45,6 +51,25 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 switch (args[i])
                 {
+                    case "--default-sort":
+                        if (i + 1 < args.Length)
+                        {
+                            UpdateDefaultSortOption(userProfile, args[i + 1]);
+                            i++; // consume value
+                        }
+                        break;
+                    case "--default-mode":
+                    case "--default-scheduling":
+                        if (i + 1 < args.Length && TryParseSchedulingMode(args[i + 1], out var schedulingMode))
+                        {
+                            userProfile.SchedulingMode = schedulingMode;
+                            i++; // consume value
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --default-mode requires one of: gold, solver.");
+                        }
+                        break;
                     case "--working-days":
                         if (i + 1 < args.Length)
                         {
@@ -98,10 +123,9 @@ namespace PriorityTaskManager.CLI.Handlers
                 { 
                     "Working Days", 
                     "Working Hours", 
-                    $"Scheduling Strategy: [{userProfile.SchedulingMode}]",
+                    $"Default List Sort: [{userProfile.DefaultListSortOption}]",
+                    $"Default Scheduling Mode: [{userProfile.SchedulingMode}]",
                     "Urgency Thresholds (Slack)", // New Menu Item
-                    "Set Simulated Time",
-                    "Run Cleanup (Archive/Re-Index)",
                     "Save and Exit" 
                 };
 
@@ -119,11 +143,11 @@ namespace PriorityTaskManager.CLI.Handlers
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
                         break;
                     case ConsoleKey.Enter:
-                        if (selectedIndex == 6) // Save and Exit
+                        if (selectedIndex == 5) // Save and Exit
                         {
                             service.UpdateUserProfile(userProfile);
                             ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                            Console.WriteLine("Settings saved.");
+                            Console.WriteLine("Defaults saved.");
                             PrintCurrentSettings(userProfile);
                             Console.CursorVisible = true;
                             return;
@@ -164,37 +188,44 @@ namespace PriorityTaskManager.CLI.Handlers
                     
                     Console.CursorVisible = false;
                     break;
-                case 2: // Scheduling Strategy
+                case 2: // Default List Sort
+                    Console.CursorVisible = true;
+                    Console.Write("Enter default list sort (default, alphabetical, due, id): ");
+                    var defaultSortInput = Console.ReadLine() ?? string.Empty;
+                    if (TryParseSortOption(defaultSortInput, out var defaultSortOption))
+                    {
+                        userProfile.DefaultListSortOption = defaultSortOption;
+                    }
+                    Console.CursorVisible = false;
+                    break;
+                case 3: // Default Scheduling Mode
                     // Toggle between modes
                     userProfile.SchedulingMode = userProfile.SchedulingMode == SchedulingMode.GoldPanning 
                         ? SchedulingMode.ConstraintOptimization 
                         : SchedulingMode.GoldPanning;
                     break;
-                case 3: // Urgency Thresholds
+                case 4: // Urgency Thresholds
                     RunInteractiveSlackSelector(userProfile);
                     break;
-                case 4: // Set Simulated Time
-                    // New Submenu for Time
-                    Console.WriteLine("\nSet Time: [1] Now [2] Custom");
-                    var key = Console.ReadKey(true);
-                    if (key.KeyChar == '1')
-                    {
-                        var timeHandler = new TimeHandler(_timeService, _snapshotProvider, _taskMetricsService);
-                        timeHandler.Execute(service, new[] { "now" });
-                        Console.ReadKey(true); // Pause to see result
-                    }
-                    else if (key.KeyChar == '2')
-                    {
-                        var timeHandler = new TimeHandler(_timeService, _snapshotProvider, _taskMetricsService);
-                        timeHandler.Execute(service, new[] { "custom" });
-                        Console.ReadKey(true); 
-                    }
-                    break;
-                case 5: // Run Cleanup
-                    var cleanupHandler = new CleanupHandler(service, _snapshotProvider, _taskMetricsService);
-                    cleanupHandler.Execute(service, new string[0]);
-                    Console.ReadKey(true);
-                    break;
+            }
+        }
+
+        private bool TryParseSchedulingMode(string input, out SchedulingMode mode)
+        {
+            mode = SchedulingMode.GoldPanning;
+            switch (input.Trim().ToLowerInvariant())
+            {
+                case "gold":
+                case "goldpanning":
+                    mode = SchedulingMode.GoldPanning;
+                    return true;
+                case "solver":
+                case "constraint":
+                case "constraintoptimization":
+                    mode = SchedulingMode.ConstraintOptimization;
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -366,9 +397,44 @@ namespace PriorityTaskManager.CLI.Handlers
             return false;
         }
 
+        private bool TryParseSortOption(string input, out SortOption sortOption)
+        {
+            sortOption = SortOption.Default;
+            var normalized = input.Trim().ToLowerInvariant();
+            switch (normalized)
+            {
+                case "default":
+                    sortOption = SortOption.Default;
+                    return true;
+                case "alpha":
+                case "alphabetical":
+                    sortOption = SortOption.Alphabetical;
+                    return true;
+                case "due":
+                case "duedate":
+                    sortOption = SortOption.DueDate;
+                    return true;
+                case "id":
+                    sortOption = SortOption.Id;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private bool UpdateDefaultSortOption(UserProfile profile, string sort)
+        {
+            if (TryParseSortOption(sort, out var sortOption))
+            {
+                profile.DefaultListSortOption = sortOption;
+                return true;
+            }
+            return false;
+        }
+
         private void DrawMenu(List<string> items, int selectedIndex)
         {
-            Console.WriteLine("\nSelect a setting to edit:");
+            Console.WriteLine("\nSelect a default to edit:");
             for (int i = 0; i < items.Count; i++)
             {
                 if (i == selectedIndex)
@@ -387,10 +453,11 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void PrintCurrentSettings(UserProfile userProfile)
         {
-            Console.WriteLine("Current Settings:");
+            Console.WriteLine("Current Defaults:");
             Console.WriteLine($"  Working Days: {string.Join(", ", userProfile.WorkDays.OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d))}");
             Console.WriteLine($"  Working Hours: {userProfile.WorkStartTime} - {userProfile.WorkEndTime}");
-            Console.WriteLine($"  Scheduling Strategy: {userProfile.SchedulingMode}");
+            Console.WriteLine($"  Default List Sort: {userProfile.DefaultListSortOption}");
+            Console.WriteLine($"  Default Scheduling Mode: {userProfile.SchedulingMode}");
         }
     }
 }

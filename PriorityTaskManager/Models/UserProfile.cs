@@ -6,6 +6,11 @@ namespace PriorityTaskManager.Models
     public class UserProfile
     {
         /// <summary>
+        /// Gets or sets the default sort option applied to newly created lists.
+        /// </summary>
+        public SortOption DefaultListSortOption { get; set; } = SortOption.Default;
+
+        /// <summary>
         /// Gets or sets the user's preferred minimum break duration between tasks. Defaults to 15 minutes.
         /// </summary>
         public TimeSpan DesiredBreatherDuration { get; set; } = TimeSpan.FromMinutes(15);

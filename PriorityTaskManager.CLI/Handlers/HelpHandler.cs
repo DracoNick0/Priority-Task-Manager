@@ -87,7 +87,8 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.WriteLine("list all            - Show all available lists");
                     Console.WriteLine("list create <Name>  - Create a new task list");
                     Console.WriteLine("list switch <Name>  - Set the active task list");
-                    Console.WriteLine("list sort <Option>  - Change the sort order for the active list (options: Default, Alphabetical, DueDate, Id)");
+                    Console.WriteLine("list settings       - Open interactive settings for the active list");
+                    Console.WriteLine("list settings <subcommand> - Edit a specific list setting directly");
                     Console.WriteLine("list delete <Name>  - Delete a list and all its tasks");
                     break;
                 case "Dependency Commands":
@@ -110,7 +111,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 case "General Commands":
                     Console.WriteLine("help                - Display this help text");
                     Console.WriteLine("mode [gold|constraint] - View or set scheduling strategy (GoldPanning or ConstraintOptimization)");
-                    Console.WriteLine("settings            - Open interactive menu for Profile, Cleanup, and Time");
+                    Console.WriteLine("user defaults       - Open interactive menu for global defaults");
                     Console.WriteLine("exit                - Exit the application");
                     break;
             }

@@ -45,13 +45,13 @@ namespace PriorityTaskManager.CLI.Utils
                 return false;
             }
 
+            var effectiveProfile = _service.BuildEffectiveUserProfile(activeList);
             var result = _service.GetPrioritizedTasks(activeList.Id, _timeService);
             var incompleteTasks = result.Tasks.Where(t => !t.IsCompleted).ToList();
-            var userProfile = _service.UserProfile;
             var now = _timeService.GetCurrentTime();
-            var targetDay = _taskMetricsService.FindTargetDayForSlackMeter(now, userProfile);
-            var workStart = targetDay.Date.Add(userProfile.WorkStartTime.ToTimeSpan());
-            var workEnd = targetDay.Date.Add(userProfile.WorkEndTime.ToTimeSpan());
+            var targetDay = _taskMetricsService.FindTargetDayForSlackMeter(now, effectiveProfile);
+            var workStart = targetDay.Date.Add(effectiveProfile.WorkStartTime.ToTimeSpan());
+            var workEnd = targetDay.Date.Add(effectiveProfile.WorkEndTime.ToTimeSpan());
 
             var eventsForDay = _service.GetAllEvents()
                 .Where(e => e.StartTime.Date == targetDay.Date)
@@ -62,10 +62,10 @@ namespace PriorityTaskManager.CLI.Utils
             {
                 ActiveListId = activeList.Id,
                 ActiveListName = activeList.Name,
-                ActiveListSortOption = activeList.SortOption,
+                ActiveListSortOption = activeList.SortOption ?? _service.UserProfile.DefaultListSortOption,
                 Result = result,
                 IncompleteTasks = incompleteTasks,
-                UserProfile = userProfile,
+                UserProfile = effectiveProfile,
                 EventsForDay = eventsForDay,
                 Now = now,
                 TargetDay = targetDay,

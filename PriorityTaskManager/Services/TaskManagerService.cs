@@ -12,23 +12,26 @@ namespace PriorityTaskManager.Services
         /// <returns>The prioritization result (tasks and history).</returns>
         public PrioritizationResult GetPrioritizedTasks(int listId, ITimeService timeService)
         {
+            var currentList = _data.Lists.FirstOrDefault(l => l.Id == listId);
+            var effectiveProfile = BuildEffectiveUserProfile(currentList);
+
             IUrgencyStrategy strategy;
-            if (this.UserProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
+            if (effectiveProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
             {
                     throw new NotImplementedException("Constraint Solver strategy is not yet implemented.");
             }
             else
             {
-                strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(this.UserProfile, _data.Events, timeService);
+                strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(effectiveProfile, _data.Events, timeService);
             }
             
             var rawTasks = GetAllTasks(listId).ToList();
 
             // Apply the list's intrinsic sort option before scheduling so tie-breakers align with user intent
-            var currentList = _data.Lists.FirstOrDefault(l => l.Id == listId);
-            if (currentList != null && currentList.SortOption != SortOption.Default)
+            var effectiveSortOption = currentList?.SortOption ?? _data.UserProfile.DefaultListSortOption;
+            if (effectiveSortOption != SortOption.Default)
             {
-                rawTasks = currentList.SortOption switch
+                rawTasks = effectiveSortOption switch
                 {
                     SortOption.Alphabetical => rawTasks.OrderBy(t => t.Title).ToList(),
                     SortOption.DueDate => rawTasks.OrderBy(t => t.DueDate ?? DateTime.MaxValue).ToList(),
@@ -78,9 +81,20 @@ namespace PriorityTaskManager.Services
             {
                 _data.Lists = new List<TaskList>
                 {
-                    new TaskList { Id = 1, Name = "General", SortOption = SortOption.Default }
+                    new TaskList { Id = 1, Name = "General" }
                 };
                 _data.NextListId = 2;
+            }
+
+            var changed = false;
+            foreach (var list in _data.Lists)
+            {
+                changed |= ApplyDefaultsIfNeeded(list);
+            }
+
+            if (changed)
+            {
+                SaveData();
             }
         }
 
@@ -273,6 +287,7 @@ namespace PriorityTaskManager.Services
             {
                 throw new InvalidOperationException($"A list with the name '{list.Name}' already exists.");
             }
+            list.ApplyDefaultsFrom(_data.UserProfile);
             list.Id = _data.NextListId++;
             _data.Lists.Add(list);
             SaveData();
@@ -286,6 +301,16 @@ namespace PriorityTaskManager.Services
         public TaskList? GetListByName(string listName)
         {
             return _data.Lists.FirstOrDefault(l => l.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Retrieves a task list by its unique ID.
+        /// </summary>
+        /// <param name="listId">The identifier of the task list.</param>
+        /// <returns>The task list if found; otherwise, null.</returns>
+        public TaskList? GetListById(int listId)
+        {
+            return _data.Lists.FirstOrDefault(l => l.Id == listId);
         }
 
         /// <summary>
@@ -319,12 +344,117 @@ namespace PriorityTaskManager.Services
         /// <param name="updatedList">The updated task list object.</param>
         public void UpdateList(TaskList updatedList)
         {
-            var existingList = _data.Lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
+            var existingList = updatedList.Id > 0
+                ? _data.Lists.FirstOrDefault(list => list.Id == updatedList.Id)
+                : _data.Lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
             if (existingList != null)
             {
+                if (_data.Lists.Any(list => list.Id != existingList.Id && list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    throw new InvalidOperationException($"A list with the name '{updatedList.Name}' already exists.");
+                }
+
+                existingList.Name = updatedList.Name;
+                existingList.Description = updatedList.Description;
                 existingList.SortOption = updatedList.SortOption;
+                existingList.SchedulingMode = updatedList.SchedulingMode;
+                existingList.WorkStartTime = updatedList.WorkStartTime;
+                existingList.WorkEndTime = updatedList.WorkEndTime;
+                existingList.WorkDays = updatedList.WorkDays == null ? null : new List<DayOfWeek>(updatedList.WorkDays);
+                existingList.SlackThresholdDire = updatedList.SlackThresholdDire;
+                existingList.SlackThresholdPressing = updatedList.SlackThresholdPressing;
+                existingList.SlackThresholdFocus = updatedList.SlackThresholdFocus;
+                existingList.SlackThresholdSafe = updatedList.SlackThresholdSafe;
+                existingList.SimulatedTime = updatedList.SimulatedTime;
                 SaveData();
             }
+        }
+
+        /// <summary>
+        /// Builds an effective user profile for the specified list.
+        /// </summary>
+        /// <param name="list">The list to resolve.</param>
+        /// <returns>A profile containing the active list's resolved settings.</returns>
+        public UserProfile BuildEffectiveUserProfile(TaskList? list)
+        {
+            var effectiveProfile = new UserProfile
+            {
+                DefaultListSortOption = _data.UserProfile.DefaultListSortOption,
+                DesiredBreatherDuration = _data.UserProfile.DesiredBreatherDuration,
+                WorkStartTime = _data.UserProfile.WorkStartTime,
+                WorkEndTime = _data.UserProfile.WorkEndTime,
+                WorkDays = new List<DayOfWeek>(_data.UserProfile.WorkDays),
+                SchedulingMode = _data.UserProfile.SchedulingMode,
+                SlackThresholdDire = _data.UserProfile.SlackThresholdDire,
+                SlackThresholdPressing = _data.UserProfile.SlackThresholdPressing,
+                SlackThresholdFocus = _data.UserProfile.SlackThresholdFocus,
+                SlackThresholdSafe = _data.UserProfile.SlackThresholdSafe
+            };
+
+            if (list == null)
+            {
+                return effectiveProfile;
+            }
+
+            effectiveProfile.WorkStartTime = list.WorkStartTime ?? effectiveProfile.WorkStartTime;
+            effectiveProfile.WorkEndTime = list.WorkEndTime ?? effectiveProfile.WorkEndTime;
+            effectiveProfile.WorkDays = list.WorkDays != null ? new List<DayOfWeek>(list.WorkDays) : new List<DayOfWeek>(effectiveProfile.WorkDays);
+            effectiveProfile.SchedulingMode = list.SchedulingMode ?? effectiveProfile.SchedulingMode;
+            effectiveProfile.SlackThresholdDire = list.SlackThresholdDire ?? effectiveProfile.SlackThresholdDire;
+            effectiveProfile.SlackThresholdPressing = list.SlackThresholdPressing ?? effectiveProfile.SlackThresholdPressing;
+            effectiveProfile.SlackThresholdFocus = list.SlackThresholdFocus ?? effectiveProfile.SlackThresholdFocus;
+            effectiveProfile.SlackThresholdSafe = list.SlackThresholdSafe ?? effectiveProfile.SlackThresholdSafe;
+
+            return effectiveProfile;
+        }
+
+        /// <summary>
+        /// Applies the active list's saved time preference to the provided time service.
+        /// </summary>
+        /// <param name="listId">The list whose saved time should be applied.</param>
+        /// <param name="timeService">The runtime time service.</param>
+        public void ApplyListTimePreference(int listId, ITimeService timeService)
+        {
+            var list = GetListById(listId);
+            if (list?.SimulatedTime.HasValue == true)
+            {
+                timeService.SetSimulatedTime(list.SimulatedTime.Value);
+            }
+            else
+            {
+                timeService.ClearSimulatedTime();
+            }
+        }
+
+        private bool ApplyDefaultsIfNeeded(TaskList list)
+        {
+            var before = (
+                list.Description,
+                list.SortOption,
+                list.SchedulingMode,
+                list.WorkStartTime,
+                list.WorkEndTime,
+                list.WorkDays == null ? 0 : list.WorkDays.Count,
+                list.SlackThresholdDire,
+                list.SlackThresholdPressing,
+                list.SlackThresholdFocus,
+                list.SlackThresholdSafe);
+
+            list.ApplyDefaultsFrom(_data.UserProfile);
+
+            var after = (
+                list.Description,
+                list.SortOption,
+                list.SchedulingMode,
+                list.WorkStartTime,
+                list.WorkEndTime,
+                list.WorkDays == null ? 0 : list.WorkDays.Count,
+                list.SlackThresholdDire,
+                list.SlackThresholdPressing,
+                list.SlackThresholdFocus,
+                list.SlackThresholdSafe);
+
+            return !before.Equals(after);
         }
 
         /// <summary>
