@@ -13,16 +13,6 @@
     - *Description*: Perform a complete update of the project documentation so `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, `docs/WORKFLOW.md`, and related docs reflect the current codebase, then replace the root `README.md` with a fresh, accurate overview of the project.
     - *Notes*: Treat this as a full documentation pass, not a light edit; remove stale references, align terminology with the current architecture, and make the README suitable as the first entry point for new contributors.
 
-- **Implement mock schedules**
-    - *Description*: Provide selectable mock scenarios that temporarily replace the current assignments and available time slots so algorithms can be tested against pre-defined scenarios without modifying the user's persisted data.
-    - *Notes*: Mock runs must be isolated (in-memory or separate temp storage), configurable via CLI, reversible, and easy to discover from the terminal.
-    - *Plan*:
-        - Add a `mock` CLI command family with `mock list`, `mock run <scenario>`, and an interactive scenario picker.
-        - Define scenario files in `PriorityTaskManager.CLI/MockScenarios/` with sample tasks, events, work-hour overrides, and optional simulated time.
-        - Build an in-memory sandbox around the active data container so mock runs never touch persisted JSON data.
-        - Reuse the normal schedule output renderer, but label mock results clearly as simulations.
-        - Add tests for scenario loading, command parsing, and persistence isolation.
-
 ### Scheduling Related & Event Enhancements
 - **Improve Event Scheduling System.**
     - *Description*: The `event` command UI needs a visual and usability overhaul. Past events should be retained but hidden from the main schedule view.
