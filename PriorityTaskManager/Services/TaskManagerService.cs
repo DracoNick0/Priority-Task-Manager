@@ -92,6 +92,13 @@ namespace PriorityTaskManager.Services
                 changed |= ApplyDefaultsIfNeeded(list);
             }
 
+            // Ensure an active list is set
+            if (_data.ActiveListId == 0)
+            {
+                _data.ActiveListId = _data.Lists.First().Id;
+                changed = true;
+            }
+
             if (changed)
             {
                 SaveData();
@@ -324,18 +331,39 @@ namespace PriorityTaskManager.Services
 
         /// <summary>
         /// Deletes a task list by its name and removes associated tasks.
+        /// If the last list is deleted, automatically recreates a 'General' list to maintain the invariant.
         /// </summary>
         /// <param name="listName">The name of the task list to delete.</param>
-        public void DeleteList(string listName)
+        /// <returns>True if the list was the last one and a new 'General' list was auto-created; otherwise, false.</returns>
+        public bool DeleteList(string listName)
         {
             var listToDelete = _data.Lists.FirstOrDefault(list => list.Name.Equals(listName, StringComparison.OrdinalIgnoreCase));
             if (listToDelete == null)
             {
-                return;
+                return false;
             }
+
+            bool wasLastList = _data.Lists.Count == 1;
+
             _data.Lists.Remove(listToDelete);
             _data.Tasks.RemoveAll(task => task.ListId == listToDelete.Id);
+
+            // If we just deleted the last list, recreate a new 'General' list to maintain the invariant
+            if (wasLastList)
+            {
+                var newGeneralList = new TaskList { Id = _data.NextListId++, Name = "General" };
+                newGeneralList.ApplyDefaultsFrom(_data.UserProfile);
+                _data.Lists.Add(newGeneralList);
+                _data.ActiveListId = newGeneralList.Id;
+            }
+            else if (listToDelete.Id == _data.ActiveListId)
+            {
+                // If we deleted the active list (but it wasn't the last), switch to the first remaining list
+                _data.ActiveListId = _data.Lists.First().Id;
+            }
+
             SaveData();
+            return wasLastList;
         }
 
         /// <summary>

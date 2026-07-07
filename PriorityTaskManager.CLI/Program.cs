@@ -15,11 +15,6 @@ namespace PriorityTaskManager.CLI
 	class Program
 	{
 		/// <summary>
-		/// Holds the ID of the currently active list.
-		/// </summary>
-		public static int ActiveListId { get; set; } = 1;
-
-		/// <summary>
 		/// The main method that initializes the application and processes user commands.
 		/// </summary>
 		/// <param name="args">Command-line arguments passed to the application.</param>
@@ -35,9 +30,9 @@ namespace PriorityTaskManager.CLI
 			var urgencyStrategy = new GoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
+
 			var scheduleSnapshotProvider = new ScheduleSnapshotProvider(service, taskMetricsService, timeService);
 			scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
-
 			var backgroundRefreshScheduler = new BackgroundRefreshScheduler(scheduleSnapshotProvider);
 			backgroundRefreshScheduler.Start();
 
@@ -61,7 +56,8 @@ namespace PriorityTaskManager.CLI
 				{ "time", new TimeHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
 				{ "mode", new ModeHandler(scheduleSnapshotProvider, taskMetricsService) }
 			};
-
+			
+			ConsoleHelper.ClearAndRenderDashboard(scheduleSnapshotProvider, taskMetricsService);
 			while (true)
 			{
 				Console.Write("\n> ");

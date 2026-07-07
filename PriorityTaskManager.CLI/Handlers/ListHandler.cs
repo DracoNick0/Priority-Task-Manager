@@ -28,13 +28,6 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
         {
-            // Ensure an active list is set. If not, default to the "General" list or the first available one.
-            if (service.GetActiveListId() == 0)
-            {
-                var generalList = service.GetListByName("General");
-                service.SetActiveListId(generalList?.Id ?? 1);
-            }
-
             // Command routing
             var command = args.Length > 0 ? args[0].ToLower() : "view";
             var commandArgs = args.Skip(1).ToArray();
@@ -191,12 +184,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            if (listName.Equals("General", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("Error: The 'General' list cannot be deleted.");
-                return;
-            }
-
             Console.Write("Are you sure you want to delete this list and all its tasks? (y/n): ");
             string? confirmation = null;
 
@@ -211,14 +198,17 @@ namespace PriorityTaskManager.CLI.Handlers
                 return;
             }
 
-            var listToDelete = service.GetListByName(listName);
-            if (listToDelete != null && listToDelete.Id == service.GetActiveListId())
+            bool wasLastList = service.DeleteList(listName);
+            _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+            if (wasLastList)
             {
-                var generalList = service.GetListByName("General");
-                service.SetActiveListId(generalList != null ? generalList.Id : 1);
+                Console.WriteLine($"List '{listName}' was the last list. A new 'General' list has been automatically created.");
             }
-            service.DeleteList(listName);
-            Console.WriteLine($"List '{listName}' deleted successfully.");
+            else
+            {
+                Console.WriteLine($"List '{listName}' deleted successfully.");
+            }
         }
 
         private void HandleSetSortOption(TaskManagerService service, string[] args)
