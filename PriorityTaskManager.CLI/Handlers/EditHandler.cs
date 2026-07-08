@@ -69,30 +69,16 @@ namespace PriorityTaskManager.CLI.Handlers
             int selectedIndex = 0;
             Console.CursorVisible = false;
 
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            Console.WriteLine($"Editing Task: {currentTask.Title} (ID: {currentTask.Id})");
+            Console.WriteLine("---------------------------------------------");
+            int selectorTop = Console.CursorTop;
+
+            var displayItems = BuildEditMenuItems(currentTask);
+            ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
+
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine($"Editing Task: {currentTask.Title} (ID: {currentTask.Id})");
-                Console.WriteLine("---------------------------------------------");
-                
-                // Show current values next to menu items
-                var displayItems = new List<string>
-                {
-                    $"Title: {currentTask.Title}",
-                    $"Description: {(string.IsNullOrEmpty(currentTask.Description) ? "(none)" : currentTask.Description)}",
-                    $"Importance: {currentTask.Importance}",
-                    $"Complexity: {currentTask.Complexity}",
-                    $"Must Schedule: {(currentTask.IsPinned ? "Yes" : "No")}",
-                    $"Duration: {currentTask.EstimatedDuration.TotalHours}h",
-                    $"Due Date: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("yyyy-MM-dd") : "None")}",
-                    $"Due Time: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("HH:mm") : "End of Day")}",
-                    $"Dependencies: [{string.Join(", ", currentTask.Dependencies)}]",
-                    "[Save & Exit]",
-                    "[Cancel]"
-                };
-
-                ConsoleHelper.DrawMenu(displayItems, selectedIndex);
-
                 var key = Console.ReadKey(true);
 
                 // Check for Shift+Enter to immediately save
@@ -109,10 +95,14 @@ namespace PriorityTaskManager.CLI.Handlers
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + displayItems.Count) % displayItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % displayItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == displayItems.Count - 2) // Save & Exit
@@ -136,12 +126,32 @@ namespace PriorityTaskManager.CLI.Handlers
                         Console.WriteLine(); // New line for input
                         EditField(service, currentTask, selectedIndex);
                         Console.CursorVisible = false;
+                        displayItems = BuildEditMenuItems(currentTask);
+                        ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
                         Console.CursorVisible = true;
                         return;
                 }
             }
+        }
+
+        private List<string> BuildEditMenuItems(TaskItem currentTask)
+        {
+            return new List<string>
+            {
+                $"Title: {currentTask.Title}",
+                $"Description: {(string.IsNullOrEmpty(currentTask.Description) ? "(none)" : currentTask.Description)}",
+                $"Importance: {currentTask.Importance}",
+                $"Complexity: {currentTask.Complexity}",
+                $"Must Schedule: {(currentTask.IsPinned ? "Yes" : "No")}",
+                $"Duration: {currentTask.EstimatedDuration.TotalHours}h",
+                $"Due Date: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("yyyy-MM-dd") : "None")}",
+                $"Due Time: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("HH:mm") : "End of Day")}",
+                $"Dependencies: [{string.Join(", ", currentTask.Dependencies)}]",
+                "[Save & Exit]",
+                "[Cancel]"
+            };
         }
 
         private void EditField(TaskManagerService service, TaskItem task, int index)
@@ -208,30 +218,16 @@ namespace PriorityTaskManager.CLI.Handlers
             var tempDependencies = new List<int>(task.Dependencies);
             int selectedDepIndex = 0;
 
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            Console.WriteLine($"Editing Dependencies for '{task.Title}'");
+            Console.WriteLine("-------------------------------------");
+            int selectorTop = Console.CursorTop;
+
+            var menuItems = BuildDependencyMenuItems(service, task, tempDependencies);
+            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedDepIndex, selectorTop);
+
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine($"Editing Dependencies for '{task.Title}'");
-                Console.WriteLine("-------------------------------------");
-
-                var menuItems = new List<string>();
-
-                // Add Existing Dependencies
-                foreach (var depId in tempDependencies)
-                {
-                    var depTask = service.GetTaskById(depId);
-                    // Handle potential null/removed tasks
-                    string depLabel = depTask != null ? $"ID {depId}: {depTask.Title}" : $"ID {depId} (Not Found)";
-                    menuItems.Add($"[Remove] {depLabel}");
-                }
-
-                // Add Commands
-                menuItems.Add("[Add New Dependency]");
-                menuItems.Add("[Save & Confirm]");
-                menuItems.Add("[Cancel]");
-
-                ConsoleHelper.DrawMenu(menuItems, selectedDepIndex);
-
                 // Check for Shift+Enter to immediately save/confirm
                 var key = Console.ReadKey(true);
                 if (key.Key == ConsoleKey.Enter && key.Modifiers.HasFlag(ConsoleModifiers.Shift))
@@ -245,10 +241,14 @@ namespace PriorityTaskManager.CLI.Handlers
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedDepIndex;
                         selectedDepIndex = (selectedDepIndex - 1 + menuItems.Count) % menuItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousUp, selectedDepIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedDepIndex;
                         selectedDepIndex = (selectedDepIndex + 1) % menuItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousDown, selectedDepIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         // If selecting an existing dependency (to remove)
@@ -298,6 +298,9 @@ namespace PriorityTaskManager.CLI.Handlers
                                         tempDependencies.Add(newId);
                                     }
                                 }
+
+                                menuItems = BuildDependencyMenuItems(service, task, tempDependencies);
+                                ConsoleMenuHelper.DrawMenuItems(menuItems, selectedDepIndex, selectorTop);
                             }
                             else if (relativeIndex == 1) // [Save & Confirm]
                             {
@@ -316,6 +319,24 @@ namespace PriorityTaskManager.CLI.Handlers
                         return; // Cancel logic (no save)
                 }
             }
+        }
+
+        private List<string> BuildDependencyMenuItems(TaskManagerService service, TaskItem task, List<int> tempDependencies)
+        {
+            var menuItems = new List<string>();
+
+            foreach (var depId in tempDependencies)
+            {
+                var depTask = service.GetTaskById(depId);
+                var depLabel = depTask != null ? $"ID {depId}: {depTask.Title}" : $"ID {depId} (Not Found)";
+                menuItems.Add($"[Remove] {depLabel}");
+            }
+
+            menuItems.Add("[Add New Dependency]");
+            menuItems.Add("[Save & Confirm]");
+            menuItems.Add("[Cancel]");
+
+            return menuItems;
         }
 
         private void HandleTargetedUpdate(TaskItem task, string attribute, string? directValue)

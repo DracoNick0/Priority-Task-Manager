@@ -24,12 +24,6 @@ namespace PriorityTaskManager.CLI.Handlers
 
         public void Execute(TaskManagerService service, string[] args)
         {
-            if (args.Length > 0 && args[0].Equals("defaults", StringComparison.OrdinalIgnoreCase))
-            {
-                ParseArguments(service, args.Skip(1).ToArray());
-                return;
-            }
-
             if (args.Length == 0)
             {
                 InteractiveSettings(service);
@@ -116,34 +110,31 @@ namespace PriorityTaskManager.CLI.Handlers
             int selectedIndex = 0;
 
             Console.CursorVisible = false;
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            var menuItems = BuildSettingsMenuItems(userProfile);
+            PrintCurrentSettings(userProfile);
+            Console.WriteLine("\nSelect a default to edit:");
+            int selectorTop = Console.CursorTop;
+            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
+
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                var menuItems = new List<string> 
-                { 
-                    "Working Days", 
-                    "Working Hours", 
-                    $"Default List Sort: [{userProfile.DefaultListSortOption}]",
-                    $"Default Scheduling Mode: [{userProfile.SchedulingMode}]",
-                    "Urgency Thresholds (Slack)", // New Menu Item
-                    "Save and Exit" 
-                };
-
-                PrintCurrentSettings(userProfile);
-                DrawMenu(menuItems, selectedIndex);
-
                 var key = Console.ReadKey(true);
 
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + menuItems.Count) % menuItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
-                        if (selectedIndex == 5) // Save and Exit
+                        if (selectedIndex == menuItems.Count - 2)
                         {
                             service.UpdateUserProfile(userProfile);
                             ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
@@ -152,28 +143,49 @@ namespace PriorityTaskManager.CLI.Handlers
                             Console.CursorVisible = true;
                             return;
                         }
-                        HandleMenuSelection(selectedIndex, service, userProfile);
+                        if (selectedIndex == menuItems.Count - 1)
+                        {
+                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                            Console.WriteLine("Defaults update cancelled.");
+                            Console.CursorVisible = true;
+                            return;
+                        }
+
+                        HandleMenuSelection(userProfile, selectedIndex);
+                        menuItems = BuildSettingsMenuItems(userProfile);
+                        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                        PrintCurrentSettings(userProfile);
+                        Console.WriteLine("\nSelect a default to edit:");
+                        selectorTop = Console.CursorTop;
+                        ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
                         ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                        Console.WriteLine("Settings update cancelled.");
+                        Console.WriteLine("Defaults update cancelled.");
                         Console.CursorVisible = true;
                         return;
                 }
             }
         }
 
-        private void HandleMenuSelection(int selectedIndex, TaskManagerService service, UserProfile userProfile)
+        private void HandleMenuSelection(UserProfile userProfile, int selectedIndex)
         {
             switch (selectedIndex)
             {
                 case 0: // Working Days
-                    InteractiveDaySelector(userProfile);
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    ConsoleMenuHelper.RunToggleSelectionMenu(
+                        "Select your working days:",
+                        "Space to toggle, Enter to save, Esc to cancel.",
+                        userProfile.WorkDays,
+                        Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList(),
+                        day => day.ToString());
                     break;
                 case 1: // Working Hours
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                     Console.CursorVisible = true;
                     // Start Time
-                    Console.WriteLine("\nSet Daily Work Start Time:");
+                    Console.WriteLine("Set Daily Work Start Time:");
                     var today = DateTime.Today;
                     var startDateTime = today.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var newStart = ConsoleInputHelper.InteractiveTimeInput(startDateTime);
@@ -189,25 +201,62 @@ namespace PriorityTaskManager.CLI.Handlers
                     Console.CursorVisible = false;
                     break;
                 case 2: // Default List Sort
-                    Console.CursorVisible = true;
-                    Console.Write("Enter default list sort (default, alphabetical, due, id): ");
-                    var defaultSortInput = Console.ReadLine() ?? string.Empty;
-                    if (TryParseSortOption(defaultSortInput, out var defaultSortOption))
-                    {
-                        userProfile.DefaultListSortOption = defaultSortOption;
-                    }
-                    Console.CursorVisible = false;
+                    userProfile.DefaultListSortOption = GetNextSortOption(userProfile.DefaultListSortOption);
                     break;
                 case 3: // Default Scheduling Mode
-                    // Toggle between modes
-                    userProfile.SchedulingMode = userProfile.SchedulingMode == SchedulingMode.GoldPanning 
-                        ? SchedulingMode.ConstraintOptimization 
-                        : SchedulingMode.GoldPanning;
+                    userProfile.SchedulingMode = GetNextSchedulingMode(userProfile.SchedulingMode);
                     break;
                 case 4: // Urgency Thresholds
-                    InteractiveSlackSelector(userProfile);
+                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    ConsoleMenuHelper.RunAdjustableValueMenu(
+                        "Adjust urgency thresholds:",
+                        "Use Left/Right to adjust values.",
+                        BuildSlackMenuOptions(userProfile));
                     break;
             }
+        }
+
+        private List<string> BuildSettingsMenuItems(UserProfile userProfile)
+        {
+            return new List<string>
+            {
+                "Working Days",
+                "Working Hours",
+                $"Default List Sort: [{userProfile.DefaultListSortOption}]",
+                $"Default Scheduling Mode: [{userProfile.SchedulingMode}]",
+                "Urgency Thresholds (Slack)",
+                "Save & Exit",
+                "Cancel"
+            };
+        }
+
+        private List<ConsoleMenuHelper.AdjustableMenuOption> BuildSlackMenuOptions(UserProfile userProfile)
+        {
+            return new List<ConsoleMenuHelper.AdjustableMenuOption>
+            {
+                new(() => $"Dire     (< {userProfile.SlackThresholdDire:F1} days) [Red]", () => userProfile.SlackThresholdDire, value => userProfile.SlackThresholdDire = value),
+                new(() => $"Pressing (< {userProfile.SlackThresholdPressing:F1} days) [DarkYellow]", () => userProfile.SlackThresholdPressing, value => userProfile.SlackThresholdPressing = value),
+                new(() => $"Focus    (< {userProfile.SlackThresholdFocus:F1} days) [Yellow]", () => userProfile.SlackThresholdFocus, value => userProfile.SlackThresholdFocus = value),
+                new(() => $"Safe     (< {userProfile.SlackThresholdSafe:F1} days) [Green]", () => userProfile.SlackThresholdSafe, value => userProfile.SlackThresholdSafe = value)
+            };
+        }
+
+        private static SchedulingMode GetNextSchedulingMode(SchedulingMode currentMode)
+        {
+            return currentMode == SchedulingMode.GoldPanning
+                ? SchedulingMode.ConstraintOptimization
+                : SchedulingMode.GoldPanning;
+        }
+
+        private static SortOption GetNextSortOption(SortOption currentSortOption)
+        {
+            return currentSortOption switch
+            {
+                SortOption.Default => SortOption.Alphabetical,
+                SortOption.Alphabetical => SortOption.DueDate,
+                SortOption.DueDate => SortOption.Id,
+                _ => SortOption.Default
+            };
         }
 
         private bool TryParseSchedulingMode(string input, out SchedulingMode mode)
@@ -228,142 +277,6 @@ namespace PriorityTaskManager.CLI.Handlers
                     return false;
             }
         }
-
-        private void InteractiveDaySelector(UserProfile userProfile)
-        {
-            var allDays = Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList();
-            int selectedDayIndex = 0;
-            var originalWorkDays = new List<DayOfWeek>(userProfile.WorkDays);
-
-            Console.CursorVisible = false;
-            while (true)
-            {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine("Select your working days (Space to toggle, Enter to save, Esc to cancel):");
-                DrawDaySelector(allDays, userProfile.WorkDays, selectedDayIndex);
-
-                var key = Console.ReadKey(true);
-                switch (key.Key)
-                {
-                    case ConsoleKey.UpArrow:
-                        selectedDayIndex = (selectedDayIndex - 1 + allDays.Count) % allDays.Count;
-                        break;
-                    case ConsoleKey.DownArrow:
-                        selectedDayIndex = (selectedDayIndex + 1) % allDays.Count;
-                        break;
-                    case ConsoleKey.Spacebar:
-                        var dayToToggle = allDays[selectedDayIndex];
-                        if (userProfile.WorkDays.Contains(dayToToggle))
-                        {
-                            userProfile.WorkDays.Remove(dayToToggle);
-                        }
-                        else
-                        {
-                            userProfile.WorkDays.Add(dayToToggle);
-                        }
-                        break;
-                    case ConsoleKey.Enter:
-                        return; // Return to main settings menu
-                    case ConsoleKey.Escape:
-                        userProfile.WorkDays = originalWorkDays; // Revert changes
-                        return; // Return to main settings menu
-                }
-            }
-        }
-
-        private void DrawDaySelector(List<DayOfWeek> allDays, List<DayOfWeek> selectedDays, int selectedIndex)
-        {
-            for (int i = 0; i < allDays.Count; i++)
-            {
-                var day = allDays[i];
-                bool isSelected = selectedDays.Contains(day);
-
-                if (i == selectedIndex)
-                {
-                    Console.BackgroundColor = ConsoleColor.White;
-                    Console.ForegroundColor = isSelected ? ConsoleColor.DarkGreen : ConsoleColor.DarkGray;
-                }
-                else
-                {
-                    Console.ForegroundColor = isSelected ? ConsoleColor.Green : ConsoleColor.Gray;
-                }
-
-                Console.WriteLine($"  [{(isSelected ? 'X' : ' ')}] {day}");
-                Console.ResetColor();
-            }
-        }
-
-        private void InteractiveSlackSelector(UserProfile userProfile)
-        {
-            int selectedIndex = 0;
-            double increment = 0.5;
-
-            while (true)
-            {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine("Adjust Urgency Thresholds (Multipliers of Average Work Day):");
-                Console.WriteLine("Use Left/Right to adjust values, Enter to save.");
-
-                // Map current values to display
-                var items = new List<string>
-                {
-                    $"Dire     (< {userProfile.SlackThresholdDire:F1} days) [Red]",
-                    $"Pressing (< {userProfile.SlackThresholdPressing:F1} days) [DarkYellow]",
-                    $"Focus    (< {userProfile.SlackThresholdFocus:F1} days) [Yellow]",
-                    $"Safe     (< {userProfile.SlackThresholdSafe:F1} days) [Green]",
-                    "Back to Settings"
-                };
-
-                for (int i = 0; i < items.Count; i++)
-                {
-                    if (i == selectedIndex)
-                    {
-                        Console.BackgroundColor = ConsoleColor.White;
-                        Console.ForegroundColor = ConsoleColor.Black;
-                        Console.WriteLine($"> {items[i]}");
-                    }
-                    else
-                    {
-                        Console.ResetColor();
-                        Console.WriteLine($"  {items[i]}");
-                    }
-                    Console.ResetColor();
-                }
-
-                var key = Console.ReadKey(true);
-
-                if (key.Key == ConsoleKey.UpArrow)
-                {
-                    selectedIndex = (selectedIndex - 1 + items.Count) % items.Count;
-                }
-                else if (key.Key == ConsoleKey.DownArrow)
-                {
-                    selectedIndex = (selectedIndex + 1) % items.Count;
-                }
-                else if (key.Key == ConsoleKey.Enter)
-                {
-                     // Return regardless of selection (values are live-updated in memory)
-                    return;
-                }
-                else if (selectedIndex < 4) // Adjust numeric values
-                {
-                    double currentVal = 0;
-                    if (selectedIndex == 0) currentVal = userProfile.SlackThresholdDire;
-                    if (selectedIndex == 1) currentVal = userProfile.SlackThresholdPressing;
-                    if (selectedIndex == 2) currentVal = userProfile.SlackThresholdFocus;
-                    if (selectedIndex == 3) currentVal = userProfile.SlackThresholdSafe;
-
-                    if (key.Key == ConsoleKey.LeftArrow) currentVal = Math.Max(0.1, currentVal - increment);
-                    if (key.Key == ConsoleKey.RightArrow) currentVal = currentVal + increment;
-                    
-                    if (selectedIndex == 0) userProfile.SlackThresholdDire = currentVal;
-                    if (selectedIndex == 1) userProfile.SlackThresholdPressing = currentVal;
-                    if (selectedIndex == 2) userProfile.SlackThresholdFocus = currentVal;
-                    if (selectedIndex == 3) userProfile.SlackThresholdSafe = currentVal;
-                }
-            }
-        }
-
 
         private bool UpdateWorkingDays(UserProfile profile, string days)
         {
@@ -430,25 +343,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 return true;
             }
             return false;
-        }
-
-        private void DrawMenu(List<string> items, int selectedIndex)
-        {
-            Console.WriteLine("\nSelect a default to edit:");
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (i == selectedIndex)
-                {
-                    Console.ForegroundColor = ConsoleColor.Black;
-                    Console.BackgroundColor = ConsoleColor.White;
-                    Console.WriteLine($"> {items[i]}");
-                }
-                else
-                {
-                    Console.WriteLine($"  {items[i]}");
-                }
-                Console.ResetColor();
-            }
         }
 
         private void PrintCurrentSettings(UserProfile userProfile)

@@ -147,22 +147,15 @@ namespace PriorityTaskManager.CLI.Handlers
             int selectedIndex = 0;
             Console.CursorVisible = false;
 
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            Console.WriteLine($"Editing event: {existingEvent.Name}");
+            int selectorTop = Console.CursorTop;
+
+            var displayItems = BuildEventMenuItems(existingEvent);
+            ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
+
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine($"Editing event: {existingEvent.Name}");
-                
-                var displayItems = new List<string>
-                {
-                    $"Name: {existingEvent.Name}",
-                    $"Start Time: {existingEvent.StartTime:yyyy-MM-dd HH:mm}",
-                    $"End Time: {existingEvent.EndTime:yyyy-MM-dd HH:mm}",
-                    "[Save & Exit]",
-                    "[Cancel]"
-                };
-
-                ConsoleHelper.DrawMenu(displayItems, selectedIndex);
-
                 var key = Console.ReadKey(true);
 
                 if (key.Key == ConsoleKey.Enter && (key.Modifiers & ConsoleModifiers.Shift) != 0)
@@ -178,10 +171,14 @@ namespace PriorityTaskManager.CLI.Handlers
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + displayItems.Count) % displayItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % displayItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == displayItems.Count - 2) // Save & Exit
@@ -237,6 +234,8 @@ namespace PriorityTaskManager.CLI.Handlers
                                 }
                             }
                         }
+                        displayItems = BuildEventMenuItems(existingEvent);
+                        ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
                         Console.CursorVisible = false;
                         break;
                     case ConsoleKey.Escape:
@@ -245,6 +244,18 @@ namespace PriorityTaskManager.CLI.Handlers
                         return;
                 }
             }
+        }
+
+        private List<string> BuildEventMenuItems(Event existingEvent)
+        {
+            return new List<string>
+            {
+                $"Name: {existingEvent.Name}",
+                $"Start Time: {existingEvent.StartTime:yyyy-MM-dd HH:mm}",
+                $"End Time: {existingEvent.EndTime:yyyy-MM-dd HH:mm}",
+                "[Save & Exit]",
+                "[Cancel]"
+            };
         }
 
         private void HandleRemoveEvent(TaskManagerService service, string[] args)

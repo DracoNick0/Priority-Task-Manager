@@ -31,21 +31,26 @@ namespace PriorityTaskManager.CLI.Handlers
             int selectedIndex = 0;
 
             Console.CursorVisible = false;
+            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            Console.WriteLine("Select a category to see available commands:");
+            int selectorTop = Console.CursorTop;
+            ConsoleMenuHelper.DrawMenuItems(categories, selectedIndex, selectorTop);
+
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine("Select a category to see available commands:");
-                ConsoleHelper.DrawMenu(categories, selectedIndex);
-
                 var key = Console.ReadKey(true);
 
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + categories.Count) % categories.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(categories, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % categories.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(categories, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == categories.Count - 1) // Exit
@@ -57,6 +62,10 @@ namespace PriorityTaskManager.CLI.Handlers
                         ShowCategoryHelp(categories[selectedIndex]);
                         Console.WriteLine("\nPress any key to return to the help menu...");
                         Console.ReadKey(true);
+                        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                        Console.WriteLine("Select a category to see available commands:");
+                        selectorTop = Console.CursorTop;
+                        ConsoleMenuHelper.DrawMenuItems(categories, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
                         ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
@@ -111,7 +120,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 case "General Commands":
                     Console.WriteLine("help                - Display this help text");
                     Console.WriteLine("mode [gold|constraint] - View or set scheduling strategy (GoldPanning or ConstraintOptimization)");
-                    Console.WriteLine("user defaults       - Open interactive menu for global defaults");
+                    Console.WriteLine("defaults            - Open interactive menu for global defaults");
                     Console.WriteLine("exit                - Exit the application");
                     break;
             }

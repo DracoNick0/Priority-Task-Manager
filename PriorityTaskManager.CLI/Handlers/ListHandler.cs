@@ -312,28 +312,16 @@ namespace PriorityTaskManager.CLI.Handlers
             int selectedIndex = 0;
 
             Console.CursorVisible = false;
+            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+            Console.WriteLine($"Editing List Settings: {workingList.Name}");
+            Console.WriteLine("---------------------------------------------");
+            int selectorTop = Console.CursorTop;
+
+            var menuItems = BuildListSettingsMenuItems(workingList, service);
+            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
+
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                Console.WriteLine($"Editing List Settings: {workingList.Name}");
-                Console.WriteLine("---------------------------------------------");
-
-                var menuItems = new List<string>
-                {
-                    $"Name: {workingList.Name}",
-                    $"Description: {(string.IsNullOrWhiteSpace(workingList.Description) ? "(none)" : workingList.Description)}",
-                    $"Sort Option: {workingList.SortOption ?? service.GetUserProfile().DefaultListSortOption}",
-                    $"Scheduling Mode: {workingList.SchedulingMode ?? service.GetUserProfile().SchedulingMode}",
-                    $"Work Days: {FormatWorkDays(workingList.WorkDays ?? new List<DayOfWeek>(service.GetUserProfile().WorkDays))}",
-                    $"Work Hours: {FormatWorkHours(workingList.WorkStartTime ?? service.GetUserProfile().WorkStartTime, workingList.WorkEndTime ?? service.GetUserProfile().WorkEndTime)}",
-                    $"Slack Thresholds: Dire {GetEffectiveThreshold(workingList.SlackThresholdDire, service.GetUserProfile().SlackThresholdDire):F1}, Pressing {GetEffectiveThreshold(workingList.SlackThresholdPressing, service.GetUserProfile().SlackThresholdPressing):F1}, Focus {GetEffectiveThreshold(workingList.SlackThresholdFocus, service.GetUserProfile().SlackThresholdFocus):F1}, Safe {GetEffectiveThreshold(workingList.SlackThresholdSafe, service.GetUserProfile().SlackThresholdSafe):F1}",
-                    workingList.SimulatedTime.HasValue ? $"Simulated Time: {workingList.SimulatedTime.Value:yyyy-MM-dd HH:mm}" : "Simulated Time: real-time",
-                    "Save & Exit",
-                    "Cancel"
-                };
-
-                ConsoleHelper.DrawMenu(menuItems, selectedIndex);
-
                 var key = Console.ReadKey(true);
                 if (key.Key == ConsoleKey.Enter && key.Modifiers.HasFlag(ConsoleModifiers.Shift))
                 {
@@ -348,10 +336,14 @@ namespace PriorityTaskManager.CLI.Handlers
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + menuItems.Count) % menuItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == menuItems.Count - 2)
@@ -364,6 +356,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         }
                         else if (selectedIndex == menuItems.Count - 1)
                         {
+                            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
                             Console.CursorVisible = true;
                             Console.WriteLine("List settings update cancelled.");
                             return;
@@ -371,12 +364,19 @@ namespace PriorityTaskManager.CLI.Handlers
                         else
                         {
                             Console.CursorVisible = true;
-                            Console.WriteLine();
-                            EditListSettingField(service, workingList, selectedIndex);
+                            EditListSettingField(service, workingList, selectedIndex, selectorTop);
                             Console.CursorVisible = false;
+
+                            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                            Console.WriteLine($"Editing List Settings: {workingList.Name}");
+                            Console.WriteLine("---------------------------------------------");
+                            selectorTop = Console.CursorTop;
+                            menuItems = BuildListSettingsMenuItems(workingList, service);
+                            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
                         }
                         break;
                     case ConsoleKey.Escape:
+                        ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
                         Console.CursorVisible = true;
                         Console.WriteLine("List settings update cancelled.");
                         return;
@@ -384,63 +384,85 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private void EditListSettingField(TaskManagerService service, TaskList workingList, int index)
+        private void EditListSettingField(TaskManagerService service, TaskList workingList, int index, int selectorTop)
         {
             switch (index)
             {
                 case 0:
-                    Console.Write($"New Name (current: {workingList.Name}): ");
-                    var name = Console.ReadLine();
-                    if (!string.IsNullOrWhiteSpace(name))
+                    if (ConsoleMenuHelper.TryPromptInlineInput(selectorTop + index, "> Name: ", workingList.Name, out var name) &&
+                        !string.IsNullOrWhiteSpace(name))
                     {
                         workingList.Name = name.Trim();
                     }
                     break;
                 case 1:
-                    Console.Write($"New Description (current: {workingList.Description ?? string.Empty}): ");
-                    workingList.Description = Console.ReadLine() ?? workingList.Description;
+                    if (ConsoleMenuHelper.TryPromptInlineInput(selectorTop + index, "> Description: ", workingList.Description ?? string.Empty, out var description))
+                    {
+                        workingList.Description = description;
+                    }
                     break;
                 case 2:
-                    Console.Write("Sort option (default, alphabetical, due, id): ");
-                    var sortInput = Console.ReadLine() ?? string.Empty;
-                    if (TryParseSortOption(sortInput, out var sortOption))
-                    {
-                        workingList.SortOption = sortOption == SortOption.Default
-                            ? service.GetUserProfile().DefaultListSortOption
-                            : sortOption;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid sort option.");
-                        Console.ReadKey(true);
-                    }
+                    workingList.SortOption = GetNextSortOption(workingList.SortOption ?? service.GetUserProfile().DefaultListSortOption);
                     break;
                 case 3:
-                    Console.Write("Scheduling mode (gold/solver): ");
-                    var modeInput = Console.ReadLine() ?? string.Empty;
-                    if (TryParseSchedulingMode(modeInput, out var schedulingMode))
-                    {
-                        workingList.SchedulingMode = schedulingMode;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid scheduling mode.");
-                        Console.ReadKey(true);
-                    }
+                    workingList.SchedulingMode = GetNextSchedulingMode(workingList.SchedulingMode ?? service.GetUserProfile().SchedulingMode);
                     break;
                 case 4:
-                    InteractiveListDaySelector(service, workingList);
+                    workingList.WorkDays ??= new List<DayOfWeek>();
+                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    ConsoleMenuHelper.RunToggleSelectionMenu(
+                        $"Select working days for '{workingList.Name}':",
+                        "Space to toggle, Enter to save, Esc to cancel.",
+                        workingList.WorkDays,
+                        Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList(),
+                        day => day.ToString());
                     break;
                 case 5:
+                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    Console.WriteLine($"Set work hours for '{workingList.Name}':");
+                    Console.WriteLine("Set Daily Work Start Time:");
                     InteractiveListWorkHours(service, workingList);
                     break;
                 case 6:
-                    InteractiveListSlackSelector(service, workingList);
+                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    ConsoleMenuHelper.RunAdjustableValueMenu(
+                        $"Adjust urgency thresholds for '{workingList.Name}':",
+                        "Use Left/Right to adjust values.",
+                        BuildSlackMenuOptions(workingList, service.GetUserProfile()));
                     break;
                 case 7:
+                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
                     InteractiveListTimeSelector(workingList);
                     break;
             }
+        }
+
+        private List<string> BuildListSettingsMenuItems(TaskList workingList, TaskManagerService service)
+        {
+            return new List<string>
+            {
+                $"Name: {workingList.Name}",
+                $"Description: {(string.IsNullOrWhiteSpace(workingList.Description) ? "(none)" : workingList.Description)}",
+                $"Sort Option: {workingList.SortOption ?? service.GetUserProfile().DefaultListSortOption}",
+                $"Scheduling Mode: {workingList.SchedulingMode ?? service.GetUserProfile().SchedulingMode}",
+                $"Work Days: {FormatWorkDays(workingList.WorkDays ?? new List<DayOfWeek>(service.GetUserProfile().WorkDays))}",
+                $"Work Hours: {FormatWorkHours(workingList.WorkStartTime ?? service.GetUserProfile().WorkStartTime, workingList.WorkEndTime ?? service.GetUserProfile().WorkEndTime)}",
+                $"Slack Thresholds: Dire {GetEffectiveThreshold(workingList.SlackThresholdDire, service.GetUserProfile().SlackThresholdDire):F1}, Pressing {GetEffectiveThreshold(workingList.SlackThresholdPressing, service.GetUserProfile().SlackThresholdPressing):F1}, Focus {GetEffectiveThreshold(workingList.SlackThresholdFocus, service.GetUserProfile().SlackThresholdFocus):F1}, Safe {GetEffectiveThreshold(workingList.SlackThresholdSafe, service.GetUserProfile().SlackThresholdSafe):F1}",
+                workingList.SimulatedTime.HasValue ? $"Simulated Time: {workingList.SimulatedTime.Value:yyyy-MM-dd HH:mm}" : "Simulated Time: real-time",
+                "Save & Exit",
+                "Cancel"
+            };
+        }
+
+        private List<ConsoleMenuHelper.AdjustableMenuOption> BuildSlackMenuOptions(TaskList workingList, UserProfile defaultProfile)
+        {
+            return new List<ConsoleMenuHelper.AdjustableMenuOption>
+            {
+                new(() => $"Dire     (< {GetEffectiveThreshold(workingList.SlackThresholdDire, defaultProfile.SlackThresholdDire):F1} days) [Red]", () => GetEffectiveThreshold(workingList.SlackThresholdDire, defaultProfile.SlackThresholdDire), value => workingList.SlackThresholdDire = value),
+                new(() => $"Pressing (< {GetEffectiveThreshold(workingList.SlackThresholdPressing, defaultProfile.SlackThresholdPressing):F1} days) [DarkYellow]", () => GetEffectiveThreshold(workingList.SlackThresholdPressing, defaultProfile.SlackThresholdPressing), value => workingList.SlackThresholdPressing = value),
+                new(() => $"Focus    (< {GetEffectiveThreshold(workingList.SlackThresholdFocus, defaultProfile.SlackThresholdFocus):F1} days) [Yellow]", () => GetEffectiveThreshold(workingList.SlackThresholdFocus, defaultProfile.SlackThresholdFocus), value => workingList.SlackThresholdFocus = value),
+                new(() => $"Safe     (< {GetEffectiveThreshold(workingList.SlackThresholdSafe, defaultProfile.SlackThresholdSafe):F1} days) [Green]", () => GetEffectiveThreshold(workingList.SlackThresholdSafe, defaultProfile.SlackThresholdSafe), value => workingList.SlackThresholdSafe = value)
+            };
         }
 
         private bool TrySaveListSettings(TaskManagerService service, TaskList workingList)
@@ -458,7 +480,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 service.ApplyListTimePreference(workingList.Id, _timeService);
                 _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
                 ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                Console.WriteLine($"List '{workingList.Name}' updated successfully.");
+                Console.WriteLine("List settings saved.");
                 return true;
             }
             catch (InvalidOperationException ex)
@@ -466,52 +488,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.ReadKey(true);
                 return false;
-            }
-        }
-
-        private void InteractiveListDaySelector(TaskManagerService service, TaskList workingList)
-        {
-            var allDays = Enum.GetValues(typeof(DayOfWeek)).Cast<DayOfWeek>().ToList();
-            int selectedDayIndex = 0;
-            var originalWorkDays = workingList.WorkDays == null
-                ? new List<DayOfWeek>()
-                : new List<DayOfWeek>(workingList.WorkDays);
-
-            workingList.WorkDays ??= new List<DayOfWeek>();
-
-            Console.CursorVisible = false;
-            while (true)
-            {
-                ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                Console.WriteLine($"Select working days for '{workingList.Name}' (Space to toggle, Enter to save, Esc to cancel):");
-                DrawDaySelector(allDays, workingList.WorkDays, selectedDayIndex);
-
-                var key = Console.ReadKey(true);
-                switch (key.Key)
-                {
-                    case ConsoleKey.UpArrow:
-                        selectedDayIndex = (selectedDayIndex - 1 + allDays.Count) % allDays.Count;
-                        break;
-                    case ConsoleKey.DownArrow:
-                        selectedDayIndex = (selectedDayIndex + 1) % allDays.Count;
-                        break;
-                    case ConsoleKey.Spacebar:
-                        var dayToToggle = allDays[selectedDayIndex];
-                        if (workingList.WorkDays.Contains(dayToToggle))
-                        {
-                            workingList.WorkDays.Remove(dayToToggle);
-                        }
-                        else
-                        {
-                            workingList.WorkDays.Add(dayToToggle);
-                        }
-                        break;
-                    case ConsoleKey.Enter:
-                        return;
-                    case ConsoleKey.Escape:
-                        workingList.WorkDays = originalWorkDays;
-                        return;
-                }
             }
         }
 
@@ -531,110 +507,62 @@ namespace PriorityTaskManager.CLI.Handlers
             Console.CursorVisible = false;
         }
 
-        private void InteractiveListSlackSelector(TaskManagerService service, TaskList workingList)
+        private void InteractiveListTimeSelector(TaskList workingList)
         {
-            int selectedIndex = 0;
-            const double increment = 0.5;
+            Console.CursorVisible = false;
+            var selectedIndex = workingList.SimulatedTime.HasValue ? 1 : 0;
+            var options = new List<string>
+            {
+                "Real-time",
+                workingList.SimulatedTime.HasValue
+                    ? $"Custom ({workingList.SimulatedTime.Value:yyyy-MM-dd HH:mm})"
+                    : "Custom"
+            };
+
+            Console.WriteLine("\nSet list simulated time:");
+            Console.WriteLine("Use Arrows to choose, Enter to select, Esc to cancel.");
+            var selectorTop = Console.CursorTop;
+            ConsoleMenuHelper.DrawMenuItems(options, selectedIndex, selectorTop);
+
 
             while (true)
             {
-                ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                Console.WriteLine($"Adjust urgency thresholds for '{workingList.Name}':");
-                Console.WriteLine("Use Left/Right to adjust values, Enter to save.");
-
-                var defaultProfile = service.GetUserProfile();
-                var items = new List<string>
-                {
-                    $"Dire     (< {GetEffectiveThreshold(workingList.SlackThresholdDire, defaultProfile.SlackThresholdDire):F1} days) [Red]",
-                    $"Pressing (< {GetEffectiveThreshold(workingList.SlackThresholdPressing, defaultProfile.SlackThresholdPressing):F1} days) [DarkYellow]",
-                    $"Focus    (< {GetEffectiveThreshold(workingList.SlackThresholdFocus, defaultProfile.SlackThresholdFocus):F1} days) [Yellow]",
-                    $"Safe     (< {GetEffectiveThreshold(workingList.SlackThresholdSafe, defaultProfile.SlackThresholdSafe):F1} days) [Green]",
-                    "Back to List Settings"
-                };
-
-                for (int i = 0; i < items.Count; i++)
-                {
-                    if (i == selectedIndex)
-                    {
-                        Console.BackgroundColor = ConsoleColor.White;
-                        Console.ForegroundColor = ConsoleColor.Black;
-                        Console.WriteLine($"> {items[i]}");
-                    }
-                    else
-                    {
-                        Console.ResetColor();
-                        Console.WriteLine($"  {items[i]}");
-                    }
-                    Console.ResetColor();
-                }
-
                 var key = Console.ReadKey(true);
-                if (key.Key == ConsoleKey.UpArrow)
-                {
-                    selectedIndex = (selectedIndex - 1 + items.Count) % items.Count;
-                }
-                else if (key.Key == ConsoleKey.DownArrow)
-                {
-                    selectedIndex = (selectedIndex + 1) % items.Count;
-                }
-                else if (key.Key == ConsoleKey.Enter)
-                {
-                    return;
-                }
-                else if (selectedIndex < 4)
-                {
-                    double currentVal = selectedIndex switch
-                    {
-                        0 => GetEffectiveThreshold(workingList.SlackThresholdDire, defaultProfile.SlackThresholdDire),
-                        1 => GetEffectiveThreshold(workingList.SlackThresholdPressing, defaultProfile.SlackThresholdPressing),
-                        2 => GetEffectiveThreshold(workingList.SlackThresholdFocus, defaultProfile.SlackThresholdFocus),
-                        3 => GetEffectiveThreshold(workingList.SlackThresholdSafe, defaultProfile.SlackThresholdSafe),
-                        _ => 0
-                    };
 
-                    if (key.Key == ConsoleKey.LeftArrow)
-                    {
-                        currentVal = Math.Max(0.1, currentVal - increment);
-                    }
-                    else if (key.Key == ConsoleKey.RightArrow)
-                    {
-                        currentVal += increment;
-                    }
-
-                    switch (selectedIndex)
-                    {
-                        case 0:
-                            workingList.SlackThresholdDire = currentVal;
-                            break;
-                        case 1:
-                            workingList.SlackThresholdPressing = currentVal;
-                            break;
-                        case 2:
-                            workingList.SlackThresholdFocus = currentVal;
-                            break;
-                        case 3:
-                            workingList.SlackThresholdSafe = currentVal;
-                            break;
-                    }
-                }
-            }
-        }
-
-        private void InteractiveListTimeSelector(TaskList workingList)
-        {
-            Console.CursorVisible = true;
-            Console.WriteLine("\nSet list simulated time: [1] Real-time [2] Custom");
-            var key = Console.ReadKey(true);
-            if (key.KeyChar == '1')
-            {
-                workingList.SimulatedTime = null;
-            }
-            else if (key.KeyChar == '2')
-            {
-                var simulatedTime = ConsoleInputHelper.GetDateTimeFromUser("Enter the list's simulated date and time");
-                if (simulatedTime.HasValue)
+                switch (key.Key)
                 {
-                    workingList.SimulatedTime = simulatedTime;
+                    case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
+                        selectedIndex = (selectedIndex - 1 + options.Count) % options.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(options, previousUp, selectedIndex, selectorTop);
+                        break;
+                    case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
+                        selectedIndex = (selectedIndex + 1) % options.Count;
+                        ConsoleMenuHelper.UpdateMenuSelection(options, previousDown, selectedIndex, selectorTop);
+                        break;
+                    case ConsoleKey.Enter:
+                        if (selectedIndex == 0)
+                        {
+                            workingList.SimulatedTime = null;
+                            Console.CursorVisible = true;
+                            return;
+                        }
+
+                        ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+
+                        Console.CursorVisible = true;
+                        var defaultSimulatedTime = workingList.SimulatedTime ?? _timeService.GetCurrentTime();
+                        var simulatedTime = ConsoleInputHelper.GetDateTimeFromUser("Enter the list's simulated date and time", defaultSimulatedTime);
+                        if (simulatedTime.HasValue)
+                        {
+                            workingList.SimulatedTime = simulatedTime;
+                        }
+
+                        return;
+                    case ConsoleKey.Escape:
+                        Console.CursorVisible = true;
+                        return;
                 }
             }
         }
@@ -674,6 +602,24 @@ namespace PriorityTaskManager.CLI.Handlers
             return listThreshold ?? globalThreshold;
         }
 
+        private static SchedulingMode GetNextSchedulingMode(SchedulingMode currentMode)
+        {
+            return currentMode == SchedulingMode.GoldPanning
+                ? SchedulingMode.ConstraintOptimization
+                : SchedulingMode.GoldPanning;
+        }
+
+        private static SortOption GetNextSortOption(SortOption currentSortOption)
+        {
+            return currentSortOption switch
+            {
+                SortOption.Default => SortOption.Alphabetical,
+                SortOption.Alphabetical => SortOption.DueDate,
+                SortOption.DueDate => SortOption.Id,
+                _ => SortOption.Default
+            };
+        }
+
         private bool TryParseSortOption(string input, out SortOption sortOption)
         {
             sortOption = SortOption.Default;
@@ -696,28 +642,6 @@ namespace PriorityTaskManager.CLI.Handlers
                     return true;
                 default:
                     return false;
-            }
-        }
-
-        private void DrawDaySelector(List<DayOfWeek> allDays, List<DayOfWeek> selectedDays, int selectedIndex)
-        {
-            for (int i = 0; i < allDays.Count; i++)
-            {
-                var day = allDays[i];
-                bool isSelected = selectedDays.Contains(day);
-
-                if (i == selectedIndex)
-                {
-                    Console.BackgroundColor = ConsoleColor.White;
-                    Console.ForegroundColor = isSelected ? ConsoleColor.DarkGreen : ConsoleColor.DarkGray;
-                }
-                else
-                {
-                    Console.ForegroundColor = isSelected ? ConsoleColor.Green : ConsoleColor.Gray;
-                }
-
-                Console.WriteLine($"  [{(isSelected ? 'X' : ' ')}] {day}");
-                Console.ResetColor();
             }
         }
 
