@@ -4,25 +4,26 @@
 
 ---
 
-### Minor CLI Interactive Menu Fix
-- **Interactive menu re-draw fix:**
-    - For interactive select menus, prefer `Console.SetCursorPosition()`-based redraws (see `ListHandler`'s `DrawListMenu` method) so we only refresh the affected menu area instead of clearing and reprinting the entire console (see `HelpHandler`'s `InteractiveHelp` method).
-
 ### Core Fixes & Refinements
+- **Revise the documentation and rewrite the README.**
+    - *Description*: Perform a complete update of the project documentation so `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, `docs/WORKFLOW.md`, and related docs reflect the current codebase, then replace the root `README.md` with a fresh, accurate overview of the project.
+    - *Notes*: Treat this as a full documentation pass, not a light edit; remove stale references, align terminology with the current architecture, and make the README suitable as the first entry point for new contributors.
 - **Overhaul the testing strategy.**
     - *Description*: Rebuild the testing approach across the solution by following `docs/TESTING_STRATEGY.md`, including strict TDD for deterministic core and CLI logic, invariant/property-based coverage for scheduling behavior, and snapshot/characterization tests where schedule shape needs to stay stable.
     - *Notes*: Treat this as a broad test-suite migration rather than a narrow bug fix; align the existing `PriorityTaskManager.Tests` project with the current architecture and replace outdated coverage incrementally.
 
-- **Revise the documentation and rewrite the README.**
-    - *Description*: Perform a complete update of the project documentation so `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, `docs/WORKFLOW.md`, and related docs reflect the current codebase, then replace the root `README.md` with a fresh, accurate overview of the project.
-    - *Notes*: Treat this as a full documentation pass, not a light edit; remove stale references, align terminology with the current architecture, and make the README suitable as the first entry point for new contributors.
+### API & Service Expansions
+- **Add a mobile and Windows interface (Android/iOS).**
+    - *Description*: Develop a cross-platform application (e.g., using React Native) which will require creating a web API to serve data from the core C# application.
+- **Integrate an LLM for conversational control.**
+    - *Description*: Allow users to manage tasks via natural language. This would involve creating an API that an LLM can call to translate commands into application actions.
 
 ### Scheduling Related & Event Enhancements
 - **Improve Event Scheduling System.**
     - *Description*: The `event` command UI needs a visual and usability overhaul. Past events should be retained but hidden from the main schedule view.
     - *New Command*: Implement an `event all` (or similar) command to display a comprehensive list of both past and future events.
 
-### User-Driven Scheduling Enhancements
+### User-Driven Scheduling Enhancements (?)
 - **Dynamic/Custom Work Hours**: Allow different work hours per day.
     - Calculate `AvgDailyWorkCapacity` from user profile for dynamic slack awareness.
 - Allow user to set their current energy level to influence scheduling.
@@ -60,12 +61,7 @@
 -   Add tests for slack protection on high-importance tasks.
 -   Add deterministic replay tests for identical inputs.
 
-### Future API & Service Expansions
-- **Add a mobile and Windows interface (Android/iOS).**
-    - *Description*: Develop a cross-platform application (e.g., using React Native) which will require creating a web API to serve data from the core C# application.
-- **Integrate an LLM for conversational control.**
-    - *Description*: Allow users to manage tasks via natural language. This would involve creating an API that an LLM can call to translate commands into application actions.
-
+### Future Expansions (?)
 -  **Additional Attributes for Scheduling**
     -   **Earliest Start Date**: Support tasks that cannot begin until a future date.
     -   **Start Time preference**: Support tasks that must start at a specific time.

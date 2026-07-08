@@ -89,7 +89,7 @@ This keeps the list settings UI focused on the active list while still letting t
 
 The CLI now makes that split explicit:
 
-1. `user defaults` is the global/defaults surface.
+1. `defaults` is the global/defaults surface.
 2. `list settings` is the active-list surface.
 3. The defaults screen is for values copied into new lists, not for live list mutation.
 

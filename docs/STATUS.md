@@ -12,7 +12,7 @@ This document provides a high-level summary of the Priority Task Manager's curre
 | **Task Management** | 🟢 **Dependencies Feature Needs Review** | Standard CRUD (add, edit, list) is robust with enhanced interactive menus for Date, Time, and Dependencies. |
 | **List Management** | 🟢 **Stable** | Core create/switch/delete flows work, and the list model carries copied per-list settings for sorting, scheduling mode, work hours, work days, thresholds, and simulated time. |
 | **Data Persistence** | 🟢 **Stable** | JSON data is correctly saved/loaded from the `Data/` directory. |
-| **Settings & Config** | 🟢 **Stable** | `user defaults` now controls global defaults, including default list sort and default scheduling mode, while `list settings` edits the active list. |
+| **Settings & Config** | 🟢 **Stable** | `defaults` now controls global defaults, including default list sort and default scheduling mode, while `list settings` edits the active list. |
 | Scheduling Logic | 🟢 **Stable - New Alg in Progress** | Constraint Solver is being added alongside the Gold Panning strategy |
 | **Scheduling Contract Clarity** | 🟢 **Documented** | Lateness, overtime scope, unscheduled re-entry, and adaptive horizon advisories are now explicitly defined in docs. |
 | **Event System** | 🟡 **Under Review** | Interactive Add/Edit/List and Smart Shifting work, but past-event retention and the main schedule-view UX still need refinement. |
@@ -22,7 +22,7 @@ This document provides a high-level summary of the Priority Task Manager's curre
 ## Current Capabilities
 
 ### Core Features
--   **Dual-Mode Scheduling Strategy**: Toggle between `GoldPanning` and `ConstraintSolver` (In-Progress) via `user defaults`, with per-list overrides now supported in `list settings`.
+-   **Dual-Mode Scheduling Strategy**: Toggle between `GoldPanning` and `ConstraintSolver` (In-Progress) via `defaults`, with per-list overrides now supported in `list settings`.
 -   **Staged Scheduling**: Uses the **Gold Panning** strategy to prioritize tasks based on Due Date and Complexity, then slots them into available time windows.
 -   **Command Line Interface**: A robust CLI loop (`PriorityTaskManager.CLI`) handles user input with clear feedback.
 -   **Workday Configuration**: Respects global defaults in `user_profile.json` and copies them into each new list.
@@ -36,6 +36,9 @@ This document provides a high-level summary of the Priority Task Manager's curre
 
 *   **Gold Panning Backlog**: Slack-aware urgency, focus-window sequencing, and anti-starvation logic are still pending.
 *   **List Settings UX**: The interactive `list settings` editor is in place, but mock schedule support has not been added yet.
+*   **Interactive Rendering Rollout (In Progress)**: Incremental menu repainting and shared day/slack selector widgets now cover the main interactive menus in `list settings`, `defaults`, `help`, `edit`, and event editing. Menu-row painting and selector widgets live in `ConsoleMenuHelper`, while dashboard rendering remains in `ConsoleHelper`.
+*   **Simulated Time UX**: `list settings -> Simulated Time` now defaults to the list's currently saved mode (real-time vs custom) and reuses the saved custom datetime as the input default when editing.
+*   **Background Refresh Policy**: Quarter-hour background snapshot refresh now runs only in real-time mode and is paused automatically while simulated time is active.
 *   **Dependency Management**: FS enforcement is a priority in the new migration test matrix and target pipeline.
 *   **Unit Tests**: Existing tests are still being realigned to the new scheduling contract.
 
@@ -85,6 +88,6 @@ This document provides a high-level summary of the Priority Task Manager's curre
 | `time` | View the current time (real or simulated). |
 | `time now` | Switch to using real-time. |
 | `time custom` | Interactively set a custom simulated time. |
-| `settings` | Interactive menu for User Profile (Work Hours, Strategy), Cleanup, and Time configuration. |
+| `defaults` | Interactive menu for global defaults copied into new lists. |
 | `help` | Display a list of all commands. |
 | `exit` | Close the application. |

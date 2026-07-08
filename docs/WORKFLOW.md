@@ -8,6 +8,9 @@ This document outlines the standard workflow for contributing to the Priority Ta
 -   **Architecture First.** Before implementing a new feature, refer to `docs/ARCHITECTURE.md` to understand the existing design patterns and ensure your changes are consistent with the project's structure.
 -   **Check the Status.** For a high-level overview of the project's current capabilities and state, refer to `docs/STATUS.md`.
 -   **Small, iterative changes.** Prefer small, well-defined commits over large, monolithic ones.
+-   **Interactive CLI Rendering.** For keyboard-driven menus, avoid calling full-screen clear/redraw on every keypress. Prefer anchored line updates via cursor positioning and preserve existing input semantics.
+-   **Menu vs Input Helpers.** Put selectable menu rendering and shared selector widgets in `ConsoleMenuHelper`; keep `ConsoleInputHelper` for date/time and field-style input only.
+-   **Time Mode and Refresh.** Keep the background snapshot refresher active only for real-time mode; when simulated time is applied, pause periodic refresh and resume it when returning to real-time.
 
 ## Working with AI Assistants
 
