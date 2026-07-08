@@ -93,7 +93,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
                 { today, new List<TaskItem> { lowImp, highImp } }
             };
 
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["DailyBuckets"] = buckets;
             
             // Need ScheduleWindow
@@ -103,7 +103,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             };
             context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow { AvailableSlots = slots };
 
-            var agent = new DaySequencingAgent();
+            var agent = new DailySequencingStage();
             var result = agent.Act(context);
             
             var tasks = result.SharedState["Tasks"] as List<TaskItem>;
@@ -123,7 +123,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var today = _timeService.GetCurrentTime().Date;
             var task = new TaskItem { Id = 1, Title = "Span", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(2), IsDivisible = true };
             
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["DailyBuckets"] = new Dictionary<DateTime, List<TaskItem>> { { today, new List<TaskItem> { task } } };
             
             var slots = new List<TimeSlot>

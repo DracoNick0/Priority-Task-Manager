@@ -14,7 +14,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
     {
         private readonly MockTimeService _mockTimeService;
 
-        public ComplexityBalancerAgentTests()
+        public WorkloadBalancingStageTests()
         {
             _mockTimeService = new MockTimeService();
             _mockTimeService.SetCurrentTime(new DateTime(2024, 1, 1, 9, 0, 0));
@@ -345,7 +345,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         [Fact]
         public void Act_TaskWithoutDueDate_UsesFullWindow()
         {
-            var agent = new ComplexityBalancerAgent();
+            var agent = new WorkloadBalancingStage();
             var today = _mockTimeService.GetCurrentTime().Date;
 
             // Setup:

@@ -13,7 +13,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
     public class AvailabilityWindowStageTests
     {
         /*
-         * === Test Coverage for SchedulePreProcessorAgent ===
+         * === Test Coverage for AvailabilityWindowStage ===
          * [✓] Context Handling: Agent returns gracefully if required context keys ('UserProfile', 'Tasks') are missing or invalid.
          * [✓] Horizon Calculation: Correctly calculates the scheduling horizon based on task workload and user's work schedule.
          * [✓] Horizon Calculation (Edge Case): Handles zero tasks without error.
@@ -238,7 +238,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             var now = new DateTime(2024, 1, 1, 8, 0, 0);
             _timeService.SetCurrentTime(now);
-            var agent = new SchedulePreProcessorAgent(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService);
             // 260 workdays/year * 8 hours/day * 6 years = 12480 hours
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(12480) } };
             var context = CreateInitialContext(tasks);

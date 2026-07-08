@@ -215,7 +215,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         public void Act_WhenContextTasksIsNotAList_ShouldReturnContextWithHistory()
         {
             // Arrange
-            var context = new MCPContext();
+            var context = new SchedulingContext();
             context.SharedState["Tasks"] = "this is not a list";
 
             // Act
@@ -223,7 +223,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 
             // Assert
             Assert.Contains("TaskNormalizationStage: No valid task list found in context. Nothing to normalize.", resultContext.History);
-            Assert.False(resultContext.SharedState.ContainsKey("Tasks"));
+            Assert.True(resultContext.SharedState.ContainsKey("Tasks"));
+            Assert.Equal("this is not a list", resultContext.SharedState["Tasks"]);
         }
     }
 }

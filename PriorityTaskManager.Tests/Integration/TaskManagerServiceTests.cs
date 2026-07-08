@@ -1,7 +1,7 @@
 using Xunit;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
-using PriorityTaskManager.MCP;
+using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Tests.Infrastructure;
 
 namespace PriorityTaskManager.Tests.Integration
@@ -20,7 +20,7 @@ namespace PriorityTaskManager.Tests.Integration
                 _persistenceService = new MockPersistenceService();
                 _timeService = new MockTimeService();
                 var initialData = _persistenceService.LoadData();
-                var urgencyStrategy = new McpGoldPanningStrategy(initialData.UserProfile, initialData.Events, _timeService);
+                var urgencyStrategy = new GoldPanningStrategy(initialData.UserProfile, initialData.Events, _timeService);
                 _TMS = new TaskManagerService(urgencyStrategy, _persistenceService, initialData);
             }
         }
@@ -42,7 +42,7 @@ namespace PriorityTaskManager.Tests.Integration
                 persistenceService.Data.Lists.Clear(); // Ensure no lists exist
                 persistenceService.Data.NextListId = 1;
                 var timeService = new MockTimeService();
-                var urgencyStrategy = new McpGoldPanningStrategy(persistenceService.Data.UserProfile, persistenceService.Data.Events, timeService);
+                var urgencyStrategy = new GoldPanningStrategy(persistenceService.Data.UserProfile, persistenceService.Data.Events, timeService);
 
                 // Act
                 var tms = new TaskManagerService(urgencyStrategy, persistenceService, persistenceService.Data);
