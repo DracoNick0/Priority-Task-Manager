@@ -1,41 +1,62 @@
 # Priority Task Manager
 
-An intelligent command-line application designed to solve decision fatigue in task management through a sophisticated, agent-based scheduling engine.
+Priority Task Manager is a .NET console application that helps turn task lists into prioritized, schedule-aware work plans. It combines task management, list-scoped settings, JSON persistence, and a staged scheduling engine in a single local-first tool.
 
-This project transforms a simple to-do list into a smart assistant that generates a detailed, optimized schedule by analyzing tasks based on importance, due dates, complexity, and dependencies.
+## Why This Exists
 
-## Documentation
+The project exists to reduce decision fatigue when planning work. Instead of forcing the user to manually sort every task, the application builds a schedule from task data, due dates, dependencies, and availability.
 
-Detailed documentation for developers and users can be found in the `docs/` directory:
+## Current Capabilities
 
-*   **[Project Status & Features](docs/STATUS.md)**: Current capabilities, command reference, and known issues.
-*   **[Architecture](docs/ARCHITECTURE.md)**: High-level design and core services.
-*   **[Development Workflow](docs/WORKFLOW.md)**: How to build, run, and contribute to the project.
-*   **[Testing Strategy](docs/TESTING_STRATEGY.md)**: Plan for unit and integration testing.
-*   **[Roadmap](docs/TODO.md)**: Active tasks and future improvements.
+- Task CRUD: add, edit, view, complete, uncomplete, and delete tasks.
+- List management: create, switch, list, and delete task lists.
+- List-scoped settings: work hours, work days, sort option, scheduling mode, and simulated time preference.
+- Scheduling: Gold Panning is the active scheduling strategy.
+- Events: add, list, edit, and delete calendar-style event blocks.
+- Local persistence: data is stored in JSON files.
 
-## Getting Started
+## Quick Start
 
-**Prerequisites:**
-*   .NET SDK (8.0 or higher)
+Prerequisite:
 
-**Build and Run:**
-1.  Build the solution:
-    ```bash
-    dotnet build
-    ```
-2.  Run the CLI application:
-    ```bash
-    cd PriorityTaskManager.CLI
-    dotnet run
-    ```
+- .NET SDK 8.0 or later
 
-## Contributing
+Build the solution:
 
-This project follows a structured workflow. Please check [WORKFLOW.md](docs/WORKFLOW.md) before making changes. Use [TODO.md](docs/TODO.md) to pick up available tasks.
+```bash
+dotnet build
+```
 
----
+Run the CLI:
 
-### **License**
+```bash
+cd PriorityTaskManager.CLI
+dotnet run
+```
+
+## Repository Map
+
+| Path | Purpose |
+| --- | --- |
+| `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
+| `PriorityTaskManager.CLI/` | Command-line entry point, handlers, and console rendering |
+| `PriorityTaskManager.Tests/` | Unit test project |
+| `docs/` | Architecture, status, workflow, testing, and roadmap docs |
+
+## Documentation Map
+
+Use these docs as the canonical references:
+
+- [docs/STATUS.md](docs/STATUS.md): current capabilities, limitations, known issues, and command surface.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system design, boundaries, data flow, and scheduling architecture.
+- [docs/WORKFLOW.md](docs/WORKFLOW.md): contribution workflow and day-to-day development process.
+- [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md): test philosophy and quality approach.
+- [docs/TODO.md](docs/TODO.md): backlog and planned work.
+
+## For Contributors
+
+Start with [docs/WORKFLOW.md](docs/WORKFLOW.md) if you are changing code. Use [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) to understand the system boundaries, and check [docs/STATUS.md](docs/STATUS.md) before assuming a feature is already implemented.
+
+## License
 
 This project is licensed under the MIT License.
