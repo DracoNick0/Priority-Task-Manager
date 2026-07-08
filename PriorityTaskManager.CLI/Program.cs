@@ -30,11 +30,12 @@ namespace PriorityTaskManager.CLI
 			var urgencyStrategy = new GoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
 			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
+			service.ApplyListTimePreference(service.GetActiveListId(), timeService);
 
 			var scheduleSnapshotProvider = new ScheduleSnapshotProvider(service, taskMetricsService, timeService);
 			scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
 			var backgroundRefreshScheduler = new BackgroundRefreshScheduler(scheduleSnapshotProvider);
-			backgroundRefreshScheduler.Start();
+			SyncBackgroundRefreshScheduler();
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 
@@ -50,7 +51,7 @@ namespace PriorityTaskManager.CLI
 				{ "view", new ViewHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "cleanup", new CleanupHandler(service, scheduleSnapshotProvider, taskMetricsService) },
 				{ "help", new HelpHandler(scheduleSnapshotProvider, taskMetricsService) },
-				{ "user", new SettingsHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
+				{ "defaults", new SettingsHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
 				{ "event", new EventCommandHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "e", new EventCommandHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "time", new TimeHandler(timeService, scheduleSnapshotProvider, taskMetricsService) },
@@ -82,10 +83,23 @@ namespace PriorityTaskManager.CLI
 				if (handlers.TryGetValue(command, out var handler))
 				{
 					handler.Execute(service, argsArr);
+					SyncBackgroundRefreshScheduler();
 				}
 				else
 				{
 					Console.WriteLine("Unknown command. Type 'help' for a list of commands.");
+				}
+			}
+
+			void SyncBackgroundRefreshScheduler()
+			{
+				if (timeService.IsSimulated())
+				{
+					backgroundRefreshScheduler.Stop();
+				}
+				else
+				{
+					backgroundRefreshScheduler.Start();
 				}
 			}
 		}

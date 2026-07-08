@@ -37,6 +37,11 @@ namespace PriorityTaskManager.CLI.Utils
         /// </summary>
         public void Stop()
         {
+            if (_refreshTask == null || _refreshTask.IsCompleted)
+            {
+                return;
+            }
+
             _cancellationTokenSource?.Cancel();
             try
             {
@@ -45,6 +50,12 @@ namespace PriorityTaskManager.CLI.Utils
             catch (OperationCanceledException)
             {
                 // Expected when cancellation is requested
+            }
+            finally
+            {
+                _refreshTask = null;
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
             }
         }
 
