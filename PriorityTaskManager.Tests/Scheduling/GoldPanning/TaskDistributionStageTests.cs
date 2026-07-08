@@ -1,11 +1,7 @@
-using Xunit;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Scheduling.GoldPanning.Stages;
 using PriorityTaskManager.Tests.Infrastructure;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
@@ -72,6 +68,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var buckets = result.SharedState["DailyBuckets"] as Dictionary<DateTime, List<TaskItem>>;
             
             var day1 = _timeService.GetCurrentTime().Date;
+            Assert.NotNull(buckets);
             Assert.Single(buckets[day1]);
             Assert.Equal("Fits", buckets[day1][0].Title);
         }
@@ -95,6 +92,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var day2 = day1.AddDays(1);
 
             // Day 1: "Heavy" (5h) + "Light" (3h part) -> 2 items
+            Assert.NotNull(buckets);
             Assert.Equal(2, buckets[day1].Count);
             Assert.Contains(buckets[day1], t => t.Title == "Heavy");
             Assert.Contains(buckets[day1], t => t.Title == "Light");
@@ -124,6 +122,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var today = _timeService.GetCurrentTime().Date;
             
             // Check Day 1
+            Assert.NotNull(buckets);
             Assert.Equal(2, buckets[today].Count);
             Assert.Contains(buckets[today], t => t.Title == "Heaviest");
             Assert.Contains(buckets[today], t => t.Title == "Medium");
@@ -154,6 +153,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var day1 = _timeService.GetCurrentTime().Date;
             
             // Expect 2 parts of "Too Big" on Day 1 (8h + 2h overflow)
+            Assert.NotNull(buckets);
             Assert.Equal(2, buckets[day1].Count);
             Assert.All(buckets[day1], t => Assert.Equal("Too Big", t.Title));
 
