@@ -7,7 +7,7 @@ It consolidates requirements, algorithm behavior, workflow stages, agent respons
 
 This is the implementation source of truth for the `ConstraintOptimizationStrategy` class and its dependencies.
 
-*Note: This specification does not apply to the `GoldPanning` (Legacy) strategy.*
+*Note: This specification does not apply to the `GoldPanning` strategy document and pipeline rules.*
 
 ## 2. Design Goals
 1. Schedule as many tasks as possible before due dates.
@@ -320,7 +320,7 @@ Hybrid approach:
 Solver-centered core with policy layer:
 - Use solver for hard constraints and objective optimization.
 - Keep agents for normalization, decomposition, and explanations.
-- On this branch, legacy fallback is handled by branch rollback strategy instead of in-branch feature flags.
+- Keep Gold Panning and Constraint Solver as coexisting strategies selectable through scheduling mode.
 
 ## 11. Overload and Infeasibility Policy
 1. Must-schedule tasks:
@@ -421,21 +421,21 @@ Track per run:
 
 ## 18. Risk Register
 1. Policy drift between docs and implementation.
-2. Hidden behavior differences between old and new planners.
+2. Hidden behavior differences between Gold Panning and Constraint Solver planners.
 3. Explainability regression when introducing solver internals.
 4. Performance degradation at larger horizons.
 
 Mitigation:
 - Maintain contract-first docs.
-- Use migration test matrix and branch-level comparisons.
-- Enforce acceptance criteria before default switch.
+- Use migration test matrix and cross-strategy comparisons.
+- Enforce acceptance criteria before changing default strategy recommendations.
 
 ## 19. Implementation Sequence (Recommended)
 1. Finalize contracts and reason codes.
 2. Implement explicit preference fields and defaults.
 3. Build canonical window/dependency/decomposition pipeline.
 4. Introduce optimization planner abstraction.
-5. Implement solver-centered planner on this branch after legacy path removal.
+5. Implement solver-centered planner on this branch alongside the existing Gold Panning strategy.
 6. Validate behavior against migration test matrix and documentation contracts.
 7. Merge to shared branch only after acceptance criteria are met.
 

@@ -154,7 +154,6 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Task B: Low Importance (1), High Complexity (5).
             // Current Legacy Behavior (Eat the Frog): B comes first (Complexity > Importance).
             // Desired Behavior for V1/Future: A comes first (Importance > Complexity).
-            // This test is EXPECTED TO FAIL FOR NOW on the legacy branch.
 
             var today = _timeService.GetCurrentTime().Date;
             
