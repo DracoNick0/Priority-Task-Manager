@@ -539,6 +539,94 @@ namespace PriorityTaskManager.Tests.Integration
             }
         }
 
+        public class SchedulingBehaviorTests : TaskManagerServiceTestBase
+        {
+            [Fact]
+            public void BuildEffectiveUserProfile_WhenListIsNull_ShouldUseGlobalProfileValues()
+            {
+                // Arrange
+                var global = _TMS.GetUserProfile();
+                global.WorkStartTime = new TimeOnly(8, 30);
+                global.WorkEndTime = new TimeOnly(18, 0);
+                global.WorkDays = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday };
+                global.SlackThresholdDire = 0.25;
+                _TMS.UpdateUserProfile(global);
+
+                // Act
+                var effective = _TMS.BuildEffectiveUserProfile(null);
+
+                // Assert
+                Assert.Equal(new TimeOnly(8, 30), effective.WorkStartTime);
+                Assert.Equal(new TimeOnly(18, 0), effective.WorkEndTime);
+                Assert.Equal(new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday }, effective.WorkDays);
+                Assert.Equal(0.25, effective.SlackThresholdDire);
+            }
+
+            [Fact]
+            public void BuildEffectiveUserProfile_WhenListHasOverrides_ShouldPreferListValues()
+            {
+                // Arrange
+                var list = new TaskList
+                {
+                    Name = "Overrides",
+                    WorkStartTime = new TimeOnly(7, 0),
+                    WorkEndTime = new TimeOnly(14, 0),
+                    WorkDays = new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday },
+                    SlackThresholdFocus = 1.5
+                };
+                _TMS.AddList(list);
+                var storedList = _TMS.GetListByName("Overrides");
+
+                // Act
+                var effective = _TMS.BuildEffectiveUserProfile(storedList);
+
+                // Assert
+                Assert.Equal(new TimeOnly(7, 0), effective.WorkStartTime);
+                Assert.Equal(new TimeOnly(14, 0), effective.WorkEndTime);
+                Assert.Equal(new List<DayOfWeek> { DayOfWeek.Tuesday, DayOfWeek.Thursday }, effective.WorkDays);
+                Assert.Equal(1.5, effective.SlackThresholdFocus);
+            }
+
+            [Fact]
+            public void GetPrioritizedTasks_WhenListModeIsConstraintOptimization_ShouldThrowNotImplementedException()
+            {
+                // Arrange
+                var list = new TaskList
+                {
+                    Name = "Constraint List",
+                    SchedulingMode = SchedulingMode.ConstraintOptimization
+                };
+                _TMS.AddList(list);
+
+                // Act & Assert
+                Assert.Throws<NotImplementedException>(() => _TMS.GetPrioritizedTasks(list.Id, _timeService));
+            }
+
+            [Fact]
+            public void GetPrioritizedTasks_WhenListSortIsAlphabetical_ShouldRespectAlphabeticalTieBreakInputOrder()
+            {
+                // Arrange
+                var list = new TaskList
+                {
+                    Name = "Alphabetical",
+                    SortOption = SortOption.Alphabetical
+                };
+                _TMS.AddList(list);
+
+                // Insert in non-alphabetical order with identical scheduling signals.
+                _TMS.AddTask(new TaskItem { Title = "Bravo", ListId = list.Id, Importance = 3, Complexity = 3, EstimatedDuration = TimeSpan.FromHours(1) });
+                _TMS.AddTask(new TaskItem { Title = "Alpha", ListId = list.Id, Importance = 3, Complexity = 3, EstimatedDuration = TimeSpan.FromHours(1) });
+
+                // Act
+                var result = _TMS.GetPrioritizedTasks(list.Id, _timeService);
+
+                // Assert
+                Assert.Equal(2, result.Tasks.Count);
+                Assert.Equal("Alpha", result.Tasks[0].Title);
+                Assert.Equal("Bravo", result.Tasks[1].Title);
+            }
+        }
+
         public class UserProfileTests : TaskManagerServiceTestBase
         {
             /*
