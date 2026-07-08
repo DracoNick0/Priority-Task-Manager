@@ -1,13 +1,64 @@
 # Project TODO List
 
-> **Note:** This file is the backlog and roadmap for upcoming work. It should only contain planned work, not current-state reporting. Tasks are listed in priority order. 
+> **Note:** This file is the backlog and roadmap for upcoming work. It should only contain planned work, not current-state reporting. Tasks are listed in priority order.
 
-## Testing Overhaul
+## (B) 1/5 Testing Overhaul and Scheduling Invariants
 
-- Overhaul test coverage according to `docs/TESTING_STRATEGY.md`:
+- Overhaul test coverage according to docs/TESTING_STRATEGY.md:
   - Rebuild deterministic tests for core service behavior.
   - Rebuild CLI handler tests against the current command surface.
   - Add scheduling invariants and characterization tests.
+  - Add deterministic replay tests for identical inputs.
+
+## (B) 2/5 CI Quality Gates
+
+Prerequisite:
+
+- Complete (B) 1/5.
+
+Implementation targets:
+
+- Add CI workflow to run build and tests on push and pull request.
+- Fail CI on test failures.
+- Add lightweight docs/link validation.
+- Add coverage reporting and baseline threshold (initially modest, then raise over time).
+
+## (B) 3/5 Constraint Solver MVP (Narrow Scope)
+
+Prerequisite:
+
+- Complete (B) 1/5 and (B) 2/5.
+
+Implementation targets:
+
+- Deliver a minimal, testable solver path behind existing scheduling mode selection.
+- Keep Gold Panning as stable fallback.
+- Add explicit explanation output for solver scheduling decisions.
+- Keep scope intentionally small and defer full solver depth to (A) 2/2.
+
+## (B) 4/5 Benchmark Scenarios and Strategy Comparison
+
+Prerequisite:
+
+- Complete (B) 3/5.
+
+Implementation targets:
+
+- Create fixed benchmark datasets (light, dependency-heavy, overloaded, event-heavy).
+- Compare Gold Panning and Solver outputs on measurable metrics.
+- Publish benchmark results in documentation for repeatable comparison over time.
+
+## (B) 5/5 Release and Demo Polish
+
+Prerequisite:
+
+- Complete (B) 4/5.
+
+Implementation targets:
+
+- Produce reproducible CLI release artifacts.
+- Add a short demo section (quick run path and sample scenario).
+- Add concise engineering highlights and measurable outcomes for portfolio use.
 
 ## Platform and Interface Expansion
 
@@ -27,15 +78,16 @@ Candidate anti-starvation approaches:
 - Virtual aging (increase urgency for older backlog tasks over time).
 - Opportunistic fill (prefer backlog tasks on underloaded days).
 
-## (A) 2/2 Constraint Solver Implementation Path
+## (A) 2/2 Constraint Solver Full Implementation Path (Post-MVP)
 
 Prerequisite:
 
-- Complete Gold Panning refinements.
+- Complete (A) 1/2.
+- Complete (B) 3/5.
 
 Implementation targets:
 
-- Implement the reduced V1 pipeline defined in `docs/CONSTRAINT_SOLVER.md`:
+- Expand solver beyond MVP using the reduced V1 pipeline in docs/CONSTRAINT_SOLVER.md:
   - PolicyCoordinator + Feasibility
   - WindowBuilder
   - Dependency + Decomposition
@@ -43,13 +95,13 @@ Implementation targets:
   - OptimizationPlanner
   - Explanation
 - Enforce no-overlap ownership boundaries between stages.
-- Add deterministic replay and invariants coverage for the new path.
+- Add full invariants and characterization coverage for the expanded path.
 
 ## Event System and Scheduling UX
 
 - Improve event command UX and schedule-view integration.
 - Keep past events retained but hidden from the default schedule view.
-- Add an event history command such as `event all` for full event visibility.
+- Add an event history command such as event all for full event visibility.
 
 ## User-Controlled Scheduling Enhancements
 
