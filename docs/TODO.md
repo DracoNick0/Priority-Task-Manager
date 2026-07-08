@@ -1,67 +1,65 @@
 # Project TODO List
 
-> **Note:** Tasks are listed in priority order. Tackle them sequentially from top to bottom unless otherwise specified. Tasks should also be removed when they are completed.
+> **Note:** This file is the backlog and roadmap for upcoming work. It should only contain planned work, not current-state reporting. Tasks are listed in priority order. 
 
----
+## Testing Overhaul
 
-### Core Fixes & Refinements
-- **Revise the documentation and rewrite the README.**
-    - *Description*: Perform a complete update of the project documentation so `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, `docs/WORKFLOW.md`, and related docs reflect the current codebase, then replace the root `README.md` with a fresh, accurate overview of the project.
-    - *Notes*: Treat this as a full documentation pass, not a light edit; remove stale references, align terminology with the current architecture, and make the README suitable as the first entry point for new contributors.
-- **Overhaul the testing strategy.**
-    - *Description*: Rebuild the testing approach across the solution by following `docs/TESTING_STRATEGY.md`, including strict TDD for deterministic core and CLI logic, invariant/property-based coverage for scheduling behavior, and snapshot/characterization tests where schedule shape needs to stay stable.
-    - *Notes*: Treat this as a broad test-suite migration rather than a narrow bug fix; align the existing `PriorityTaskManager.Tests` project with the current architecture and replace outdated coverage incrementally.
+- Overhaul test coverage according to `docs/TESTING_STRATEGY.md`:
+  - Rebuild deterministic tests for core service behavior.
+  - Rebuild CLI handler tests against the current command surface.
+  - Add scheduling invariants and characterization tests.
 
-### API & Service Expansions
-- **Add a mobile and Windows interface (Android/iOS).**
-    - *Description*: Develop a cross-platform application (e.g., using React Native) which will require creating a web API to serve data from the core C# application.
-- **Integrate an LLM for conversational control.**
-    - *Description*: Allow users to manage tasks via natural language. This would involve creating an API that an LLM can call to translate commands into application actions.
+## Platform and Interface Expansion
 
-### Scheduling Related & Event Enhancements
-- **Improve Event Scheduling System.**
-    - *Description*: The `event` command UI needs a visual and usability overhaul. Past events should be retained but hidden from the main schedule view.
-    - *New Command*: Implement an `event all` (or similar) command to display a comprehensive list of both past and future events.
+- Add a service/API layer to support additional front ends.
+- Explore cross-platform clients (mobile and desktop) after API stabilization.
+- Explore LLM-assisted control flows after API boundaries are defined.
 
-### User-Driven Scheduling Enhancements (?)
-- **Dynamic/Custom Work Hours**: Allow different work hours per day.
-    - Calculate `AvgDailyWorkCapacity` from user profile for dynamic slack awareness.
-- Allow user to set their current energy level to influence scheduling.
-- Implement a 'put off' feature to defer a task.
-- Warn user when Daily Load exceeds a `MaxDailyComplexityLoad` threshold.
+## (A) 1/2 Scheduling Improvements (Gold Panning First)
 
-### 1/3: Gold Panning Strategy Refinements (Pre-Constraint-Solver)
-- **Implement slack-aware urgency** to avoid high-importance last-minute placement.
-- **Utilize User Focus Windows Intelligently.**
-    - *Description*: Instead of simply front-loading all complex tasks ("Eat the Frog"), revise the intra-day sequencing. The goal is to place high-complexity tasks during the user's defined high-focus windows, while ensuring that tasks due today (or finishing on their due date) are always prioritized to prevent last-mianute placement and deadline risk.
-- **Anti-Starvation Logic for Backlog Tasks**
-    - Address the issue where tasks with no due date are perpetually pushed to the end of the schedule by urgent tasks.
-    - *Option A (Maintenance Quota)*: Reserve a set percentage of daily capacity (e.g., 20%) specifically for non-urgent tasks.
-    - *Option B (Virtual Aging)*: Implement an "Effective Due Date" or "Age Score" that increases over time, eventually treating old backlog items as urgent.
-    - *Option C (Opportunistic Fill)*: Fill low-intensity days (e.g., <50% load) with backlog tasks to smooth out the complexity curve.
+- Implement slack-aware urgency to reduce high-importance last-minute placement.
+- Improve focus-window sequencing so high-complexity tasks align with high-focus periods.
+- Add anti-starvation behavior for backlog tasks with no due date.
 
-### 2/3: Implement Constraint Solver (New Strategy)
--   Complete the Gold Panning refinements above before starting this phase.
--   Follow Hybrid Testing (Exploratory Spiking + Invariants) for the algorithm logic.
--   Write snapshot/characterization tests to lock down stable scheduling shapes.
--   Implement locked V1 reduced pipeline from `SCHEDULING_SYSTEM_SPEC.md`:
-    - PolicyCoordinator + Feasibility
-    - WindowBuilder
-    - Dependency + Decomposition
-    - Scoring
-    - OptimizationPlanner (Constraint-Based)
-    - Explanation
--   Enforce no-overlap ownership boundaries between stages.
+Candidate anti-starvation approaches:
 
-### 3/3: Build Migration Test Matrix (New Pipeline)
--   Enforce merge gate: no behavior PR merges without test-first coverage.
--   Add tests for FS dependency correctness in the new pipeline.
--   Add tests for must-schedule overload behavior (late + overtime).
--   Add tests for non-must dropping and exclusion policy.
--   Add tests for slack protection on high-importance tasks.
--   Add deterministic replay tests for identical inputs.
+- Maintenance quota (reserve a percentage of daily capacity for backlog work).
+- Virtual aging (increase urgency for older backlog tasks over time).
+- Opportunistic fill (prefer backlog tasks on underloaded days).
 
-### Future Expansions (?)
--  **Additional Attributes for Scheduling**
-    -   **Earliest Start Date**: Support tasks that cannot begin until a future date.
-    -   **Start Time preference**: Support tasks that must start at a specific time.
+## (A) 2/2 Constraint Solver Implementation Path
+
+Prerequisite:
+
+- Complete Gold Panning refinements.
+
+Implementation targets:
+
+- Implement the reduced V1 pipeline defined in `docs/CONSTRAINT_SOLVER.md`:
+  - PolicyCoordinator + Feasibility
+  - WindowBuilder
+  - Dependency + Decomposition
+  - Scoring
+  - OptimizationPlanner
+  - Explanation
+- Enforce no-overlap ownership boundaries between stages.
+- Add deterministic replay and invariants coverage for the new path.
+
+## Event System and Scheduling UX
+
+- Improve event command UX and schedule-view integration.
+- Keep past events retained but hidden from the default schedule view.
+- Add an event history command such as `event all` for full event visibility.
+
+## User-Controlled Scheduling Enhancements
+
+- Support dynamic per-day work hours and recalculate average daily capacity.
+- Allow users to provide current energy level as a scheduling input.
+- Add a defer or put-off workflow for task postponement.
+- Add load warnings when daily complexity exceeds configured thresholds.
+
+## Parking Lot
+
+- Add optional scheduling attributes:
+  - Earliest start date.
+  - Preferred start time.

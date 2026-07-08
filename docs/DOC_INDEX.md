@@ -53,9 +53,8 @@ Use this file to find the canonical document for each topic. If a topic appears 
 ### AI coding agent
 1. docs/DOCUMENTATION_STANDARDS.md
 2. docs/TERMINOLOGY.md
-3. docs/ARCHITECTURAL_INVARIANTS.md
-4. docs/STATUS.md
-5. docs/ARCHITECTURE.md
+3. docs/STATUS.md
+4. docs/ARCHITECTURE.md
 
 ## Maintenance Notes
 - Review this index whenever a document is added, removed, renamed, or repurposed.
