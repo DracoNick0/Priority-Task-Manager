@@ -1,284 +1,153 @@
 # Architecture
 
-This document provides a high-level overview of the Priority Task Manager's architecture. It is intended for developers to understand the key components, data flow, and design patterns used in the system.
+This document describes the current system design of Priority Task Manager: its major projects, boundaries, data flow, and scheduling architecture. It is intentionally concise and should stay focused on stable design concepts rather than current status or roadmap detail.
 
-For details on **Quantifying Task Complexity**, please refer to [COMPLEXITY_GUIDE.md](COMPLEXITY_GUIDE.md).
+For domain-specific complexity rules, see [COMPLEXITY_GUIDE.md](COMPLEXITY_GUIDE.md). For canonical vocabulary, see [TERMINOLOGY.md](TERMINOLOGY.md).
 
-## Project Structure
+## Architecture Overview
 
-The solution is divided into three main projects to ensure a clean separation of concerns:
+The solution is organized into three projects with clear separation of concerns:
 
--   `PriorityTaskManager/`: The **core library**. This project contains all business logic, data models, services, and the staged scheduling engine. It is completely independent of any user interface and can be reused by other front-ends (e.g., a future GUI or web application).
--   `PriorityTaskManager.CLI/`: The **command-line interface**. This project is responsible for parsing user commands, interacting with the `TaskManagerService` from the core library, and displaying output to the console.
--   `PriorityTaskManager.Tests/`: The **unit testing project**. This contains xUnit tests for the core library. **Note:** These tests are currently outdated due to recent refactoring and require a complete overhaul.
+- `PriorityTaskManager/` is the core library. It contains the domain models, persistence layer, services, and scheduling logic.
+- `PriorityTaskManager.CLI/` is the command-line shell. It parses user input, invokes core services, and renders output.
+- `PriorityTaskManager.Tests/` is the test project for validating core behavior.
 
-### Detailed File Structure
+The architecture is designed so the core library remains independent of console presentation concerns.
 
-```markdown
-Priority-Task-Manager/
-├── Priority-Task-Manager.sln
-├── PriorityTaskManager.sln
-├── README.md
-├── TODO.md
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── RFC_SOLVER_MIGRATION.md
-│   ├── SCHEDULING_DISCUSSION_NOTES.md
-│   ├── SCHEDULING_SYSTEM_SPEC.md
-│   ├── STATUS.md
-│   ├── TESTING_STRATEGY.md
-│   ├── TODO.md
-│   └── WORKFLOW.md
-├── PriorityTaskManager/          <-- Core Logic
-│   ├── PriorityTaskManager.csproj
-│   ├── Models/                   <-- Shared Domain Models
-│   ├── Services/                 <-- Shared Services
-│   ├── Scheduling/
-│   │   └── GoldPanning/
-│   │       ├── Stages/
-│   │       ├── GoldPanningStrategy.cs
-│   │       ├── ISchedulingStage.cs
-│   │       ├── PipelineCoordinator.cs
-│   │       └── SchedulingContext.cs
-│   └── Scheduling/               <-- V1 Scheduler (New)
-│       ├── Core/                 <-- Interfaces
-│       └── Optimization/         <-- Optimization Strategy Implementation
-├── PriorityTaskManager.CLI/      <-- Command Line Interface
-│   ├── ...
-└── PriorityTaskManager.Tests/    <-- Unit Tests
-    ├── ...
-```
+## System Boundaries
 
-### Technology Stack
-*   **Framework**: .NET 8
-*   **Serialization**: `System.Text.Json`
-*   **Testing**: `xUnit`
+The main boundaries are:
 
-## Data Flow and Persistence
+- Core business logic lives in `PriorityTaskManager/`.
+- CLI orchestration and user interaction live in `PriorityTaskManager.CLI/`.
+- Persistence is handled through `PersistenceService`, which reads and writes JSON data files through a data-directory path supplied at runtime.
+- Scheduling behavior is selected through `UserProfile.SchedulingMode` and executed through the `IUrgencyStrategy` abstraction.
 
-The application's state is managed through a clear and decoupled persistence layer.
+Current scheduling strategy routing is:
 
-### Glossary of Core Types
+- `GoldPanningStrategy` is the active implementation.
+- The constraint-optimization path is routed in `TaskManagerService`, but the current code path raises `NotImplementedException` when that mode is selected.
 
-Before understanding the flow, it is helpful to define the core data objects passed between components:
+## Core Components
 
-*   **`TaskItem`**: Represents a single unit of work. Contains properties like `Title`, `DueDate`, `Complexity`, `Importance`, and `Dependencies`.
-*   **`ScheduledChunk`**: A specific allocation of time for a `TaskItem`. A large task might be split into multiple `ScheduledChunk`s across different days.
-*   **`ScheduleWindow`**: A period of available time (start to end) derived from the `UserProfile`'s work hours, minus any `Event`s.
-*   **`DataContainer`**: The master state object held by `TaskManagerService`. It wraps all lists, tasks, events, and user settings.
-*   **`SchedulingContext`**: The context object passed heavily through the stage pipeline. It contains the `Tasks` being processed, the `AvailableWindows`, and a `SharedState` dictionary for inter-stage communication. It implies a functional style: stages act on this context to produce a *new* or modified state.
+### `TaskManagerService`
 
-1.  **Data Source**: All application data (tasks, lists, events, user profile) is stored in `.json` files located in the `PriorityTaskManager/Data/` directory.
-2.  **Build Process**: The `.csproj` file for the `PriorityTaskManager` project is configured to copy these `Data` files to the output directory during the build process.
-3.  **`PersistenceService`**: This service is responsible for all read/write operations to the JSON files. Its constructor takes a single `dataDirectory` path, making it portable and independent of the file system's layout.
-4.  **`DataContainer`**: On application startup, the `PersistenceService` loads all data from the JSON files into a single `DataContainer` object.
-5.  **`TaskManagerService`**: This central service holds the `DataContainer` in memory. All business logic operations (adding tasks, updating events, etc.) are performed on the data within this container. When data is modified, `TaskManagerService` calls `PersistenceService.SaveData()` to write the changes back to the disk.
+`TaskManagerService` is the core coordination layer. It owns the in-memory `DataContainer`, applies default list setup when needed, performs CRUD-style operations, and delegates prioritization to the active urgency strategy.
+
+### `PersistenceService`
+
+`PersistenceService` is the storage layer for the JSON-backed application state. It loads the `DataContainer` at startup and saves changes back to disk when data mutates.
+
+### `TimeService`
+
+`TimeService` abstracts current time and supports simulated time so time-sensitive logic stays deterministic and testable.
+
+### `GoldPanningStrategy`
+
+`GoldPanningStrategy` is the current scheduling pipeline. It converts a task list into scheduled chunks by running a fixed stage chain over a shared scheduling context.
+
+### CLI entry point
+
+`PriorityTaskManager.CLI/Program.cs` wires the application together, constructs the service graph, and maps commands to handlers.
+
+## Data Model Overview
+
+The most important shared types are:
+
+| Type | Role |
+| --- | --- |
+| `TaskItem` | Single unit of work with scheduling metadata and dependencies |
+| `TaskList` | A list-scoped collection of tasks and copied settings |
+| `UserProfile` | Global defaults and scheduling preferences |
+| `Event` | A blocked-out time interval |
+| `ScheduleWindow` | A free window available for work |
+| `ScheduledChunk` | A scheduled portion of a task |
+| `DataContainer` | The persisted application state loaded into memory |
+| `SchedulingContext` | Shared pipeline state passed between stages |
+
+## Data Flow
+
+The runtime flow is:
+
+1. The CLI reads a command and calls a handler.
+2. The handler invokes `TaskManagerService` for the requested operation.
+3. `TaskManagerService` reads or mutates the in-memory `DataContainer`.
+4. When persistence is needed, `PersistenceService` writes the updated data back to JSON files.
+5. For prioritization, `TaskManagerService` builds the effective profile for the active list and calls the selected `IUrgencyStrategy` implementation.
+6. `GoldPanningStrategy` produces a `PrioritizationResult` containing scheduled tasks, unscheduled tasks, and history.
 
 ## List-Scoped Settings Model
 
-Each `TaskList` now carries its own copied settings snapshot for scheduling and presentation. A list can store its own sort option, scheduling mode, work hours, work days, urgency thresholds, description, and optional simulated time preference.
+Each `TaskList` carries its own copied settings snapshot for scheduling and presentation. The active list can therefore diverge from global defaults without rewriting other lists.
 
 The intended behavior is copy-on-create:
 
 1. New lists copy the current global defaults from `UserProfile` when they are created.
-2. Later changes to the global defaults do not retroactively rewrite existing lists.
-3. `TaskManagerService.BuildEffectiveUserProfile(...)` resolves the active list's settings into the effective profile used by scheduling and the dashboard.
+2. Later changes to global defaults do not retroactively rewrite existing lists.
+3. `TaskManagerService.BuildEffectiveUserProfile(...)` resolves the active list settings into the effective profile used by scheduling and dashboard logic.
 4. `TaskManagerService.ApplyListTimePreference(...)` applies the active list's saved simulated time when switching lists.
 
-This keeps the list settings UI focused on the active list while still letting the global settings screen define the defaults used for new lists.
+This keeps list-specific configuration separate from global defaults while still making new lists inherit sensible starting values.
 
-The CLI now makes that split explicit:
+## Scheduling Strategy Architecture
 
-1. `defaults` is the global/defaults surface.
-2. `list settings` is the active-list surface.
-3. The defaults screen is for values copied into new lists, not for live list mutation.
+The scheduling system is intentionally strategy-based so the project can evolve beyond a single algorithm without rewriting the surrounding services.
 
-## Scheduling Strategies (Dual-Mode)
+### Gold Panning
 
-The application supports multiple scheduling algorithms, selectable by the user via `UserProfile.SchedulingMode`. This allows for safe evolution of the scheduling logic without breaking existing functionality. The common interface for all strategies is `IUrgencyStrategy`.
+Gold Panning is the current staged pipeline. It uses a shared `SchedulingContext` and a fixed chain of independent stages to transform tasks into scheduled work.
 
-### 1. Gold Panning (First)
+The active stage order is:
 
-*   **Class**: `GoldPanningStrategy`
-*   **Concept**: "Gold Panning". Tasks flow through time like material in a sluice box. Heavy items (Urgent/Important) settle early; light items (Backlog) wash downstream.
-*   **Architecture**: **Staged Pipeline**. This is a sequential pipeline where a central `SchedulingContext` object is passed between independent processing stages. Each stage acts on the context, transforming the data before passing it to the next stage in the chain.
-*   **Status**: Maintenance Mode. Default for existing users.
+1. `TaskNormalizationStage`
+2. `AvailabilityWindowStage`
+3. `TaskRankingStage`
+4. `TaskDistributionStage`
+5. `DailySequencingStage`
 
-The flow for this strategy is defined below in "Gold Panning Stage Pipeline".
+Each stage has a narrow responsibility:
 
-### 2. Constraint Solver (New)
+| Stage | Responsibility |
+| --- | --- |
+| `TaskNormalizationStage` | Apply defaults and clean up task data before scheduling |
+| `AvailabilityWindowStage` | Build available time windows from work hours and events |
+| `TaskRankingStage` | Rank tasks by urgency and importance |
+| `TaskDistributionStage` | Pack tasks into available windows and split tasks when needed |
+| `DailySequencingStage` | Order tasks within a day for better focus and energy use |
 
-*   **Class**: `ConstraintOptimizationStrategy`
-*   **Concept**: "Solver". The scheduler treats the calendar as a constraint satisfaction problem. It optimizes for an objective function (minimizing lateness, maximizing balance) while respecting hard limits.
-*   **Architecture**: Single-pass Optimization Planner.
-*   **Status**: Active Development.
-*   **Spec**: implementation details are strictly defined in `SCHEDULING_SYSTEM_SPEC.md`.
+### Constraint Solver
 
-## Gold Panning Stage Pipeline
+The system is designed to support an alternate optimization-based strategy selected by scheduling mode. The current code path reserves that route, but the implementation is not yet available.
 
-The first pipeline is used when `SchedulerMode` is set to `GoldPanning`.
+## Extension Points
 
-The primary benefit of this architecture is **modularity**. It breaks down the complex process of scheduling into a series of small, independent, and single-responsibility stages. This makes the system easier to modify, debug, and extend.
+The main extension points are:
 
-The pipeline is defined and executed in `PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs`.
+- Add or replace strategy implementations behind `IUrgencyStrategy`.
+- Add or adjust Gold Panning stages inside the stage chain.
+- Extend `TaskManagerService` for list, task, and profile coordination.
+- Extend CLI handlers without moving business logic into the presentation layer.
 
-### Stage Execution Order
+## Architectural Invariants
 
-When `list` is called with the `GoldPanning` strategy, the stages are executed in the following sequence. This order is designed to progressively refine the task list before the final schedule is generated, following a **Normalize -> Prepare -> Rank -> Distribute -> Sequence** workflow. Each stage passes a `SchedulingContext` object containing the shared data to the next stage in the chain.
+The most important rules are:
 
-1.  **`TaskNormalizationStage`**:
-    -   **Purpose**: Cleans up and applies default values to task data before processing.
-    -   **Action**: Ensures all tasks are in a consistent state. For example, it might assign a default `EffectiveImportance`.
+- The core library must stay independent of CLI presentation concerns.
+- CLI handlers must not contain business scheduling logic.
+- Current behavior claims should match the observable code path.
+- Command routing should match the runtime entry point.
+- Gold Panning stage order should match the active stage chain in code.
 
-2.  **`AvailabilityWindowStage`**:
-    -   **Purpose**: Prepares the user's schedule by identifying all available time slots.
-    -   **Action**: It looks at the user's defined work hours (from `UserProfile`) and any existing `Events`. It then generates a list of `ScheduleWindow` objects representing the free time slots and stores them in the context.
+## Terminology
 
-3.  **`TaskRankingStage`**:
-    -   **Purpose**: To perform the "Weighing" phase of the Gold Panning strategy.
-    -   **Action**: It sorts the master task list based on a calculated weight of urgency and importance, placing the most critical tasks first.
+Use the canonical terms in [TERMINOLOGY.md](TERMINOLOGY.md) when reading or modifying this system. In particular:
 
-4.  **`TaskDistributionStage`**:
-    -   **Purpose**: To perform the "Distribution" phase. It packs the prioritized tasks into daily buckets.
-    -   **Action**: It iterates through the sorted task list and fits tasks into the available `ScheduleWindow`s. If a task is too large for a remaining time slot, this stage is responsible for **splitting** it into smaller `ScheduledChunk`s across multiple days.
+- Use `strategy` for the overall scheduling approach.
+- Use `stage` for a Gold Panning pipeline step.
+- Use `command surface` for the set of CLI commands.
 
-5.  **`DailySequencingStage`**:
-    -   **Purpose**: As the **final** stage, it arranges the tasks *within* each day to optimize for user energy and focus.
-    -   **Action**: It takes the tasks assigned to a specific day and sorts them to implement the "Eat the Frog" principle: tasks due today are handled first, followed by the most complex tasks, which are scheduled for the morning.
+## Related Files
 
-### Future Vision
-
-The current staged scheduling framework provides a strong foundation for future enhancements. The key long-term goals are:
-
-1.  **Multi-Platform Support**: The clean separation between the core logic and the UI is intentional, paving the way for future front-ends on platforms like Web, Desktop, iOS, and Android.
-
-2.  **Calendar Integration**: Integrate with external calendar services (e.g., Google Calendar, Outlook) to get a more accurate, real-time view of the user's availability. This would replace the manual `Events` system and improve scheduling accuracy.
-
-3.  **Refining the Staged Scheduling System**: While the system is already modular, the vision is to enhance it by adding more specialized stages. These could analyze tasks from different perspectives (e.g., user habits, energy levels, long-term goals) to provide a more adaptive and context-aware prioritization.
-
-## V1 Scheduling Contract (Phase 1 Baseline)
-
-This section defines the contract for the new scheduling path. It is the implementation baseline for migration work.
-
-### Planner Input Contract
-The planner consumes a request with:
-1. Candidate tasks (excluding completed tasks).
-2. User profile and scheduling preferences.
-3. Event blocks and work-window rules.
-4. Current time context via `ITimeService`.
-5. Overtime and lateness policy flags (`AllowMustScheduleLateness`, `AllowMustScheduleOvertime`, `OvertimeScope`, `AllowNonMustLateness`).
-
-### Planner Output Contract
-The planner returns:
-1. Scheduled chunks with explicit start/end times.
-2. Unscheduled non-must tasks.
-3. Late and overtime classification metadata.
-4. Reason codes and explanation entries for user-facing output.
-5. Infeasibility diagnostics for must-schedule tasks that cannot be placed under current policy/horizon.
-6. Optional horizon advisories and timeline estimate metadata.
-
-### Locked V1 Execution Pipeline
-The V1 execution order is:
-1. `PolicyCoordinator + Feasibility`
-2. `WindowBuilder`
-3. `Dependency + Decomposition`
-4. `Scoring`
-5. `OptimizationPlanner`
-6. `Explanation`
-
-In V1, in-day sequencing and cross-day balancing run as internal sub-passes inside `OptimizationPlanner`.
-
-### Stage Ownership Boundaries (No Overlap)
-Single owner per concern:
-1. Validation and cycle checks: `Feasibility`.
-2. Availability window construction: `WindowBuilder`.
-3. Chunk construction rules: `Decomposition`.
-4. Objective and weight definitions: `Scoring`.
-5. Placement, drop, and overtime decisions: `OptimizationPlanner`.
-6. User-facing reason mapping: `Explanation`.
-
-### Objective Model Requirements
-The scoring model must include:
-1. Slack risk (deadline closeness before lateness).
-2. Lateness penalty.
-3. Drop policy penalty.
-4. In-day ordering penalty.
-5. Cross-day load balancing penalty.
-6. Switching penalty derived from schedule shape (transitions, fragmentation, tiny chunks).
-
-V1 due-date handling note:
-1. Null due-date tasks are treated as neutral backlog tasks in V1.
-2. No aging urgency is applied in V1.
-3. Null due-date tasks are considered as capacity-fill work after must-schedule and due-dated urgency work.
-
-V1 horizon behavior note:
-1. Adaptive mode estimates required horizon from remaining duration and effective capacity.
-2. If estimated horizon exceeds 30 days, the caller should request confirmation.
-3. If estimated horizon exceeds 90 days, the caller should emit a high-horizon alert with timeline estimate.
-
-### Migration Policy on This Branch
-1. Branch-level fallback is the rollback strategy.
-2. Documentation contracts must be completed before implementation tasks.
-
-## Core Services and Strategies
-
-The core library is built around a set of services and strategies, each with a specific responsibility. The use of interfaces (e.g., `IPersistenceService`, `IUrgencyStrategy`) is a key design principle, allowing for modularity and testability.
-
-### Key Files & Responsibilities
-
-This section details the primary files in the core library and their interconnections. It is designed to help developers identify the correct file to modify for a specific task.
-
-#### 1. The Coordinator: `GoldPanningStrategy.cs`
-*   **Path**: `PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs`
-*   **Role**: The **Orchestrator**. It defines the entire scheduling pipeline. It is responsible for instantiating the stages, defining their execution order, and passing the `SchedulingContext` between them.
-*   **Connections**:
-    *   **Invokes**: ALL stages (`TaskNormalizationStage`, `AvailabilityWindowStage`, etc.).
-    *   **Invoked By**: `TaskManagerService.GetPrioritizedTasks()`.
-*   **Developer Note**: If you add a new stage, **you must** register it here in the stage chain, or it will never run. If you want to change the order of execution, this is the file to edit.
-
-#### 2. The Facade: `TaskManagerService.cs`
-*   **Path**: `PriorityTaskManager/Services/TaskManagerService.cs`
-*   **Role**: The **Public API**. It provides high-level methods for the CLI to interact with (e.g., `AddTask`, `DeleteTask`, `ListTasks`). It manages data persistence calls but delegates complex logic (like scheduling) to strategies.
-*   **Connections**:
-    *   **Invokes**: `IPersistenceService` (for saving), `IUrgencyStrategy` (for scheduling), `ITimeService`.
-    *   **Invoked By**: All CLI Handlers (e.g., `AddHandler`, `ListHandler`).
-*   **Developer Note**: Do not put complex scheduling logic here. This service should remain a thin coordination layer.
-
-#### 3. The Data Manager: `PersistenceService.cs`
-*   **Path**: `PriorityTaskManager/Services/PersistenceService.cs`
-*   **Role**: The **Storage Engine**. It handles reading and writing the JSON files (`tasks.json`, `user_profile.json`, etc.) in the `Data/` folder.
-*   **Connections**:
-    *   **Invoked By**: `TaskManagerService`.
-*   **Developer Note**: This service is file-system agnostic regarding the data folder path, which is injected via constructor.
-
-#### 4. The Timekeeper: `TimeService.cs`
-*   **Path**: `PriorityTaskManager/Services/TimeService.cs`
-*   **Role**: The **Clock**. It abstracts `DateTime.Now`. It supports a "Simulated Time" mode for testing logic that depends on specific dates/times.
-*   **Connections**:
-    *   **Invoked By**: `TaskManagerService`, `AvailabilityWindowStage`, `TaskNormalizationStage`.
-*   **Developer Note**: **NEVER** use `DateTime.Now` directly in the Core library. Always inject `ITimeService`.
-
-### Stage Responsibilities
-
-*   **`TaskNormalizationStage.cs`**:
-    *   **Role**: Pure logic calculation on individual tasks (e.g., `EffectiveImportance`).
-    *   **Input**: Raw `TaskItem`s.
-    *   **Output**: Modified `TaskItem`s with updated properties.
-*   **`AvailabilityWindowStage.cs`**:
-    *   **Role**: Environment analysis. Calculates *when* work can happen.
-    *   **Input**: `UserProfile`, `Events`.
-    *   **Output**: Populates `SchedulingContext.AvailableWindows`.
-*   **`TaskRankingStage.cs`**:
-    *   **Role**: Sorting/Weighing. Determines the *ideal* order of tasks based on urgency and importance.
-    *   **Input**: Unsorted `TaskItem`s.
-    *   **Output**: Sorted `TaskItem`s.
-*   **`TaskDistributionStage.cs`**:
-    *   **Role**: Distribution/Packing. Places tasks into daily buckets and splits them if necessary.
-    *   **Input**: Sorted `TaskItem`s, `AvailableWindows`.
-    *   **Output**: `TaskItem`s with populated `ScheduledParts`.
-*   **`DailySequencingStage.cs`**:
-    *   **Role**: Intra-Day Optimization. Arranges tasks within a single day for optimal energy management ("Eat the Frog").
-    *   **Input**: Tasks assigned to a day.
-    *   **Output**: `ScheduledChunk`s with final start/end times.
-
--   **`Services/Helpers`**: This directory contains helper classes that perform specific, isolated tasks for the services. For example, `DependencyGraphHelper` provides functions for working with task dependencies.
+- [PriorityTaskManager.CLI/Program.cs](../PriorityTaskManager.CLI/Program.cs)
+- [PriorityTaskManager/Services/TaskManagerService.cs](../PriorityTaskManager/Services/TaskManagerService.cs)
+- [PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs](../PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs)
