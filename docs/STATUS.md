@@ -16,7 +16,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 | Scheduling logic | 🟡 Partially implemented | Gold Panning is active; the constraint-optimization mode is routed but not implemented in the current code path. |
 | Event system | 🟡 Under review | Add, edit, list, and delete are available, but the event experience is still being refined. |
 | Task dependencies | 🟡 Under review | Dependency handling is supported, but correctness and migration coverage still need attention. |
-| Unit tests | 🟡 Under overhaul | Test architecture is realigned to Gold Panning naming, deterministic core-service coverage is in place, and first-pass CLI handler command-surface tests are added; scheduling invariants/replay coverage is still pending. |
+| Unit tests | 🟡 Under overhaul | Test architecture is realigned to Gold Panning naming, deterministic core-service and first-pass CLI handler command-surface coverage are in place, and Gold Panning invariant plus deterministic replay tests. |
 
 ## Confirmed Capabilities
 
@@ -37,7 +37,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 - The scheduling system still needs future refinement around slack handling, intra-day focus heuristics, and backlog fairness.
 - The event workflow is functional but still under UX refinement.
-- The test suite overhaul is in progress; deterministic core-service coverage and first-pass CLI handler command-surface coverage are now in place, while deep interactive CLI flows and scheduling invariant/replay coverage remain pending.
+- The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, and Gold Panning invariant/replay coverage are now in place, while deep interactive CLI flows and dependency-order enforcement coverage remain pending.
 
 ## Command Surface Summary
 
