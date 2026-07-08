@@ -55,4 +55,3 @@ To run the tests:
 ```bash
 dotnet test
 ```
-**Important Note:** As of this writing, the tests in this project are **outdated** due to significant architectural refactoring. A major task in `TODO.md` is to overhaul and update these tests to reflect the current implementation.
