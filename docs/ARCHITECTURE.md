@@ -50,6 +50,13 @@ Current scheduling strategy routing is:
 
 `PriorityTaskManager.CLI/Program.cs` wires the application together, constructs the service graph, and maps commands to handlers.
 
+The CLI currently supports two handler execution contracts:
+
+- Legacy handlers implement `ICommandHandler.Execute(...)` and manage their own command-level output flow.
+- Result-based handlers implement `ICommandResultHandler.ExecuteWithResult(...)` and return a structured `CommandResult`.
+
+For result-based handlers, `Program.cs` owns post-command dashboard refresh and message rendering based on the returned result flags.
+
 ## Data Model Overview
 
 The most important shared types are:
@@ -70,11 +77,12 @@ The most important shared types are:
 The runtime flow is:
 
 1. The CLI reads a command and calls a handler.
-2. The handler invokes `TaskManagerService` for the requested operation.
+2. The handler invokes `TaskManagerService` for the requested operation and may return a structured command result.
 3. `TaskManagerService` reads or mutates the in-memory `DataContainer`.
 4. When persistence is needed, `PersistenceService` writes the updated data back to JSON files.
 5. For prioritization, `TaskManagerService` builds the effective profile for the active list and calls the selected `IUrgencyStrategy` implementation.
 6. `GoldPanningStrategy` produces a `PrioritizationResult` containing scheduled tasks, unscheduled tasks, and history.
+7. When a structured command result requests UI refresh, `Program.cs` refreshes the schedule snapshot and renders the dashboard.
 
 ## List-Scoped Settings Model
 

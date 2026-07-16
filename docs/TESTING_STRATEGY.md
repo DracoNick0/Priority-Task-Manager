@@ -6,7 +6,7 @@ This document outlines the strategy for testing the Priority Task Manager applic
 
 Because this application blends deterministic CRUD operations with complex, evolving optimization algorithms, we use a hybrid testing strategy:
 
--   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`), data models, and CLI handlers have highly predictable inputs and outputs. We use Test-Driven Development here to enforce rigid constraints and ensure a stable sandbox.
+-   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`), data models, and CLI handlers have highly predictable inputs and outputs.
 -   **Exploratory Spiking for Algorithms**: Development of scheduling algorithms (`ConstraintOptimizationStrategy`, `GoldPanningStrategy`) is done via exploratory programming first. We rely on sample datasets and human verification to tune the heuristics before locking them down.
 -   **Property-Based & Invariant Testing**: Instead of writing brittle assertions for precise algorithm outputs (e.g., "Task A must be at 9:00 AM"), we write invariant tests that check if the algorithm violated core rules (e.g., "No task is scheduled before its dependency", "Must-schedule tasks are never dropped").
 -   **Use the `TimeService`**: All time-sensitive logic must use a mocked `ITimeService` to guarantee deterministic boundaries.

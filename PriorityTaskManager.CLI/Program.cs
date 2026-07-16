@@ -82,7 +82,26 @@ namespace PriorityTaskManager.CLI
 
 				if (handlers.TryGetValue(command, out var handler))
 				{
-					handler.Execute(service, argsArr);
+					if (handler is ICommandResultHandler resultHandler)
+					{
+						var result = resultHandler.ExecuteWithResult(service, argsArr);
+
+						if (result.ShouldRefreshDashboard)
+						{
+							scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+							ConsoleHelper.ClearAndRenderDashboard(scheduleSnapshotProvider, taskMetricsService);
+						}
+
+						if (!string.IsNullOrWhiteSpace(result.Message))
+						{
+							Console.WriteLine(result.Message);
+						}
+					}
+					else
+					{
+						handler.Execute(service, argsArr);
+					}
+
 					SyncBackgroundRefreshScheduler();
 				}
 				else
