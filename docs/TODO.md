@@ -64,7 +64,10 @@ Implementation targets:
 
 - Add a service/API layer to support additional front ends.
 - Explore cross-platform clients (mobile and desktop) after API stabilization.
-- Explore LLM-assisted control flows after API boundaries are defined.
+- Add LLM-assisted intake for external planning sources (documents, GitHub projects/repos, todo lists, Canvas content).
+- Add extraction pipelines that normalize imported source content into candidate tasks, lists, and events.
+- Add review-and-confirm UX so generated tasks/events are editable before persistence.
+- Add provider abstraction and guardrails (rate limits, retries, validation, and source/decision traceability) for LLM-backed generation.
 
 ## (A) 1/2 Scheduling Improvements (Gold Panning First)
 
