@@ -57,10 +57,7 @@ The CLI currently supports two handler execution contracts:
 
 For result-based handlers, `Program.cs` owns post-command dashboard refresh and message rendering based on the returned result flags.
 
-Current migration state:
-
-- `DeleteHandler` and `CompleteHandler` are on the result-based contract.
-- Remaining handlers are still on the legacy contract and are migrated incrementally.
+Shared non-interactive parsing/message logic for result-based command handlers is centralized in `PriorityTaskManager.CLI/Utils/NonInteractiveCommandResultHelper.cs`.
 
 ## Data Model Overview
 

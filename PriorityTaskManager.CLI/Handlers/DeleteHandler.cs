@@ -30,13 +30,13 @@ namespace PriorityTaskManager.CLI.Handlers
         /// <inheritdoc/>
         public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
         {
-            var parseResult = ParseDisplayIds(service, args);
+            var parseResult = NonInteractiveCommandResultHelper.ParseDisplayIds(service, args);
             if (parseResult.ValidTasks.Count == 0)
             {
                 return new CommandResult
                 {
                     Status = parseResult.HasInput ? CommandResultStatus.Warning : CommandResultStatus.Usage,
-                    Message = BuildNoValidIdsMessage(parseResult),
+                    Message = NonInteractiveCommandResultHelper.BuildNoValidIdsMessage(parseResult, "Usage: delete <Id1>,<Id2>,..."),
                     ShouldRefreshDashboard = false
                 };
             }
@@ -64,15 +64,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 messageBuilder.AppendLine($"Failed to delete {failedDisplayIds.Count} task(s): {string.Join(", ", failedDisplayIds)}.");
             }
 
-            if (parseResult.InvalidTokens.Count > 0)
-            {
-                messageBuilder.AppendLine($"Ignored invalid IDs: {string.Join(", ", parseResult.InvalidTokens)}.");
-            }
-
-            if (parseResult.NotFoundDisplayIds.Count > 0)
-            {
-                messageBuilder.AppendLine($"Not found in active list: {string.Join(", ", parseResult.NotFoundDisplayIds)}.");
-            }
+            NonInteractiveCommandResultHelper.AppendParseWarnings(messageBuilder, parseResult);
 
             return new CommandResult
             {
@@ -80,80 +72,6 @@ namespace PriorityTaskManager.CLI.Handlers
                 Message = messageBuilder.ToString().TrimEnd(),
                 ShouldRefreshDashboard = deletedDisplayIds.Count > 0
             };
-        }
-
-        private static string BuildNoValidIdsMessage(DeleteParseResult parseResult)
-        {
-            var messageBuilder = new StringBuilder();
-
-            if (!parseResult.HasInput)
-            {
-                messageBuilder.AppendLine("No task IDs provided.");
-            }
-            else
-            {
-                messageBuilder.AppendLine("No valid task IDs provided.");
-            }
-
-            if (parseResult.InvalidTokens.Count > 0)
-            {
-                messageBuilder.AppendLine($"Invalid IDs: {string.Join(", ", parseResult.InvalidTokens)}.");
-            }
-
-            if (parseResult.NotFoundDisplayIds.Count > 0)
-            {
-                messageBuilder.AppendLine($"Not found in active list: {string.Join(", ", parseResult.NotFoundDisplayIds)}.");
-            }
-
-            messageBuilder.Append("Usage: delete <Id1>,<Id2>,...");
-            return messageBuilder.ToString();
-        }
-
-        private static DeleteParseResult ParseDisplayIds(TaskManagerService service, string[] args)
-        {
-            var result = new DeleteParseResult();
-            if (args == null || args.Length == 0)
-            {
-                return result;
-            }
-
-            result.HasInput = true;
-            string input = string.Join(string.Empty, args);
-            string[] potentialDisplayIds = input.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            int activeListId = service.GetActiveListId();
-
-            foreach (var idString in potentialDisplayIds)
-            {
-                string trimmedId = idString.Trim();
-
-                if (!int.TryParse(trimmedId, out int displayId))
-                {
-                    result.InvalidTokens.Add(trimmedId);
-                    continue;
-                }
-
-                var task = service.GetTaskByDisplayId(displayId, activeListId);
-                if (task == null)
-                {
-                    result.NotFoundDisplayIds.Add(displayId);
-                    continue;
-                }
-
-                result.ValidTasks.Add((displayId, task.Id));
-            }
-
-            return result;
-        }
-
-        private sealed class DeleteParseResult
-        {
-            public bool HasInput { get; set; }
-
-            public List<(int DisplayId, int RealId)> ValidTasks { get; } = new();
-
-            public List<string> InvalidTokens { get; } = new();
-
-            public List<int> NotFoundDisplayIds { get; } = new();
         }
     }
 }

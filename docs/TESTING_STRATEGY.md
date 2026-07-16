@@ -44,6 +44,7 @@ This is the most complex area of the application. We avoid brittle unit tests th
     -   Unit test `ExecuteWithResult(...)` as pure command orchestration logic.
     -   Verify `CommandResult.Status`, `CommandResult.Message`, and `CommandResult.ShouldRefreshDashboard`.
     -   Verify service-side mutations separately from console rendering.
+    -   Add focused tests for shared helper behavior (`NonInteractiveCommandResultHelper`) to cover mixed valid/invalid/not-found ID parsing and usage-message construction once and reuse across handlers.
 -   For legacy handlers not yet migrated:
     -   Continue command-surface tests through `Execute(...)` to protect behavior during migration.
 
@@ -55,6 +56,12 @@ This is the most complex area of the application. We avoid brittle unit tests th
     -   Legacy handlers continue to execute unchanged.
 -   Keep dashboard rendering tests separate from handler business assertions so console buffer requirements do not block core command tests.
 
+### 5. Migration Completion and Consolidation Tests
+
+-   When handler migration is complete, add/adjust tests that assert the final single-contract dispatch path in `Program.cs`.
+-   Remove tests that exist only to preserve temporary dual-contract compatibility behavior.
+-   Add regression tests ensuring each command still returns clear user feedback categories after compatibility layer removal.
+
 ## Test Overhaul Plan
 
 1. Reliable Core**: Enforce TDD on the `TaskManagerService` and `PersistenceService` to guarantee safe data manipulation.
@@ -62,3 +69,4 @@ This is the most complex area of the application. We avoid brittle unit tests th
 3.  **Create Benchmark Datasets**: Assemble complex `tasks.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
 4.  **Implement Snapshot Testing**: Generate baseline schedule expectations for the benchmark datasets using both the V1 Solver and Gold Panning.
 5.  **Refactor CLI Handlers**: Incrementally migrate non-interactive handlers to `CommandResult` and add unit coverage around `ExecuteWithResult(...)` before tackling deep interactive flows.
+6.  **Consolidate CLI Command Contract**: Remove transitional dual-contract dispatch and compatibility methods after migration completion, then re-baseline command orchestration tests against the final single-contract model.

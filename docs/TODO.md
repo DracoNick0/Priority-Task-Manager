@@ -8,8 +8,19 @@
   - Rebuild deterministic tests for core service behavior.
   - Rebuild CLI handler tests against the current command surface.
   - Migrate remaining non-interactive handlers to Program-owned CommandResult orchestration.
+  - Complete the Required CLI Migration Consolidation checklist below before marking handler migration complete.
   - Add scheduling invariants and characterization tests.
   - Add deterministic replay tests for identical inputs.
+
+### Required CLI Migration Consolidation (Do Not Skip)
+
+- Consolidate command dispatch to one canonical handler contract after migration completes.
+- Remove compatibility bridges introduced for phased migration:
+  - Handler-level passthrough `Execute(...)` methods that only forward to result-based execution.
+  - Runtime multi-contract branching in `Program.cs` used only for mixed legacy/result handlers.
+- Preserve user feedback guarantees for every command path: success, warning, usage, or actionable error.
+- Re-baseline tests for final-state dispatch and remove temporary compatibility-only assertions.
+- Update docs to remove migration-only wording and document final-state command orchestration behavior.
 
 ## (B) 2/5 CI Quality Gates
 

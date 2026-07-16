@@ -27,6 +27,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - Lists can carry copied settings snapshots instead of mutating only global defaults.
 - The CLI now supports incremental command orchestration migration: result-based handlers can return `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
 - `DeleteHandler` and `CompleteHandler` are currently migrated to the result-based path.
+- Shared parsing/usage-result behavior for migrated non-interactive handlers is centralized via `NonInteractiveCommandResultHelper`.
 
 ## Known Limitations
 
@@ -41,6 +42,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The event workflow is functional but still under UX refinement.
 - The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, and Gold Panning invariant/replay coverage are now in place, while deep interactive CLI flows and dependency-order enforcement coverage remain pending.
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
+- CLI command execution currently uses dual-contract dispatch in `Program.cs` and includes compatibility bridges for partially migrated handlers.
 
 ## Command Surface Summary
 
