@@ -25,6 +25,8 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - Gold Panning is the currently active scheduling strategy.
 - The app stores data in JSON files and loads that state into memory on startup.
 - Lists can carry copied settings snapshots instead of mutating only global defaults.
+- The CLI now supports incremental command orchestration migration: result-based handlers can return `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
+- `DeleteHandler` and `CompleteHandler` are currently migrated to the result-based path.
 
 ## Known Limitations
 
@@ -38,6 +40,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The scheduling system still needs future refinement around slack handling, intra-day focus heuristics, and backlog fairness.
 - The event workflow is functional but still under UX refinement.
 - The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, and Gold Panning invariant/replay coverage are now in place, while deep interactive CLI flows and dependency-order enforcement coverage remain pending.
+- Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
 
 ## Command Surface Summary
 

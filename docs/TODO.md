@@ -7,6 +7,7 @@
 - Overhaul test coverage according to docs/TESTING_STRATEGY.md:
   - Rebuild deterministic tests for core service behavior.
   - Rebuild CLI handler tests against the current command surface.
+  - Migrate remaining non-interactive handlers to Program-owned CommandResult orchestration.
   - Add scheduling invariants and characterization tests.
   - Add deterministic replay tests for identical inputs.
 

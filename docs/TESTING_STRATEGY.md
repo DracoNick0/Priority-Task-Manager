@@ -40,10 +40,20 @@ This is the most complex area of the application. We avoid brittle unit tests th
 
 ### 3. CLI Handlers
 
--   For each handler (`AddHandler`, `ListHandler`, etc.):
-    -   Mock the `TaskManagerService`.
-    -   Simulate user input by passing different `args` to the `Execute` method.
-    -   Verify that the correct `TaskManagerService` methods are called with the expected parameters.
+-   For each non-interactive handler (`delete`, `complete`, etc.) on the result-based path:
+    -   Unit test `ExecuteWithResult(...)` as pure command orchestration logic.
+    -   Verify `CommandResult.Status`, `CommandResult.Message`, and `CommandResult.ShouldRefreshDashboard`.
+    -   Verify service-side mutations separately from console rendering.
+-   For legacy handlers not yet migrated:
+    -   Continue command-surface tests through `Execute(...)` to protect behavior during migration.
+
+### 4. CLI Orchestration and Rendering Policy
+
+-   Add focused tests for `Program.cs` orchestration behavior:
+    -   Result-based handlers trigger dashboard refresh only when `ShouldRefreshDashboard` is true.
+    -   Result messages are printed by `Program.cs` for result-based handlers.
+    -   Legacy handlers continue to execute unchanged.
+-   Keep dashboard rendering tests separate from handler business assertions so console buffer requirements do not block core command tests.
 
 ## Test Overhaul Plan
 
@@ -51,4 +61,4 @@ This is the most complex area of the application. We avoid brittle unit tests th
 2.  **Define Pipeline Invariants**: Write the rule-based property tests for scheduling (e.g., dependency ordering, timeframe limits).
 3.  **Create Benchmark Datasets**: Assemble complex `tasks.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
 4.  **Implement Snapshot Testing**: Generate baseline schedule expectations for the benchmark datasets using both the V1 Solver and Gold Panning.
-5.  **Refactor CLI Handlers**: Implement Behavior-Driven (BDD) style testing for the CLI sequence paths using mock dependencies
+5.  **Refactor CLI Handlers**: Incrementally migrate non-interactive handlers to `CommandResult` and add unit coverage around `ExecuteWithResult(...)` before tackling deep interactive flows.
