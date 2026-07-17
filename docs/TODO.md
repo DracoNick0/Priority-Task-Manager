@@ -8,7 +8,7 @@
   - Rebuild deterministic tests for core service behavior.
   - Rebuild CLI handler tests against the current command surface.
   - Migrate remaining non-interactive handlers to Program-owned CommandResult orchestration.
-  - Expand interactive console seam adoption from HelpHandler/EditHandler to remaining interactive handlers (for example: List settings flows and Event interactive flows).
+  - Expand interactive console seam adoption from HelpHandler/EditHandler/list settings flow to remaining interactive handlers (for example: Event interactive flows).
   - Complete the Required CLI Migration Consolidation checklist below before marking handler migration complete.
   - Add scheduling invariants and characterization tests.
   - Add deterministic replay tests for identical inputs.

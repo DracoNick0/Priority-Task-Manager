@@ -7,43 +7,32 @@ using PriorityTaskManager.Tests.Infrastructure;
 
 namespace PriorityTaskManager.Tests.CLI
 {
-    public class HelpHandlerInteractiveSeamTests
+    public class ListHandlerInteractiveSeamTests
     {
         [Fact]
-        public void Execute_WhenEscapePressed_ShouldExitAndRestoreCursorVisibility()
+        public void Execute_ListSettingsInteractive_WhenEscapePressed_ShouldCancelWithoutMutatingActiveList()
         {
-            var (service, metrics, snapshotProvider) = CreateContext();
+            var (service, timeService, metrics, snapshotProvider) = CreateContext();
+            var activeList = service.GetListById(service.GetActiveListId());
+            Assert.NotNull(activeList);
+            var originalName = activeList.Name;
             var fakeConsole = new FakeInteractiveConsoleFacade(new[]
             {
                 new ConsoleKeyInfo('\u001b', ConsoleKey.Escape, false, false, false)
             });
-            var handler = new HelpHandler(snapshotProvider, metrics, fakeConsole);
+            var handler = new ListHandler(metrics, timeService, snapshotProvider, fakeConsole);
 
-            handler.Execute(service, Array.Empty<string>());
+            handler.Execute(service, new[] { "settings" });
 
+            var updatedList = service.GetListById(service.GetActiveListId());
+            Assert.NotNull(updatedList);
+            Assert.Equal(originalName, updatedList.Name);
             Assert.True(fakeConsole.CursorVisible);
             Assert.True(fakeConsole.DashboardRenderCount >= 2);
+            Assert.Contains(fakeConsole.Lines, line => line.Contains("List settings update cancelled."));
         }
 
-        [Fact]
-        public void Execute_WhenSelectingCategory_ShouldRenderCategoryHelpText()
-        {
-            var (service, metrics, snapshotProvider) = CreateContext();
-            var fakeConsole = new FakeInteractiveConsoleFacade(new[]
-            {
-                new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),
-                new ConsoleKeyInfo('x', ConsoleKey.X, false, false, false),
-                new ConsoleKeyInfo('\u001b', ConsoleKey.Escape, false, false, false)
-            });
-            var handler = new HelpHandler(snapshotProvider, metrics, fakeConsole);
-
-            handler.Execute(service, Array.Empty<string>());
-
-            Assert.Contains(fakeConsole.Lines, line => line.Contains("Task Commands:"));
-            Assert.Contains(fakeConsole.Lines, line => line.Contains("add <Title>"));
-        }
-
-        private static (TaskManagerService Service, TaskMetricsService Metrics, ScheduleSnapshotProvider SnapshotProvider) CreateContext()
+        private static (TaskManagerService Service, MockTimeService TimeService, TaskMetricsService Metrics, ScheduleSnapshotProvider SnapshotProvider) CreateContext()
         {
             var persistence = new MockPersistenceService();
             var timeService = DeterministicTestFixtures.CreateMockTimeService(new DateTime(2026, 7, 8, 9, 0, 0));
@@ -54,7 +43,7 @@ namespace PriorityTaskManager.Tests.CLI
             var snapshotProvider = new ScheduleSnapshotProvider(service, metrics, timeService);
             snapshotProvider.RefreshActiveListSnapshot(out _);
 
-            return (service, metrics, snapshotProvider);
+            return (service, timeService, metrics, snapshotProvider);
         }
 
         private sealed class FakeInteractiveConsoleFacade : IInteractiveConsoleFacade

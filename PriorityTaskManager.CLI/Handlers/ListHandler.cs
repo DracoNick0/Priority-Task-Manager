@@ -14,15 +14,26 @@ namespace PriorityTaskManager.CLI.Handlers
         private readonly ITaskMetricsService _taskMetricsService;
         private readonly ITimeService _timeService;
         private readonly ScheduleSnapshotProvider _scheduleSnapshotProvider;
+        private readonly IInteractiveConsoleFacade _console;
 
         public ListHandler(
             ITaskMetricsService taskMetricsService,
             ITimeService timeService,
             ScheduleSnapshotProvider scheduleSnapshotProvider)
+            : this(taskMetricsService, timeService, scheduleSnapshotProvider, null)
+        {
+        }
+
+        public ListHandler(
+            ITaskMetricsService taskMetricsService,
+            ITimeService timeService,
+            ScheduleSnapshotProvider scheduleSnapshotProvider,
+            IInteractiveConsoleFacade? console)
         {
             _taskMetricsService = taskMetricsService;
             _timeService = timeService;
             _scheduleSnapshotProvider = scheduleSnapshotProvider;
+            _console = console ?? new InteractiveConsoleFacade();
         }
 
         /// <inheritdoc/>
@@ -59,7 +70,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     HandleListSettings(service, commandArgs);
                     break;
                 default:
-                    Console.WriteLine("Usage: list [view|all|create|switch|delete|sort <option>|settings]");
+                    _console.WriteLine("Usage: list [view|all|create|switch|delete|sort <option>|settings]");
                     break;
             }
         }
@@ -294,7 +305,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     HandleSetSimulatedTime(service, subArgs);
                     break;
                 default:
-                    Console.WriteLine("Usage: list settings [show|sort|strategy|hours|days|slack|time|desc]");
+                    _console.WriteLine("Usage: list settings [show|sort|strategy|hours|days|slack|time|desc]");
                     break;
             }
         }
@@ -304,30 +315,30 @@ namespace PriorityTaskManager.CLI.Handlers
             var activeList = service.GetListById(service.GetActiveListId());
             if (activeList == null)
             {
-                Console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
+                _console.WriteLine($"Error: Active list ID '{service.GetActiveListId()}' does not exist.");
                 return;
             }
 
             var workingList = CloneList(activeList);
             int selectedIndex = 0;
 
-            Console.CursorVisible = false;
-            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-            Console.WriteLine($"Editing List Settings: {workingList.Name}");
-            Console.WriteLine("---------------------------------------------");
-            int selectorTop = Console.CursorTop;
+            _console.CursorVisible = false;
+            _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+            _console.WriteLine($"Editing List Settings: {workingList.Name}");
+            _console.WriteLine("---------------------------------------------");
+            int selectorTop = _console.CursorTop;
 
             var menuItems = BuildListSettingsMenuItems(workingList, service);
-            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
+            _console.DrawMenuItems(menuItems, selectedIndex, selectorTop);
 
             while (true)
             {
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
                 if (key.Key == ConsoleKey.Enter && key.Modifiers.HasFlag(ConsoleModifiers.Shift))
                 {
                     if (TrySaveListSettings(service, workingList))
                     {
-                        Console.CursorVisible = true;
+                        _console.CursorVisible = true;
                         return;
                     }
                     continue;
@@ -338,47 +349,47 @@ namespace PriorityTaskManager.CLI.Handlers
                     case ConsoleKey.UpArrow:
                         var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + menuItems.Count) % menuItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousUp, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(menuItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
                         var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousDown, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(menuItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == menuItems.Count - 2)
                         {
                             if (TrySaveListSettings(service, workingList))
                             {
-                                Console.CursorVisible = true;
+                                _console.CursorVisible = true;
                                 return;
                             }
                         }
                         else if (selectedIndex == menuItems.Count - 1)
                         {
-                            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                            Console.CursorVisible = true;
-                            Console.WriteLine("List settings update cancelled.");
+                            _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                            _console.CursorVisible = true;
+                            _console.WriteLine("List settings update cancelled.");
                             return;
                         }
                         else
                         {
-                            Console.CursorVisible = true;
+                            _console.CursorVisible = true;
                             EditListSettingField(service, workingList, selectedIndex, selectorTop);
-                            Console.CursorVisible = false;
+                            _console.CursorVisible = false;
 
-                            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                            Console.WriteLine($"Editing List Settings: {workingList.Name}");
-                            Console.WriteLine("---------------------------------------------");
-                            selectorTop = Console.CursorTop;
+                            _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                            _console.WriteLine($"Editing List Settings: {workingList.Name}");
+                            _console.WriteLine("---------------------------------------------");
+                            selectorTop = _console.CursorTop;
                             menuItems = BuildListSettingsMenuItems(workingList, service);
-                            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
+                            _console.DrawMenuItems(menuItems, selectedIndex, selectorTop);
                         }
                         break;
                     case ConsoleKey.Escape:
-                        ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                        Console.CursorVisible = true;
-                        Console.WriteLine("List settings update cancelled.");
+                        _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                        _console.CursorVisible = true;
+                        _console.WriteLine("List settings update cancelled.");
                         return;
                 }
             }
@@ -389,14 +400,14 @@ namespace PriorityTaskManager.CLI.Handlers
             switch (index)
             {
                 case 0:
-                    if (ConsoleMenuHelper.TryPromptInlineInput(selectorTop + index, "> Name: ", workingList.Name, out var name) &&
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Name: ", workingList.Name, out var name) &&
                         !string.IsNullOrWhiteSpace(name))
                     {
                         workingList.Name = name.Trim();
                     }
                     break;
                 case 1:
-                    if (ConsoleMenuHelper.TryPromptInlineInput(selectorTop + index, "> Description: ", workingList.Description ?? string.Empty, out var description))
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Description: ", workingList.Description ?? string.Empty, out var description))
                     {
                         workingList.Description = description;
                     }
@@ -409,8 +420,8 @@ namespace PriorityTaskManager.CLI.Handlers
                     break;
                 case 4:
                     workingList.WorkDays ??= new List<DayOfWeek>();
-                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                    ConsoleMenuHelper.RunToggleSelectionMenu(
+                    _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    _console.RunToggleSelectionMenu(
                         $"Select working days for '{workingList.Name}':",
                         "Space to toggle, Enter to save, Esc to cancel.",
                         workingList.WorkDays,
@@ -418,20 +429,20 @@ namespace PriorityTaskManager.CLI.Handlers
                         day => day.ToString());
                     break;
                 case 5:
-                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                    Console.WriteLine($"Set work hours for '{workingList.Name}':");
-                    Console.WriteLine("Set Daily Work Start Time:");
+                    _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    _console.WriteLine($"Set work hours for '{workingList.Name}':");
+                    _console.WriteLine("Set Daily Work Start Time:");
                     InteractiveListWorkHours(service, workingList);
                     break;
                 case 6:
-                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                    ConsoleMenuHelper.RunAdjustableValueMenu(
+                    _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    _console.RunAdjustableValueMenu(
                         $"Adjust urgency thresholds for '{workingList.Name}':",
                         "Use Left/Right to adjust values.",
                         BuildSlackMenuOptions(workingList, service.GetUserProfile()));
                     break;
                 case 7:
-                    ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                    _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
                     InteractiveListTimeSelector(workingList);
                     break;
             }
@@ -469,8 +480,8 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             if (string.IsNullOrWhiteSpace(workingList.Name))
             {
-                Console.WriteLine("Error: List name cannot be empty.");
-                Console.ReadKey(true);
+                _console.WriteLine("Error: List name cannot be empty.");
+                _console.ReadKey(true);
                 return false;
             }
 
@@ -479,37 +490,37 @@ namespace PriorityTaskManager.CLI.Handlers
                 service.UpdateList(workingList);
                 service.ApplyListTimePreference(workingList.Id, _timeService);
                 _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
-                ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                Console.WriteLine("List settings saved.");
+                _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                _console.WriteLine("List settings saved.");
                 return true;
             }
             catch (InvalidOperationException ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
-                Console.ReadKey(true);
+                _console.WriteLine($"Error: {ex.Message}");
+                _console.ReadKey(true);
                 return false;
             }
         }
 
         private void InteractiveListWorkHours(TaskManagerService service, TaskList workingList)
         {
-            Console.CursorVisible = true;
+            _console.CursorVisible = true;
             var today = DateTime.Today;
             var startDateTime = today.Add((workingList.WorkStartTime ?? service.GetUserProfile().WorkStartTime).ToTimeSpan());
             var newStart = ConsoleInputHelper.InteractiveTimeInput(startDateTime);
 
-            Console.WriteLine("\nSet Daily Work End Time:");
+            _console.WriteLine("\nSet Daily Work End Time:");
             var endDateTime = today.Add((workingList.WorkEndTime ?? service.GetUserProfile().WorkEndTime).ToTimeSpan());
             var newEnd = ConsoleInputHelper.InteractiveTimeInput(endDateTime);
 
             workingList.WorkStartTime = TimeOnly.FromDateTime(newStart);
             workingList.WorkEndTime = TimeOnly.FromDateTime(newEnd);
-            Console.CursorVisible = false;
+            _console.CursorVisible = false;
         }
 
         private void InteractiveListTimeSelector(TaskList workingList)
         {
-            Console.CursorVisible = false;
+            _console.CursorVisible = false;
             var selectedIndex = workingList.SimulatedTime.HasValue ? 1 : 0;
             var options = new List<string>
             {
@@ -519,39 +530,39 @@ namespace PriorityTaskManager.CLI.Handlers
                     : "Custom"
             };
 
-            Console.WriteLine("\nSet list simulated time:");
-            Console.WriteLine("Use Arrows to choose, Enter to select, Esc to cancel.");
-            var selectorTop = Console.CursorTop;
-            ConsoleMenuHelper.DrawMenuItems(options, selectedIndex, selectorTop);
+            _console.WriteLine("\nSet list simulated time:");
+            _console.WriteLine("Use Arrows to choose, Enter to select, Esc to cancel.");
+            var selectorTop = _console.CursorTop;
+            _console.DrawMenuItems(options, selectedIndex, selectorTop);
 
 
             while (true)
             {
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
 
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
                         var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + options.Count) % options.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(options, previousUp, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(options, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
                         var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % options.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(options, previousDown, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(options, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == 0)
                         {
                             workingList.SimulatedTime = null;
-                            Console.CursorVisible = true;
+                            _console.CursorVisible = true;
                             return;
                         }
 
-                        ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                        _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
 
-                        Console.CursorVisible = true;
+                        _console.CursorVisible = true;
                         var defaultSimulatedTime = workingList.SimulatedTime ?? _timeService.GetCurrentTime();
                         var simulatedTime = ConsoleInputHelper.GetDateTimeFromUser("Enter the list's simulated date and time", defaultSimulatedTime);
                         if (simulatedTime.HasValue)
@@ -561,7 +572,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
                         return;
                     case ConsoleKey.Escape:
-                        Console.CursorVisible = true;
+                        _console.CursorVisible = true;
                         return;
                 }
             }

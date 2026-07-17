@@ -101,6 +101,21 @@ namespace PriorityTaskManager.Tests.CLI
             public void UpdateMenuSelection(IReadOnlyList<string> items, int previousIndex, int selectedIndex, int startLine)
             {
             }
+
+            public bool TryPromptInlineInput(int row, string prefix, string initialValue, out string value)
+            {
+                value = initialValue;
+                return false;
+            }
+
+            public bool RunToggleSelectionMenu<T>(string title, string instructions, IList<T> selectedItems, IReadOnlyList<T> allItems, Func<T, string> labelSelector)
+            {
+                return false;
+            }
+
+            public void RunAdjustableValueMenu(string title, string instructions, List<ConsoleMenuHelper.AdjustableMenuOption> options)
+            {
+            }
         }
     }
 }

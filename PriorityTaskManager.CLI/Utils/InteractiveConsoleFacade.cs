@@ -60,5 +60,23 @@ namespace PriorityTaskManager.CLI.Utils
         {
             ConsoleMenuHelper.UpdateMenuSelection(items, previousIndex, selectedIndex, startLine);
         }
+
+        /// <inheritdoc/>
+        public bool TryPromptInlineInput(int row, string prefix, string initialValue, out string value)
+        {
+            return ConsoleMenuHelper.TryPromptInlineInput(row, prefix, initialValue, out value);
+        }
+
+        /// <inheritdoc/>
+        public bool RunToggleSelectionMenu<T>(string title, string instructions, IList<T> selectedItems, IReadOnlyList<T> allItems, Func<T, string> labelSelector)
+        {
+            return ConsoleMenuHelper.RunToggleSelectionMenu(title, instructions, selectedItems, allItems, labelSelector);
+        }
+
+        /// <inheritdoc/>
+        public void RunAdjustableValueMenu(string title, string instructions, List<ConsoleMenuHelper.AdjustableMenuOption> options)
+        {
+            ConsoleMenuHelper.RunAdjustableValueMenu(title, instructions, options);
+        }
     }
 }
