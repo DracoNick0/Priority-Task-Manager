@@ -15,11 +15,18 @@ namespace PriorityTaskManager.CLI.Handlers
     {
         private readonly ScheduleSnapshotProvider _snapshotProvider;
         private readonly ITaskMetricsService _taskMetricsService;
+        private readonly IInteractiveConsoleFacade _console;
 
         public EditHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+            : this(snapshotProvider, taskMetricsService, null)
+        {
+        }
+
+        public EditHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService, IInteractiveConsoleFacade? console)
         {
             _snapshotProvider = snapshotProvider;
             _taskMetricsService = taskMetricsService;
+            _console = console ?? new InteractiveConsoleFacade();
         }
 
         /// <inheritdoc/>
@@ -27,20 +34,20 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             if (args.Length < 1)
             {
-                Console.WriteLine("Usage: edit <DisplayID> [attribute] [value]");
+                _console.WriteLine("Usage: edit <DisplayID> [attribute] [value]");
                 return;
             }
 
             if (!int.TryParse(args[0], out int displayId))
             {
-                Console.WriteLine("Invalid ID format.");
+                _console.WriteLine("Invalid ID format.");
                 return;
             }
 
             var task = service.GetTaskByDisplayId(displayId, service.GetActiveListId());
             if (task == null)
             {
-                Console.WriteLine($"Task with Display ID {displayId} not found.");
+                _console.WriteLine($"Task with Display ID {displayId} not found.");
                 return;
             }
 
@@ -52,8 +59,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 HandleTargetedUpdate(task, attribute, directValue);
                 service.UpdateTask(task);
                 _snapshotProvider.RefreshActiveListSnapshot(out _);
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                Console.WriteLine("Task updated successfully.");
+                _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                _console.WriteLine("Task updated successfully.");
                 return;
             }
 
@@ -67,28 +74,28 @@ namespace PriorityTaskManager.CLI.Handlers
             var currentTask = task.Clone();
 
             int selectedIndex = 0;
-            Console.CursorVisible = false;
+            _console.CursorVisible = false;
 
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            Console.WriteLine($"Editing Task: {currentTask.Title} (ID: {currentTask.Id})");
-            Console.WriteLine("---------------------------------------------");
-            int selectorTop = Console.CursorTop;
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.WriteLine($"Editing Task: {currentTask.Title} (ID: {currentTask.Id})");
+            _console.WriteLine("---------------------------------------------");
+            int selectorTop = _console.CursorTop;
 
             var displayItems = BuildEditMenuItems(currentTask);
-            ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
+            _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
 
             while (true)
             {
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
 
                 // Check for Shift+Enter to immediately save
                 if (key.Key == ConsoleKey.Enter && key.Modifiers.HasFlag(ConsoleModifiers.Shift))
                 {
                     service.UpdateTask(currentTask);
-                    Console.CursorVisible = true;
+                    _console.CursorVisible = true;
                     _snapshotProvider.RefreshActiveListSnapshot(out _);
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    Console.WriteLine("\nTask updated successfully (Shift+Enter).");
+                    _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    _console.WriteLine("\nTask updated successfully (Shift+Enter).");
                     return;
                 }
 
@@ -97,40 +104,40 @@ namespace PriorityTaskManager.CLI.Handlers
                     case ConsoleKey.UpArrow:
                         var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + displayItems.Count) % displayItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousUp, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(displayItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
                         var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % displayItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousDown, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(displayItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == displayItems.Count - 2) // Save & Exit
                         {
                             service.UpdateTask(currentTask);
-                            Console.CursorVisible = true;
+                            _console.CursorVisible = true;
                             _snapshotProvider.RefreshActiveListSnapshot(out _);
-                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                            Console.WriteLine("\nTask updated successfully.");
+                            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                            _console.WriteLine("\nTask updated successfully.");
                             return;
                         }
                         if (selectedIndex == displayItems.Count - 1) // Cancel
                         {
-                            Console.CursorVisible = true;
-                            Console.WriteLine("\nEdit cancelled.");
+                            _console.CursorVisible = true;
+                            _console.WriteLine("\nEdit cancelled.");
                             return;
                         }
                         
                         // Edit selected field
-                        Console.CursorVisible = true;
-                        Console.WriteLine(); // New line for input
+                        _console.CursorVisible = true;
+                        _console.WriteLine(string.Empty); // New line for input
                         EditField(service, currentTask, selectedIndex);
-                        Console.CursorVisible = false;
+                        _console.CursorVisible = false;
                         displayItems = BuildEditMenuItems(currentTask);
-                        ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
+                        _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
-                        Console.CursorVisible = true;
+                        _console.CursorVisible = true;
                         return;
                 }
             }
@@ -202,8 +209,8 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     else
                     {
-                        Console.WriteLine("No due date set. Please set a Due Date first.");
-                        Console.ReadKey(true);
+                        _console.WriteLine("No due date set. Please set a Due Date first.");
+                        _console.ReadKey(true);
                     }
                     break;
                 case 8: // Dependencies
@@ -218,18 +225,18 @@ namespace PriorityTaskManager.CLI.Handlers
             var tempDependencies = new List<int>(task.Dependencies);
             int selectedDepIndex = 0;
 
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            Console.WriteLine($"Editing Dependencies for '{task.Title}'");
-            Console.WriteLine("-------------------------------------");
-            int selectorTop = Console.CursorTop;
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.WriteLine($"Editing Dependencies for '{task.Title}'");
+            _console.WriteLine("-------------------------------------");
+            int selectorTop = _console.CursorTop;
 
             var menuItems = BuildDependencyMenuItems(service, task, tempDependencies);
-            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedDepIndex, selectorTop);
+            _console.DrawMenuItems(menuItems, selectedDepIndex, selectorTop);
 
             while (true)
             {
                 // Check for Shift+Enter to immediately save/confirm
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
                 if (key.Key == ConsoleKey.Enter && key.Modifiers.HasFlag(ConsoleModifiers.Shift))
                 {
                     // Apply changes
@@ -243,20 +250,20 @@ namespace PriorityTaskManager.CLI.Handlers
                     case ConsoleKey.UpArrow:
                         var previousUp = selectedDepIndex;
                         selectedDepIndex = (selectedDepIndex - 1 + menuItems.Count) % menuItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousUp, selectedDepIndex, selectorTop);
+                        _console.UpdateMenuSelection(menuItems, previousUp, selectedDepIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
                         var previousDown = selectedDepIndex;
                         selectedDepIndex = (selectedDepIndex + 1) % menuItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousDown, selectedDepIndex, selectorTop);
+                        _console.UpdateMenuSelection(menuItems, previousDown, selectedDepIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         // If selecting an existing dependency (to remove)
                         if (selectedDepIndex < tempDependencies.Count)
                         {
-                            Console.WriteLine("\nRemove this dependency? (y/n)");
+                            _console.WriteLine("\nRemove this dependency? (y/n)");
                             // Simple prompt instead of full boolean helper to keep flow quick
-                            var conf = Console.ReadLine();
+                            var conf = _console.ReadLine();
                             if (!string.IsNullOrWhiteSpace(conf) && conf.ToLower().StartsWith("y"))
                             {
                                 tempDependencies.RemoveAt(selectedDepIndex);
@@ -271,27 +278,27 @@ namespace PriorityTaskManager.CLI.Handlers
                             
                             if (relativeIndex == 0) // [Add New Dependency]
                             {
-                                Console.Write("\nEnter Task ID to depend on: ");
-                                var input = Console.ReadLine();
+                                _console.Write("\nEnter Task ID to depend on: ");
+                                var input = _console.ReadLine();
                                 if (int.TryParse(input, out int newId))
                                 {
                                     if (newId == task.Id)
                                     {
-                                        Console.WriteLine("Cannot depend on self. Press key to continue.");
-                                        Console.ReadKey(true);
+                                        _console.WriteLine("Cannot depend on self. Press key to continue.");
+                                        _console.ReadKey(true);
                                     }
                                     else if (tempDependencies.Contains(newId))
                                     {
-                                        Console.WriteLine("Dependency already exists. Press key to continue.");
-                                        Console.ReadKey(true);
+                                        _console.WriteLine("Dependency already exists. Press key to continue.");
+                                        _console.ReadKey(true);
                                     }
                                     else
                                     {
                                         var exists = service.GetTaskById(newId);
                                         if (exists == null)
                                         {
-                                            Console.Write($"Warning: Task {newId} not found. Add anyway? (y/n): ");
-                                            var force = Console.ReadLine();
+                                            _console.Write($"Warning: Task {newId} not found. Add anyway? (y/n): ");
+                                            var force = _console.ReadLine();
                                             if (string.IsNullOrWhiteSpace(force) || !force.ToLower().StartsWith("y"))
                                                 continue;
                                         }
@@ -300,7 +307,7 @@ namespace PriorityTaskManager.CLI.Handlers
                                 }
 
                                 menuItems = BuildDependencyMenuItems(service, task, tempDependencies);
-                                ConsoleMenuHelper.DrawMenuItems(menuItems, selectedDepIndex, selectorTop);
+                                _console.DrawMenuItems(menuItems, selectedDepIndex, selectorTop);
                             }
                             else if (relativeIndex == 1) // [Save & Confirm]
                             {
@@ -363,10 +370,10 @@ namespace PriorityTaskManager.CLI.Handlers
                      if (double.TryParse(directValue, out double dur)) task.EstimatedDuration = TimeSpan.FromHours(dur);
                     break;
                 case "duedate":
-                    Console.WriteLine("Direct value editing for due date is not supported via CLI argument. Use interactive mode.");
+                    _console.WriteLine("Direct value editing for due date is not supported via CLI argument. Use interactive mode.");
                     break;
                 default:
-                    Console.WriteLine($"Unknown attribute: {attribute}");
+                    _console.WriteLine($"Unknown attribute: {attribute}");
                     break;
             }
         }
