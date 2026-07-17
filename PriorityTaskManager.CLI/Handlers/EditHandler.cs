@@ -123,24 +123,30 @@ namespace PriorityTaskManager.CLI.Handlers
                         }
                         if (selectedIndex == displayItems.Count - 1) // Cancel
                         {
-                            _console.CursorVisible = true;
-                            _console.WriteLine("\nEdit cancelled.");
+                            ExitInteractiveEdit("Edit cancelled.");
                             return;
                         }
                         
                         // Edit selected field
                         _console.CursorVisible = true;
-                        _console.WriteLine(string.Empty); // New line for input
-                        EditField(service, currentTask, selectedIndex);
+                        EditField(service, currentTask, selectedIndex, selectorTop);
                         _console.CursorVisible = false;
                         displayItems = BuildEditMenuItems(currentTask);
                         _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
-                        _console.CursorVisible = true;
+                        ExitInteractiveEdit("Edit cancelled.");
                         return;
                 }
             }
+        }
+
+        private void ExitInteractiveEdit(string message)
+        {
+            _console.CursorVisible = true;
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.WriteLine(message);
         }
 
         private List<string> BuildEditMenuItems(TaskItem currentTask)
@@ -155,43 +161,81 @@ namespace PriorityTaskManager.CLI.Handlers
                 $"Duration: {currentTask.EstimatedDuration.TotalHours}h",
                 $"Due Date: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("yyyy-MM-dd") : "None")}",
                 $"Due Time: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("HH:mm") : "End of Day")}",
-                $"Dependencies: [{string.Join(", ", currentTask.Dependencies)}]",
+                $"Dependencies: [{string.Join(", ", currentTask.Dependencies ?? new List<int>())}]",
                 "[Save & Exit]",
                 "[Cancel]"
             };
         }
 
-        private void EditField(TaskManagerService service, TaskItem task, int index)
+        private void EditField(TaskManagerService service, TaskItem task, int index, int selectorTop)
         {
             switch (index)
             {
                 case 0: // Title
-                    Console.Write($"New Title (current: {task.Title}): ");
-                    var title = Console.ReadLine();
-                    if (!string.IsNullOrWhiteSpace(title)) task.Title = title;
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Title: ", task.Title ?? string.Empty, out var title) &&
+                        !string.IsNullOrWhiteSpace(title))
+                    {
+                        task.Title = title.Trim();
+                    }
                     break;
                 case 1: // Description
-                    Console.Write($"New Description (current: {task.Description}): ");
-                    task.Description = Console.ReadLine() ?? task.Description;
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Description: ", task.Description ?? string.Empty, out var description))
+                    {
+                        task.Description = description;
+                    }
                     break;
                 case 2: // Importance
-                    task.Importance = ConsoleInputHelper.PromptForInt("New Importance", 1, 10, task.Importance);
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Importance (1-10): ", task.Importance.ToString(), out var importanceInput))
+                    {
+                        if (int.TryParse(importanceInput, out int importance) && importance >= 1 && importance <= 10)
+                        {
+                            task.Importance = importance;
+                        }
+                        else
+                        {
+                            _console.WriteLine("Invalid importance. Enter a whole number from 1 to 10.");
+                            _console.ReadKey(true);
+                        }
+                    }
                     break;
                 case 3: // Complexity
-                    task.Complexity = ConsoleInputHelper.PromptForInt("New Complexity", 1, 10, (int)task.Complexity);
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Complexity (1-10): ", task.Complexity.ToString("0.##"), out var complexityInput))
+                    {
+                        if (double.TryParse(complexityInput, out double complexity) && complexity >= 1 && complexity <= 10)
+                        {
+                            task.Complexity = complexity;
+                        }
+                        else
+                        {
+                            _console.WriteLine("Invalid complexity. Enter a number from 1 to 10.");
+                            _console.ReadKey(true);
+                        }
+                    }
                     break;
                 case 4: // Must Schedule
-                    task.IsPinned = ConsoleInputHelper.PromptForBool("Must Schedule Today?", task.IsPinned);
+                    task.IsPinned = !task.IsPinned;
                     break;
                 case 5: // Duration
-                    task.EstimatedDuration = ConsoleInputHelper.PromptForDuration("New Duration", task.EstimatedDuration);
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Duration (e.g. 1.5h or 90m): ", task.EstimatedDuration.TotalHours.ToString("0.##") + "h", out var durationInput))
+                    {
+                        if (TryParseDuration(durationInput, out var duration))
+                        {
+                            task.EstimatedDuration = duration;
+                        }
+                        else
+                        {
+                            _console.WriteLine("Invalid duration. Use formats like 90m, 1.5h, or 2.");
+                            _console.ReadKey(true);
+                        }
+                    }
                     break;
                 case 6: // Due Date
-                    Console.WriteLine("Adjust Due Date:");
+                    PrepareForDateTimeInput(task, "Due Date");
+                    _console.WriteLine("Adjust Due Date:");
                     var newDate = ConsoleInputHelper.InteractiveDateInput(task.DueDate);
                     if (newDate.HasValue)
                     {
-                        // Preserve time if date was already set, otherwise default to end of day
+                        // Preserve time if date was already set, otherwise default to end of day.
                         var timePart = task.DueDate.HasValue ? task.DueDate.Value.TimeOfDay : new TimeSpan(23, 59, 59);
                         task.DueDate = newDate.Value.Date + timePart;
                     }
@@ -201,11 +245,12 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     break;
                 case 7: // Due Time
-                    Console.WriteLine("Adjust Due Time:");
+                    PrepareForDateTimeInput(task, "Due Time");
+                    _console.WriteLine("Adjust Due Time:");
                     if (task.DueDate.HasValue)
                     {
-                         var newTime = ConsoleInputHelper.InteractiveTimeInput(task.DueDate.Value);
-                         task.DueDate = task.DueDate.Value.Date + newTime.TimeOfDay;
+                        var newTime = ConsoleInputHelper.InteractiveTimeInput(task.DueDate.Value);
+                        task.DueDate = task.DueDate.Value.Date + newTime.TimeOfDay;
                     }
                     else
                     {
@@ -217,6 +262,56 @@ namespace PriorityTaskManager.CLI.Handlers
                     RunDependencyEditor(service, task);
                     break;
             }
+        }
+
+        private void PrepareForDateTimeInput(TaskItem task, string fieldLabel)
+        {
+            _snapshotProvider.RefreshActiveListSnapshot(out _);
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.WriteLine($"Editing Task: {task.Title} (ID: {task.Id})");
+            _console.WriteLine($"Field: {fieldLabel}");
+            _console.WriteLine("---------------------------------------------");
+        }
+
+        private static bool TryParseDuration(string input, out TimeSpan duration)
+        {
+            duration = TimeSpan.Zero;
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return false;
+            }
+
+            var normalized = input.Trim().ToLowerInvariant();
+            if (normalized.EndsWith("m"))
+            {
+                if (double.TryParse(normalized.TrimEnd('m'), out var minutes) && minutes > 0)
+                {
+                    duration = TimeSpan.FromMinutes(minutes);
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (normalized.EndsWith("h"))
+            {
+                if (double.TryParse(normalized.TrimEnd('h'), out var hoursWithSuffix) && hoursWithSuffix > 0)
+                {
+                    duration = TimeSpan.FromHours(hoursWithSuffix);
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (double.TryParse(normalized, out var hours) && hours > 0)
+            {
+                duration = TimeSpan.FromHours(hours);
+                return true;
+            }
+
+            return false;
         }
 
         private void RunDependencyEditor(TaskManagerService service, TaskItem task)
