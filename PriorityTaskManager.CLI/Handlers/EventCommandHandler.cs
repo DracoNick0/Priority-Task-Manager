@@ -12,11 +12,18 @@ namespace PriorityTaskManager.CLI.Handlers
     {
         private readonly ScheduleSnapshotProvider _snapshotProvider;
         private readonly ITaskMetricsService _taskMetricsService;
+        private readonly IInteractiveConsoleFacade _console;
 
         public EventCommandHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+            : this(snapshotProvider, taskMetricsService, null)
+        {
+        }
+
+        public EventCommandHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService, IInteractiveConsoleFacade? console)
         {
             _snapshotProvider = snapshotProvider;
             _taskMetricsService = taskMetricsService;
+            _console = console ?? new InteractiveConsoleFacade();
         }
 
         public void Execute(TaskManagerService service, string[] args)
@@ -49,7 +56,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     HandleClearEvents(service);
                     break;
                 default:
-                    Console.WriteLine("Unknown command. Usage: event <add|list|edit|delete|clear>");
+                    _console.WriteLine("Unknown command. Usage: event <add|list|edit|delete|clear>");
                     break;
             }
         }
@@ -65,12 +72,12 @@ namespace PriorityTaskManager.CLI.Handlers
             }
             else
             {
-                Console.WriteLine("Adding a new event (press Esc to cancel).");
-                Console.Write("Event Name: ");
-                string? input = Console.ReadLine();
+                _console.WriteLine("Adding a new event (press Esc to cancel).");
+                _console.Write("Event Name: ");
+                string? input = _console.ReadLine();
                 if (string.IsNullOrWhiteSpace(input))
                 {
-                    Console.WriteLine("Event creation cancelled.");
+                    _console.WriteLine("Event creation cancelled.");
                     return;
                 }
                 name = input!;
@@ -79,20 +86,20 @@ namespace PriorityTaskManager.CLI.Handlers
             DateTime? startTime = ConsoleInputHelper.GetDateTimeFromUser("Set event start time (Enter to confirm, Esc to cancel):", DateTime.Now);
             if (startTime == null)
             {
-                Console.WriteLine("Event creation cancelled.");
+                _console.WriteLine("Event creation cancelled.");
                 return;
             }
 
             DateTime? endTime = ConsoleInputHelper.GetDateTimeFromUser("Set event end time (Enter to confirm, Esc to cancel):", startTime.Value.AddHours(1));
             if (endTime == null)
             {
-                Console.WriteLine("Event creation cancelled.");
+                _console.WriteLine("Event creation cancelled.");
                 return;
             }
 
             if (endTime < startTime)
             {
-                Console.WriteLine("Warning: End time is before start time. Swapping times.");
+                _console.WriteLine("Warning: End time is before start time. Swapping times.");
                 (startTime, endTime) = (endTime, startTime);
             }
 
@@ -105,8 +112,8 @@ namespace PriorityTaskManager.CLI.Handlers
 
             service.AddEvent(newEvent);
             _snapshotProvider.RefreshActiveListSnapshot(out _);
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            Console.WriteLine($"Event '{name}' added successfully.");
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.WriteLine($"Event '{name}' added successfully.");
         }
 
         private void HandleListEvents(TaskManagerService service)
@@ -114,17 +121,17 @@ namespace PriorityTaskManager.CLI.Handlers
             var events = service.GetAllEvents().OrderBy(e => e.StartTime).ToList();
             if (!events.Any())
             {
-                Console.WriteLine("No scheduled events found.");
+                _console.WriteLine("No scheduled events found.");
                 return;
             }
 
-            Console.WriteLine($"{"ID",-5} {"Time",-35} {"Event",-40}");
-            Console.WriteLine(new string('-', 80));
+            _console.WriteLine($"{"ID",-5} {"Time",-35} {"Event",-40}");
+            _console.WriteLine(new string('-', 80));
 
             foreach (var ev in events)
             {
                 string timeString = $"{ev.StartTime:g} - {ev.EndTime:t}";
-                Console.WriteLine($"{ev.Id,-5} {timeString,-35} {ev.Name,-40}");
+                _console.WriteLine($"{ev.Id,-5} {timeString,-35} {ev.Name,-40}");
             }
         }
 
@@ -132,39 +139,39 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             if (args.Length == 0 || !int.TryParse(args[0], out int id))
             {
-                Console.WriteLine("Usage: event edit <ID>");
+                _console.WriteLine("Usage: event edit <ID>");
                 return;
             }
 
             var existingEvent = service.GetEvent(id);
             if (existingEvent == null)
             {
-                Console.WriteLine($"Error: Event with ID {id} not found.");
+                _console.WriteLine($"Error: Event with ID {id} not found.");
                 return;
             }
 
             // Interactive Menu Loop
             int selectedIndex = 0;
-            Console.CursorVisible = false;
+            _console.CursorVisible = false;
 
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            Console.WriteLine($"Editing event: {existingEvent.Name}");
-            int selectorTop = Console.CursorTop;
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.WriteLine($"Editing event: {existingEvent.Name}");
+            int selectorTop = _console.CursorTop;
 
             var displayItems = BuildEventMenuItems(existingEvent);
-            ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
+            _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
 
             while (true)
             {
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
 
                 if (key.Key == ConsoleKey.Enter && (key.Modifiers & ConsoleModifiers.Shift) != 0)
                 {
                     service.UpdateEvent(existingEvent);
-                    Console.CursorVisible = true;
+                    _console.CursorVisible = true;
                     _snapshotProvider.RefreshActiveListSnapshot(out _);
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    Console.WriteLine("\nEvent updated successfully.");
+                    _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    _console.WriteLine("\nEvent updated successfully.");
                     return;
                 }
 
@@ -173,36 +180,36 @@ namespace PriorityTaskManager.CLI.Handlers
                     case ConsoleKey.UpArrow:
                         var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + displayItems.Count) % displayItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousUp, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(displayItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
                         var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % displayItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(displayItems, previousDown, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(displayItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == displayItems.Count - 2) // Save & Exit
                         {
                             service.UpdateEvent(existingEvent);
-                            Console.CursorVisible = true;
+                            _console.CursorVisible = true;
                             _snapshotProvider.RefreshActiveListSnapshot(out _);
-                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                            Console.WriteLine("\nEvent updated successfully.");
+                            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                            _console.WriteLine("\nEvent updated successfully.");
                             return;
                         }
                         if (selectedIndex == displayItems.Count - 1) // Cancel
                         {
-                            Console.CursorVisible = true;
-                            Console.WriteLine("\nEdit cancelled.");
+                            _console.CursorVisible = true;
+                            _console.WriteLine("\nEdit cancelled.");
                             return;
                         }
 
                         // Handle property edits
-                        Console.CursorVisible = true;
+                        _console.CursorVisible = true;
                         if (selectedIndex == 0) // Name
                         {
-                             Console.Write($"\nNew Name ({existingEvent.Name}): ");
-                             string? input = Console.ReadLine();
+                             _console.Write($"\nNew Name ({existingEvent.Name}): ");
+                             string? input = _console.ReadLine();
                              if (!string.IsNullOrWhiteSpace(input)) existingEvent.Name = input;
                         }
                         else if (selectedIndex == 1) // Start Time (Smart Shift)
@@ -224,9 +231,9 @@ namespace PriorityTaskManager.CLI.Handlers
                             {
                                 if (newEnd.Value < existingEvent.StartTime)
                                 {
-                                    Console.WriteLine("Warning: End time cannot be before start time.");
-                                    Console.WriteLine("Press any key to continue...");
-                                    Console.ReadKey(true);
+                                    _console.WriteLine("Warning: End time cannot be before start time.");
+                                    _console.WriteLine("Press any key to continue...");
+                                    _console.ReadKey(true);
                                 }
                                 else
                                 {
@@ -235,12 +242,12 @@ namespace PriorityTaskManager.CLI.Handlers
                             }
                         }
                         displayItems = BuildEventMenuItems(existingEvent);
-                        ConsoleMenuHelper.DrawMenuItems(displayItems, selectedIndex, selectorTop);
-                        Console.CursorVisible = false;
+                        _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
+                        _console.CursorVisible = false;
                         break;
                     case ConsoleKey.Escape:
-                        Console.CursorVisible = true;
-                        Console.WriteLine("\nEdit cancelled.");
+                        _console.CursorVisible = true;
+                        _console.WriteLine("\nEdit cancelled.");
                         return;
                 }
             }
@@ -261,11 +268,11 @@ namespace PriorityTaskManager.CLI.Handlers
         private void HandleRemoveEvent(TaskManagerService service, string[] args)
         {
             _snapshotProvider.RefreshActiveListSnapshot(out _);
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
 
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: event delete <ID> or <ID1,ID2,...>");
+                _console.WriteLine("Usage: event delete <ID> or <ID1,ID2,...>");
                 return;
             }
 
@@ -281,42 +288,42 @@ namespace PriorityTaskManager.CLI.Handlers
                 {
                     if (service.DeleteEvent(id))
                     {
-                        Console.WriteLine($"Event {id} deleted.");
+                        _console.WriteLine($"Event {id} deleted.");
                         successCount++;
                     }
                     else
                     {
-                        Console.WriteLine($"Event {id} not found.");
+                        _console.WriteLine($"Event {id} not found.");
                         failCount++;
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Invalid ID format: '{idStr}'");
+                    _console.WriteLine($"Invalid ID format: '{idStr}'");
                     failCount++;
                 }
             }
 
             if (idStrings.Length > 1) 
             {
-                Console.WriteLine($"Finished: {successCount} deleted, {failCount} failed.");
+                _console.WriteLine($"Finished: {successCount} deleted, {failCount} failed.");
             }
         }
 
         private void HandleClearEvents(TaskManagerService service)
         {
             _snapshotProvider.RefreshActiveListSnapshot(out _);
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
             
-            Console.Write("Are you sure you want to delete ALL events? (y/n): ");
-            if (Console.ReadLine()?.Trim().ToLower() == "y")
+            _console.Write("Are you sure you want to delete ALL events? (y/n): ");
+            if (_console.ReadLine()?.Trim().ToLower() == "y")
             {
                 service.ClearEvents();
-                Console.WriteLine("All events cleared.");
+                _console.WriteLine("All events cleared.");
             }
             else
             {
-                Console.WriteLine("Operation cancelled.");
+                _console.WriteLine("Operation cancelled.");
             }
         }
     }

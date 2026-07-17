@@ -29,7 +29,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - `DeleteHandler` and `CompleteHandler` are currently migrated to the result-based path.
 - Shared parsing/usage-result behavior for migrated non-interactive handlers is centralized via `NonInteractiveCommandResultHelper`.
 - Shared interactive console behavior for keyboard-driven handlers is abstracted through `IInteractiveConsoleFacade`.
-- `HelpHandler`, `EditHandler`, and interactive `list settings` flow currently use the interactive console facade seam.
+- `HelpHandler`, `EditHandler`, interactive `list settings` flow, and `event edit`/`event clear` interactive paths currently use the interactive console facade seam.
 - `EditHandler` interactive field updates now use row-anchored editing/toggling for strings, numeric values, duration, and booleans; due date/time use `ConsoleInputHelper` interactive pickers, with dashboard clear/rerender before picker launch and on edit-exit.
 
 ## Known Limitations

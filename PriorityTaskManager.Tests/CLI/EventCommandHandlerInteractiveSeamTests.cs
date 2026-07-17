@@ -7,34 +7,54 @@ using PriorityTaskManager.Tests.Infrastructure;
 
 namespace PriorityTaskManager.Tests.CLI
 {
-    public class EditHandlerInteractiveSeamTests
+    public class EventCommandHandlerInteractiveSeamTests
     {
         [Fact]
-        public void Execute_InteractiveMode_WhenEscapePressed_ShouldExitWithoutMutatingTask()
+        public void Execute_EditInteractive_WhenEscapePressed_ShouldExitWithoutMutatingEvent()
         {
             var (service, metrics, snapshotProvider) = CreateContext();
-            var task = new TaskItem
+            var existingEvent = new Event
             {
-                Title = "Original title",
-                ListId = service.GetActiveListId(),
-                Importance = 5,
-                Complexity = 5,
-                EstimatedDuration = TimeSpan.FromHours(1)
+                Name = "Planning",
+                StartTime = new DateTime(2026, 7, 8, 10, 0, 0),
+                EndTime = new DateTime(2026, 7, 8, 11, 0, 0)
             };
-            service.AddTask(task);
+            service.AddEvent(existingEvent);
+            var eventId = service.GetAllEvents().First().Id;
             var fakeConsole = new FakeInteractiveConsoleFacade(new[]
             {
                 new ConsoleKeyInfo('\u001b', ConsoleKey.Escape, false, false, false)
             });
-            var handler = new EditHandler(snapshotProvider, metrics, fakeConsole);
+            var handler = new EventCommandHandler(snapshotProvider, metrics, fakeConsole);
 
-            handler.Execute(service, new[] { task.DisplayId.ToString() });
+            handler.Execute(service, new[] { "edit", eventId.ToString() });
 
-            var updated = service.GetTaskById(task.Id);
+            var updated = service.GetEvent(eventId);
             Assert.NotNull(updated);
-            Assert.Equal("Original title", updated.Title);
-            Assert.True(fakeConsole.CursorVisible);
-            Assert.True(fakeConsole.DashboardRenderCount >= 1);
+            Assert.Equal("Planning", updated.Name);
+            Assert.Contains(fakeConsole.Lines, line => line.Contains("Edit cancelled."));
+        }
+
+        [Fact]
+        public void Execute_ClearInteractive_WhenDeclined_ShouldKeepEvents()
+        {
+            var (service, metrics, snapshotProvider) = CreateContext();
+            service.AddEvent(new Event
+            {
+                Name = "Blocker",
+                StartTime = new DateTime(2026, 7, 8, 12, 0, 0),
+                EndTime = new DateTime(2026, 7, 8, 13, 0, 0)
+            });
+            var fakeConsole = new FakeInteractiveConsoleFacade(Array.Empty<ConsoleKeyInfo>())
+            {
+                InputLine = "n"
+            };
+            var handler = new EventCommandHandler(snapshotProvider, metrics, fakeConsole);
+
+            handler.Execute(service, new[] { "clear" });
+
+            Assert.Single(service.GetAllEvents());
+            Assert.Contains(fakeConsole.Lines, line => line.Contains("Operation cancelled."));
         }
 
         private static (TaskManagerService Service, TaskMetricsService Metrics, ScheduleSnapshotProvider SnapshotProvider) CreateContext()
@@ -66,6 +86,10 @@ namespace PriorityTaskManager.Tests.CLI
 
             public int DashboardRenderCount { get; private set; }
 
+            public List<string> Lines { get; } = new();
+
+            public string? InputLine { get; set; }
+
             public ConsoleKeyInfo ReadKey(bool intercept)
             {
                 if (_keys.Count == 0)
@@ -78,15 +102,17 @@ namespace PriorityTaskManager.Tests.CLI
 
             public string? ReadLine()
             {
-                return null;
+                return InputLine;
             }
 
             public void Write(string text)
             {
+                Lines.Add(text);
             }
 
             public void WriteLine(string text)
             {
+                Lines.Add(text);
             }
 
             public void ClearAndRenderDashboard(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
