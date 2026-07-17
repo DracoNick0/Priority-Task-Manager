@@ -43,6 +43,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, and Gold Panning invariant/replay coverage are now in place, while deep interactive CLI flows and dependency-order enforcement coverage remain pending.
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
 - CLI command execution currently uses dual-contract dispatch in `Program.cs` and includes compatibility bridges for partially migrated handlers.
+- Most interactive handlers still call console APIs directly and remain pending interactive I/O seam adoption.
 
 ## Command Surface Summary
 

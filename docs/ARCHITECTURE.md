@@ -58,6 +58,7 @@ The CLI currently supports two handler execution contracts:
 For result-based handlers, `Program.cs` owns post-command dashboard refresh and message rendering based on the returned result flags.
 
 Shared non-interactive parsing/message logic for result-based command handlers is centralized in `PriorityTaskManager.CLI/Utils/NonInteractiveCommandResultHelper.cs`.
+Interactive command console operations are abstracted through `PriorityTaskManager.CLI/Utils/IInteractiveConsoleFacade.cs` with a default `InteractiveConsoleFacade` implementation.
 
 ## Data Model Overview
 

@@ -47,6 +47,9 @@ This is the most complex area of the application. We avoid brittle unit tests th
     -   Add focused tests for shared helper behavior (`NonInteractiveCommandResultHelper`) to cover mixed valid/invalid/not-found ID parsing and usage-message construction once and reuse across handlers.
 -   For legacy handlers not yet migrated:
     -   Continue command-surface tests through `Execute(...)` to protect behavior during migration.
+-   For interactive handlers with an input/output seam (for example, `HelpHandler`):
+    -   Drive key input through the seam abstraction instead of real console buffers.
+    -   Assert navigation behavior, exit behavior, and emitted help content without relying on `Console.Clear` or cursor APIs.
 
 ### 4. CLI Orchestration and Rendering Policy
 
