@@ -1,17 +1,50 @@
 # Project TODO List
 
-> **Note:** This file is the backlog and roadmap for upcoming work. It should only contain planned work, not current-state reporting. Tasks are listed in priority order.
+> **Note:** This file is the source of truth for the backlog, roadmap, and currently in-progress work. Keep current-state feature reality in `docs/STATUS.md`; use this file for concise handoff details, blockers, dependencies, and next steps. Tasks are listed in priority order.
 
 ## (B) 1/5 Testing Overhaul and Scheduling Invariants
 
-- Overhaul test coverage according to docs/TESTING_STRATEGY.md:
-  - Rebuild deterministic tests for core service behavior.
-  - Rebuild CLI handler tests against the current command surface.
-  - Migrate remaining non-interactive handlers to Program-owned CommandResult orchestration.
-  - Expand interactive console seam adoption from HelpHandler/EditHandler/list settings flow/event interactive paths to remaining interactive handlers.
-  - Complete the Required CLI Migration Consolidation checklist below before marking handler migration complete.
-  - Add scheduling invariants and characterization tests.
-  - Add deterministic replay tests for identical inputs.
+Status: In progress.
+
+Completed:
+
+- Deterministic core-service coverage is in place for current service behavior.
+- First-pass CLI handler command-surface coverage exists for current handlers.
+- `DeleteHandler` and `CompleteHandler` use the result-based command path.
+- Shared parsing and usage behavior for migrated non-interactive handlers is centralized in `NonInteractiveCommandResultHelper`.
+- Interactive console seam coverage exists for HelpHandler, EditHandler, list settings, and selected event interactive paths.
+- Gold Panning invariant coverage and deterministic replay coverage exist.
+
+Remaining:
+
+- Fix CLI handler tests that still depend on real console clearing or cursor behavior.
+- Validate active Gold Panning dependency-order behavior before broad scheduling characterization baselines are accepted.
+- Migrate remaining non-interactive handlers to Program-owned `CommandResult` orchestration.
+- Expand interactive console seam adoption to remaining interactive handlers.
+- Add dependency-order scheduling invariants and characterization tests.
+- Complete the migration consolidation checklist below.
+
+Blockers / Dependencies:
+
+- The test suite must be green before this work can be considered complete.
+- CLI migration consolidation depends on every handler using one canonical command contract.
+- Dependency-order invariant tests may expose real scheduler defects; keep correct failing tests as isolated red tests while fixing the implementation instead of weakening expected behavior.
+
+Scheduler validation policy:
+
+- Write invariant tests from documented scheduling rules, not from current accidental output.
+- Separate failures into implementation defects, incorrect test expectations, and unclear requirements.
+- Do not use characterization baselines to bless behavior that violates hard invariants.
+
+Next steps:
+
+1. Make CLI command-surface tests console-handle safe by moving remaining direct console rendering behind an injectable seam or no-op test path.
+2. Add a focused scheduler validation slice for dependency-order invariants using minimal deterministic tasks.
+3. Classify any scheduler test failure as implementation defect, incorrect/outdated expectation, or unclear requirement before broadening coverage.
+4. Convert the next non-interactive legacy handler to `CommandResult` and add result-path assertions.
+5. Repeat handler migration until `Program.cs` no longer needs runtime multi-contract branching.
+6. Re-baseline final command orchestration tests and remove compatibility-only assertions.
+7. Add broader scheduling characterization coverage only after hard invariants are protected.
 
 ### Required CLI Migration Consolidation (Do Not Skip)
 
@@ -24,6 +57,8 @@
 - Update docs to remove migration-only wording and document final-state command orchestration behavior.
 
 ## (B) 2/5 CI Quality Gates
+
+Status: Not started.
 
 Prerequisite:
 
@@ -38,6 +73,8 @@ Implementation targets:
 
 ## (B) 3/5 Constraint Solver MVP (Narrow Scope)
 
+Status: Blocked.
+
 Prerequisite:
 
 - Complete (B) 1/5 and (B) 2/5.
@@ -51,6 +88,8 @@ Implementation targets:
 
 ## (B) 4/5 Benchmark Scenarios and Strategy Comparison
 
+Status: Blocked.
+
 Prerequisite:
 
 - Complete (B) 3/5.
@@ -62,6 +101,8 @@ Implementation targets:
 - Publish benchmark results in documentation for repeatable comparison over time.
 
 ## (B) 5/5 Release and Demo Polish
+
+Status: Blocked.
 
 Prerequisite:
 
@@ -75,6 +116,8 @@ Implementation targets:
 
 ## Platform and Interface Expansion
 
+Status: Not started.
+
 - Add a service/API layer to support additional front ends.
 - Explore cross-platform clients (mobile and desktop) after API stabilization.
 - Add LLM-assisted intake for external planning sources (documents, GitHub projects/repos, todo lists, Canvas content).
@@ -83,6 +126,8 @@ Implementation targets:
 - Add provider abstraction and guardrails (rate limits, retries, validation, and source/decision traceability) for LLM-backed generation.
 
 ## (A) 1/2 Scheduling Improvements (Gold Panning First)
+
+Status: Not started.
 
 - Implement slack-aware urgency to reduce high-importance last-minute placement.
 - Improve focus-window sequencing so high-complexity tasks align with high-focus periods.
@@ -95,6 +140,8 @@ Candidate anti-starvation approaches:
 - Opportunistic fill (prefer backlog tasks on underloaded days).
 
 ## (A) 2/2 Constraint Solver Full Implementation Path (Post-MVP)
+
+Status: Blocked.
 
 Prerequisite:
 
@@ -115,11 +162,32 @@ Implementation targets:
 
 ## Event System and Scheduling UX
 
+Status: In progress.
+
+Completed:
+
+- Event add, edit, list, delete, and clear command paths exist.
+- Selected event interactive paths use the interactive console facade seam.
+
+Remaining:
+
 - Improve event command UX and schedule-view integration.
 - Keep past events retained but hidden from the default schedule view.
-- Add an event history command such as event all for full event visibility.
+- Add an event history command such as `event all` for full event visibility.
+
+Blockers / Dependencies:
+
+- Console-seam cleanup from `(B) 1/5` should happen first for testable event command changes.
+
+Next steps:
+
+1. Finish console-seam coverage for event command paths used by tests.
+2. Define default schedule visibility for past events.
+3. Add the event history command and focused command-surface tests.
 
 ## User-Controlled Scheduling Enhancements
+
+Status: Not started.
 
 - Support dynamic per-day work hours and recalculate average daily capacity.
 - Allow users to provide current energy level as a scheduling input.
@@ -127,6 +195,8 @@ Implementation targets:
 - Add load warnings when daily complexity exceeds configured thresholds.
 
 ## Parking Lot
+
+Status: Not started.
 
 - Add optional scheduling attributes:
   - Earliest start date.

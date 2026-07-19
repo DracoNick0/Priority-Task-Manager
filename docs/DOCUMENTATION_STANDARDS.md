@@ -25,7 +25,7 @@ This document defines documentation structure, ownership, style, verification, a
 | Current behavior and maturity | docs/STATUS.md | Current state only |
 | Contributor process | docs/WORKFLOW.md | Process and workflow only |
 | Testing strategy | docs/TESTING_STRATEGY.md | Test philosophy and approach |
-| Backlog and roadmap | docs/TODO.md | Planned work only |
+| Backlog, roadmap, and active work | docs/TODO.md | Planned work and concise in-progress work summaries |
 | Gold Panning strategy details | docs/GOLD_PANNING.md | Algorithm-specific details |
 | Constraint Solver spec | docs/CONSTRAINT_SOLVER.md | Specification and intended contract |
 | Complexity scale semantics | docs/COMPLEXITY_GUIDE.md | Stable scoring reference |
@@ -80,11 +80,33 @@ Must not include:
 - Design debate notes
 - Changelog narrative
 
+### TODO
+Required conventions:
+- Keep tasks in priority order.
+- Use TODO as the source of truth for the backlog and currently in-progress work.
+- Keep current-state feature reality in docs/STATUS.md and link or summarize only when needed.
+- For not-started future work, use short prerequisite and implementation-target bullets.
+- For in-progress work, use the compact format below.
+
+In-progress task format:
+- Status: one line using `In progress`, `Blocked`, `Not started`, `Completed`, or `Unclear`.
+- Completed: only durable outcomes already present in the project.
+- Remaining: the smallest useful list of unfinished work.
+- Blockers / Dependencies: only items that affect sequencing or handoff.
+- Next steps: ordered, actionable steps for the next developer.
+
+Must not include:
+- Long investigation notes
+- Full test output or command logs
+- Detailed implementation design owned by architecture or strategy documents
+- Completed historical narrative beyond what is needed for handoff
+
 ## Writing Style and Formatting Rules
 - Use clear, concrete language and short paragraphs.
 - Keep section heading order stable once established.
 - Prefer tables for lists of commands, statuses, mappings, and ownership.
 - Use explicit labels: Current State, Planned Work, Assumption, Invariant.
+- Use explicit TODO labels for active work: Status, Completed, Remaining, Blockers / Dependencies, Next steps.
 - Avoid unexplained acronyms and overloaded terms.
 
 ## Verification Requirements
@@ -99,13 +121,14 @@ Update docs whenever any of the following changes occur:
 - Architecture boundaries or component responsibilities change
 - Scheduling strategy behavior changes
 - Status of a feature changes from broken, partial, in progress, or working
+- Backlog priority, active-work status, blockers, or next steps change
 - Testing approach or quality gates change
 - Terminology changes or a new key concept is introduced
 
 ## Anti-Duplication Rules
 - Do not copy full sections between documents.
 - Link to canonical owner documents instead of restating details.
-- Keep backlog content only in docs/TODO.md.
+- Keep backlog and active-work handoff content only in docs/TODO.md.
 - Keep current-state truth only in docs/STATUS.md.
 - Keep architecture contracts only in docs/ARCHITECTURE.md.
 
