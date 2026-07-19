@@ -48,7 +48,7 @@ dotnet run
 Use these docs as the canonical references:
 
 - [docs/STATUS.md](docs/STATUS.md): current capabilities, limitations, known issues, and command surface.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system design, boundaries, data flow, and scheduling architecture.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture map, shared boundaries, and links to focused architecture documents.
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): contribution workflow and day-to-day development process.
 - [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md): test philosophy and quality approach.
 - [docs/TODO.md](docs/TODO.md): backlog and planned work.

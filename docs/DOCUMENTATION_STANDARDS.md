@@ -21,7 +21,12 @@ This document defines documentation structure, ownership, style, verification, a
 | Topic | Canonical Document | Notes |
 | --- | --- | --- |
 | Project entry and navigation | README.md | High-level orientation only |
-| System design and boundaries | docs/ARCHITECTURE.md | Stable architecture concepts |
+| Architecture map and shared boundaries | docs/ARCHITECTURE.md | Entry point for architecture reading paths |
+| CLI architecture | docs/ARCHITECTURE_CLI.md | Command handling, console interaction, and rendering boundaries |
+| Core business logic architecture | docs/ARCHITECTURE_CORE.md | Core services and business-rule placement |
+| Data and persistence architecture | docs/ARCHITECTURE_DATA.md | Models, JSON persistence, IDs, and list-scoped settings |
+| Scheduling architecture | docs/ARCHITECTURE_SCHEDULING.md | Strategy selection, scheduling stages, and scheduler invariants |
+| Integrations architecture | docs/ARCHITECTURE_INTEGRATIONS.md | Future API, provider, intake, and front-end boundaries |
 | Current behavior and maturity | docs/STATUS.md | Current state only |
 | Contributor process | docs/WORKFLOW.md | Process and workflow only |
 | Testing strategy | docs/TESTING_STRATEGY.md | Test philosophy and approach |
@@ -51,19 +56,30 @@ Must not include:
 ### Architecture
 Required sections:
 - Architecture Overview
+- Focused Architecture Documents
 - System Boundaries
-- Core Components
-- Data Model Overview
-- Data Flow
-- Scheduling Strategy Architecture
-- Extension Points
-- Architectural Invariants Summary with link
+- Runtime Data Flow
+- Architectural Invariants
+- Related Specifications
 - Terminology links
 
 Must not include:
 - Roadmap items
 - Feature matrix
 - Full command reference
+
+### Focused Architecture Documents
+Required sections:
+- Responsibilities
+- Key entry points, services, models, or boundaries for the area
+- Important dependencies and relationships with other areas
+- Implementation guidance for where responsibilities should be added
+- Invariants or constraints
+
+Must not include:
+- Current status reporting owned by docs/STATUS.md
+- Backlog or active-work handoff owned by docs/TODO.md
+- Exhaustive method-level reference details
 
 ### Status
 Required sections:
@@ -130,7 +146,7 @@ Update docs whenever any of the following changes occur:
 - Link to canonical owner documents instead of restating details.
 - Keep backlog and active-work handoff content only in docs/TODO.md.
 - Keep current-state truth only in docs/STATUS.md.
-- Keep architecture contracts only in docs/ARCHITECTURE.md.
+- Keep shared architecture routing in docs/ARCHITECTURE.md and focused architecture contracts in the matching docs/ARCHITECTURE_*.md file.
 
 ## Common Mistakes and How to Avoid Them
 - Mixing roadmap plans into status:
