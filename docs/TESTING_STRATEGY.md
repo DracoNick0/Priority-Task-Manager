@@ -29,10 +29,18 @@ Because this application blends deterministic CRUD operations with complex, evol
 
 This is the most complex area of the application. We avoid brittle unit tests that assert exact schedules, as the objective functions are constantly being tuned.
 
--   **Invariant Rules (Property-Based Testing)**: 
+-   **Invariant Rules (Property-Based Testing)**:
     -   *Dependency Chain*: A dependent task is never scheduled before its prerequisites.
     -   *Time Bounds*: Total scheduled time in a day never exceeds the user's defined `ScheduleWindow` limits (unless authorized by specific Overtime flags).
     -   *Task Dropping*: `MustSchedule` tasks are prioritized and never placed in the unscheduled bucket unless totally unfeasible.
+    -   *No Overlapping Tasks*: Tasks must not be scheduled in the same time slot.
+    -   *Task Duration Adherence*: Scheduled time blocks must meet or exceed task duration estimates.
+    -   *Respect `NotBefore` and `DueDate`*: Tasks must be scheduled after their `NotBefore` date and before their `DueDate`.
+    -   *Idempotency*: The scheduler must produce an identical schedule given identical inputs.
+    -   *State Immutability*: The scheduler must not modify the original properties of input tasks.
+    -   *Task Splitting Logic*: If a task is split, chunk durations must sum to the original estimate, and all chunks must still respect dependency and `NotBefore`/`DueDate` constraints.
+    -   *Completed Task Exclusion*: Already-completed tasks must never be scheduled.
+    -   *Event Blocking*: Time for events must be reserved, and tasks scheduled around them.
 -   **Snapshot / Characterization Tests**:
     -   For stable algorithm outputs, we save the generated schedule against a complex benchmark dataset. Future refactors test against these text-based snapshots to catch unintended regressions in scheduling shape.
 -   **Stage Pipeline Context**:

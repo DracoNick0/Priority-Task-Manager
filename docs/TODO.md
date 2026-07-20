@@ -8,29 +8,27 @@ Status: In progress.
 
 Completed:
 
-- Deterministic core-service coverage is in place for current service behavior.
-- First-pass CLI handler command-surface coverage exists for current handlers.
-- `DeleteHandler` and `CompleteHandler` use the result-based command path.
-- Shared parsing and usage behavior for migrated non-interactive handlers is centralized in `NonInteractiveCommandResultHelper`.
-- Interactive console seam coverage exists for HelpHandler, EditHandler, list settings, and selected event interactive paths.
-- Gold Panning invariant coverage and deterministic replay coverage exist.
-- CLI handler command-surface tests no longer fail on real console clearing; `ConsoleHelper.ClearAndRenderDashboard` now tolerates environments with no attached console handle (e.g. the test host). The full test suite passes.
-- `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` are migrated to Program-owned `CommandResult` orchestration, each with result-path test coverage.
-- `AddHandler` gained a flag-driven non-interactive path (`add <Title> [--importance] [--complexity] [--pinned|--not-pinned] [--duration] [--due]`) so task creation can be scripted/tested without the cursor-based due-date picker; the argument-free interactive flow is unchanged.
-- `HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`, and the unwired `EventHandler` implement `ICommandResultHandler` as thin wrappers only (unchanged interactive logic, inert result); they are not part of the Program-owned refresh/message path because they already own console rendering via `IInteractiveConsoleFacade`.
+- CLI handler migration to the `CommandResult`/thin-wrapper pattern is functionally complete for every handler currently wired in `Program.cs` (full `ExecuteWithResult` conversion or an explicit thin wrapper where a handler stays facade-owned). See `docs/STATUS.md` for the per-handler breakdown.
 
 Remaining:
 
-- Validate active Gold Panning dependency-order behavior before broad scheduling characterization baselines are accepted.
-- The interactive branches of `SettingsHandler`, plus `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler`, remain on facade-owned rendering; do not collapse their interactive/menu-driven console output into `CommandResult.Message` — `IInteractiveConsoleFacade` is reserved for genuinely interactive (menu/key-input) flows and should not be bypassed for them.
+- Execute the migration consolidation checklist below now that every wired handler implements `ICommandResultHandler` (see Blockers / Dependencies).
 - Expand interactive console seam adoption to remaining interactive handlers.
-- Add dependency-order scheduling invariants and characterization tests.
-- Complete the migration consolidation checklist below.
+- Audit and refactor existing Gold Panning tests (`PriorityTaskManager.Tests/Scheduling/GoldPanning`):
+  - Revise brittle tests that assert exact, hard-coded schedules.
+  - Convert them into the invariant tests defined in `docs/TESTING_STRATEGY.md` (Scheduling Algorithms), or into snapshot/characterization tests.
+  - Ensure tests for individual pipeline stages include checks for stage-specific invariants (e.g., `DailySequencingStage` correctly orders tasks by priority).
+  - Validate active Gold Panning dependency-order behavior specifically before broader scheduling characterization baselines are accepted.
+- Implement the scheduling invariant tests from `docs/TESTING_STRATEGY.md` (Scheduling Algorithms): Dependency Chain, Time Bounds, Task Dropping, No Overlapping Tasks, Task Duration Adherence, Respect `NotBefore`/`DueDate`, Idempotency, State Immutability, Task Splitting Logic, Completed Task Exclusion, Event Blocking.
+
+Notes:
+
+- The interactive branches of `SettingsHandler`, plus `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler`, remain on facade-owned rendering; do not collapse their interactive/menu-driven console output into `CommandResult.Message` — `IInteractiveConsoleFacade` is reserved for genuinely interactive (menu/key-input) flows and should not be bypassed for them.
 
 Blockers / Dependencies:
 
 - The test suite is green; keep it green as remaining migration and scheduling work proceeds.
-- CLI migration consolidation depends on every handler using one canonical command contract.
+- CLI migration consolidation precondition is met: every handler wired in `Program.cs` already implements `ICommandResultHandler`. Consolidation is now unblocked and just requires removing the compatibility bridges (see checklist below) and re-baselining tests that call `.Execute(...)` directly.
 - Dependency-order invariant tests may expose real scheduler defects; keep correct failing tests as isolated red tests while fixing the implementation instead of weakening expected behavior.
 
 Scheduler validation policy:
@@ -41,11 +39,12 @@ Scheduler validation policy:
 
 Next steps:
 
-1. Add a focused scheduler validation slice for dependency-order invariants using minimal deterministic tasks.
-2. Classify any scheduler test failure as implementation defect, incorrect/outdated expectation, or unclear requirement before broadening coverage.
-3. Repeat handler migration until `Program.cs` no longer needs runtime multi-contract branching.
-4. Re-baseline final command orchestration tests and remove compatibility-only assertions.
-5. Add broader scheduling characterization coverage only after hard invariants are protected.
+1. **Finish CLI Migration Consolidation**: Remove the passthrough `Execute(...)` bridges and the `Program.cs` multi-contract branch, then re-baseline the handler tests that still call `.Execute(...)` directly against the single `ICommandResultHandler` contract.
+2. **Audit and Refactor Gold Panning Tests**: Audit and refactor the tests in `PriorityTaskManager.Tests/Scheduling/GoldPanning` to align with the testing strategy, converting brittle tests into invariant checks.
+3. **Implement Core Invariant Tests**: Add focused scheduler validation tests for dependency-order and the other invariants in `docs/TESTING_STRATEGY.md`, using minimal, deterministic task sets.
+4. **Classify Failures**: As tests are added, classify any failures as implementation defects, incorrect/outdated expectations, or unclear requirements before broadening coverage.
+5. **Re-baseline Command Orchestration Tests**: Update final-state command orchestration tests and remove compatibility-only assertions now that consolidation is complete.
+6. **Broaden Scheduling Characterization Coverage**: Add broader scheduling characterization coverage only after the hard invariants from step 3 are protected.
 
 ### Required CLI Migration Consolidation (Do Not Skip)
 
