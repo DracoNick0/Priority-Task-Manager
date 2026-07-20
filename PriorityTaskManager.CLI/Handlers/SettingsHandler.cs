@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
@@ -9,7 +10,7 @@ using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class SettingsHandler : ICommandHandler
+    public class SettingsHandler : ICommandHandler, ICommandResultHandler
     {
         private readonly ITimeService _timeService;
         private readonly ScheduleSnapshotProvider _snapshotProvider;
@@ -24,23 +25,39 @@ namespace PriorityTaskManager.CLI.Handlers
 
         public void Execute(TaskManagerService service, string[] args)
         {
-            if (args.Length == 0)
+            var result = ExecuteWithResult(service, args);
+            if (!string.IsNullOrWhiteSpace(result.Message))
             {
-                InteractiveSettings(service);
-            }
-            else
-            {
-                ParseArguments(service, args);
+                Console.WriteLine(result.Message);
             }
         }
 
-        private void ParseArguments(TaskManagerService service, string[] args)
+        /// <inheritdoc/>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
+        {
+            if (args.Length == 0)
+            {
+                // Interactive settings menu remains a legacy, self-rendering console flow;
+                // it is out of scope for CommandResult migration.
+                InteractiveSettings(service);
+                return new CommandResult
+                {
+                    Status = CommandResultStatus.Info,
+                    Message = string.Empty,
+                    ShouldRefreshDashboard = false
+                };
+            }
+
+            return ParseArguments(service, args);
+        }
+
+        private CommandResult ParseArguments(TaskManagerService service, string[] args)
         {
             var userProfile = service.GetUserProfile();
+            var messageBuilder = new StringBuilder();
+            var appliedAny = false;
+            var hadError = false;
 
-            _snapshotProvider.RefreshActiveListSnapshot(out _);
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -48,7 +65,15 @@ namespace PriorityTaskManager.CLI.Handlers
                     case "--default-sort":
                         if (i + 1 < args.Length)
                         {
-                            UpdateDefaultSortOption(userProfile, args[i + 1]);
+                            if (UpdateDefaultSortOption(userProfile, args[i + 1]))
+                            {
+                                appliedAny = true;
+                            }
+                            else
+                            {
+                                messageBuilder.AppendLine($"Error: '{args[i + 1]}' is not a valid sort option.");
+                                hadError = true;
+                            }
                             i++; // consume value
                         }
                         break;
@@ -57,24 +82,46 @@ namespace PriorityTaskManager.CLI.Handlers
                         if (i + 1 < args.Length && TryParseSchedulingMode(args[i + 1], out var schedulingMode))
                         {
                             userProfile.SchedulingMode = schedulingMode;
+                            appliedAny = true;
                             i++; // consume value
                         }
                         else
                         {
-                            Console.WriteLine("Error: --default-mode requires one of: gold, solver.");
+                            messageBuilder.AppendLine("Error: --default-mode requires one of: gold, solver.");
+                            hadError = true;
+                            if (i + 1 < args.Length)
+                            {
+                                i++; // consume value
+                            }
                         }
                         break;
                     case "--working-days":
                         if (i + 1 < args.Length)
                         {
-                            UpdateWorkingDays(userProfile, args[i + 1]);
+                            if (UpdateWorkingDays(userProfile, args[i + 1]))
+                            {
+                                appliedAny = true;
+                            }
+                            else
+                            {
+                                messageBuilder.AppendLine($"Error: '{args[i + 1]}' contains no valid working days.");
+                                hadError = true;
+                            }
                             i++; // consume value
                         }
                         break;
                     case "--working-hours":
                         if (i + 1 < args.Length)
                         {
-                            UpdateWorkingHours(userProfile, args[i + 1]);
+                            if (UpdateWorkingHours(userProfile, args[i + 1]))
+                            {
+                                appliedAny = true;
+                            }
+                            else
+                            {
+                                messageBuilder.AppendLine($"Error: '{args[i + 1]}' is not a valid working hours range.");
+                                hadError = true;
+                            }
                             i++; // consume value
                         }
                         break;
@@ -89,20 +136,33 @@ namespace PriorityTaskManager.CLI.Handlers
                             userProfile.SlackThresholdPressing = pressing;
                             userProfile.SlackThresholdFocus = focus;
                             userProfile.SlackThresholdSafe = safe;
+                            appliedAny = true;
                             i += 4;
                         }
                         else
                         {
-                            Console.WriteLine("Error: --set-slack requires 4 numeric arguments (Dire Pressing Focus Safe).");
+                            messageBuilder.AppendLine("Error: --set-slack requires 4 numeric arguments (Dire Pressing Focus Safe).");
+                            hadError = true;
                         }
                         break;
                 }
             }
 
-            service.UpdateUserProfile(userProfile);
-            Console.WriteLine("Settings updated.");
-            PrintCurrentSettings(userProfile);
+            if (appliedAny)
+            {
+                service.UpdateUserProfile(userProfile);
+                messageBuilder.AppendLine("Settings updated.");
+                AppendCurrentSettings(messageBuilder, userProfile);
+            }
+
+            return new CommandResult
+            {
+                Status = hadError ? CommandResultStatus.Warning : CommandResultStatus.Success,
+                Message = messageBuilder.ToString().TrimEnd(),
+                ShouldRefreshDashboard = appliedAny
+            };
         }
+
 
         private void InteractiveSettings(TaskManagerService service)
         {
@@ -347,11 +407,18 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void PrintCurrentSettings(UserProfile userProfile)
         {
-            Console.WriteLine("Current Defaults:");
-            Console.WriteLine($"  Working Days: {string.Join(", ", userProfile.WorkDays.OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d))}");
-            Console.WriteLine($"  Working Hours: {userProfile.WorkStartTime} - {userProfile.WorkEndTime}");
-            Console.WriteLine($"  Default List Sort: {userProfile.DefaultListSortOption}");
-            Console.WriteLine($"  Default Scheduling Mode: {userProfile.SchedulingMode}");
+            var messageBuilder = new StringBuilder();
+            AppendCurrentSettings(messageBuilder, userProfile);
+            Console.Write(messageBuilder.ToString());
+        }
+
+        private static void AppendCurrentSettings(StringBuilder messageBuilder, UserProfile userProfile)
+        {
+            messageBuilder.AppendLine("Current Defaults:");
+            messageBuilder.AppendLine($"  Working Days: {string.Join(", ", userProfile.WorkDays.OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d))}");
+            messageBuilder.AppendLine($"  Working Hours: {userProfile.WorkStartTime} - {userProfile.WorkEndTime}");
+            messageBuilder.AppendLine($"  Default List Sort: {userProfile.DefaultListSortOption}");
+            messageBuilder.AppendLine($"  Default Scheduling Mode: {userProfile.SchedulingMode}");
         }
     }
 }

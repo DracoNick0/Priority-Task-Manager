@@ -4,20 +4,29 @@ using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class TimeHandler : ICommandHandler
+    public class TimeHandler : ICommandHandler, ICommandResultHandler
     {
         private readonly ITimeService _timeService;
-        private readonly ScheduleSnapshotProvider _snapshotProvider;
-        private readonly ITaskMetricsService _taskMetricsService;
 
         public TimeHandler(ITimeService timeService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             _timeService = timeService;
-            _snapshotProvider = snapshotProvider;
-            _taskMetricsService = taskMetricsService;
+            // Snapshot/metrics dependencies intentionally retained in the constructor to avoid breaking
+            // current wiring while this handler migrates toward Program-driven dashboard rendering.
         }
 
+        /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
+        {
+            var result = ExecuteWithResult(service, args);
+            if (!string.IsNullOrWhiteSpace(result.Message))
+            {
+                Console.WriteLine(result.Message);
+            }
+        }
+
+        /// <inheritdoc/>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
         {
             var subCommand = args.Length > 0 ? args[0].ToLower() : "status";
 
@@ -25,38 +34,44 @@ namespace PriorityTaskManager.CLI.Handlers
             {
                 case "status":
                     var currentTime = _timeService.GetCurrentTime();
-                    if (_timeService.IsSimulated())
+                    var statusMessage = _timeService.IsSimulated()
+                        ? $"Time is currently simulated.\nCurrent simulated time: {currentTime:yyyy-MM-dd HH:mm}"
+                        : $"Time is current (real-time).\nCurrent time: {currentTime:yyyy-MM-dd HH:mm}";
+
+                    return new CommandResult
                     {
-                        Console.WriteLine($"Time is currently simulated.");
-                        Console.WriteLine($"Current simulated time: {currentTime:yyyy-MM-dd HH:mm}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Time is current (real-time).");
-                        Console.WriteLine($"Current time: {currentTime:yyyy-MM-dd HH:mm}");
-                    }
-                    break;
+                        Status = CommandResultStatus.Info,
+                        Message = statusMessage,
+                        ShouldRefreshDashboard = false
+                    };
 
                 case "now":
                     _timeService.ClearSimulatedTime();
-                    _snapshotProvider.RefreshActiveListSnapshot(out _);
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    Console.WriteLine("Time simulation cleared. Using current real-time.");
-                    break;
+                    return new CommandResult
+                    {
+                        Status = CommandResultStatus.Success,
+                        Message = "Time simulation cleared. Using current real-time.",
+                        ShouldRefreshDashboard = true
+                    };
 
                 case "custom":
                 case "cus":
                     var simulatedTime = ConsoleInputHelper.GetDateTimeFromUser("Enter the simulated date and time");
                     _timeService.SetSimulatedTime(simulatedTime);
-                    _snapshotProvider.RefreshActiveListSnapshot(out _);
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    Console.WriteLine($"Time is now simulated. Current simulated time: {simulatedTime:yyyy-MM-dd HH:mm}");
-                    break;
+                    return new CommandResult
+                    {
+                        Status = CommandResultStatus.Success,
+                        Message = $"Time is now simulated. Current simulated time: {simulatedTime:yyyy-MM-dd HH:mm}",
+                        ShouldRefreshDashboard = true
+                    };
 
                 default:
-                    Console.WriteLine($"Unknown time command: {subCommand}");
-                    Console.WriteLine("Available commands: time [status], time now, time custom|cus");
-                    break;
+                    return new CommandResult
+                    {
+                        Status = CommandResultStatus.Usage,
+                        Message = $"Unknown time command: {subCommand}\nAvailable commands: time [status], time now, time custom|cus",
+                        ShouldRefreshDashboard = false
+                    };
             }
         }
     }

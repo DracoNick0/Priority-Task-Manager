@@ -1,55 +1,76 @@
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.CLI.Utils;
 using PriorityTaskManager.Services;
+using System.Text;
 
 /// <summary>
 /// Handles the 'view' command, displaying all details of a specific task by Id.
 /// </summary>
-public class ViewHandler : ICommandHandler
+public class ViewHandler : ICommandHandler, ICommandResultHandler
 {
-    private readonly ScheduleSnapshotProvider _snapshotProvider;
-    private readonly ITaskMetricsService _taskMetricsService;
-
     public ViewHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
     {
-        _snapshotProvider = snapshotProvider;
-        _taskMetricsService = taskMetricsService;
+        // Dependencies intentionally retained in the constructor to avoid breaking current wiring while this handler migrates toward Program-driven dashboard rendering.
     }
 
     /// <inheritdoc/>
     public void Execute(TaskManagerService service, string[] args)
     {
-        _snapshotProvider.RefreshActiveListSnapshot(out _);
-        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-        
+        var result = ExecuteWithResult(service, args);
+        if (!string.IsNullOrWhiteSpace(result.Message))
+        {
+            Console.WriteLine(result.Message);
+        }
+    }
+
+    /// <inheritdoc/>
+    public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
+    {
         if (args.Length != 1 || !int.TryParse(args[0], out int id))
         {
-            Console.WriteLine("Usage: view <Id>");
-            return;
+            return new CommandResult
+            {
+                Status = CommandResultStatus.Usage,
+                Message = "Usage: view <Id>",
+                ShouldRefreshDashboard = true
+            };
         }
 
         var task = service.GetTaskByDisplayId(id, service.GetActiveListId());
         if (task == null)
         {
-            Console.WriteLine("Task not found.");
-            return;
+            return new CommandResult
+            {
+                Status = CommandResultStatus.Warning,
+                Message = "Task not found.",
+                ShouldRefreshDashboard = true
+            };
         }
 
-        Console.WriteLine($"\nTask Details (Id: {task.DisplayId})");
-        Console.WriteLine($"List: {task.ListName}");
-        Console.WriteLine($"Title: {task.Title}");
-        Console.WriteLine($"Description: {task.Description}");
-        Console.WriteLine($"Importance: {task.Importance}");
-        Console.WriteLine($"Due Date: {task.DueDate:yyyy-MM-dd HH:mm}");
-        Console.WriteLine($"Completed: {(task.IsCompleted ? "Yes" : "No")}");
-        Console.WriteLine($"Estimated Duration: {task.EstimatedDuration.TotalHours} hours");
-        Console.WriteLine($"Progress: {task.Progress * 100:F1}%");
-        Console.WriteLine($"Dependencies: {(task.Dependencies != null && task.Dependencies.Any() ? string.Join(", ", task.Dependencies) : "None")}");
+        var messageBuilder = new StringBuilder();
+        messageBuilder.AppendLine();
+        messageBuilder.AppendLine($"Task Details (Id: {task.DisplayId})");
+        messageBuilder.AppendLine($"List: {task.ListName}");
+        messageBuilder.AppendLine($"Title: {task.Title}");
+        messageBuilder.AppendLine($"Description: {task.Description}");
+        messageBuilder.AppendLine($"Importance: {task.Importance}");
+        messageBuilder.AppendLine($"Due Date: {task.DueDate:yyyy-MM-dd HH:mm}");
+        messageBuilder.AppendLine($"Completed: {(task.IsCompleted ? "Yes" : "No")}");
+        messageBuilder.AppendLine($"Estimated Duration: {task.EstimatedDuration.TotalHours} hours");
+        messageBuilder.AppendLine($"Progress: {task.Progress * 100:F1}%");
+        messageBuilder.AppendLine($"Dependencies: {(task.Dependencies != null && task.Dependencies.Any() ? string.Join(", ", task.Dependencies) : "None")}");
 
         if (!task.IsCompleted)
         {
-            Console.WriteLine($"Urgency Score: {task.UrgencyScore:F3}");
-            Console.WriteLine($"Latest Possible Start Date: {task.LatestPossibleStartDate:yyyy-MM-dd}");
+            messageBuilder.AppendLine($"Urgency Score: {task.UrgencyScore:F3}");
+            messageBuilder.AppendLine($"Latest Possible Start Date: {task.LatestPossibleStartDate:yyyy-MM-dd}");
         }
+
+        return new CommandResult
+        {
+            Status = CommandResultStatus.Success,
+            Message = messageBuilder.ToString().TrimEnd(),
+            ShouldRefreshDashboard = true
+        };
     }
 }

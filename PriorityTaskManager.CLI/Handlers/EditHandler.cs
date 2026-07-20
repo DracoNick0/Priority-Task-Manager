@@ -11,7 +11,7 @@ namespace PriorityTaskManager.CLI.Handlers
     /// <summary>
     /// Handles the 'edit' command, providing an interactive menu for modifying tasks.
     /// </summary>
-    public class EditHandler : ICommandHandler
+    public class EditHandler : ICommandHandler, ICommandResultHandler
     {
         private readonly ScheduleSnapshotProvider _snapshotProvider;
         private readonly ITaskMetricsService _taskMetricsService;
@@ -27,6 +27,20 @@ namespace PriorityTaskManager.CLI.Handlers
             _snapshotProvider = snapshotProvider;
             _taskMetricsService = taskMetricsService;
             _console = console ?? new InteractiveConsoleFacade();
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// This handler mixes a targeted (non-interactive) update path with a fully interactive
+        /// menu-driven edit flow, both of which already own their console rendering via
+        /// <see cref="IInteractiveConsoleFacade"/>. This wrapper exists only so <c>edit</c> can
+        /// participate in the canonical <see cref="ICommandResultHandler"/> dispatch contract;
+        /// no dashboard refresh or message is deferred to <c>Program.cs</c>.
+        /// </remarks>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
+        {
+            Execute(service, args);
+            return new CommandResult();
         }
 
         /// <inheritdoc/>

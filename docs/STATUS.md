@@ -33,7 +33,9 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The app stores data in JSON files and loads that state into memory on startup.
 - Lists can carry copied settings snapshots instead of mutating only global defaults.
 - The CLI now supports incremental command orchestration migration: result-based handlers can return `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
-- `DeleteHandler` and `CompleteHandler` are currently migrated to the result-based path.
+- `DeleteHandler`, `CompleteHandler`, `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` build real `CommandResult` outcomes (status, message, dashboard-refresh flag) on the result-based path.
+- `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler` also implement `ICommandResultHandler` now, but only as a thin wrapper around their existing, unchanged interactive logic: `ExecuteWithResult` calls the same `Execute` body and returns an inert `CommandResult` (no message, no refresh), because these handlers already own their console rendering end-to-end through `IInteractiveConsoleFacade`. `Program.cs` does no extra work for them beyond what already happened before migration.
+- `EventHandler` (currently unused/unwired in `Program.cs`; `event`/`e` route to `EventCommandHandler` instead) received the same thin wrapper for contract consistency.
 - Shared parsing/usage-result behavior for migrated non-interactive handlers is centralized via `NonInteractiveCommandResultHelper`.
 - Shared interactive console behavior for keyboard-driven handlers is abstracted through `IInteractiveConsoleFacade`.
 - `HelpHandler`, `EditHandler`, interactive `list settings` flow, and `event edit`/`event clear` interactive paths currently use the interactive console facade seam.
@@ -91,5 +93,5 @@ This document is the current-state snapshot for Priority Task Manager. It record
 ## Validation Notes
 
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
-- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (126 passed, 1 skipped).
+- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (141 passed, 1 skipped).
 - Use `docs/TODO.md` for the current active-work sequence, blockers, and next steps.

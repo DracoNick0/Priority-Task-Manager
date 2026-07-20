@@ -82,7 +82,11 @@ namespace PriorityTaskManager.CLI.Utils
             }
         }
 
-        private static bool TryParseDuration(string input, out TimeSpan duration)
+        /// <summary>
+        /// Attempts to parse a duration string such as "30m" or "1.5h" into a <see cref="TimeSpan"/>.
+        /// Exposed publicly so non-interactive command paths can reuse the same duration format.
+        /// </summary>
+        public static bool TryParseDuration(string input, out TimeSpan duration)
         {
             duration = TimeSpan.Zero;
             input = input.Trim().ToLower();

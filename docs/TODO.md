@@ -15,11 +15,14 @@ Completed:
 - Interactive console seam coverage exists for HelpHandler, EditHandler, list settings, and selected event interactive paths.
 - Gold Panning invariant coverage and deterministic replay coverage exist.
 - CLI handler command-surface tests no longer fail on real console clearing; `ConsoleHelper.ClearAndRenderDashboard` now tolerates environments with no attached console handle (e.g. the test host). The full test suite passes.
+- `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` are migrated to Program-owned `CommandResult` orchestration, each with result-path test coverage.
+- `HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`, and the unwired `EventHandler` implement `ICommandResultHandler` as thin wrappers only (unchanged interactive logic, inert result); they are not part of the Program-owned refresh/message path because they already own console rendering via `IInteractiveConsoleFacade`.
 
 Remaining:
 
 - Validate active Gold Panning dependency-order behavior before broad scheduling characterization baselines are accepted.
-- Migrate remaining non-interactive handlers (`UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `SettingsHandler`, `CleanupHandler`) to Program-owned `CommandResult` orchestration so dashboard refresh and display is owned by `Program.cs` instead of each handler calling `ConsoleHelper` directly; `IInteractiveConsoleFacade` is reserved for genuinely interactive (menu/key-input) handlers and should not be extended to these.
+- `AddHandler` has no automated result-path test: its flow unconditionally calls `ConsoleInputHelper.InteractiveDateInput`, which reads via `Console.ReadKey` and throws when console input is redirected (the xUnit test host). Adding coverage requires either an injectable date-input seam (mirroring `IInteractiveConsoleFacade`) or restructuring the due-date prompt before this handler's result path can be tested end-to-end.
+- The interactive branches of `SettingsHandler`, plus `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler`, remain on facade-owned rendering; do not collapse their interactive/menu-driven console output into `CommandResult.Message` — `IInteractiveConsoleFacade` is reserved for genuinely interactive (menu/key-input) flows and should not be bypassed for them.
 - Expand interactive console seam adoption to remaining interactive handlers.
 - Add dependency-order scheduling invariants and characterization tests.
 - Complete the migration consolidation checklist below.
@@ -38,7 +41,7 @@ Scheduler validation policy:
 
 Next steps:
 
-1. Convert the next non-interactive legacy handler to `CommandResult` so `Program.cs` owns dashboard refresh instead of the handler calling `ConsoleHelper` directly, and add result-path assertions; keep the console-clear guard in `ConsoleHelper` as the safety net for any handler still calling it directly during migration.
+1. Decide whether to add an injectable seam for `AddHandler`'s due-date prompt so its `CommandResult` path can be covered by an automated test, or accept the current gap and document it as a known limitation.
 2. Add a focused scheduler validation slice for dependency-order invariants using minimal deterministic tasks.
 3. Classify any scheduler test failure as implementation defect, incorrect/outdated expectation, or unclear requirement before broadening coverage.
 4. Repeat handler migration until `Program.cs` no longer needs runtime multi-contract branching.

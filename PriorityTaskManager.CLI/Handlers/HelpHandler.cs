@@ -8,7 +8,7 @@ namespace PriorityTaskManager.CLI.Handlers
     /// <summary>
     /// Handles the 'help' command, displaying a list of available commands and their descriptions.
     /// </summary>
-    public class HelpHandler : ICommandHandler
+    public class HelpHandler : ICommandHandler, ICommandResultHandler
     {
         private readonly ScheduleSnapshotProvider _snapshotProvider;
         private readonly ITaskMetricsService _taskMetricsService;
@@ -30,6 +30,19 @@ namespace PriorityTaskManager.CLI.Handlers
         public void Execute(TaskManagerService service, string[] args)
         {
             InteractiveHelp();
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// This handler is fully interactive and already owns its own console rendering via
+        /// <see cref="IInteractiveConsoleFacade"/>. This wrapper exists only so <c>help</c> can
+        /// participate in the canonical <see cref="ICommandResultHandler"/> dispatch contract;
+        /// no dashboard refresh or message is deferred to <c>Program.cs</c>.
+        /// </remarks>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
+        {
+            Execute(service, args);
+            return new CommandResult();
         }
 
         private void InteractiveHelp()

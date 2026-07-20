@@ -1,45 +1,65 @@
 using PriorityTaskManager.Services;
 using PriorityTaskManager.CLI.Interfaces;
 using PriorityTaskManager.CLI.Utils;
+using System.Text;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class UncompleteHandler : ICommandHandler
+    public class UncompleteHandler : ICommandHandler, ICommandResultHandler
     {
-        private readonly ScheduleSnapshotProvider _snapshotProvider;
-        private readonly ITaskMetricsService _taskMetricsService;
-
         public UncompleteHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
-            _snapshotProvider = snapshotProvider;
-            _taskMetricsService = taskMetricsService;
+            // Dependencies intentionally retained in the constructor to avoid breaking current wiring
+            // while this handler migrates toward Program-driven dashboard rendering.
         }
 
+        /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
+        {
+            var result = ExecuteWithResult(service, args);
+            if (!string.IsNullOrWhiteSpace(result.Message))
+            {
+                Console.WriteLine(result.Message);
+            }
+        }
+
+        /// <inheritdoc/>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
         {
             var validTaskIds = ConsoleInputHelper.ParseAndValidateTaskIds(service, args, service.GetActiveListId());
 
-            _snapshotProvider.RefreshActiveListSnapshot(out _);
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            
             if (validTaskIds.Count == 0)
             {
-                Console.WriteLine("Usage: uncomplete <Id>,<Id2>,...");
-                return;
+                return new CommandResult
+                {
+                    Status = CommandResultStatus.Usage,
+                    Message = "Usage: uncomplete <Id>,<Id2>,...",
+                    ShouldRefreshDashboard = false
+                };
             }
+
+            var messageBuilder = new StringBuilder();
+            var markedCount = 0;
 
             foreach (var id in validTaskIds)
             {
                 if (service.MarkTaskAsIncomplete(id))
                 {
-                    Console.WriteLine($"Task {id} marked as incomplete.");
+                    messageBuilder.AppendLine($"Task {id} marked as incomplete.");
+                    markedCount++;
                 }
                 else
                 {
-                    Console.WriteLine($"Task {id} not found.");
+                    messageBuilder.AppendLine($"Task {id} not found.");
                 }
             }
 
+            return new CommandResult
+            {
+                Status = markedCount == validTaskIds.Count ? CommandResultStatus.Success : CommandResultStatus.Warning,
+                Message = messageBuilder.ToString().TrimEnd(),
+                ShouldRefreshDashboard = markedCount > 0
+            };
         }
     }
 }

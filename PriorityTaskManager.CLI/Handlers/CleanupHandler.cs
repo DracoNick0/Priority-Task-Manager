@@ -8,20 +8,29 @@ using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class CleanupHandler : ICommandHandler
+    public class CleanupHandler : ICommandHandler, ICommandResultHandler
     {
         private readonly TaskManagerService _taskManagerService;
-        private readonly ScheduleSnapshotProvider _snapshotProvider;
-        private readonly ITaskMetricsService _taskMetricsService;
 
         public CleanupHandler(TaskManagerService taskManagerService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             _taskManagerService = taskManagerService;
-            _snapshotProvider = snapshotProvider;
-            _taskMetricsService = taskMetricsService;
+            // Snapshot/metrics dependencies intentionally retained in the constructor to avoid breaking
+            // current wiring while this handler migrates toward Program-driven dashboard rendering.
         }
 
-        public void Handle(string[] args)
+        /// <inheritdoc/>
+        public void Execute(TaskManagerService taskManagerService, string[] args)
+        {
+            var result = ExecuteWithResult(taskManagerService, args);
+            if (!string.IsNullOrWhiteSpace(result.Message))
+            {
+                Console.WriteLine(result.Message);
+            }
+        }
+
+        /// <inheritdoc/>
+        public CommandResult ExecuteWithResult(TaskManagerService taskManagerService, string[] args)
         {
             Console.WriteLine("WARNING: This will permanently delete all completed tasks and re-index all remaining task IDs. This action cannot be undone.");
             Console.Write("Type 'confirm' to proceed: ");
@@ -29,8 +38,12 @@ namespace PriorityTaskManager.CLI.Handlers
 
             if (!string.Equals(userInput, "confirm", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("Operation cancelled.");
-                return;
+                return new CommandResult
+                {
+                    Status = CommandResultStatus.Warning,
+                    Message = "Operation cancelled.",
+                    ShouldRefreshDashboard = false
+                };
             }
 
             var agentChain = new List<ISchedulingStage>
@@ -47,33 +60,31 @@ namespace PriorityTaskManager.CLI.Handlers
 
             var finalContext = PipelineCoordinator.Coordinate(agentChain, initialContext);
 
+            var messageBuilder = new System.Text.StringBuilder();
+
             if (finalContext.LastError != null)
             {
-                Console.WriteLine("An error occurred during the cleanup operation:");
-                Console.WriteLine(finalContext.LastError.Message);
+                messageBuilder.AppendLine("An error occurred during the cleanup operation:");
+                messageBuilder.AppendLine(finalContext.LastError.Message);
             }
 
-            if (finalContext.LastError == null)
-            {
-                _snapshotProvider.RefreshActiveListSnapshot(out _);
-                ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-            }
-
-            Console.WriteLine("Cleanup Operation Log:");
+            messageBuilder.AppendLine("Cleanup Operation Log:");
             foreach (var logEntry in finalContext.History)
             {
-                Console.WriteLine(logEntry);
+                messageBuilder.AppendLine(logEntry);
             }
 
             if (finalContext.LastError == null)
             {
-                Console.WriteLine("Cleanup complete.");
+                messageBuilder.Append("Cleanup complete.");
             }
-        }
 
-        public void Execute(TaskManagerService taskManagerService, string[] args)
-        {
-            Handle(args);
+            return new CommandResult
+            {
+                Status = finalContext.LastError == null ? CommandResultStatus.Success : CommandResultStatus.Error,
+                Message = messageBuilder.ToString().TrimEnd(),
+                ShouldRefreshDashboard = finalContext.LastError == null
+            };
         }
     }
 }

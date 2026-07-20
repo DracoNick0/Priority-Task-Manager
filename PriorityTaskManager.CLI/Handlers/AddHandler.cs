@@ -11,24 +11,30 @@ namespace PriorityTaskManager.CLI.Handlers
     /// Handles the 'add' command.
     /// Guides the user through a series of prompts to create a new task with all necessary details.
     /// </summary>
-    public class AddHandler : ICommandHandler
+    public class AddHandler : ICommandHandler, ICommandResultHandler
     {
         private const int DefaultImportance = 5;
         private const int DefaultComplexity = 5;
         private const bool DefaultPinned = false;
         private static readonly TimeSpan DefaultDuration = TimeSpan.FromHours(1);
 
-        private readonly ScheduleSnapshotProvider _snapshotProvider;
-        private readonly ITaskMetricsService _taskMetricsService;
-
         public AddHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
-            _snapshotProvider = snapshotProvider;
-            _taskMetricsService = taskMetricsService;
+            // Dependencies intentionally retained in the constructor to avoid breaking current wiring while this handler migrates toward Program-driven dashboard rendering.
         }
 
         /// <inheritdoc/>
         public void Execute(TaskManagerService service, string[] args)
+        {
+            var result = ExecuteWithResult(service, args);
+            if (!string.IsNullOrWhiteSpace(result.Message))
+            {
+                Console.WriteLine(result.Message);
+            }
+        }
+
+        /// <inheritdoc/>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
         {
             string title;
             // If the title is provided as an argument, use it. Otherwise, prompt the user.
@@ -85,10 +91,12 @@ namespace PriorityTaskManager.CLI.Handlers
             // Add the task to the system via the TaskManagerService.
             service.AddTask(task);
 
-            _snapshotProvider.RefreshActiveListSnapshot(out _);
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-
-            Console.WriteLine($"\nTask '{task.Title}' added successfully (ID: {task.DisplayId}).");
+            return new CommandResult
+            {
+                Status = CommandResultStatus.Success,
+                Message = $"\nTask '{task.Title}' added successfully (ID: {task.DisplayId}).",
+                ShouldRefreshDashboard = true
+            };
         }
     }
 }

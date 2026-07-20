@@ -123,6 +123,34 @@ namespace PriorityTaskManager.Tests.CLI
         }
 
         [Fact]
+        public void UncompleteHandler_ResultPath_WithValidDisplayId_ShouldRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            var task = AddTask(ctx.Service, "Uncomplete via result");
+            ctx.Service.MarkTaskAsComplete(task.Id);
+            var handler = new UncompleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString() });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains("marked as incomplete", result.Message);
+        }
+
+        [Fact]
+        public void UncompleteHandler_ResultPath_WithNoArgs_ShouldReturnUsageWithoutRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new UncompleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, Array.Empty<string>());
+
+            Assert.Equal(CommandResultStatus.Usage, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Contains("Usage: uncomplete", result.Message);
+        }
+
+        [Fact]
         public void DependHandler_AddThenRemove_ShouldUpdateDependencies()
         {
             var ctx = CreateContext();
@@ -169,6 +197,34 @@ namespace PriorityTaskManager.Tests.CLI
             var updated = ctx.Service.GetTaskById(child.Id);
             Assert.NotNull(updated);
             Assert.Equal(1, updated.Dependencies.Count(dep => dep == parent.Id));
+        }
+
+        [Fact]
+        public void DependHandler_ResultPath_Add_ShouldRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            var parent = AddTask(ctx.Service, "Parent via result");
+            var child = AddTask(ctx.Service, "Child via result");
+            var handler = new DependHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains("Added dependency", result.Message);
+        }
+
+        [Fact]
+        public void DependHandler_ResultPath_NoArgs_ShouldReturnUsageWithoutRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new DependHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, Array.Empty<string>());
+
+            Assert.Equal(CommandResultStatus.Usage, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Contains("Usage:", result.Message);
         }
 
         [Fact]
@@ -326,6 +382,54 @@ namespace PriorityTaskManager.Tests.CLI
         }
 
         [Fact]
+        public void CleanupHandler_ResultPath_WhenConfirmed_ShouldRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            var completed = AddTask(ctx.Service, "Completed via result");
+            ctx.Service.MarkTaskAsComplete(completed.Id);
+            var handler = new CleanupHandler(ctx.Service, ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var originalIn = Console.In;
+            CommandResult result;
+            try
+            {
+                Console.SetIn(new StringReader("confirm\n"));
+                result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, Array.Empty<string>());
+            }
+            finally
+            {
+                Console.SetIn(originalIn);
+            }
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains("Cleanup complete", result.Message);
+        }
+
+        [Fact]
+        public void CleanupHandler_ResultPath_WhenNotConfirmed_ShouldReturnWarningWithoutRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new CleanupHandler(ctx.Service, ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var originalIn = Console.In;
+            CommandResult result;
+            try
+            {
+                Console.SetIn(new StringReader("no\n"));
+                result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, Array.Empty<string>());
+            }
+            finally
+            {
+                Console.SetIn(originalIn);
+            }
+
+            Assert.Equal(CommandResultStatus.Warning, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Contains("cancelled", result.Message);
+        }
+
+        [Fact]
         public void SettingsHandler_WithFlags_ShouldUpdateUserProfile()
         {
             var ctx = CreateContext();
@@ -378,6 +482,32 @@ namespace PriorityTaskManager.Tests.CLI
             handler.Execute(ctx.Service, new[] { "--default-mode", "unsupported" });
 
             Assert.Equal(originalMode, ctx.Service.GetUserProfile().SchedulingMode);
+        }
+
+        [Fact]
+        public void SettingsHandler_ResultPath_WithFlags_ShouldRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new SettingsHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "--default-sort", "duedate" });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains("Settings updated", result.Message);
+        }
+
+        [Fact]
+        public void SettingsHandler_ResultPath_WithInvalidWorkingHours_ShouldReturnWarningWithoutRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new SettingsHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "--working-hours", "invalid" });
+
+            Assert.Equal(CommandResultStatus.Warning, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Contains("not a valid working hours range", result.Message);
         }
 
         [Fact]
@@ -452,6 +582,33 @@ namespace PriorityTaskManager.Tests.CLI
         }
 
         [Fact]
+        public void TimeHandler_ResultPath_Now_ShouldRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            ctx.TimeService.SetSimulatedTime(new DateTime(2026, 7, 8, 12, 0, 0));
+            var handler = new TimeHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "now" });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.False(ctx.TimeService.IsSimulated());
+        }
+
+        [Fact]
+        public void TimeHandler_ResultPath_UnknownCommand_ShouldReturnUsageWithoutRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new TimeHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "unknown-subcommand" });
+
+            Assert.Equal(CommandResultStatus.Usage, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Contains("Unknown time command", result.Message);
+        }
+
+        [Fact]
         public void ModeHandler_Constraint_ShouldUpdateSchedulingMode()
         {
             var ctx = CreateContext();
@@ -483,6 +640,70 @@ namespace PriorityTaskManager.Tests.CLI
             handler.Execute(ctx.Service, new[] { "not-a-mode" });
 
             Assert.Equal(original, ctx.Service.GetUserProfile().SchedulingMode);
+        }
+
+        [Fact]
+        public void ModeHandler_ResultPath_Constraint_ShouldRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new ModeHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "constraint" });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains("Scheduling Mode set to", result.Message);
+        }
+
+        [Fact]
+        public void ModeHandler_ResultPath_UnknownMode_ShouldReturnWarningWithoutRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new ModeHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "not-a-mode" });
+
+            Assert.Equal(CommandResultStatus.Warning, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Contains("Unknown mode", result.Message);
+        }
+
+        [Fact]
+        public void ViewHandler_ResultPath_WithValidDisplayId_ShouldReturnTaskDetails()
+        {
+            var ctx = CreateContext();
+            var task = AddTask(ctx.Service, "View via result");
+            var handler = new ViewHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString() });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains($"Task Details (Id: {task.DisplayId})", result.Message);
+        }
+
+        [Fact]
+        public void ViewHandler_ResultPath_WithMissingArgs_ShouldReturnUsage()
+        {
+            var ctx = CreateContext();
+            var handler = new ViewHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, Array.Empty<string>());
+
+            Assert.Equal(CommandResultStatus.Usage, result.Status);
+            Assert.Contains("Usage: view", result.Message);
+        }
+
+        [Fact]
+        public void ViewHandler_ResultPath_WithUnknownDisplayId_ShouldReturnWarning()
+        {
+            var ctx = CreateContext();
+            var handler = new ViewHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "9999" });
+
+            Assert.Equal(CommandResultStatus.Warning, result.Status);
+            Assert.Contains("Task not found", result.Message);
         }
 
         private static TestContext CreateContext()

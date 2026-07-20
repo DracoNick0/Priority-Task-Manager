@@ -9,7 +9,7 @@ namespace PriorityTaskManager.CLI.Handlers
     /// Handles the 'list' command and its sub-commands.
     /// Manages task lists, including viewing, creating, switching, deleting, and sorting.
     /// </summary>
-    public class ListHandler : ICommandHandler
+    public class ListHandler : ICommandHandler, ICommandResultHandler
     {
         private readonly ITaskMetricsService _taskMetricsService;
         private readonly ITimeService _timeService;
@@ -34,6 +34,20 @@ namespace PriorityTaskManager.CLI.Handlers
             _timeService = timeService;
             _scheduleSnapshotProvider = scheduleSnapshotProvider;
             _console = console ?? new InteractiveConsoleFacade();
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// This handler mixes non-interactive sub-commands with fully interactive sub-flows
+        /// (list switch prompt, list settings menu), both of which already own their console
+        /// rendering via <see cref="IInteractiveConsoleFacade"/>. This wrapper exists only so
+        /// <c>list</c> can participate in the canonical <see cref="ICommandResultHandler"/>
+        /// dispatch contract; no dashboard refresh or message is deferred to <c>Program.cs</c>.
+        /// </remarks>
+        public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
+        {
+            Execute(service, args);
+            return new CommandResult();
         }
 
         /// <inheritdoc/>
