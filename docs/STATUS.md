@@ -93,5 +93,5 @@ This document is the current-state snapshot for Priority Task Manager. It record
 ## Validation Notes
 
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
-- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (141 passed, 1 skipped).
+- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (145 passed, 1 skipped).
 - Use `docs/TODO.md` for the current active-work sequence, blockers, and next steps.

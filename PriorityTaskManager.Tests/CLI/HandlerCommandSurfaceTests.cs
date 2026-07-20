@@ -706,6 +706,83 @@ namespace PriorityTaskManager.Tests.CLI
             Assert.Contains("Task not found", result.Message);
         }
 
+        [Fact]
+        public void AddHandler_ResultPath_WithTitleOnly_ShouldUseDefaultsAndRequestDashboardRefresh()
+        {
+            var ctx = CreateContext();
+            var handler = new AddHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "My", "new", "task" });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+            Assert.Contains("added successfully", result.Message);
+
+            var tasks = ctx.Service.GetAllTasks(ctx.Service.GetActiveListId());
+            var created = Assert.Single(tasks);
+            Assert.Equal("My new task", created.Title);
+            Assert.Equal(5, created.Importance);
+            Assert.Equal(5, created.Complexity);
+            Assert.False(created.IsPinned);
+            Assert.Equal(TimeSpan.FromHours(1), created.EstimatedDuration);
+            Assert.Null(created.DueDate);
+        }
+
+        [Fact]
+        public void AddHandler_ResultPath_WithFlags_ShouldApplyProvidedAttributes()
+        {
+            var ctx = CreateContext();
+            var handler = new AddHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(
+                ctx.Service,
+                new[] { "Flagged", "task", "--importance", "8", "--complexity", "3", "--pinned", "--duration", "2h", "--due", "2026-08-01" });
+
+            Assert.Equal(CommandResultStatus.Success, result.Status);
+            Assert.True(result.ShouldRefreshDashboard);
+
+            var tasks = ctx.Service.GetAllTasks(ctx.Service.GetActiveListId());
+            var created = Assert.Single(tasks);
+            Assert.Equal("Flagged task", created.Title);
+            Assert.Equal(8, created.Importance);
+            Assert.Equal(3, created.Complexity);
+            Assert.True(created.IsPinned);
+            Assert.Equal(TimeSpan.FromHours(2), created.EstimatedDuration);
+            Assert.Equal(new DateTime(2026, 8, 1, 23, 59, 59), created.DueDate);
+        }
+
+        [Fact]
+        public void AddHandler_ResultPath_WithInvalidFlagValue_ShouldReturnWarningButStillCreateTask()
+        {
+            var ctx = CreateContext();
+            var handler = new AddHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(
+                ctx.Service,
+                new[] { "Bad", "flag", "--importance", "not-a-number" });
+
+            Assert.Equal(CommandResultStatus.Warning, result.Status);
+            Assert.Contains("Error: --importance requires an integer between 1 and 10.", result.Message);
+
+            var tasks = ctx.Service.GetAllTasks(ctx.Service.GetActiveListId());
+            var created = Assert.Single(tasks);
+            Assert.Equal("Bad flag", created.Title);
+            Assert.Equal(5, created.Importance);
+        }
+
+        [Fact]
+        public void AddHandler_ResultPath_WithNoTitle_ShouldReturnUsageWithoutCreatingTask()
+        {
+            var ctx = CreateContext();
+            var handler = new AddHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var result = ((ICommandResultHandler)handler).ExecuteWithResult(ctx.Service, new[] { "--pinned" });
+
+            Assert.Equal(CommandResultStatus.Usage, result.Status);
+            Assert.False(result.ShouldRefreshDashboard);
+            Assert.Empty(ctx.Service.GetAllTasks(ctx.Service.GetActiveListId()));
+        }
+
         private static TestContext CreateContext()
         {
             var persistence = new MockPersistenceService();
