@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
@@ -14,7 +15,7 @@ namespace PriorityTaskManager.CLI.Utils
         /// </summary>
         public static void ClearAndRenderDashboard(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
-            Console.Clear();
+            TryClearConsole();
 
             if (snapshotProvider.TryGetLatestSnapshot(out var snapshot) && snapshot != null)
             {
@@ -24,6 +25,22 @@ namespace PriorityTaskManager.CLI.Utils
             else
             {
                 Console.WriteLine("Warning: Schedule snapshot unavailable.");
+            }
+        }
+
+        /// <summary>
+        /// Attempts to clear the console, silently doing nothing if no real console is attached
+        /// (for example, when running under a test host with no console handle).
+        /// </summary>
+        private static void TryClearConsole()
+        {
+            try
+            {
+                Console.Clear();
+            }
+            catch (IOException)
+            {
+                // No console handle is available (e.g. test host). Skip clearing.
             }
         }
 

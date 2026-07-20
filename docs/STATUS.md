@@ -10,7 +10,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The CLI project builds successfully.
 - Gold Panning is the active scheduling strategy; constraint optimization is routed but not implemented.
 - CLI command orchestration migration is in progress. See `docs/TODO.md` for active-work handoff and next steps.
-- The test suite is under overhaul and currently needs CLI console-seam cleanup before it can be treated as green.
+- The test suite passes. CLI handler tests no longer fail on real console clearing/cursor behavior; broader interactive seam adoption and dependency-order scheduling coverage remain pending.
 
 ## Feature Matrix
 
@@ -23,7 +23,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 | Scheduling logic | 🟡 Partially implemented | Gold Panning is active; the constraint-optimization mode is routed but not implemented in the current code path. |
 | Event system | 🟡 Under review | Add, edit, list, and delete are available, but the event experience is still being refined. |
 | Task dependencies | 🟡 Under review | Dependency handling is supported, but correctness and migration coverage still need attention. |
-| Unit tests | 🟠 Under overhaul / failing | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant, and replay coverage exist; CLI handler tests still fail where paths depend on real console clearing/cursor behavior. |
+| Unit tests | � Passing / under overhaul | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant, and replay coverage exist. Broader interactive seam adoption and dependency-order scheduling coverage remain pending. |
 
 ## Confirmed Capabilities
 
@@ -50,8 +50,9 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 - The scheduling system still needs future refinement around slack handling, intra-day focus heuristics, and backlog fairness.
 - The event workflow is functional but still under UX refinement.
-- The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, and Gold Panning invariant/replay coverage are now in place, while console-safe CLI handler tests, deep interactive CLI flows, and dependency-order scheduling coverage remain pending.
+- The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, Gold Panning invariant/replay coverage, and console-handle-safe CLI handler tests are now in place, while deep interactive CLI flows and dependency-order scheduling coverage remain pending.
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
+- `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net; the intended fix for remaining non-interactive handlers is migrating them to Program-owned `CommandResult` orchestration, not extending `IInteractiveConsoleFacade` (which is reserved for genuinely interactive, menu/key-input handlers).
 - CLI command execution currently uses dual-contract dispatch in `Program.cs` and includes compatibility bridges for partially migrated handlers.
 - Several interactive handlers still call console APIs directly and remain pending interactive I/O seam adoption.
 
@@ -90,5 +91,5 @@ This document is the current-state snapshot for Priority Task Manager. It record
 ## Validation Notes
 
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
-- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` currently fails in CLI handler tests that reach real console clearing/cursor behavior.
+- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (126 passed, 1 skipped).
 - Use `docs/TODO.md` for the current active-work sequence, blockers, and next steps.

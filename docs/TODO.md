@@ -14,19 +14,19 @@ Completed:
 - Shared parsing and usage behavior for migrated non-interactive handlers is centralized in `NonInteractiveCommandResultHelper`.
 - Interactive console seam coverage exists for HelpHandler, EditHandler, list settings, and selected event interactive paths.
 - Gold Panning invariant coverage and deterministic replay coverage exist.
+- CLI handler command-surface tests no longer fail on real console clearing; `ConsoleHelper.ClearAndRenderDashboard` now tolerates environments with no attached console handle (e.g. the test host). The full test suite passes.
 
 Remaining:
 
-- Fix CLI handler tests that still depend on real console clearing or cursor behavior.
 - Validate active Gold Panning dependency-order behavior before broad scheduling characterization baselines are accepted.
-- Migrate remaining non-interactive handlers to Program-owned `CommandResult` orchestration.
+- Migrate remaining non-interactive handlers (`UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `SettingsHandler`, `CleanupHandler`) to Program-owned `CommandResult` orchestration so dashboard refresh and display is owned by `Program.cs` instead of each handler calling `ConsoleHelper` directly; `IInteractiveConsoleFacade` is reserved for genuinely interactive (menu/key-input) handlers and should not be extended to these.
 - Expand interactive console seam adoption to remaining interactive handlers.
 - Add dependency-order scheduling invariants and characterization tests.
 - Complete the migration consolidation checklist below.
 
 Blockers / Dependencies:
 
-- The test suite must be green before this work can be considered complete.
+- The test suite is green; keep it green as remaining migration and scheduling work proceeds.
 - CLI migration consolidation depends on every handler using one canonical command contract.
 - Dependency-order invariant tests may expose real scheduler defects; keep correct failing tests as isolated red tests while fixing the implementation instead of weakening expected behavior.
 
@@ -38,13 +38,12 @@ Scheduler validation policy:
 
 Next steps:
 
-1. Make CLI command-surface tests console-handle safe by moving remaining direct console rendering behind an injectable seam or no-op test path.
+1. Convert the next non-interactive legacy handler to `CommandResult` so `Program.cs` owns dashboard refresh instead of the handler calling `ConsoleHelper` directly, and add result-path assertions; keep the console-clear guard in `ConsoleHelper` as the safety net for any handler still calling it directly during migration.
 2. Add a focused scheduler validation slice for dependency-order invariants using minimal deterministic tasks.
 3. Classify any scheduler test failure as implementation defect, incorrect/outdated expectation, or unclear requirement before broadening coverage.
-4. Convert the next non-interactive legacy handler to `CommandResult` and add result-path assertions.
-5. Repeat handler migration until `Program.cs` no longer needs runtime multi-contract branching.
-6. Re-baseline final command orchestration tests and remove compatibility-only assertions.
-7. Add broader scheduling characterization coverage only after hard invariants are protected.
+4. Repeat handler migration until `Program.cs` no longer needs runtime multi-contract branching.
+5. Re-baseline final command orchestration tests and remove compatibility-only assertions.
+6. Add broader scheduling characterization coverage only after hard invariants are protected.
 
 ### Required CLI Migration Consolidation (Do Not Skip)
 
