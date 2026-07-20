@@ -27,7 +27,7 @@ namespace PriorityTaskManager.Tests.CLI
             });
             var handler = new EventCommandHandler(snapshotProvider, metrics, fakeConsole);
 
-            handler.Execute(service, new[] { "edit", eventId.ToString() });
+            handler.ExecuteWithResult(service, new[] { "edit", eventId.ToString() });
 
             var updated = service.GetEvent(eventId);
             Assert.NotNull(updated);
@@ -51,7 +51,7 @@ namespace PriorityTaskManager.Tests.CLI
             };
             var handler = new EventCommandHandler(snapshotProvider, metrics, fakeConsole);
 
-            handler.Execute(service, new[] { "clear" });
+            handler.ExecuteWithResult(service, new[] { "clear" });
 
             Assert.Single(service.GetAllEvents());
             Assert.Contains(fakeConsole.Lines, line => line.Contains("Operation cancelled."));

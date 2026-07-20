@@ -5,22 +5,12 @@ using System.Text;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class UncompleteHandler : ICommandHandler, ICommandResultHandler
+    public class UncompleteHandler : ICommandResultHandler
     {
         public UncompleteHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             // Dependencies intentionally retained in the constructor to avoid breaking current wiring
             // while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

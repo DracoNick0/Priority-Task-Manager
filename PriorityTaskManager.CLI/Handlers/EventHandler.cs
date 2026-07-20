@@ -8,7 +8,7 @@ using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class EventHandler : ICommandHandler, ICommandResultHandler
+    public class EventHandler : ICommandResultHandler
     {
         private readonly ScheduleSnapshotProvider _snapshotProvider;
         private readonly ITaskMetricsService _taskMetricsService;
@@ -21,16 +21,17 @@ namespace PriorityTaskManager.CLI.Handlers
 
         /// <remarks>
         /// This handler is not currently wired up in <c>Program.cs</c> (the "event"/"e" commands
-        /// dispatch to <see cref="EventCommandHandler"/> instead). This wrapper exists only for
-        /// contract consistency; no dashboard refresh or message is deferred to <c>Program.cs</c>.
+        /// dispatch to <see cref="EventCommandHandler"/> instead). It returns an inert
+        /// <see cref="CommandResult"/> for contract consistency; no dashboard refresh or message is
+        /// deferred to <c>Program.cs</c>.
         /// </remarks>
         public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
         {
-            Execute(service, args);
+            ExecuteInteractive(service, args);
             return new CommandResult();
         }
 
-        public void Execute(TaskManagerService service, string[] args)
+        private void ExecuteInteractive(TaskManagerService service, string[] args)
         {
             if (args.Length == 0)
             {

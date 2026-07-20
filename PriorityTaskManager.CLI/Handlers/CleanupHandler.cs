@@ -8,7 +8,7 @@ using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class CleanupHandler : ICommandHandler, ICommandResultHandler
+    public class CleanupHandler : ICommandResultHandler
     {
         private readonly TaskManagerService _taskManagerService;
 
@@ -17,16 +17,6 @@ namespace PriorityTaskManager.CLI.Handlers
             _taskManagerService = taskManagerService;
             // Snapshot/metrics dependencies intentionally retained in the constructor to avoid breaking
             // current wiring while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService taskManagerService, string[] args)
-        {
-            var result = ExecuteWithResult(taskManagerService, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

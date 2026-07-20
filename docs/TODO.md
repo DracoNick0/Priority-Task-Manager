@@ -9,10 +9,10 @@ Status: In progress.
 Completed:
 
 - CLI handler migration to the `CommandResult`/thin-wrapper pattern is functionally complete for every handler currently wired in `Program.cs` (full `ExecuteWithResult` conversion or an explicit thin wrapper where a handler stays facade-owned). See `docs/STATUS.md` for the per-handler breakdown.
+- CLI Migration Consolidation is complete: every wired handler implements only `ICommandResultHandler`, the legacy `ICommandHandler` contract and its compatibility bridges have been removed, `Program.cs` dispatches through a single `Dictionary<string, ICommandResultHandler>`, and handler tests call `ExecuteWithResult(...)` directly.
 
 Remaining:
 
-- Execute the migration consolidation checklist below now that every wired handler implements `ICommandResultHandler` (see Blockers / Dependencies).
 - Expand interactive console seam adoption to remaining interactive handlers.
 - Audit and refactor existing Gold Panning tests (`PriorityTaskManager.Tests/Scheduling/GoldPanning`):
   - Revise brittle tests that assert exact, hard-coded schedules.
@@ -28,7 +28,6 @@ Notes:
 Blockers / Dependencies:
 
 - The test suite is green; keep it green as remaining migration and scheduling work proceeds.
-- CLI migration consolidation precondition is met: every handler wired in `Program.cs` already implements `ICommandResultHandler`. Consolidation is now unblocked and just requires removing the compatibility bridges (see checklist below) and re-baselining tests that call `.Execute(...)` directly.
 - Dependency-order invariant tests may expose real scheduler defects; keep correct failing tests as isolated red tests while fixing the implementation instead of weakening expected behavior.
 
 Scheduler validation policy:
@@ -39,22 +38,10 @@ Scheduler validation policy:
 
 Next steps:
 
-1. **Finish CLI Migration Consolidation**: Remove the passthrough `Execute(...)` bridges and the `Program.cs` multi-contract branch, then re-baseline the handler tests that still call `.Execute(...)` directly against the single `ICommandResultHandler` contract.
-2. **Audit and Refactor Gold Panning Tests**: Audit and refactor the tests in `PriorityTaskManager.Tests/Scheduling/GoldPanning` to align with the testing strategy, converting brittle tests into invariant checks.
-3. **Implement Core Invariant Tests**: Add focused scheduler validation tests for dependency-order and the other invariants in `docs/TESTING_STRATEGY.md`, using minimal, deterministic task sets.
-4. **Classify Failures**: As tests are added, classify any failures as implementation defects, incorrect/outdated expectations, or unclear requirements before broadening coverage.
-5. **Re-baseline Command Orchestration Tests**: Update final-state command orchestration tests and remove compatibility-only assertions now that consolidation is complete.
-6. **Broaden Scheduling Characterization Coverage**: Add broader scheduling characterization coverage only after the hard invariants from step 3 are protected.
-
-### Required CLI Migration Consolidation (Do Not Skip)
-
-- Consolidate command dispatch to one canonical handler contract after migration completes.
-- Remove compatibility bridges introduced for phased migration:
-  - Handler-level passthrough `Execute(...)` methods that only forward to result-based execution.
-  - Runtime multi-contract branching in `Program.cs` used only for mixed legacy/result handlers.
-- Preserve user feedback guarantees for every command path: success, warning, usage, or actionable error.
-- Re-baseline tests for final-state dispatch and remove temporary compatibility-only assertions.
-- Update docs to remove migration-only wording and document final-state command orchestration behavior.
+1. **Audit and Refactor Gold Panning Tests**: Audit and refactor the tests in `PriorityTaskManager.Tests/Scheduling/GoldPanning` to align with the testing strategy, converting brittle tests into invariant checks.
+2. **Implement Core Invariant Tests**: Add focused scheduler validation tests for dependency-order and the other invariants in `docs/TESTING_STRATEGY.md`, using minimal, deterministic task sets.
+3. **Classify Failures**: As tests are added, classify any failures as implementation defects, incorrect/outdated expectations, or unclear requirements before broadening coverage.
+4. **Broaden Scheduling Characterization Coverage**: Add broader scheduling characterization coverage only after the hard invariants from step 2 are protected.
 
 ## (B) 2/5 CI Quality Gates
 

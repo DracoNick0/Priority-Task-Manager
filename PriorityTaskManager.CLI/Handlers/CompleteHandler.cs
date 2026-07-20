@@ -9,22 +9,12 @@ namespace PriorityTaskManager.CLI.Handlers
     /// Handles the 'complete' command.
     /// Marks one or more tasks as complete using their display IDs.
     /// </summary>
-    public class CompleteHandler : ICommandHandler, ICommandResultHandler
+    public class CompleteHandler : ICommandResultHandler
     {
         public CompleteHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             // Dependencies intentionally retained in the constructor to avoid breaking current wiring
             // while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

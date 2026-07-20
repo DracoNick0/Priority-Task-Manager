@@ -22,7 +22,7 @@ namespace PriorityTaskManager.Tests.CLI
             });
             var handler = new ListHandler(metrics, timeService, snapshotProvider, fakeConsole);
 
-            handler.Execute(service, new[] { "settings" });
+            handler.ExecuteWithResult(service, new[] { "settings" });
 
             var updatedList = service.GetListById(service.GetActiveListId());
             Assert.NotNull(updatedList);

@@ -18,7 +18,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Delete me");
             var handler = new DeleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { task.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString() });
 
             Assert.Null(ctx.Service.GetTaskById(task.Id));
         }
@@ -30,7 +30,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Keep me");
             var handler = new DeleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "not-a-number" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "not-a-number" });
 
             Assert.NotNull(ctx.Service.GetTaskById(task.Id));
             Assert.Single(ctx.Service.GetAllTasks(ctx.Service.GetActiveListId()));
@@ -71,7 +71,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Complete me");
             var handler = new CompleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { task.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString() });
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -85,7 +85,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Still incomplete");
             var handler = new CompleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, Array.Empty<string>());
+            handler.ExecuteWithResult(ctx.Service, Array.Empty<string>());
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -100,7 +100,7 @@ namespace PriorityTaskManager.Tests.CLI
             ctx.Service.MarkTaskAsComplete(task.Id);
             var handler = new UncompleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { task.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString() });
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -115,7 +115,7 @@ namespace PriorityTaskManager.Tests.CLI
             ctx.Service.MarkTaskAsComplete(task.Id);
             var handler = new UncompleteHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, Array.Empty<string>());
+            handler.ExecuteWithResult(ctx.Service, Array.Empty<string>());
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -158,12 +158,12 @@ namespace PriorityTaskManager.Tests.CLI
             var child = AddTask(ctx.Service, "Child");
             var handler = new DependHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
             var afterAdd = ctx.Service.GetTaskById(child.Id);
             Assert.NotNull(afterAdd);
             Assert.Contains(parent.Id, afterAdd.Dependencies);
 
-            handler.Execute(ctx.Service, new[] { "remove", child.DisplayId.ToString(), parent.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { "remove", child.DisplayId.ToString(), parent.DisplayId.ToString() });
             var afterRemove = ctx.Service.GetTaskById(child.Id);
             Assert.NotNull(afterRemove);
             Assert.DoesNotContain(parent.Id, afterRemove.Dependencies);
@@ -176,7 +176,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Self");
             var handler = new DependHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "add", task.DisplayId.ToString(), task.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { "add", task.DisplayId.ToString(), task.DisplayId.ToString() });
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -191,8 +191,8 @@ namespace PriorityTaskManager.Tests.CLI
             var child = AddTask(ctx.Service, "Child");
             var handler = new DependHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
-            handler.Execute(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { "add", child.DisplayId.ToString(), parent.DisplayId.ToString() });
 
             var updated = ctx.Service.GetTaskById(child.Id);
             Assert.NotNull(updated);
@@ -233,11 +233,11 @@ namespace PriorityTaskManager.Tests.CLI
             var ctx = CreateContext();
             var handler = new ListHandler(ctx.TaskMetricsService, ctx.TimeService, ctx.SnapshotProvider);
 
-            handler.Execute(ctx.Service, new[] { "create", "Roadmap" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "create", "Roadmap" });
             var created = ctx.Service.GetListByName("Roadmap");
             Assert.NotNull(created);
 
-            handler.Execute(ctx.Service, new[] { "switch", "Roadmap" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "switch", "Roadmap" });
             Assert.Equal(created.Id, ctx.Service.GetActiveListId());
         }
 
@@ -247,8 +247,8 @@ namespace PriorityTaskManager.Tests.CLI
             var ctx = CreateContext();
             var handler = new ListHandler(ctx.TaskMetricsService, ctx.TimeService, ctx.SnapshotProvider);
 
-            handler.Execute(ctx.Service, new[] { "create", "Roadmap" });
-            handler.Execute(ctx.Service, new[] { "create", "Roadmap" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "create", "Roadmap" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "create", "Roadmap" });
 
             var roadmapLists = ctx.Service.GetAllLists().Where(l => l.Name.Equals("Roadmap", StringComparison.OrdinalIgnoreCase)).ToList();
             Assert.Single(roadmapLists);
@@ -261,7 +261,7 @@ namespace PriorityTaskManager.Tests.CLI
             var handler = new ListHandler(ctx.TaskMetricsService, ctx.TimeService, ctx.SnapshotProvider);
             var originalActiveListId = ctx.Service.GetActiveListId();
 
-            handler.Execute(ctx.Service, new[] { "switch", "DoesNotExist" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "switch", "DoesNotExist" });
 
             Assert.Equal(originalActiveListId, ctx.Service.GetActiveListId());
         }
@@ -271,14 +271,14 @@ namespace PriorityTaskManager.Tests.CLI
         {
             var ctx = CreateContext();
             var handler = new ListHandler(ctx.TaskMetricsService, ctx.TimeService, ctx.SnapshotProvider);
-            handler.Execute(ctx.Service, new[] { "create", "Temporary" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "create", "Temporary" });
             Assert.NotNull(ctx.Service.GetListByName("Temporary"));
 
             var originalIn = Console.In;
             try
             {
                 Console.SetIn(new StringReader("n\n"));
-                handler.Execute(ctx.Service, new[] { "delete", "Temporary" });
+                handler.ExecuteWithResult(ctx.Service, new[] { "delete", "Temporary" });
             }
             finally
             {
@@ -295,7 +295,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Before");
             var handler = new EditHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { task.DisplayId.ToString(), "title", "After" });
+            handler.ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString(), "title", "After" });
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -309,7 +309,7 @@ namespace PriorityTaskManager.Tests.CLI
             var task = AddTask(ctx.Service, "Clamp me");
             var handler = new EditHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { task.DisplayId.ToString(), "importance", "99" });
+            handler.ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString(), "importance", "99" });
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -327,7 +327,7 @@ namespace PriorityTaskManager.Tests.CLI
             var originalImportance = before.Importance;
             var handler = new EditHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { task.DisplayId.ToString(), "unknown-attribute", "new value" });
+            handler.ExecuteWithResult(ctx.Service, new[] { task.DisplayId.ToString(), "unknown-attribute", "new value" });
 
             var updated = ctx.Service.GetTaskById(task.Id);
             Assert.NotNull(updated);
@@ -347,7 +347,7 @@ namespace PriorityTaskManager.Tests.CLI
             try
             {
                 Console.SetIn(new StringReader("no\n"));
-                handler.Execute(ctx.Service, Array.Empty<string>());
+                handler.ExecuteWithResult(ctx.Service, Array.Empty<string>());
             }
             finally
             {
@@ -370,7 +370,7 @@ namespace PriorityTaskManager.Tests.CLI
             try
             {
                 Console.SetIn(new StringReader("confirm\n"));
-                handler.Execute(ctx.Service, Array.Empty<string>());
+                handler.ExecuteWithResult(ctx.Service, Array.Empty<string>());
             }
             finally
             {
@@ -435,7 +435,7 @@ namespace PriorityTaskManager.Tests.CLI
             var ctx = CreateContext();
             var handler = new SettingsHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[]
+            handler.ExecuteWithResult(ctx.Service, new[]
             {
                 "--default-sort", "duedate",
                 "--default-mode", "gold",
@@ -465,7 +465,7 @@ namespace PriorityTaskManager.Tests.CLI
             var originalStart = before.WorkStartTime;
             var originalEnd = before.WorkEndTime;
 
-            handler.Execute(ctx.Service, new[] { "--working-hours", "invalid" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "--working-hours", "invalid" });
 
             var profile = ctx.Service.GetUserProfile();
             Assert.Equal(originalStart, profile.WorkStartTime);
@@ -479,7 +479,7 @@ namespace PriorityTaskManager.Tests.CLI
             var handler = new SettingsHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
             var originalMode = ctx.Service.GetUserProfile().SchedulingMode;
 
-            handler.Execute(ctx.Service, new[] { "--default-mode", "unsupported" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "--default-mode", "unsupported" });
 
             Assert.Equal(originalMode, ctx.Service.GetUserProfile().SchedulingMode);
         }
@@ -523,7 +523,7 @@ namespace PriorityTaskManager.Tests.CLI
             var eventId = ctx.Service.GetAllEvents().First().Id;
             var handler = new EventCommandHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "delete", eventId.ToString() });
+            handler.ExecuteWithResult(ctx.Service, new[] { "delete", eventId.ToString() });
 
             Assert.Empty(ctx.Service.GetAllEvents());
         }
@@ -550,7 +550,7 @@ namespace PriorityTaskManager.Tests.CLI
             var secondId = eventIds[1];
             var handler = new EventCommandHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "delete", $"{firstId},not-a-number,{secondId + 999}" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "delete", $"{firstId},not-a-number,{secondId + 999}" });
 
             var remaining = ctx.Service.GetAllEvents().ToList();
             Assert.Single(remaining);
@@ -564,7 +564,7 @@ namespace PriorityTaskManager.Tests.CLI
             ctx.TimeService.SetSimulatedTime(new DateTime(2026, 7, 8, 12, 0, 0));
             var handler = new TimeHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "now" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "now" });
 
             Assert.False(ctx.TimeService.IsSimulated());
         }
@@ -576,7 +576,7 @@ namespace PriorityTaskManager.Tests.CLI
             ctx.TimeService.SetSimulatedTime(new DateTime(2026, 7, 8, 12, 0, 0));
             var handler = new TimeHandler(ctx.TimeService, ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "unknown-subcommand" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "unknown-subcommand" });
 
             Assert.True(ctx.TimeService.IsSimulated());
         }
@@ -614,7 +614,7 @@ namespace PriorityTaskManager.Tests.CLI
             var ctx = CreateContext();
             var handler = new ModeHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "constraint" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "constraint" });
 
             Assert.Equal(SchedulingMode.ConstraintOptimization, ctx.Service.GetUserProfile().SchedulingMode);
         }
@@ -625,7 +625,7 @@ namespace PriorityTaskManager.Tests.CLI
             var ctx = CreateContext();
             var handler = new ModeHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.Execute(ctx.Service, new[] { "v1" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "v1" });
 
             Assert.Equal(SchedulingMode.ConstraintOptimization, ctx.Service.GetUserProfile().SchedulingMode);
         }
@@ -637,7 +637,7 @@ namespace PriorityTaskManager.Tests.CLI
             var handler = new ModeHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
             var original = ctx.Service.GetUserProfile().SchedulingMode;
 
-            handler.Execute(ctx.Service, new[] { "not-a-mode" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "not-a-mode" });
 
             Assert.Equal(original, ctx.Service.GetUserProfile().SchedulingMode);
         }

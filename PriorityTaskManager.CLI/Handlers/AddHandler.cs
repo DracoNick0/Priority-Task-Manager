@@ -14,7 +14,7 @@ namespace PriorityTaskManager.CLI.Handlers
     /// With arguments, parses the title and optional flags non-interactively so the command
     /// can be scripted or exercised by automated tests.
     /// </summary>
-    public class AddHandler : ICommandHandler, ICommandResultHandler
+    public class AddHandler : ICommandResultHandler
     {
         private const int DefaultImportance = 5;
         private const int DefaultComplexity = 5;
@@ -24,16 +24,6 @@ namespace PriorityTaskManager.CLI.Handlers
         public AddHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             // Dependencies intentionally retained in the constructor to avoid breaking current wiring while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

@@ -28,7 +28,7 @@ namespace PriorityTaskManager.Tests.CLI
             });
             var handler = new EditHandler(snapshotProvider, metrics, fakeConsole);
 
-            handler.Execute(service, new[] { task.DisplayId.ToString() });
+            handler.ExecuteWithResult(service, new[] { task.DisplayId.ToString() });
 
             var updated = service.GetTaskById(task.Id);
             Assert.NotNull(updated);

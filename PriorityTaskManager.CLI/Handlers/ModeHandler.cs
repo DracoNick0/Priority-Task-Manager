@@ -7,22 +7,12 @@ using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class ModeHandler : ICommandHandler, ICommandResultHandler
+    public class ModeHandler : ICommandResultHandler
     {
         public ModeHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             // Dependencies intentionally retained in the constructor to avoid breaking current wiring
             // while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

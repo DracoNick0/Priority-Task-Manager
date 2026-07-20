@@ -9,22 +9,12 @@ namespace PriorityTaskManager.CLI.Handlers
     /// Handles the 'delete' command.
     /// Permanently removes one or more tasks from the active list using their display IDs.
     /// </summary>
-    public class DeleteHandler : ICommandHandler, ICommandResultHandler
+    public class DeleteHandler : ICommandResultHandler
     {
         public DeleteHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
         {
             // Dependencies intentionally retained in the constructor to avoid breaking current wiring
             // while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

@@ -5,22 +5,12 @@ using PriorityTaskManager.CLI.Utils;
 /// <summary>
 /// Handles the 'depend' command, allowing users to add or remove dependencies between tasks.
 /// </summary>
-public class DependHandler : ICommandHandler, ICommandResultHandler
+public class DependHandler : ICommandResultHandler
 {
     public DependHandler(ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
     {
         // Dependencies intentionally retained in the constructor to avoid breaking current wiring
         // while this handler migrates toward Program-driven dashboard rendering.
-    }
-
-    /// <inheritdoc/>
-    public void Execute(TaskManagerService service, string[] args)
-    {
-        var result = ExecuteWithResult(service, args);
-        if (!string.IsNullOrWhiteSpace(result.Message))
-        {
-            Console.WriteLine(result.Message);
-        }
     }
 
     /// <inheritdoc/>

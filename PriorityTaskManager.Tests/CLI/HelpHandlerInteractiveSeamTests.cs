@@ -19,7 +19,7 @@ namespace PriorityTaskManager.Tests.CLI
             });
             var handler = new HelpHandler(snapshotProvider, metrics, fakeConsole);
 
-            handler.Execute(service, Array.Empty<string>());
+            handler.ExecuteWithResult(service, Array.Empty<string>());
 
             Assert.True(fakeConsole.CursorVisible);
             Assert.True(fakeConsole.DashboardRenderCount >= 2);
@@ -37,7 +37,7 @@ namespace PriorityTaskManager.Tests.CLI
             });
             var handler = new HelpHandler(snapshotProvider, metrics, fakeConsole);
 
-            handler.Execute(service, Array.Empty<string>());
+            handler.ExecuteWithResult(service, Array.Empty<string>());
 
             Assert.Contains(fakeConsole.Lines, line => line.Contains("Task Commands:"));
             Assert.Contains(fakeConsole.Lines, line => line.Contains("add <Title>"));

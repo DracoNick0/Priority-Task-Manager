@@ -4,7 +4,7 @@ using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class TimeHandler : ICommandHandler, ICommandResultHandler
+    public class TimeHandler : ICommandResultHandler
     {
         private readonly ITimeService _timeService;
 
@@ -13,16 +13,6 @@ namespace PriorityTaskManager.CLI.Handlers
             _timeService = timeService;
             // Snapshot/metrics dependencies intentionally retained in the constructor to avoid breaking
             // current wiring while this handler migrates toward Program-driven dashboard rendering.
-        }
-
-        /// <inheritdoc/>
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

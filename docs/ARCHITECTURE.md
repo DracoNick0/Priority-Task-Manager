@@ -42,12 +42,11 @@ The complete architecture should be understandable by reading this map plus all 
 
 1. `Program.cs` starts the CLI, loads persisted data, builds services, and maps command names to handlers.
 2. The CLI reads a command and resolves the handler.
-3. Result-based handlers return `CommandResult`; `Program.cs` owns message rendering and dashboard refresh for that path.
-4. Legacy handlers still run through `ICommandHandler.Execute(...)` during migration.
-5. `TaskManagerService` reads or mutates the in-memory `DataContainer` and persists changes through `IPersistenceService`.
-6. Scheduling requests build an effective profile for the active list and call the selected `IUrgencyStrategy`.
-7. The active scheduler returns a `PrioritizationResult` with scheduled tasks, unscheduled tasks, and history.
-8. CLI rendering uses a refreshed `ScheduleSnapshot` rather than making rendering helpers own scheduling decisions.
+3. Every wired handler implements `ICommandResultHandler`; `Program.cs` calls `ExecuteWithResult(...)` and owns message rendering and dashboard refresh from the returned `CommandResult`.
+4. `TaskManagerService` reads or mutates the in-memory `DataContainer` and persists changes through `IPersistenceService`.
+5. Scheduling requests build an effective profile for the active list and call the selected `IUrgencyStrategy`.
+6. The active scheduler returns a `PrioritizationResult` with scheduled tasks, unscheduled tasks, and history.
+7. CLI rendering uses a refreshed `ScheduleSnapshot` rather than making rendering helpers own scheduling decisions.
 
 ## Architectural Invariants
 

@@ -10,7 +10,7 @@ using PriorityTaskManager.CLI.Utils;
 
 namespace PriorityTaskManager.CLI.Handlers
 {
-    public class SettingsHandler : ICommandHandler, ICommandResultHandler
+    public class SettingsHandler : ICommandResultHandler
     {
         private readonly ITimeService _timeService;
         private readonly ScheduleSnapshotProvider _snapshotProvider;
@@ -21,15 +21,6 @@ namespace PriorityTaskManager.CLI.Handlers
             _timeService = timeService;
             _snapshotProvider = snapshotProvider;
             _taskMetricsService = taskMetricsService;
-        }
-
-        public void Execute(TaskManagerService service, string[] args)
-        {
-            var result = ExecuteWithResult(service, args);
-            if (!string.IsNullOrWhiteSpace(result.Message))
-            {
-                Console.WriteLine(result.Message);
-            }
         }
 
         /// <inheritdoc/>

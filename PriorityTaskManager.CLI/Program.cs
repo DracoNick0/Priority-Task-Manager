@@ -39,7 +39,7 @@ namespace PriorityTaskManager.CLI
 
 			Console.WriteLine("Priority Task Manager CLI (type 'help' for commands)");
 
-			var handlers = new Dictionary<string, ICommandHandler>(StringComparer.OrdinalIgnoreCase)
+			var handlers = new Dictionary<string, ICommandResultHandler>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ "add", new AddHandler(scheduleSnapshotProvider, taskMetricsService) },
 				{ "list", new ListHandler(taskMetricsService, timeService, scheduleSnapshotProvider) },
@@ -82,24 +82,17 @@ namespace PriorityTaskManager.CLI
 
 				if (handlers.TryGetValue(command, out var handler))
 				{
-					if (handler is ICommandResultHandler resultHandler)
+					var result = handler.ExecuteWithResult(service, argsArr);
+
+					if (result.ShouldRefreshDashboard)
 					{
-						var result = resultHandler.ExecuteWithResult(service, argsArr);
-
-						if (result.ShouldRefreshDashboard)
-						{
-							scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
-							ConsoleHelper.ClearAndRenderDashboard(scheduleSnapshotProvider, taskMetricsService);
-						}
-
-						if (!string.IsNullOrWhiteSpace(result.Message))
-						{
-							Console.WriteLine(result.Message);
-						}
+						scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
+						ConsoleHelper.ClearAndRenderDashboard(scheduleSnapshotProvider, taskMetricsService);
 					}
-					else
+
+					if (!string.IsNullOrWhiteSpace(result.Message))
 					{
-						handler.Execute(service, argsArr);
+						Console.WriteLine(result.Message);
 					}
 
 					SyncBackgroundRefreshScheduler();

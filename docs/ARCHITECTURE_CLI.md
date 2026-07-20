@@ -20,15 +20,14 @@ The CLI must not own business scheduling decisions, task/list persistence rules,
 | --- | --- |
 | `Program.cs` | Builds services, maps command names to handlers, owns result-based refresh/message orchestration |
 | `Handlers/*Handler.cs` | Parse command arguments, call `TaskManagerService`, and report user-facing outcomes |
-| `ICommandHandler` | Legacy command contract during migration |
-| `ICommandResultHandler` | Result-based command contract used by migrated handlers |
+| `ICommandResultHandler` | Canonical command contract implemented by every wired handler; returns a structured `CommandResult` |
 | `CommandResult` | Structured command outcome with status, message, and dashboard refresh flag |
 
 ## Command Handling Principles
 
 - Keep handlers thin: parse input, call services, handle expected errors, and report outcomes.
 - Put reusable non-interactive parsing and usage-message logic in `NonInteractiveCommandResultHelper` instead of duplicating it in handlers.
-- Prefer `CommandResult` for non-interactive handlers as migration continues.
+- Every handler implements `ICommandResultHandler` and returns a `CommandResult`; interactive/menu-driven handlers that already own their own console rendering may return an inert `CommandResult` (no message, no refresh).
 - Preserve clear command feedback for every path: success, warning, usage guidance, or actionable error.
 - Do not add scheduling or persistence business rules to handlers; add them to core services or scheduling stages.
 
@@ -52,15 +51,12 @@ When adding user-input behavior, extend or reuse `ConsoleInputHelper` if the beh
 - Handlers that mutate schedule-relevant data should refresh the snapshot through the established orchestration path.
 - Result-based handlers should use `CommandResult.ShouldRefreshDashboard` and let `Program.cs` perform refresh/rendering.
 
-## Current Migration Boundary
+## Current Command Dispatch
 
-The CLI currently has both legacy and result-based command contracts. Follow [STATUS.md](STATUS.md) and [TODO.md](TODO.md) before changing handler contracts.
+Every handler wired in `Program.cs` implements `ICommandResultHandler`. `Program.cs` dispatches through a single `Dictionary<string, ICommandResultHandler>` and calls `ExecuteWithResult(...)` for every command; there is no remaining legacy `ICommandHandler` contract or multi-contract branching.
 
-During migration:
-
-- New non-interactive command behavior should prefer `ICommandResultHandler`.
-- Do not remove legacy compatibility bridges until all handlers are on the canonical contract and tests have been re-baselined.
-- Keep compatibility-only tests separate from final-state orchestration tests so they can be removed cleanly.
+- New command behavior must implement `ICommandResultHandler`.
+- Interactive/menu-driven handlers (`HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`) still own their console rendering end-to-end through `IInteractiveConsoleFacade` and return an inert `CommandResult`; do not collapse their rendering into `CommandResult.Message`.
 
 ## Invariants
 
@@ -68,3 +64,4 @@ During migration:
 - Interactive console APIs should be behind test seams when behavior needs automated coverage.
 - Command handlers must not silently succeed or fail; every command path should produce feedback.
 - Dashboard rendering must not be the only place where a command communicates success or failure.
+- All wired command handlers implement the single `ICommandResultHandler` contract; do not reintroduce a parallel legacy dispatch path.

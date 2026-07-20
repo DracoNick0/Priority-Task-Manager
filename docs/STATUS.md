@@ -9,7 +9,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 - The CLI project builds successfully.
 - Gold Panning is the active scheduling strategy; constraint optimization is routed but not implemented.
-- CLI command orchestration migration is in progress. See `docs/TODO.md` for active-work handoff and next steps.
+- CLI command dispatch is consolidated onto a single `ICommandResultHandler` contract; see `docs/TODO.md` for remaining testing-overhaul work.
 - The test suite passes. CLI handler tests no longer fail on real console clearing/cursor behavior; broader interactive seam adoption and dependency-order scheduling coverage remain pending.
 
 ## Feature Matrix
@@ -32,10 +32,10 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - Gold Panning is the currently active scheduling strategy.
 - The app stores data in JSON files and loads that state into memory on startup.
 - Lists can carry copied settings snapshots instead of mutating only global defaults.
-- The CLI now supports incremental command orchestration migration: result-based handlers can return `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
-- `DeleteHandler`, `CompleteHandler`, `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` build real `CommandResult` outcomes (status, message, dashboard-refresh flag) on the result-based path.
-- `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler` also implement `ICommandResultHandler` now, but only as a thin wrapper around their existing, unchanged interactive logic: `ExecuteWithResult` calls the same `Execute` body and returns an inert `CommandResult` (no message, no refresh), because these handlers already own their console rendering end-to-end through `IInteractiveConsoleFacade`. `Program.cs` does no extra work for them beyond what already happened before migration.
-- `EventHandler` (currently unused/unwired in `Program.cs`; `event`/`e` route to `EventCommandHandler` instead) received the same thin wrapper for contract consistency.
+- The CLI now supports command orchestration through a single canonical contract: every wired handler implements `ICommandResultHandler` and returns `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
+- `DeleteHandler`, `CompleteHandler`, `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` build real `CommandResult` outcomes (status, message, dashboard-refresh flag).
+- `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler` also implement `ICommandResultHandler`, but return an inert `CommandResult` (no message, no refresh) because these handlers already own their console rendering end-to-end through `IInteractiveConsoleFacade`. `Program.cs` does no extra work for them beyond what already happened before migration.
+- `EventHandler` (currently unused/unwired in `Program.cs`; `event`/`e` route to `EventCommandHandler` instead) has the same `ICommandResultHandler` shape for contract consistency.
 - Shared parsing/usage-result behavior for migrated non-interactive handlers is centralized via `NonInteractiveCommandResultHelper`.
 - Shared interactive console behavior for keyboard-driven handlers is abstracted through `IInteractiveConsoleFacade`.
 - `HelpHandler`, `EditHandler`, interactive `list settings` flow, and `event edit`/`event clear` interactive paths currently use the interactive console facade seam.
@@ -54,8 +54,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The event workflow is functional but still under UX refinement.
 - The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, Gold Panning invariant/replay coverage, and console-handle-safe CLI handler tests are now in place, while deep interactive CLI flows and dependency-order scheduling coverage remain pending.
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
-- `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net; the intended fix for remaining non-interactive handlers is migrating them to Program-owned `CommandResult` orchestration, not extending `IInteractiveConsoleFacade` (which is reserved for genuinely interactive, menu/key-input handlers).
-- CLI command execution currently uses dual-contract dispatch in `Program.cs` and includes compatibility bridges for partially migrated handlers.
+- `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net.
 - Several interactive handlers still call console APIs directly and remain pending interactive I/O seam adoption.
 
 ## Command Surface Summary
