@@ -6,9 +6,12 @@ using System.Linq;
 namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Stage responsible for sorting tasks based on a predefined strategy.
-    /// This stage serves as a pre-processor for other stages that require tasks to be in a specific order.
-    /// The current strategy is to sort by due date, then by complexity.
+    /// Legacy stage responsible for sorting tasks based on a predefined strategy.
+    /// This stage served as a pre-processor for other stages that require tasks to be in a specific order.
+    /// The strategy was to sort by due date, then by complexity.
+    /// NOT wired into the active <see cref="GoldPanningStrategy"/> pipeline: superseded by
+    /// <see cref="TaskRankingStage"/>. Retained for reference only; do not add new production wiring
+    /// without updating the documented pipeline (docs/ARCHITECTURE_SCHEDULING.md) and this comment.
     /// </summary>
     public class TaskOrderingStage : ISchedulingStage
     {

@@ -7,6 +7,14 @@ using System.Linq;
 
 namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
+    /// <summary>
+    /// Legacy stage that placed tasks while respecting dependency ordering, with bump/reflow support
+    /// for conflicting placements.
+    /// NOT wired into the active <see cref="GoldPanningStrategy"/> pipeline. The current wired pipeline
+    /// (docs/ARCHITECTURE_SCHEDULING.md, docs/GOLD_PANNING.md) does not enforce dependency ordering at
+    /// all; this is a known gap tracked in docs/TODO.md (B) 1/5. Retained for reference only; do not add
+    /// new production wiring without updating the documented pipeline and this comment.
+    /// </summary>
     public class DependencyAwarePlacementStage : ISchedulingStage
     {
         private readonly DependencyGraphHelper _dependencyGraphHelper;

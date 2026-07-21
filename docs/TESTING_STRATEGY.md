@@ -45,6 +45,11 @@ This is the most complex area of the application. We avoid brittle unit tests th
     -   For stable algorithm outputs, we save the generated schedule against a complex benchmark dataset. Future refactors test against these text-based snapshots to catch unintended regressions in scheduling shape.
 -   **Stage Pipeline Context**:
     -   Isolated tests for distinct deterministic stages (e.g., verifying `TaskNormalizationStage` correctly calculates `EffectiveImportance` modifiers).
+-   **Algorithm-Agnostic Invariant Suite**:
+    -   General scheduling invariants (the rules listed above) are written once against the `IUrgencyStrategy`/`PrioritizationResult` contract in `PriorityTaskManager.Tests.Scheduling.SchedulingInvariantTestsBase`, not against a specific strategy implementation.
+    -   Each concrete strategy (e.g., `GoldPanningInvariantTests`) subclasses the base and only supplies a factory method constructing that strategy; it should not re-declare invariant assertions.
+    -   Any new `IUrgencyStrategy` implementation (e.g., the Constraint Solver) must add a corresponding thin subclass of `SchedulingInvariantTestsBase` instead of duplicating the invariant suite.
+    -   Algorithm-internal pipeline stage tests (e.g., under `Scheduling/GoldPanning`) must only assert behavior specific to that stage/algorithm's own mechanics; they must not re-derive invariants already owned by `SchedulingInvariantTestsBase`.
 
 ### 3. CLI Handlers
 
