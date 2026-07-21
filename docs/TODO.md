@@ -11,19 +11,22 @@ Completed:
 - CLI handler migration to the `CommandResult`/thin-wrapper pattern is functionally complete for every handler currently wired in `Program.cs` (full `ExecuteWithResult` conversion or an explicit thin wrapper where a handler stays facade-owned). See `docs/STATUS.md` for the per-handler breakdown.
 - CLI Migration Consolidation is complete: every wired handler implements only `ICommandResultHandler`, the legacy `ICommandHandler` contract and its compatibility bridges have been removed, `Program.cs` dispatches through a single `Dictionary<string, ICommandResultHandler>`, and handler tests call `ExecuteWithResult(...)` directly.
 
+Completed (continued):
+
+- Audited existing Gold Panning tests (`PriorityTaskManager.Tests/Scheduling/GoldPanning`): `AvailabilityWindowStageTests`, `TaskNormalizationStageTests`, `TaskDistributionStageTests`, `TaskRankingStageTests`, and `DailySequencingStageTests` all test live, wired stages and only assert stage-owned mechanics — no brittle hard-coded full-schedule assertions or general-invariant duplication found; no changes needed. `GoldPanningInvariantTests.cs` is already invariant-based and is the migration target for step 2 below.
+- Identified and marked `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs` as legacy and not wired into the active `GoldPanningStrategy` pipeline (superseded by `TaskDistributionStage` + `DailySequencingStage`); both now carry explanatory code comments and are excluded from stage-audit and invariant-suite scope.
+
 Remaining:
 
 - Expand interactive console seam adoption to remaining interactive handlers.
-- Audit and refactor existing Gold Panning tests (`PriorityTaskManager.Tests/Scheduling/GoldPanning`):
-  - Revise brittle tests that assert exact, hard-coded schedules.
-  - Convert them into the invariant tests defined in `docs/TESTING_STRATEGY.md` (Scheduling Algorithms), or into snapshot/characterization tests.
-  - Ensure tests for individual pipeline stages include checks for stage-specific invariants (e.g., `DailySequencingStage` correctly orders tasks by priority).
-  - Validate active Gold Panning dependency-order behavior specifically before broader scheduling characterization baselines are accepted.
+- Revisit removal of the legacy `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs` separately if the stage is confirmed permanently obsolete.
 - Implement the scheduling invariant tests from `docs/TESTING_STRATEGY.md` (Scheduling Algorithms): Dependency Chain, Time Bounds, Task Dropping, No Overlapping Tasks, Task Duration Adherence, Respect `NotBefore`/`DueDate`, Idempotency, State Immutability, Task Splitting Logic, Completed Task Exclusion, Event Blocking.
+- Introduce an algorithm-agnostic invariant test base (e.g., `SchedulingInvariantTestsBase`) written against the `IUrgencyStrategy` contract rather than `GoldPanningStrategy` directly, so the same invariant suite can be reused by future `IUrgencyStrategy` implementations (starting with the `(B) 3/5` Constraint Solver MVP) via a strategy-specific subclass that only supplies construction/factory logic.
 
 Notes:
 
 - The interactive branches of `SettingsHandler`, plus `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler`, remain on facade-owned rendering; do not collapse their interactive/menu-driven console output into `CommandResult.Message` — `IInteractiveConsoleFacade` is reserved for genuinely interactive (menu/key-input) flows and should not be bypassed for them.
+- Invariant test ownership: general scheduling invariants (dependency chain, no overlap, duration adherence, `NotBefore`/`DueDate`, idempotency, state immutability, task splitting, completed-task exclusion, event blocking, task dropping) belong in the shared `SchedulingInvariantTestsBase` suite and should be asserted once, not re-derived per stage test file. Stage test files own only the algorithm-internal mechanics specific to that stage.
 
 Blockers / Dependencies:
 
@@ -38,8 +41,8 @@ Scheduler validation policy:
 
 Next steps:
 
-1. **Audit and Refactor Gold Panning Tests**: Audit and refactor the tests in `PriorityTaskManager.Tests/Scheduling/GoldPanning` to align with the testing strategy, converting brittle tests into invariant checks.
-2. **Implement Core Invariant Tests**: Add focused scheduler validation tests for dependency-order and the other invariants in `docs/TESTING_STRATEGY.md`, using minimal, deterministic task sets.
+1. **Build the Shared Invariant Base**: Create `SchedulingInvariantTestsBase` (or equivalent) against `IUrgencyStrategy`/`PrioritizationResult`, migrate `GoldPanningInvariantTests` to subclass it, and document the pattern in `docs/TESTING_STRATEGY.md` as the required convention for new strategies.
+2. **Implement Core Invariant Tests**: Add focused scheduler validation tests for dependency-order and the other invariants in `docs/TESTING_STRATEGY.md`, using minimal, deterministic task sets, inside the shared base.
 3. **Classify Failures**: As tests are added, classify any failures as implementation defects, incorrect/outdated expectations, or unclear requirements before broadening coverage.
 4. **Broaden Scheduling Characterization Coverage**: Add broader scheduling characterization coverage only after the hard invariants from step 2 are protected.
 

@@ -7,9 +7,13 @@ using System.Linq;
 namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 {
     /// <summary>
-    /// Stage responsible for balancing the workload across available days.
-    /// It attempts to fit tasks into days based on their complexity (load) and duration.
-    /// If a task cannot fit, it enters a logic flow to split the task across multiple days.
+    /// Legacy stage that balanced workload across available days by fitting tasks based on
+    /// complexity (load) and duration, splitting tasks across days when needed.
+    /// NOT wired into the active <see cref="GoldPanningStrategy"/> pipeline: superseded by
+    /// <see cref="TaskDistributionStage"/> (bin packing) and <see cref="DailySequencingStage"/>
+    /// (within-day ordering). See docs/ARCHITECTURE_SCHEDULING.md and docs/GOLD_PANNING.md for the
+    /// current pipeline. Retained for reference only; do not add new production wiring without
+    /// updating the documented pipeline and this comment.
     /// </summary>
     public class WorkloadBalancingStage : ISchedulingStage
     {

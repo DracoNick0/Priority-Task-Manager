@@ -10,6 +10,12 @@ using Xunit;
 
 namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 {
+    // NOTE: WorkloadBalancingStage is legacy and is NOT wired into the active GoldPanningStrategy
+    // pipeline (see docs/ARCHITECTURE_SCHEDULING.md / docs/GOLD_PANNING.md for the current 5-stage
+    // pipeline: TaskNormalizationStage -> AvailabilityWindowStage -> TaskRankingStage ->
+    // TaskDistributionStage -> DailySequencingStage). These tests protect the legacy class in case
+    // it is reused, but they do not describe current production scheduling behavior and are out of
+    // scope for the shared scheduling invariant suite.
     public class WorkloadBalancingStageTests
     {
         private readonly MockTimeService _mockTimeService;
