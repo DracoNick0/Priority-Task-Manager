@@ -2,7 +2,7 @@
 
 > **Note:** This file is the source of truth for the backlog, roadmap, and currently in-progress work. Keep current-state feature reality in `docs/STATUS.md`; use this file for concise handoff details, blockers, dependencies, and next steps. Tasks are listed in priority order.
 
-## (B) 1/5 Testing Overhaul and Scheduling Invariants
+## (B) 1/6 Testing Overhaul and Scheduling Invariants
 
 Status: In progress.
 
@@ -15,14 +15,15 @@ Completed (continued):
 
 - Audited existing Gold Panning tests (`PriorityTaskManager.Tests/Scheduling/GoldPanning`): `AvailabilityWindowStageTests`, `TaskNormalizationStageTests`, `TaskDistributionStageTests`, `TaskRankingStageTests`, and `DailySequencingStageTests` all test live, wired stages and only assert stage-owned mechanics — no brittle hard-coded full-schedule assertions or general-invariant duplication found; no changes needed. `GoldPanningInvariantTests.cs` is already invariant-based and is the migration target for step 2 below.
 - Identified and marked `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs` as legacy and not wired into the active `GoldPanningStrategy` pipeline (superseded by `TaskDistributionStage` + `DailySequencingStage`); both now carry explanatory code comments and are excluded from stage-audit and invariant-suite scope.
-- Identified two further unwired legacy stages with the same treatment: `DependencyAwarePlacementStage` (dependency-aware placement with bump/reflow) and `TaskOrderingStage` (superseded by `TaskRankingStage`) — both now carry explanatory code comments. Critically, this confirms the active Gold Panning pipeline currently has **no dependency-ordering enforcement at all**; the future "Dependency Chain" invariant test is expected to fail against `GoldPanningStrategy` until this gap is fixed (see Blockers / Dependencies below).
+- Identified two further unwired legacy stages with the same treatment: `DependencyAwarePlacementStage` (dependency-aware placement with bump/reflow) and `TaskOrderingStage` (superseded by `TaskRankingStage`) — both now carry explanatory code comments. Critically, this confirms the active Gold Panning pipeline currently has **no dependency-ordering enforcement at all**; the future "Dependency Chain" invariant test is expected to fail against `GoldPanningStrategy` until this gap is fixed (see `(B) 2/6`).
 - Built `SchedulingInvariantTestsBase` (`PriorityTaskManager.Tests.Scheduling`), an algorithm-agnostic invariant suite written against `IUrgencyStrategy`/`PrioritizationResult`. Migrated the existing invariant coverage (no overlap, time bounds, event blocking, duration adherence, task dropping, idempotency) out of `GoldPanningInvariantTests` and into the base; `GoldPanningInvariantTests` is now a thin subclass supplying only the `GoldPanningStrategy` factory. Documented the convention in `docs/TESTING_STRATEGY.md` for future `IUrgencyStrategy` implementations.
+- Finalized the test-only portion of the invariant suite: added Completed Task Exclusion, Task Splitting Logic, State Immutability, and Respect `DueDate` to `SchedulingInvariantTestsBase` — all pass against `GoldPanningStrategy`. Added the Dependency Chain invariant test as well, isolated with `[Fact(Skip = ...)]` since it correctly fails against the current pipeline (no dependency-ordering stage is wired in). The `NotBefore` half of "Respect `NotBefore`/`DueDate`" cannot be tested yet because `TaskItem` has no `NotBefore` property; adding it is a production model change, not test-only work, so it is deferred to `(B) 2/6` rather than done here.
 
 Remaining:
 
 - Expand interactive console seam adoption to remaining interactive handlers.
 - Revisit removal of the legacy `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs`, `DependencyAwarePlacementStage`, and `TaskOrderingStage` separately if confirmed permanently obsolete.
-- Implement the remaining scheduling invariant tests in `SchedulingInvariantTestsBase` from `docs/TESTING_STRATEGY.md` (Scheduling Algorithms): Dependency Chain, Completed Task Exclusion, Task Splitting Logic, State Immutability, Respect `NotBefore`. Note: Dependency Chain is expected to fail against `GoldPanningStrategy` until dependency-ordering is implemented — keep it as an isolated, clearly-labeled red test per the scheduler validation policy rather than weakening or skipping it silently.
+- Un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` and add the `NotBefore` half of the due-date invariant once `(B) 2/6` lands the corresponding algorithm/model fixes.
 
 Notes:
 
@@ -33,6 +34,8 @@ Blockers / Dependencies:
 
 - The test suite is green; keep it green as remaining migration and scheduling work proceeds.
 - Dependency-order invariant tests may expose real scheduler defects; keep correct failing tests as isolated red tests while fixing the implementation instead of weakening expected behavior.
+- `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` is currently skipped (not deleted or weakened) pending a dependency-ordering fix to `GoldPanningStrategy` in `(B) 2/6`; un-skip it once a dependency-aware stage is wired into the active pipeline.
+- Adding a `NotBefore` property to `TaskItem` (and wiring it through normalization/placement) is scoped to `(B) 2/6` since it requires production code changes outside test-file scope.
 
 Scheduler validation policy:
 
@@ -42,17 +45,31 @@ Scheduler validation policy:
 
 Next steps:
 
-1. **Implement Core Invariant Tests**: Add the remaining focused invariant tests (dependency-order and others in `docs/TESTING_STRATEGY.md`) to `SchedulingInvariantTestsBase`, using minimal, deterministic task sets.
-2. **Classify Failures**: As tests are added, classify any failures as implementation defects, incorrect/outdated expectations, or unclear requirements before broadening coverage.
-3. **Broaden Scheduling Characterization Coverage**: Add broader scheduling characterization coverage only after the hard invariants from step 1 are protected.
+1. **Classify Failures**: As tests are added, classify any failures as implementation defects, incorrect/outdated expectations, or unclear requirements before broadening coverage.
+2. **Broaden Scheduling Characterization Coverage**: Add broader scheduling characterization coverage only after the hard invariants above are protected.
 
-## (B) 2/5 CI Quality Gates
+## (B) 2/6 Fix Gold Panning Scheduling Algorithm to Align with Invariants
 
 Status: Not started.
 
 Prerequisite:
 
-- Complete (B) 1/5.
+- Complete (B) 1/6.
+
+Implementation targets:
+
+- Wire a dependency-aware placement mechanism into the active `GoldPanningStrategy` pipeline (repair/re-integrate `DependencyAwarePlacementStage` or implement fresh), then un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` in `SchedulingInvariantTestsBase`.
+- Add a `NotBefore` property to `TaskItem` and wire it through the normalization/placement stages; extend the Respect `DueDate` invariant test to also cover `NotBefore`.
+- Decide the fate of the other unwired legacy stages (`WorkloadBalancingStage`, `TaskOrderingStage`) — either delete them and their tests, or intentionally re-integrate them, updating `docs/ARCHITECTURE_SCHEDULING.md`/`docs/GOLD_PANNING.md` accordingly.
+- Re-run the full `SchedulingInvariantTestsBase` suite after each fix and confirm previously-skipped tests now pass before un-skipping them.
+
+## (B) 3/6 CI Quality Gates
+
+Status: Not started.
+
+Prerequisite:
+
+- Complete (B) 2/6.
 
 Implementation targets:
 
@@ -61,61 +78,50 @@ Implementation targets:
 - Add lightweight docs/link validation.
 - Add coverage reporting and baseline threshold (initially modest, then raise over time).
 
-## (B) 3/5 Constraint Solver MVP (Narrow Scope)
-
-Status: Blocked.
-
-Prerequisite:
-
-- Complete (B) 1/5 and (B) 2/5.
-
-Implementation targets:
-
-- Deliver a minimal, testable solver path behind existing scheduling mode selection.
-- Keep Gold Panning as stable fallback.
-- Add explicit explanation output for solver scheduling decisions.
-- Keep scope intentionally small and defer full solver depth to (A) 2/2.
-
-## (B) 4/5 Benchmark Scenarios and Strategy Comparison
-
-Status: Blocked.
-
-Prerequisite:
-
-- Complete (B) 3/5.
-
-Implementation targets:
-
-- Create fixed benchmark datasets (light, dependency-heavy, overloaded, event-heavy).
-- Compare Gold Panning and Solver outputs on measurable metrics.
-- Publish benchmark results in documentation for repeatable comparison over time.
-
-## (B) 5/5 Release and Demo Polish
-
-Status: Blocked.
-
-Prerequisite:
-
-- Complete (B) 4/5.
-
-Implementation targets:
-
-- Produce reproducible CLI release artifacts.
-- Add a short demo section (quick run path and sample scenario).
-- Add concise engineering highlights and measurable outcomes for portfolio use.
-
-## Platform and Interface Expansion
+## (B) 4/6 React Frontend for Web and Desktop
 
 Status: Not started.
 
-- Add a service/API layer to support additional front ends.
-- Explore cross-platform clients (mobile and desktop) after API stabilization.
+Prerequisite:
+
+- Complete (B) 3/6.
+
+Implementation targets:
+
+- Add a service/API layer to support a React-based frontend and other future clients.
+- Implement a React frontend targeting both web and desktop (e.g., via Electron or Tauri) against that API.
+- Explore additional cross-platform clients (e.g., mobile) after the web/desktop frontend and API stabilize.
+
+## (B) 5/6 Release and Demo Polish
+
+Status: Not started.
+
+Prerequisite:
+
+- Complete (B) 4/6.
+
+Implementation targets:
+
+- Produce reproducible CLI (and, once available, frontend) release artifacts.
+- Add a short demo section (quick run path and sample scenario).
+- Add concise engineering highlights and measurable outcomes for portfolio use.
+
+## (B) 6/6 LLM-Assisted Intake for External Planning Sources
+
+Status: Not started.
+
+Prerequisite:
+
+- Complete (B) 5/6.
+
+Implementation targets:
+
 - Add LLM-assisted intake for external planning sources (documents, GitHub projects/repos, todo lists, Canvas content).
 - Add extraction pipelines that normalize imported source content into candidate tasks, lists, and events.
 - Add review-and-confirm UX so generated tasks/events are editable before persistence.
 - Add provider abstraction and guardrails (rate limits, retries, validation, and source/decision traceability) for LLM-backed generation.
 
-## (A) 1/2 Scheduling Improvements (Gold Panning First)
+## (A) 1/4 Scheduling Improvements (Gold Panning First)
 
 Status: Not started.
 
@@ -129,14 +135,46 @@ Candidate anti-starvation approaches:
 - Virtual aging (increase urgency for older backlog tasks over time).
 - Opportunistic fill (prefer backlog tasks on underloaded days).
 
-## (A) 2/2 Constraint Solver Full Implementation Path (Post-MVP)
+Note: This item covers heuristic/quality improvements to Gold Panning and is independent of the `(B)` chain. It is distinct from `(B) 2/6`, which only fixes correctness gaps required to satisfy the hard scheduling invariants (dependency ordering, `NotBefore`).
+
+## (A) 2/4 Constraint Solver MVP (Narrow Scope)
 
 Status: Blocked.
 
 Prerequisite:
 
-- Complete (A) 1/2.
-- Complete (B) 3/5.
+- Complete (A) 1/4.
+- Complete (B) 1/6 and (B) 3/6 (Testing Overhaul and CI Quality Gates).
+
+Implementation targets:
+
+- Deliver a minimal, testable solver path behind existing scheduling mode selection.
+- Keep Gold Panning as stable fallback.
+- Add explicit explanation output for solver scheduling decisions.
+- Keep scope intentionally small and defer full solver depth to (A) 4/4.
+
+## (A) 3/4 Benchmark Scenarios and Strategy Comparison
+
+Status: Blocked.
+
+Prerequisite:
+
+- Complete (A) 2/4.
+
+Implementation targets:
+
+- Create fixed benchmark datasets (light, dependency-heavy, overloaded, event-heavy).
+- Compare Gold Panning and Solver outputs on measurable metrics.
+- Publish benchmark results in documentation for repeatable comparison over time.
+
+## (A) 4/4 Constraint Solver Full Implementation Path (Post-MVP)
+
+Status: Blocked.
+
+Prerequisite:
+
+- Complete (A) 1/4.
+- Complete (A) 2/4.
 
 Implementation targets:
 
@@ -167,7 +205,7 @@ Remaining:
 
 Blockers / Dependencies:
 
-- Console-seam cleanup from `(B) 1/5` should happen first for testable event command changes.
+- Console-seam cleanup from `(B) 1/6` should happen first for testable event command changes.
 
 Next steps:
 

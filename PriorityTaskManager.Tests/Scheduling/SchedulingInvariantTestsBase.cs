@@ -14,7 +14,7 @@ namespace PriorityTaskManager.Tests.Scheduling
     /// etc.) belong here and should be asserted once. Algorithm-specific pipeline stage tests
     /// (e.g. under `Scheduling/GoldPanning`) should only cover mechanics unique to that algorithm's
     /// internal stages, not re-derive these invariants.
-    /// See docs/TESTING_STRATEGY.md (Scheduling Algorithms) and docs/TODO.md ((B) 1/5) for the source rules.
+    /// See docs/TESTING_STRATEGY.md (Scheduling Algorithms) and docs/TODO.md ((B) 1/6) for the source rules.
     /// </summary>
     public abstract class SchedulingInvariantTestsBase
     {
@@ -142,6 +142,151 @@ namespace PriorityTaskManager.Tests.Scheduling
                 .Select(t => t.Id));
 
             return $"{taskSignature}|U:{unscheduledSignature}";
+        }
+
+        [Fact]
+        public void CalculateUrgency_CompletedTasks_AreNeverScheduled()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var profile = CreateProfile();
+            var events = new List<Event>();
+
+            var completedTask = CreateTask(20, "Already Done", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 3.0);
+            completedTask.IsCompleted = true;
+
+            var activeTask = CreateTask(21, "Still Open", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 3.0);
+
+            var tasks = new List<TaskItem> { completedTask, activeTask };
+            var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
+
+            var result = strategy.CalculateUrgency(tasks);
+
+            // Invariant: Completed Task Exclusion - already-completed tasks must never be scheduled.
+            var resultCompleted = result.Tasks.Single(t => t.Id == completedTask.Id);
+            Assert.True(resultCompleted.IsCompleted);
+            Assert.Empty(resultCompleted.ScheduledParts);
+            Assert.DoesNotContain(result.UnscheduledTasks, t => t.Id == completedTask.Id);
+
+            var resultActive = result.Tasks.Single(t => t.Id == activeTask.Id);
+            Assert.NotEmpty(resultActive.ScheduledParts);
+        }
+
+        [Fact]
+        public void CalculateUrgency_WhenTaskExceedsDailyCapacity_SplitChunksSumToOriginalDuration()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0); // Monday, 8h/day capacity.
+            var profile = CreateProfile();
+            var events = new List<Event>();
+
+            // 12 hours cannot fit in a single 8-hour workday, so a divisible task must split.
+            var task = CreateTask(30, "Big Divisible", 12.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 5.0);
+            task.IsDivisible = true;
+
+            var tasks = new List<TaskItem> { task };
+            var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
+
+            var result = strategy.CalculateUrgency(tasks);
+            var scheduled = result.Tasks.Single(t => t.Id == task.Id);
+
+            // Invariant: Task Splitting Logic - split chunks must sum to the original estimate...
+            Assert.True(scheduled.ScheduledParts.Count > 1, "Task exceeding daily capacity should be split across multiple chunks.");
+
+            var totalScheduled = TimeSpan.FromTicks(scheduled.ScheduledParts.Sum(c => c.Duration.Ticks));
+            Assert.Equal(task.EstimatedDuration, totalScheduled);
+
+            // ...and every chunk must still respect the task's DueDate constraint.
+            foreach (var chunk in scheduled.ScheduledParts)
+            {
+                Assert.True(chunk.EndTime.Date <= task.DueDate!.Value.Date,
+                    $"Split chunk ending {chunk.EndTime:O} exceeds due date {task.DueDate:O}.");
+            }
+        }
+
+        [Fact]
+        public void CalculateUrgency_ShouldNotMutateOriginalTaskProperties()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var profile = CreateProfile();
+            var events = CreateEvents();
+
+            var task = CreateTask(40, "Immutable Check", 2.0, new DateTime(2026, 7, 9, 17, 0, 0), importance: 4, complexity: 2.0);
+            var originalTitle = task.Title;
+            var originalImportance = task.Importance;
+            var originalComplexity = task.Complexity;
+            var originalDueDate = task.DueDate;
+            var originalDependencies = new List<int>(task.Dependencies);
+            var originalDuration = task.EstimatedDuration;
+
+            var tasks = new List<TaskItem> { task };
+            var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
+
+            strategy.CalculateUrgency(tasks);
+
+            // Invariant: State Immutability - the scheduler must not modify the original properties
+            // of input tasks (ScheduledParts is the expected output and is intentionally excluded here).
+            Assert.Equal(originalTitle, task.Title);
+            Assert.Equal(originalImportance, task.Importance);
+            Assert.Equal(originalComplexity, task.Complexity);
+            Assert.Equal(originalDueDate, task.DueDate);
+            Assert.Equal(originalDependencies, task.Dependencies);
+            Assert.Equal(originalDuration, task.EstimatedDuration);
+        }
+
+        [Fact]
+        public void CalculateUrgency_TasksWithDueDates_AreNeverScheduledPastDueDate()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var profile = CreateProfile();
+            var events = new List<Event>();
+
+            var tasks = new List<TaskItem>
+            {
+                CreateTask(50, "Due Soon", 3.0, new DateTime(2026, 7, 7, 17, 0, 0), importance: 6, complexity: 4.0),
+                CreateTask(51, "Due Later", 4.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 6, complexity: 4.0)
+            };
+
+            var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
+            var result = strategy.CalculateUrgency(tasks);
+
+            // Invariant: Respect DueDate (the NotBefore half of this rule cannot be tested yet -
+            // TaskItem has no NotBefore property; see docs/TODO.md (B) 2/6 for this tracked gap).
+            foreach (var task in result.Tasks.Where(t => t.DueDate.HasValue))
+            {
+                foreach (var chunk in task.ScheduledParts)
+                {
+                    Assert.True(chunk.EndTime.Date <= task.DueDate!.Value.Date,
+                        $"Task '{task.Title}' scheduled chunk ending {chunk.EndTime:O} exceeds its due date {task.DueDate:O}.");
+                }
+            }
+        }
+
+        [Fact(Skip = "KNOWN GAP: no stage in the active GoldPanningStrategy pipeline enforces dependency ordering (see docs/TODO.md, (B) 2/6). Un-skip once dependency-aware placement is wired into the pipeline.")]
+        public void CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var profile = CreateProfile();
+            var events = new List<Event>();
+
+            var prerequisite = CreateTask(60, "Prerequisite", 4.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 4.0);
+            var dependent = CreateTask(61, "Dependent", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 9, complexity: 8.0);
+            dependent.Dependencies.Add(prerequisite.Id);
+
+            var tasks = new List<TaskItem> { dependent, prerequisite };
+            var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
+            var result = strategy.CalculateUrgency(tasks);
+
+            var scheduledPrereq = result.Tasks.Single(t => t.Id == prerequisite.Id);
+            var scheduledDependent = result.Tasks.Single(t => t.Id == dependent.Id);
+
+            Assert.NotEmpty(scheduledPrereq.ScheduledParts);
+            Assert.NotEmpty(scheduledDependent.ScheduledParts);
+
+            var prereqEnd = scheduledPrereq.ScheduledParts.Max(c => c.EndTime);
+            var dependentStart = scheduledDependent.ScheduledParts.Min(c => c.StartTime);
+
+            // Invariant: Dependency Chain - a dependent task is never scheduled before its prerequisites.
+            Assert.True(dependentStart >= prereqEnd,
+                $"Dependent task started at {dependentStart:O} before its prerequisite finished at {prereqEnd:O}.");
         }
 
         protected static UserProfile CreateProfile()
