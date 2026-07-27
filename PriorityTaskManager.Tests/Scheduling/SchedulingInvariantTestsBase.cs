@@ -14,7 +14,7 @@ namespace PriorityTaskManager.Tests.Scheduling
     /// etc.) belong here and should be asserted once. Algorithm-specific pipeline stage tests
     /// (e.g. under `Scheduling/GoldPanning`) should only cover mechanics unique to that algorithm's
     /// internal stages, not re-derive these invariants.
-    /// See docs/TESTING_STRATEGY.md (Scheduling Algorithms) and docs/TODO.md ((B) 1/6) for the source rules.
+    /// See docs/TESTING_STRATEGY.md (Scheduling Algorithms) for the source rules.
     /// </summary>
     public abstract class SchedulingInvariantTestsBase
     {
@@ -249,7 +249,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             var result = strategy.CalculateUrgency(tasks);
 
             // Invariant: Respect DueDate (the NotBefore half of this rule cannot be tested yet -
-            // TaskItem has no NotBefore property; see docs/TODO.md (B) 2/6 for this tracked gap).
+            // TaskItem has no NotBefore property; see docs/TODO.md (B) 1/5 for this tracked gap).
             foreach (var task in result.Tasks.Where(t => t.DueDate.HasValue))
             {
                 foreach (var chunk in task.ScheduledParts)
@@ -260,7 +260,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             }
         }
 
-        [Fact(Skip = "KNOWN GAP: no stage in the active GoldPanningStrategy pipeline enforces dependency ordering (see docs/TODO.md, (B) 2/6). Un-skip once dependency-aware placement is wired into the pipeline.")]
+        [Fact(Skip = "KNOWN GAP: no stage in the active GoldPanningStrategy pipeline enforces dependency ordering (see docs/TODO.md, (B) 1/5). Un-skip once dependency-aware placement is wired into the pipeline.")]
         public void CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes()
         {
             var now = new DateTime(2026, 7, 6, 9, 0, 0);
