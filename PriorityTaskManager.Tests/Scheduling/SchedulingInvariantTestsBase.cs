@@ -260,7 +260,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             }
         }
 
-        [Fact(Skip = "KNOWN GAP: no stage in the active GoldPanningStrategy pipeline enforces dependency ordering (see docs/TODO.md, (B) 1/5). Un-skip once dependency-aware placement is wired into the pipeline.")]
+        [Fact]
         public void CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes()
         {
             var now = new DateTime(2026, 7, 6, 9, 0, 0);

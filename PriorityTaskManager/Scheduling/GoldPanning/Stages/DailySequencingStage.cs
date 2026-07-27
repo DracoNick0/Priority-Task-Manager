@@ -41,14 +41,13 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 if (tasksForDay.Count == 0) continue;
 
                 // Sort tasks for the day based on the sequencing strategy:
-                // 1. Urgency: Tasks that are due on or before this day are prioritized to ensure they are completed in time.
-                // 2. Complexity ("Eat the Frog"): High-complexity tasks are scheduled first, when energy levels are typically highest.
-                // 3. Importance: If urgency and complexity are equal, the more important task goes first.
-                var sequence = tasksForDay
-                    .OrderByDescending(t => t.DueDate.HasValue && t.DueDate.Value.Date <= date.Date) // Critical for this day
-                    .ThenByDescending(t => t.Complexity)
-                    .ThenByDescending(t => t.EffectiveImportance) // Tiebreaker
-                    .ToList();
+                // 1. Dependency order: a task can never be sequenced before a same-day prerequisite
+                //    (a cross-day prerequisite is already guaranteed complete by TaskDistributionStage's
+                //    dependency gate, so it does not need to be re-checked here).
+                // 2. Urgency: Tasks that are due on or before this day are prioritized to ensure they are completed in time.
+                // 3. Complexity ("Eat the Frog"): High-complexity tasks are scheduled first, when energy levels are typically highest.
+                // 4. Importance: If urgency and complexity are equal, the more important task goes first.
+                var sequence = BuildDependencySafeSequence(tasksForDay, date);
 
                 // Get all available time slots for the current day, ordered chronologically.
                 var slotsForDay = scheduleWindow.AvailableSlots
@@ -128,6 +127,54 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             context.History.Add("  -> Sequencing complete. Timestamps assigned.");
 
             return context;
+        }
+
+        /// <summary>
+        /// Orders a single day's tasks so that a task is never sequenced before a same-day
+        /// prerequisite, while otherwise preserving the existing "Eat the Frog" priority
+        /// (due-today safety, then complexity, then importance) among tasks that are equally
+        /// ready to be placed. Uses a priority-guided topological sort (Kahn's algorithm).
+        /// </summary>
+        /// <param name="tasksForDay">The tasks/fragments assigned to this day by <see cref="TaskDistributionStage"/>.</param>
+        /// <param name="date">The day being sequenced, used to evaluate due-today safety.</param>
+        /// <returns>The tasks for the day, ordered to respect same-day dependency order.</returns>
+        private static List<TaskItem> BuildDependencySafeSequence(List<TaskItem> tasksForDay, DateTime date)
+        {
+            // Ids present in today's bucket. A dependency pointing outside this set belongs to a
+            // prior day and is already guaranteed complete by TaskDistributionStage's dependency gate.
+            var idsToday = tasksForDay.Select(t => t.Id).ToHashSet();
+
+            var remaining = new List<TaskItem>(tasksForDay);
+            var placedIdsToday = new HashSet<int>();
+            var result = new List<TaskItem>(tasksForDay.Count);
+
+            while (remaining.Count > 0)
+            {
+                // A task is "ready" if every same-day prerequisite it depends on has already been placed.
+                var ready = remaining
+                    .Where(t => t.Dependencies == null || t.Dependencies.Count == 0 ||
+                                t.Dependencies.All(depId => depId == t.Id || !idsToday.Contains(depId) || placedIdsToday.Contains(depId)))
+                    .ToList();
+
+                // Defensive fallback: if nothing is "ready" (e.g. an undetected same-day dependency
+                // cycle), fall back to the full remaining set rather than looping forever.
+                if (ready.Count == 0)
+                {
+                    ready = remaining;
+                }
+
+                var next = ready
+                    .OrderByDescending(t => t.DueDate.HasValue && t.DueDate.Value.Date <= date.Date)
+                    .ThenByDescending(t => t.Complexity)
+                    .ThenByDescending(t => t.EffectiveImportance)
+                    .First();
+
+                result.Add(next);
+                placedIdsToday.Add(next.Id);
+                remaining.Remove(next);
+            }
+
+            return result;
         }
     }
 }

@@ -40,8 +40,8 @@ Each stage should have one clear responsibility. When adding scheduling behavior
 | `TaskNormalizationStage` | Apply defaults and clean task data before scheduling |
 | `AvailabilityWindowStage` | Build available windows from work hours and events |
 | `TaskRankingStage` | Rank tasks by urgency and importance |
-| `TaskDistributionStage` | Pack tasks into available windows and split tasks when needed |
-| `DailySequencingStage` | Order tasks within each day for focus and deadline safety |
+| `TaskDistributionStage` | Pack tasks into available windows and split tasks when needed, gating placement so a task is never placed until its prerequisites are fully placed |
+| `DailySequencingStage` | Order tasks within each day for focus and deadline safety, while keeping same-day prerequisites ahead of their dependents |
 
 See [GOLD_PANNING.md](GOLD_PANNING.md) for the algorithm concept and behavior details.
 
@@ -74,7 +74,7 @@ Treat documented scheduling invariants as correctness requirements:
 - Scheduled chunks must fit inside available work windows unless an explicit future policy allows otherwise.
 - Scheduled chunks must avoid event blocks.
 - Scheduled duration should preserve task duration when capacity is sufficient.
-- Dependency-order rules should be validated before broad characterization baselines are accepted.
+- A dependent task must never be scheduled before its prerequisite(s) complete. `TaskDistributionStage` defers a task until every id in its `Dependencies` has no remaining unplaced fragments (treating a prerequisite id outside the active scheduling pass, e.g. an already-completed task, as satisfied), and `DailySequencingStage` orders same-day tasks with a priority-guided topological sort so a same-day prerequisite always precedes its dependent. A task whose prerequisite never clears within the horizon (e.g. a dependency cycle) is reported via `PrioritizationResult.UnscheduledTasks` rather than force-placed.
 
 When tests expose scheduler defects, keep correct invariant tests as focused red tests while fixing the implementation. Separate implementation defects from incorrect or outdated test expectations before changing tests.
 

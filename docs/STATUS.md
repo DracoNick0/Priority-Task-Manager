@@ -22,8 +22,8 @@ This document is the current-state snapshot for Priority Task Manager. It record
 | Settings and defaults | 🟢 Working | `defaults` controls global defaults, while list-specific settings are edited on the active list. |
 | Scheduling logic | 🟡 Partially implemented | Gold Panning is active; the constraint-optimization mode is routed but not implemented in the current code path. |
 | Event system | 🟡 Under review | Add, edit, list, and delete are available, but the event experience is still being refined. |
-| Task dependencies | 🟡 Under review | Dependency handling is supported, but correctness and migration coverage still need attention. |
-| Unit tests | � Passing / under overhaul | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant, and replay coverage exist. Broader interactive seam adoption and dependency-order scheduling coverage remain pending. |
+| Task dependencies | � Working | Dependency add/remove is supported, and the active Gold Panning pipeline now enforces dependency-order placement (a dependent task is never scheduled before its prerequisite completes). |
+| Unit tests | � Passing / under overhaul | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant/replay coverage (including dependency-order scheduling), exist. Broader interactive seam adoption remains pending. |
 
 ## Confirmed Capabilities
 
@@ -48,13 +48,13 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - There is no undo/redo system.
 - Recurring tasks are not supported.
 - The constraint-optimization scheduling path is not implemented yet.
-- The active `GoldPanningStrategy` pipeline does not currently include a dependency-ordering stage, so dependency-order scheduling is not guaranteed end-to-end; the corresponding invariant test is skipped pending a fix (tracked in `docs/TODO.md` (B) 1/5).
+- `TaskItem` has no `NotBefore` property yet; user-specified earliest-start constraints are not supported (tracked in `docs/TODO.md` (B) 1/5).
 
 ## Known Issues and Technical Debt
 
 - The scheduling system still needs future refinement around slack handling, intra-day focus heuristics, and backlog fairness.
 - The event workflow is functional but still under UX refinement.
-- The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, Gold Panning invariant/replay coverage, and console-handle-safe CLI handler tests are now in place, while deep interactive CLI flows and dependency-order scheduling coverage remain pending.
+- The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, Gold Panning invariant/replay coverage, dependency-order scheduling coverage, and console-handle-safe CLI handler tests are now in place, while deep interactive CLI flows remain pending.
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
 - `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net.
 - The interactive `defaults` menu (`SettingsHandler`), `list switch` (`ListHandler`), and `event add`/`event edit`/`event clear` (`EventCommandHandler`) flows have adopted the `IInteractiveConsoleFacade` seam; remaining direct-console interactive flows are limited to simple, non-menu confirm/read-line prompts (e.g. `AddHandler`'s no-arg task creation, `list delete`/`cleanup` confirmations), which are out of scope for the facade seam by design.
@@ -94,5 +94,5 @@ This document is the current-state snapshot for Priority Task Manager. It record
 ## Validation Notes
 
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
-- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (145 passed, 1 skipped).
+- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (146 passed, 1 skipped).
 - Use `docs/TODO.md` for the current active-work sequence, blockers, and next steps.

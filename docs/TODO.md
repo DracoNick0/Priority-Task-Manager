@@ -4,13 +4,12 @@
 
 ## (B) 1/5 Fix Gold Panning Scheduling Algorithm to Align with Invariants
 
-Status: Not started.
+Status: In progress.
 
 Implementation targets:
 
-- Wire a dependency-aware placement mechanism into the active `GoldPanningStrategy` pipeline (implement fresh; the legacy `DependencyAwarePlacementStage` is being deleted, not re-integrated — see below), then un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` in `SchedulingInvariantTestsBase`.
+- ~~Wire a dependency-aware placement mechanism into the active `GoldPanningStrategy` pipeline, then un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` in `SchedulingInvariantTestsBase`.~~ Done: `TaskDistributionStage` now gates placement on same-day/prior-day prerequisite completion (deferring dependents whose prerequisites still have unplaced fragments, and reporting permanently-blocked tasks via `UnschedulableTasks` instead of forcing them onto the last day), and `DailySequencingStage` uses a priority-guided topological sort so a same-day prerequisite is always sequenced before its dependent. The invariant test is un-skipped and passing.
 - Add a `NotBefore` property to `TaskItem` and wire it through the normalization/placement stages; extend the Respect `DueDate` invariant test to also cover `NotBefore`.
-- Delete the confirmed-obsolete legacy stages — `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs`, `DependencyAwarePlacementStage`, and `TaskOrderingStage` — along with their tests, and update `docs/ARCHITECTURE_SCHEDULING.md`/`docs/GOLD_PANNING.md` accordingly.
 - Re-run the full `SchedulingInvariantTestsBase` suite after each fix and confirm previously-skipped tests now pass before un-skipping them.
 
 ## (B) 2/5 CI Quality Gates

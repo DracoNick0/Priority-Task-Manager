@@ -26,6 +26,7 @@ Large/Important items are more likely to get caught in the riffles.
 *   **The Stream Power**: Purely the **Time Capacity** of the day.
 *   **Selection**: The Pressure pushes the "Lightest" items (Lowest Importance/Urgency) downstream first, preserving the "Gold" (High Priority) in the current day.
 *   **Constructive Fill**: Unlike a real river, we don't just let things wash away randomly. We actively pack the day. If a day has a 30-minute gap, and the next "Gold Nugget" is 2 hours long, we **Hammer** (Split) that nugget. We put 30 minutes of it in the gap, and the remaining 1.5 hours washes to the next day.
+*   **Dependency Gate**: A task is only allowed to sink into a day once every prerequisite it depends on has fully settled (no unplaced fragments left). A dependent task with an unresolved prerequisite is left floating in the current until its prerequisite clears, even if it would otherwise fit today.
 
 ## 3. The Execution Flow (The Stage Pipeline)
 
@@ -49,6 +50,7 @@ Finally, once the tasks for each day ("bucket") have been determined, the `Daily
 *   **Goal**: Optimize for human energy levels and focus.
 *   **Strategy**: "Eat The Frog" combined with deadline safety.
     *   The stage sorts the tasks for a single day, first by tasks due *today*, and then by `Complexity` in descending order.
+    *   **Dependency Order**: This priority ordering only decides *among tasks that are ready*. A task with a same-day prerequisite is held back until that prerequisite has been placed, so a dependent task can never be given an earlier time slot than its prerequisite on the same day.
     *   **Result**: Critical deadlines are handled first. For the remaining time, high-complexity work is scheduled for the morning, with lower-complexity tasks filling the afternoon as energy naturally wanes.
 
 ## 4. Why this works for your Questions

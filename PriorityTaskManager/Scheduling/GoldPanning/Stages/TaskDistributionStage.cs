@@ -34,6 +34,11 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 ? weightsObj as Dictionary<int, double> 
                 : new Dictionary<int, double>();
 
+            // Tasks that belong to the active scheduling universe. A dependency that points at an
+            // id outside this set (e.g. an already-completed or deleted task) can never appear in
+            // `remainingTasks`, so it must be treated as already satisfied rather than as a permanent block.
+            var activeTaskIds = tasks.Select(t => t.Id).ToHashSet();
+
             // --- Step 1: Prepare Daily Buckets ---
             // Create a dictionary to hold the list of tasks scheduled for each day.
             var buckets = new Dictionary<DateTime, List<TaskItem>>();
@@ -83,7 +88,16 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                     {
                         break;
                     }
-                    
+
+                    // Dependency Gate: a task cannot be placed on any day until every prerequisite it
+                    // depends on has been fully placed (no fragments of it left in `remainingTasks`).
+                    // Skip it for today and let it compete again on a later day; this does not remove
+                    // it from the list, so it remains eligible once its prerequisites clear.
+                    if (!IsDependencySatisfied(task, remainingTasks, activeTaskIds))
+                    {
+                        continue;
+                    }
+
                     // If the task fits completely in the remaining space, add it.
                     if (taskDuration <= availableSpace)
                     {
@@ -132,12 +146,31 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             }
 
             // --- Step 3: Handling Leftovers ---
-            // If any tasks remain after the loop, they could not fit in the schedule.
-            // As a fallback, add them to the last day, which may cause over-scheduling.
+            // Any tasks remaining after the loop fall into two categories:
+            //   - Dependency-blocked: their prerequisite(s) never got placed within the horizon
+            //     (e.g. a prerequisite that also ran out of room, or a dependency cycle). Forcing
+            //     these onto the last day would violate the dependency-order invariant, so they are
+            //     reported as unschedulable instead.
+            //   - Capacity overflow: everything else that simply did not fit. As a fallback, these
+            //     are added to the last day, which may cause over-scheduling (pre-existing behavior).
             if (remainingTasks.Count > 0)
             {
-                var lastDay = windowDays.Last();
-                buckets[lastDay].AddRange(remainingTasks);
+                var dependencyBlocked = remainingTasks
+                    .Where(t => !IsDependencySatisfied(t, remainingTasks, activeTaskIds))
+                    .ToList();
+                var capacityOverflow = remainingTasks.Except(dependencyBlocked).ToList();
+
+                if (capacityOverflow.Count > 0)
+                {
+                    var lastDay = windowDays.Last();
+                    buckets[lastDay].AddRange(capacityOverflow);
+                }
+
+                if (dependencyBlocked.Count > 0)
+                {
+                    context.SharedState["UnschedulableTasks"] = dependencyBlocked;
+                    context.History.Add($"  -> {dependencyBlocked.Count} task(s) could not be scheduled: unresolved prerequisite(s) within the scheduling horizon.");
+                }
             }
 
             // --- Step 4: Commit to Shared State ---
@@ -151,6 +184,43 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             context.History.Add("  -> Distribution complete. Tasks allocated across days.");
 
             return context;
+        }
+
+        /// <summary>
+        /// Determines whether all of a task's prerequisites have already been fully placed.
+        /// A prerequisite id that does not appear anywhere in the active scheduling universe
+        /// (e.g. it belongs to an already-completed or deleted task) is treated as satisfied,
+        /// since it can never be encountered in <paramref name="remainingTasks"/>.
+        /// </summary>
+        /// <param name="task">The candidate task being considered for placement.</param>
+        /// <param name="remainingTasks">Tasks (or task fragments) not yet placed anywhere in the schedule.</param>
+        /// <param name="activeTaskIds">The set of ids belonging to tasks in the active scheduling pass.</param>
+        private static bool IsDependencySatisfied(TaskItem task, List<TaskItem> remainingTasks, HashSet<int> activeTaskIds)
+        {
+            if (task.Dependencies == null || task.Dependencies.Count == 0)
+            {
+                return true;
+            }
+
+            foreach (var dependencyId in task.Dependencies)
+            {
+                if (dependencyId == task.Id)
+                {
+                    continue; // Defensive guard against a malformed self-reference.
+                }
+
+                if (!activeTaskIds.Contains(dependencyId))
+                {
+                    continue; // Prerequisite is outside the active pass (already completed/deleted); treat as satisfied.
+                }
+
+                if (remainingTasks.Any(t => t.Id == dependencyId))
+                {
+                    return false; // Prerequisite still has unplaced fragments.
+                }
+            }
+
+            return true;
         }
     }
 }
