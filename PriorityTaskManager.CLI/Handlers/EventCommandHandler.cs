@@ -237,7 +237,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         }
                         else if (selectedIndex == 2) // End Time (Duration Change)
                         {
-                            Console.CursorVisible = true;
+                            _console.CursorVisible = true;
                             // Prompt for end time starting from current end time, but ensure context is clear
                             DateTime? newEnd = ConsoleInputHelper.GetDateTimeFromUser("\nSet new end time:", existingEvent.EndTime);
                             if (newEnd.HasValue)

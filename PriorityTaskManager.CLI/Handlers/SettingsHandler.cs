@@ -15,21 +15,33 @@ namespace PriorityTaskManager.CLI.Handlers
         private readonly ITimeService _timeService;
         private readonly ScheduleSnapshotProvider _snapshotProvider;
         private readonly ITaskMetricsService _taskMetricsService;
+        private readonly IInteractiveConsoleFacade _console;
 
         public SettingsHandler(ITimeService timeService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService)
+            : this(timeService, snapshotProvider, taskMetricsService, null)
+        {
+        }
+
+        public SettingsHandler(ITimeService timeService, ScheduleSnapshotProvider snapshotProvider, ITaskMetricsService taskMetricsService, IInteractiveConsoleFacade? console)
         {
             _timeService = timeService;
             _snapshotProvider = snapshotProvider;
             _taskMetricsService = taskMetricsService;
+            _console = console ?? new InteractiveConsoleFacade();
         }
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// The interactive <c>defaults</c> menu (no-arg invocation) already owns its console
+        /// rendering end-to-end through <see cref="IInteractiveConsoleFacade"/>. It returns an
+        /// inert <see cref="CommandResult"/> because no dashboard refresh or message is deferred
+        /// to <c>Program.cs</c>. The flag-based (<c>--default-*</c>) path returns a real
+        /// <see cref="CommandResult"/> built by <see cref="ParseArguments"/>.
+        /// </remarks>
         public CommandResult ExecuteWithResult(TaskManagerService service, string[] args)
         {
             if (args.Length == 0)
             {
-                // Interactive settings menu remains a legacy, self-rendering console flow;
-                // it is out of scope for CommandResult migration.
                 InteractiveSettings(service);
                 return new CommandResult
                 {
@@ -160,60 +172,60 @@ namespace PriorityTaskManager.CLI.Handlers
             var userProfile = service.GetUserProfile();
             int selectedIndex = 0;
 
-            Console.CursorVisible = false;
-            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+            _console.CursorVisible = false;
+            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
             var menuItems = BuildSettingsMenuItems(userProfile);
             PrintCurrentSettings(userProfile);
-            Console.WriteLine("\nSelect a default to edit:");
-            int selectorTop = Console.CursorTop;
-            ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
+            _console.WriteLine("\nSelect a default to edit:");
+            int selectorTop = _console.CursorTop;
+            _console.DrawMenuItems(menuItems, selectedIndex, selectorTop);
 
             while (true)
             {
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
 
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
                         var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + menuItems.Count) % menuItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousUp, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(menuItems, previousUp, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.DownArrow:
                         var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % menuItems.Count;
-                        ConsoleMenuHelper.UpdateMenuSelection(menuItems, previousDown, selectedIndex, selectorTop);
+                        _console.UpdateMenuSelection(menuItems, previousDown, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Enter:
                         if (selectedIndex == menuItems.Count - 2)
                         {
                             service.UpdateUserProfile(userProfile);
-                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                            Console.WriteLine("Defaults saved.");
+                            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                            _console.WriteLine("Defaults saved.");
                             PrintCurrentSettings(userProfile);
-                            Console.CursorVisible = true;
+                            _console.CursorVisible = true;
                             return;
                         }
                         if (selectedIndex == menuItems.Count - 1)
                         {
-                            ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                            Console.WriteLine("Defaults update cancelled.");
-                            Console.CursorVisible = true;
+                            _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                            _console.WriteLine("Defaults update cancelled.");
+                            _console.CursorVisible = true;
                             return;
                         }
 
                         HandleMenuSelection(userProfile, selectedIndex);
                         menuItems = BuildSettingsMenuItems(userProfile);
-                        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                        _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
                         PrintCurrentSettings(userProfile);
-                        Console.WriteLine("\nSelect a default to edit:");
-                        selectorTop = Console.CursorTop;
-                        ConsoleMenuHelper.DrawMenuItems(menuItems, selectedIndex, selectorTop);
+                        _console.WriteLine("\nSelect a default to edit:");
+                        selectorTop = _console.CursorTop;
+                        _console.DrawMenuItems(menuItems, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
-                        ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                        Console.WriteLine("Defaults update cancelled.");
-                        Console.CursorVisible = true;
+                        _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                        _console.WriteLine("Defaults update cancelled.");
+                        _console.CursorVisible = true;
                         return;
                 }
             }
@@ -224,8 +236,8 @@ namespace PriorityTaskManager.CLI.Handlers
             switch (selectedIndex)
             {
                 case 0: // Working Days
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    ConsoleMenuHelper.RunToggleSelectionMenu(
+                    _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    _console.RunToggleSelectionMenu(
                         "Select your working days:",
                         "Space to toggle, Enter to save, Esc to cancel.",
                         userProfile.WorkDays,
@@ -233,23 +245,23 @@ namespace PriorityTaskManager.CLI.Handlers
                         day => day.ToString());
                     break;
                 case 1: // Working Hours
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    Console.CursorVisible = true;
+                    _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    _console.CursorVisible = true;
                     // Start Time
-                    Console.WriteLine("Set Daily Work Start Time:");
+                    _console.WriteLine("Set Daily Work Start Time:");
                     var today = DateTime.Today;
                     var startDateTime = today.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var newStart = ConsoleInputHelper.InteractiveTimeInput(startDateTime);
                     
                     // End Time
-                    Console.WriteLine("\nSet Daily Work End Time:");
+                    _console.WriteLine("\nSet Daily Work End Time:");
                     var endDateTime = today.Add(userProfile.WorkEndTime.ToTimeSpan());
                     var newEnd = ConsoleInputHelper.InteractiveTimeInput(endDateTime);
 
                     userProfile.WorkStartTime = TimeOnly.FromDateTime(newStart);
                     userProfile.WorkEndTime = TimeOnly.FromDateTime(newEnd);
                     
-                    Console.CursorVisible = false;
+                    _console.CursorVisible = false;
                     break;
                 case 2: // Default List Sort
                     userProfile.DefaultListSortOption = GetNextSortOption(userProfile.DefaultListSortOption);
@@ -258,8 +270,8 @@ namespace PriorityTaskManager.CLI.Handlers
                     userProfile.SchedulingMode = GetNextSchedulingMode(userProfile.SchedulingMode);
                     break;
                 case 4: // Urgency Thresholds
-                    ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
-                    ConsoleMenuHelper.RunAdjustableValueMenu(
+                    _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
+                    _console.RunAdjustableValueMenu(
                         "Adjust urgency thresholds:",
                         "Use Left/Right to adjust values.",
                         BuildSlackMenuOptions(userProfile));
@@ -400,7 +412,7 @@ namespace PriorityTaskManager.CLI.Handlers
         {
             var messageBuilder = new StringBuilder();
             AppendCurrentSettings(messageBuilder, userProfile);
-            Console.Write(messageBuilder.ToString());
+            _console.Write(messageBuilder.ToString());
         }
 
         private static void AppendCurrentSettings(StringBuilder messageBuilder, UserProfile userProfile)

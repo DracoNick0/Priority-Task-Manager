@@ -907,62 +907,48 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void InteractiveSwitch(TaskManagerService service)
         {
-            ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+            _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
 
             var lists = service.GetAllLists().ToList();
             if (!lists.Any())
             {
-                Console.WriteLine("No lists available to switch.");
+                _console.WriteLine("No lists available to switch.");
                 return;
             }
 
             int selectedIndex = lists.FindIndex(l => l.Id == service.GetActiveListId());
             if (selectedIndex == -1) selectedIndex = 0;
 
-            int initialTop = Console.CursorTop;
-            int maxTop = Console.BufferHeight - lists.Count - 1;
-            if (initialTop > maxTop)
-            {
-                initialTop = maxTop > 0 ? maxTop : 0;
-            }
+            var listNames = lists.Select(l => l.Name).ToList();
+            int initialTop = _console.CursorTop;
+            _console.DrawMenuItems(listNames, selectedIndex, initialTop);
 
             while (true)
             {
-                DrawListMenu(lists, selectedIndex, initialTop);
-
-                var key = Console.ReadKey(true);
+                var key = _console.ReadKey(true);
                 switch (key.Key)
                 {
                     case ConsoleKey.DownArrow:
+                        var previousDown = selectedIndex;
                         selectedIndex = (selectedIndex + 1) % lists.Count;
+                        _console.UpdateMenuSelection(listNames, previousDown, selectedIndex, initialTop);
                         break;
                     case ConsoleKey.UpArrow:
+                        var previousUp = selectedIndex;
                         selectedIndex = (selectedIndex - 1 + lists.Count) % lists.Count;
+                        _console.UpdateMenuSelection(listNames, previousUp, selectedIndex, initialTop);
                         break;
                     case ConsoleKey.Enter:
                         service.SetActiveListId(lists[selectedIndex].Id);
                         _scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
-                        ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                        Console.WriteLine($"Switched to list '{lists[selectedIndex].Name}'.");
+                        _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                        _console.WriteLine($"Switched to list '{lists[selectedIndex].Name}'.");
                         return;
                     case ConsoleKey.Escape:
-                        ConsoleHelper.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
-                        Console.WriteLine("Switch cancelled.");
+                        _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
+                        _console.WriteLine("Switch cancelled.");
                         return;
                 }
-            }
-        }
-
-        private void DrawListMenu(List<TaskList> lists, int selectedIndex, int initialTop)
-        {
-            for (int i = 0; i < lists.Count; i++)
-            {
-                Console.SetCursorPosition(0, initialTop + i);
-                var prefix = i == selectedIndex ? "> " : "  ";
-
-                // Write and pad with spaces to clear leftovers
-                string line = (prefix + lists[i].Name).PadRight(Console.WindowWidth - 1);
-                Console.Write(line);
             }
         }
     }

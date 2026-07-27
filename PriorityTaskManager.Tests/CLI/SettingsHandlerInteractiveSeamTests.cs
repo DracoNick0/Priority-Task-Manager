@@ -1,72 +1,53 @@
 using PriorityTaskManager.CLI.Handlers;
 using PriorityTaskManager.CLI.Utils;
-using PriorityTaskManager.Models;
 using PriorityTaskManager.Scheduling.GoldPanning;
 using PriorityTaskManager.Services;
 using PriorityTaskManager.Tests.Infrastructure;
 
 namespace PriorityTaskManager.Tests.CLI
 {
-    public class ListHandlerInteractiveSeamTests
+    public class SettingsHandlerInteractiveSeamTests
     {
         [Fact]
-        public void Execute_ListSettingsInteractive_WhenEscapePressed_ShouldCancelWithoutMutatingActiveList()
+        public void ExecuteWithResult_InteractiveDefaultsMenu_WhenEscapePressed_ShouldCancelWithoutMutatingProfile()
         {
             var (service, timeService, metrics, snapshotProvider) = CreateContext();
-            var activeList = service.GetListById(service.GetActiveListId());
-            Assert.NotNull(activeList);
-            var originalName = activeList.Name;
+            var originalSort = service.GetUserProfile().DefaultListSortOption;
             var fakeConsole = new FakeInteractiveConsoleFacade(new[]
             {
                 new ConsoleKeyInfo('\u001b', ConsoleKey.Escape, false, false, false)
             });
-            var handler = new ListHandler(metrics, timeService, snapshotProvider, fakeConsole);
+            var handler = new SettingsHandler(timeService, snapshotProvider, metrics, fakeConsole);
 
-            handler.ExecuteWithResult(service, new[] { "settings" });
+            handler.ExecuteWithResult(service, Array.Empty<string>());
 
-            var updatedList = service.GetListById(service.GetActiveListId());
-            Assert.NotNull(updatedList);
-            Assert.Equal(originalName, updatedList.Name);
+            Assert.Equal(originalSort, service.GetUserProfile().DefaultListSortOption);
+            Assert.True(fakeConsole.CursorVisible);
+            Assert.Contains(fakeConsole.Lines, line => line.Contains("Defaults update cancelled."));
+        }
+
+        [Fact]
+        public void ExecuteWithResult_InteractiveDefaultsMenu_WhenEditedAndSaved_ShouldUpdateProfileAndRenderDashboard()
+        {
+            var (service, timeService, metrics, snapshotProvider) = CreateContext();
+            var fakeConsole = new FakeInteractiveConsoleFacade(new[]
+            {
+                new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false), // -> Working Hours
+                new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false), // -> Default List Sort
+                new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),     // toggle sort option
+                new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false), // -> Default Scheduling Mode
+                new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false), // -> Urgency Thresholds
+                new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false), // -> Save & Exit
+                new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)      // save & exit
+            });
+            var handler = new SettingsHandler(timeService, snapshotProvider, metrics, fakeConsole);
+
+            handler.ExecuteWithResult(service, Array.Empty<string>());
+
+            Assert.Equal(PriorityTaskManager.Models.SortOption.Alphabetical, service.GetUserProfile().DefaultListSortOption);
             Assert.True(fakeConsole.CursorVisible);
             Assert.True(fakeConsole.DashboardRenderCount >= 2);
-            Assert.Contains(fakeConsole.Lines, line => line.Contains("List settings update cancelled."));
-        }
-
-        [Fact]
-        public void Execute_SwitchInteractive_WhenEscapePressed_ShouldCancelWithoutChangingActiveList()
-        {
-            var (service, timeService, metrics, snapshotProvider) = CreateContext();
-            service.AddList(new TaskList { Name = "Second List" });
-            var originalActiveListId = service.GetActiveListId();
-            var fakeConsole = new FakeInteractiveConsoleFacade(new[]
-            {
-                new ConsoleKeyInfo('\u001b', ConsoleKey.Escape, false, false, false)
-            });
-            var handler = new ListHandler(metrics, timeService, snapshotProvider, fakeConsole);
-
-            handler.ExecuteWithResult(service, new[] { "switch" });
-
-            Assert.Equal(originalActiveListId, service.GetActiveListId());
-            Assert.Contains(fakeConsole.Lines, line => line.Contains("Switch cancelled."));
-        }
-
-        [Fact]
-        public void Execute_SwitchInteractive_WhenSecondListSelected_ShouldChangeActiveList()
-        {
-            var (service, timeService, metrics, snapshotProvider) = CreateContext();
-            var secondList = new TaskList { Name = "Second List" };
-            service.AddList(secondList);
-            var fakeConsole = new FakeInteractiveConsoleFacade(new[]
-            {
-                new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
-                new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)
-            });
-            var handler = new ListHandler(metrics, timeService, snapshotProvider, fakeConsole);
-
-            handler.ExecuteWithResult(service, new[] { "switch" });
-
-            Assert.Equal(secondList.Id, service.GetActiveListId());
-            Assert.Contains(fakeConsole.Lines, line => line.Contains($"Switched to list '{secondList.Name}'."));
+            Assert.Contains(fakeConsole.Lines, line => line.Contains("Defaults saved."));
         }
 
         private static (TaskManagerService Service, MockTimeService TimeService, TaskMetricsService Metrics, ScheduleSnapshotProvider SnapshotProvider) CreateContext()

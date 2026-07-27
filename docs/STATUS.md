@@ -35,10 +35,11 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The CLI now supports command orchestration through a single canonical contract: every wired handler implements `ICommandResultHandler` and returns `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
 - `DeleteHandler`, `CompleteHandler`, `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` build real `CommandResult` outcomes (status, message, dashboard-refresh flag).
 - `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler` also implement `ICommandResultHandler`, but return an inert `CommandResult` (no message, no refresh) because these handlers already own their console rendering end-to-end through `IInteractiveConsoleFacade`. `Program.cs` does no extra work for them beyond what already happened before migration.
+- `SettingsHandler`'s no-arg (`defaults`) branch also renders through `IInteractiveConsoleFacade` and returns an inert `CommandResult`; its flag-based (`--default-*`) branch returns a real `CommandResult` built from parsed arguments.
 - `EventHandler` (currently unused/unwired in `Program.cs`; `event`/`e` route to `EventCommandHandler` instead) has the same `ICommandResultHandler` shape for contract consistency.
 - Shared parsing/usage-result behavior for migrated non-interactive handlers is centralized via `NonInteractiveCommandResultHelper`.
 - Shared interactive console behavior for keyboard-driven handlers is abstracted through `IInteractiveConsoleFacade`.
-- `HelpHandler`, `EditHandler`, interactive `list settings` flow, and `event edit`/`event clear` interactive paths currently use the interactive console facade seam.
+- `HelpHandler`, `EditHandler`, interactive `list settings` flow, interactive `list switch` flow, the interactive `defaults` menu (`SettingsHandler`), and `event add`/`event edit`/`event clear` interactive paths currently use the interactive console facade seam.
 - `EditHandler` interactive field updates now use row-anchored editing/toggling for strings, numeric values, duration, and booleans; due date/time use `ConsoleInputHelper` interactive pickers, with dashboard clear/rerender before picker launch and on edit-exit.
 
 ## Known Limitations
@@ -55,7 +56,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, Gold Panning invariant/replay coverage, and console-handle-safe CLI handler tests are now in place, while deep interactive CLI flows and dependency-order scheduling coverage remain pending.
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
 - `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net.
-- Several interactive handlers still call console APIs directly and remain pending interactive I/O seam adoption.
+- The interactive `defaults` menu (`SettingsHandler`), `list switch` (`ListHandler`), and `event add`/`event edit`/`event clear` (`EventCommandHandler`) flows have adopted the `IInteractiveConsoleFacade` seam; remaining direct-console interactive flows are limited to simple, non-menu confirm/read-line prompts (e.g. `AddHandler`'s no-arg task creation, `list delete`/`cleanup` confirmations), which are out of scope for the facade seam by design.
 
 ## Command Surface Summary
 

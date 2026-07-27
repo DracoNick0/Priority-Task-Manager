@@ -56,7 +56,7 @@ When adding user-input behavior, extend or reuse `ConsoleInputHelper` if the beh
 Every handler wired in `Program.cs` implements `ICommandResultHandler`. `Program.cs` dispatches through a single `Dictionary<string, ICommandResultHandler>` and calls `ExecuteWithResult(...)` for every command; there is no remaining legacy `ICommandHandler` contract or multi-contract branching.
 
 - New command behavior must implement `ICommandResultHandler`.
-- Interactive/menu-driven handlers (`HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`) still own their console rendering end-to-end through `IInteractiveConsoleFacade` and return an inert `CommandResult`; do not collapse their rendering into `CommandResult.Message`.
+- Interactive/menu-driven handlers (`HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`, and the no-arg branch of `SettingsHandler`) still own their console rendering end-to-end through `IInteractiveConsoleFacade` and return an inert `CommandResult`; do not collapse their rendering into `CommandResult.Message`.
 
 ## Invariants
 
