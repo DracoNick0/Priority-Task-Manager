@@ -30,6 +30,7 @@ Future integration architecture should cover:
 - Put provider-specific clients behind interfaces so new providers do not change core scheduling or persistence contracts.
 - Keep UI review flows thin; they should present candidates and call core approval/persistence operations.
 - Keep LLM/provider configuration and guardrails separate from scheduling algorithms.
+- Each additional front end (CLI, API, Android, or future clients) should build core services the same way: construct the same concrete service graph (`TaskManagerService`, `IPersistenceService`, `ITimeService`, and related services) rather than each front end re-deriving its own wiring conventions. When a second front end is introduced, extract the shared construction steps into a common composition helper in the core or a thin shared bootstrap layer instead of duplicating `Program.cs`-style manual wiring per front end.
 
 ## Relationships With Existing Areas
 

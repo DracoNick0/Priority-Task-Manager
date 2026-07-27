@@ -63,6 +63,7 @@ This is the most complex area of the application. We avoid brittle unit tests th
 -   For interactive handlers with an input/output seam (for example, `HelpHandler`, `EditHandler`, interactive `list settings` flow, and `event edit`/`event clear` paths):
     -   Drive key input through the seam abstraction instead of real console buffers.
     -   Assert navigation behavior, exit behavior, and emitted help content without relying on `Console.Clear` or cursor APIs.
+    -   Do not call real console-clearing/dashboard-rendering code (for example, `ConsoleHelper.ClearAndRenderDashboard`) directly from unit tests; headless/CI test hosts can have no attached console handle, and real `Console.Clear` calls can throw `IOException` there. Use `IInteractiveConsoleFacade`/`FakeInteractiveConsoleFacade` to assert rendering intent instead of invoking the real console.
 
 ### 4. CLI Orchestration and Rendering Policy
 

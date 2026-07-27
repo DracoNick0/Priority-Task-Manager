@@ -35,6 +35,17 @@ Prefer existing service methods before adding duplicates. Important reusable res
 - List time preference application through `ApplyListTimePreference(...)`.
 - Dependency validation and cycle prevention through existing dependency helpers.
 
+## Avoiding Unbounded Service Growth
+
+`TaskManagerService` is intentionally the default coordination point, which makes it a natural place for unrelated responsibilities to accumulate over time. Use these criteria before adding to it:
+
+- Add a method to `TaskManagerService` when the operation coordinates across two or more of tasks, lists, events, or profiles, or when it must share the same persistence/transaction boundary as existing operations.
+- Prefer a dedicated service (following the existing `TaskMetricsService` pattern) when new behavior is self-contained, has its own cohesive data/computation (for example, metrics, reporting, or a future notification or import service), and does not need to mutate core domain state directly.
+- Do not grow `TaskManagerService` by adding formatting, console-facing, or presentation-shaping logic; that belongs in the CLI layer per `docs/ARCHITECTURE_CLI.md`.
+- A new unrelated domain concern (not tasks, lists, events, profiles, or their direct coordination) is a signal to introduce a new service rather than extend `TaskManagerService`.
+
+For current backlog status on extracting existing responsibilities, see `docs/TODO.md`.
+
 ## Business Rule Placement
 
 - Put rules that must hold across all interfaces in core services or models.
@@ -63,3 +74,4 @@ Core services must not depend on:
 - Core validation should throw specific exceptions or return explicit success/failure values that the CLI can translate into user feedback.
 - Time-sensitive behavior should use `ITimeService` rather than `DateTime.Now` when deterministic behavior matters.
 - Scheduling mode selection should route through `TaskManagerService` and `IUrgencyStrategy`, not through CLI conditionals.
+- New unrelated domain concerns should be added as a new focused service rather than expanding `TaskManagerService` indefinitely; see "Avoiding Unbounded Service Growth" above.

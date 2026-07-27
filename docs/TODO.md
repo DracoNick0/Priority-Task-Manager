@@ -19,7 +19,6 @@ Completed:
 
 Remaining:
 
-- Revisit removal of the legacy `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs`, `DependencyAwarePlacementStage`, and `TaskOrderingStage` separately if confirmed permanently obsolete.
 - Un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` and add the `NotBefore` half of the due-date invariant once `(B) 2/6` lands the corresponding algorithm/model fixes.
 
 Notes:
@@ -55,9 +54,9 @@ Prerequisite:
 
 Implementation targets:
 
-- Wire a dependency-aware placement mechanism into the active `GoldPanningStrategy` pipeline (repair/re-integrate `DependencyAwarePlacementStage` or implement fresh), then un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` in `SchedulingInvariantTestsBase`.
+- Wire a dependency-aware placement mechanism into the active `GoldPanningStrategy` pipeline (implement fresh; the legacy `DependencyAwarePlacementStage` is being deleted, not re-integrated — see below), then un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` in `SchedulingInvariantTestsBase`.
 - Add a `NotBefore` property to `TaskItem` and wire it through the normalization/placement stages; extend the Respect `DueDate` invariant test to also cover `NotBefore`.
-- Decide the fate of the other unwired legacy stages (`WorkloadBalancingStage`, `TaskOrderingStage`) — either delete them and their tests, or intentionally re-integrate them, updating `docs/ARCHITECTURE_SCHEDULING.md`/`docs/GOLD_PANNING.md` accordingly.
+- Delete the confirmed-obsolete legacy stages — `WorkloadBalancingStage`/`WorkloadBalancingStageTests.cs`, `DependencyAwarePlacementStage`, and `TaskOrderingStage` — along with their tests, and update `docs/ARCHITECTURE_SCHEDULING.md`/`docs/GOLD_PANNING.md` accordingly.
 - Re-run the full `SchedulingInvariantTestsBase` suite after each fix and confirm previously-skipped tests now pass before un-skipping them.
 
 ## (B) 3/6 CI Quality Gates
@@ -74,6 +73,7 @@ Implementation targets:
 - Fail CI on test failures.
 - Add lightweight docs/link validation.
 - Add coverage reporting and baseline threshold (initially modest, then raise over time).
+- Add an automated architecture-boundary check (for example, a dependency-direction test such as NetArchTest, or a simple project-reference assertion) that fails CI if `PriorityTaskManager` ever references `PriorityTaskManager.CLI` or console types, so the core/CLI boundary in `docs/ARCHITECTURE_CORE.md` is enforced mechanically rather than by convention alone.
 
 ## (B) 4/6 React Frontend for Web and Desktop
 
@@ -198,6 +198,16 @@ Remaining:
 
 - Improve event command UX and schedule-view integration.
 - Keep past events retained but hidden from the default schedule view.
+
+## Core Service Boundary Review
+
+Status: Not started.
+
+Implementation targets:
+
+- Review `TaskManagerService` responsibilities against the growth criteria in `docs/ARCHITECTURE_CORE.md` ("Avoiding Unbounded Service Growth") and identify any responsibilities that are already self-contained enough to extract into a dedicated service (following the `TaskMetricsService` pattern).
+- Extract identified candidates into focused services with their own interfaces and tests, updating `docs/ARCHITECTURE_CORE.md` if new services are introduced.
+- Re-check this item periodically as new commands or coordination logic are added rather than treating it as a one-time cleanup.
 - Add an event history command such as `event all` for full event visibility.
 
 Blockers / Dependencies:

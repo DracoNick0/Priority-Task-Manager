@@ -48,6 +48,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - There is no undo/redo system.
 - Recurring tasks are not supported.
 - The constraint-optimization scheduling path is not implemented yet.
+- The active `GoldPanningStrategy` pipeline does not currently include a dependency-ordering stage, so dependency-order scheduling is not guaranteed end-to-end; the corresponding invariant test is skipped pending a fix (tracked in `docs/TODO.md` (B) 2/6).
 
 ## Known Issues and Technical Debt
 

@@ -58,6 +58,15 @@ Every handler wired in `Program.cs` implements `ICommandResultHandler`. `Program
 - New command behavior must implement `ICommandResultHandler`.
 - Interactive/menu-driven handlers (`HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`, and the no-arg branch of `SettingsHandler`) still own their console rendering end-to-end through `IInteractiveConsoleFacade` and return an inert `CommandResult`; do not collapse their rendering into `CommandResult.Message`.
 
+### Why Two Rendering Ownership Models Coexist
+
+Every handler shares one dispatch contract (`ICommandResultHandler`), but rendering ownership intentionally differs by command shape:
+
+- Linear, single-outcome commands (`add`, `delete`, `complete`, etc.) return a real `CommandResult` and let `Program.cs` own message output and dashboard refresh. This keeps orchestration centralized and easy to test without a console.
+- Menu-driven, cursor-sensitive, or multi-step flows (`help`, `edit`, `list` with no args, `event`) need direct control over redraw timing and key handling that a single `CommandResult` cannot express; these keep ownership in the handler through `IInteractiveConsoleFacade` and return an inert result only to satisfy the shared contract.
+
+This split is a deliberate design decision, not incomplete migration debt: do not attempt to force interactive/menu flows into the result-based model, and do not add new interactive console logic outside the `IInteractiveConsoleFacade` seam. See `docs/TESTING_STRATEGY.md` for how each model is tested.
+
 ## Invariants
 
 - CLI code may depend on core services; core code must not depend on CLI code.

@@ -57,6 +57,15 @@ When adding settings, update the model, copy/default behavior, effective profile
 - Preserve ID counters when adding or deleting items; do not infer new IDs in CLI code.
 - Keep persistence ignorant of console/UI behavior.
 
+## Schema Evolution Guidance
+
+There is currently no versioning field or migration pipeline for the JSON files `PersistenceService` reads and writes. When changing persisted shape:
+
+- Prefer additive, optional changes (new nullable/defaulted properties) over renaming or removing existing properties, so older JSON files still deserialize.
+- If a change is not additive (rename, type change, removed field, restructured container), add explicit load-time migration logic in `PersistenceService` rather than assuming a clean data directory, and cover it with a test that loads a fixture representing the pre-change shape.
+- Treat a breaking, non-additive change to persisted shape as a documentation trigger: update this document and `docs/STATUS.md` describing the new shape and any migration behavior.
+- There is no schema/version marker in the persisted JSON files today; non-additive changes rely on `PersistenceService` migration logic described above rather than a version check.
+
 ## Invariants
 
 - `DataContainer` should always have at least one task list after service initialization.
