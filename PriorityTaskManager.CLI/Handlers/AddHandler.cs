@@ -67,7 +67,10 @@ namespace PriorityTaskManager.CLI.Handlers
                 dueDate = dueDate.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
             }
 
-            var task = BuildTask(service, title, importance, complexity, isPinned, duration, dueDate);
+            Console.WriteLine("Not Before Date (earliest start; use arrows to adjust, Enter to confirm, leave unset for none):");
+            DateTime? notBefore = ConsoleInputHelper.InteractiveDateInput(null);
+
+            var task = BuildTask(service, title, importance, complexity, isPinned, duration, dueDate, notBefore);
             service.AddTask(task);
 
             return new CommandResult
@@ -80,7 +83,8 @@ namespace PriorityTaskManager.CLI.Handlers
 
         /// <summary>
         /// Non-interactive flow: <c>add &lt;Title&gt; [--importance &lt;1-10&gt;] [--complexity &lt;1-10&gt;]
-        /// [--pinned|--not-pinned] [--duration &lt;e.g. 1.5h|30m&gt;] [--due &lt;yyyy-MM-dd[ HH:mm]&gt;]</c>.
+        /// [--pinned|--not-pinned] [--duration &lt;e.g. 1.5h|30m&gt;] [--due &lt;yyyy-MM-dd[ HH:mm]&gt;]
+        /// [--not-before &lt;yyyy-MM-dd[ HH:mm]&gt;]</c>.
         /// Any attribute not supplied falls back to the same defaults used by the interactive flow.
         /// </summary>
         private static CommandResult ParseArguments(TaskManagerService service, string[] args)
@@ -99,7 +103,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 return new CommandResult
                 {
                     Status = CommandResultStatus.Usage,
-                    Message = "Usage: add <Title> [--importance <1-10>] [--complexity <1-10>] [--pinned|--not-pinned] [--duration <1.5h|30m>] [--due <yyyy-MM-dd[ HH:mm]>]",
+                    Message = "Usage: add <Title> [--importance <1-10>] [--complexity <1-10>] [--pinned|--not-pinned] [--duration <1.5h|30m>] [--due <yyyy-MM-dd[ HH:mm]>] [--not-before <yyyy-MM-dd[ HH:mm]>]",
                     ShouldRefreshDashboard = false
                 };
             }
@@ -109,6 +113,7 @@ namespace PriorityTaskManager.CLI.Handlers
             bool isPinned = DefaultPinned;
             TimeSpan duration = DefaultDuration;
             DateTime? dueDate = null;
+            DateTime? notBefore = null;
             var messageBuilder = new StringBuilder();
             var hadError = false;
 
@@ -176,6 +181,19 @@ namespace PriorityTaskManager.CLI.Handlers
                             if (index + 1 < args.Length) index++;
                         }
                         break;
+                    case "--not-before":
+                        if (index + 1 < args.Length && DateTime.TryParse(args[index + 1], out var notBeforeValue))
+                        {
+                            notBefore = notBeforeValue;
+                            index++;
+                        }
+                        else
+                        {
+                            messageBuilder.AppendLine("Error: --not-before requires a valid date, e.g. '2026-08-01' or '2026-08-01 09:00'.");
+                            hadError = true;
+                            if (index + 1 < args.Length) index++;
+                        }
+                        break;
                     default:
                         messageBuilder.AppendLine($"Error: Unknown option '{args[index]}'.");
                         hadError = true;
@@ -183,7 +201,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 }
             }
 
-            var task = BuildTask(service, title, importance, complexity, isPinned, duration, dueDate);
+            var task = BuildTask(service, title, importance, complexity, isPinned, duration, dueDate, notBefore);
             service.AddTask(task);
 
             messageBuilder.AppendLine($"Task '{task.Title}' added successfully (ID: {task.DisplayId}).");
@@ -196,7 +214,7 @@ namespace PriorityTaskManager.CLI.Handlers
             };
         }
 
-        private static TaskItem BuildTask(TaskManagerService service, string title, int importance, int complexity, bool isPinned, TimeSpan duration, DateTime? dueDate)
+        private static TaskItem BuildTask(TaskManagerService service, string title, int importance, int complexity, bool isPinned, TimeSpan duration, DateTime? dueDate, DateTime? notBefore)
         {
             return new TaskItem
             {
@@ -206,6 +224,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 Complexity = (double)complexity,
                 IsPinned = isPinned,
                 DueDate = dueDate,
+                NotBefore = notBefore,
                 IsCompleted = false,
                 EstimatedDuration = duration,
                 Progress = 0.0,

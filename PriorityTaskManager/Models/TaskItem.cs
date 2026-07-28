@@ -19,6 +19,7 @@ namespace PriorityTaskManager.Models
                 Importance = this.Importance,
                 EffectiveImportance = this.EffectiveImportance,
                 DueDate = this.DueDate,
+                NotBefore = this.NotBefore,
                 IsCompleted = this.IsCompleted,
                 EstimatedDuration = this.EstimatedDuration,
                 Progress = this.Progress,
@@ -46,6 +47,7 @@ namespace PriorityTaskManager.Models
             Title = string.Empty;
             Description = string.Empty;
             DueDate = null; // Default to no due date
+            NotBefore = null; // Default to no earliest-start constraint
             EstimatedDuration = TimeSpan.FromHours(1);
             Importance = 5;
             EffectiveImportance = 0;
@@ -119,6 +121,11 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the date and time by which the task must be completed. Can be null if there is no deadline.
         /// </summary>
         public DateTime? DueDate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the earliest date and time the task is allowed to start. Can be null if there is no earliest-start constraint.
+        /// </summary>
+        public DateTime? NotBefore { get; set; }
 
         /// <summary>
         /// Gets or sets the total estimated time required to complete the task.

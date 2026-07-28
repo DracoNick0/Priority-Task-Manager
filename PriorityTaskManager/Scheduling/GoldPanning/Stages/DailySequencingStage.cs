@@ -63,57 +63,68 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 
                 // This sequencer fills the available time slots linearly with the prioritized tasks.
                 // It will fill one slot and, if a task is larger than the slot, continue into the next available slot.
+                // At each step it picks the highest-priority task (in `sequence` order) that is both
+                // dependency-ready and NotBefore-ready for the current cursor time, so a task blocked
+                // by a future NotBefore does not waste the gap before it: lower-priority-but-ready
+                // tasks fill that time instead, and the blocked task is placed once its time arrives.
                 int currentSlotIndex = 0;
                 TimeSpan currentSlotUsed = TimeSpan.Zero;
-                
-                foreach (var task in sequence)
+
+                var idsToday = tasksForDay.Select(t => t.Id).ToHashSet();
+                var remainingForDay = new List<TaskItem>(sequence);
+                var placedIdsToday = new HashSet<int>();
+
+                foreach (var task in remainingForDay)
                 {
-                    TimeSpan remainingTaskDuration = task.EstimatedDuration;
                     task.ScheduledParts.Clear(); // Clear any previous scheduling data before creating new chunks.
+                }
 
-                    // Continue scheduling parts of the task until its full duration is accounted for.
-                    while (remainingTaskDuration > TimeSpan.Zero && currentSlotIndex < slotsForDay.Count)
+                while (remainingForDay.Count > 0 && currentSlotIndex < slotsForDay.Count)
+                {
+                    var currentCursorTime = slotsForDay[currentSlotIndex].StartTime + currentSlotUsed;
+
+                    var candidate = remainingForDay.FirstOrDefault(t =>
+                        IsDependencyReadyForToday(t, idsToday, placedIdsToday) &&
+                        (!t.NotBefore.HasValue || t.NotBefore.Value.Date != date || t.NotBefore.Value <= currentCursorTime));
+
+                    if (candidate == null)
                     {
-                        var slot = slotsForDay[currentSlotIndex];
-                        var availableSlotDuration = slot.Duration - currentSlotUsed;
-                        var slotStartTime = slot.StartTime + currentSlotUsed;
+                        // Nothing is ready to start right this moment. If at least one dependency-ready
+                        // task is only blocked by a future NotBefore time today, jump the cursor forward
+                        // to the earliest such time instead of stalling.
+                        var readyButNotYetDue = remainingForDay
+                            .Where(t => IsDependencyReadyForToday(t, idsToday, placedIdsToday) &&
+                                        t.NotBefore.HasValue && t.NotBefore.Value.Date == date)
+                            .Select(t => t.NotBefore!.Value)
+                            .ToList();
 
-                        // If the current slot is already full, move to the next one.
-                        if (availableSlotDuration <= TimeSpan.Zero)
+                        if (readyButNotYetDue.Count > 0)
                         {
-                            currentSlotIndex++;
-                            currentSlotUsed = TimeSpan.Zero;
+                            AdvanceCursorTo(slotsForDay, ref currentSlotIndex, ref currentSlotUsed, readyButNotYetDue.Min());
                             continue;
                         }
 
-                        // The chunk to be scheduled is the smaller of the remaining task duration or the available slot space.
-                        var chunkDuration = (remainingTaskDuration < availableSlotDuration) ? remainingTaskDuration : availableSlotDuration;
-
-                        var chunk = new ScheduledChunk
-                        {
-                            StartTime = slotStartTime,
-                            EndTime = slotStartTime + chunkDuration
-                        };
-                        task.ScheduledParts.Add(chunk);
-
-                        // Update counters for the current task and slot.
-                        remainingTaskDuration -= chunkDuration;
-                        currentSlotUsed += chunkDuration;
-
-                        // If the current slot is now full, advance to the next slot.
-                        if (currentSlotUsed >= slot.Duration)
-                        {
-                            currentSlotIndex++;
-                            currentSlotUsed = TimeSpan.Zero;
-                        }
+                        // Defensive fallback: nothing is dependency-ready at all (e.g. an undetected
+                        // same-day dependency cycle). Fall back to the highest-priority remaining task
+                        // rather than stalling forever.
+                        candidate = remainingForDay.First();
                     }
 
-                    // If a task has remaining duration, it means there wasn't enough capacity in the schedule.
-                    // This can happen due to floating-point inaccuracies or if the distribution stage's capacity calculation
-                    // didn't perfectly align with the available slots.
-                    if (remainingTaskDuration > TimeSpan.FromMinutes(1))
+                    PlaceTaskChunks(candidate, slotsForDay, ref currentSlotIndex, ref currentSlotUsed);
+
+                    remainingForDay.Remove(candidate);
+                    placedIdsToday.Add(candidate.Id);
+                }
+
+                // Any tasks left unplaced ran out of daily capacity before a valid slot for them arrived.
+                // This can happen due to floating-point inaccuracies or if the distribution stage's
+                // capacity calculation didn't perfectly align with the available slots.
+                foreach (var unplaced in remainingForDay)
+                {
+                    var scheduledDuration = TimeSpan.FromTicks(unplaced.ScheduledParts.Sum(c => c.Duration.Ticks));
+                    if (unplaced.EstimatedDuration - scheduledDuration > TimeSpan.FromMinutes(1))
                     {
-                        context.History.Add($"  -> Warning: Task '{task.Title}' could not fully fit on {date.ToShortDateString()} during sequencing.");
+                        context.History.Add($"  -> Warning: Task '{unplaced.Title}' could not fully fit on {date.ToShortDateString()} during sequencing.");
                     }
                 }
             }
@@ -127,6 +138,95 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             context.History.Add("  -> Sequencing complete. Timestamps assigned.");
 
             return context;
+        }
+
+        /// <summary>
+        /// Determines whether a task's same-day prerequisites (if any) have already been placed today.
+        /// A dependency id that does not belong to today's bucket (e.g. it was satisfied on a prior day,
+        /// per <see cref="TaskDistributionStage"/>'s dependency gate) is treated as already satisfied.
+        /// </summary>
+        private static bool IsDependencyReadyForToday(TaskItem task, HashSet<int> idsToday, HashSet<int> placedIdsToday)
+        {
+            return task.Dependencies == null || task.Dependencies.Count == 0 ||
+                task.Dependencies.All(depId => depId == task.Id || !idsToday.Contains(depId) || placedIdsToday.Contains(depId));
+        }
+
+        /// <summary>
+        /// Advances the shared slot cursor forward (skipping or partially consuming slots as needed)
+        /// until it reaches <paramref name="targetTime"/>, without assigning any chunks. Used to jump
+        /// past a gap that no currently-ready task can fill.
+        /// </summary>
+        private static void AdvanceCursorTo(List<TimeSlot> slotsForDay, ref int currentSlotIndex, ref TimeSpan currentSlotUsed, DateTime targetTime)
+        {
+            while (currentSlotIndex < slotsForDay.Count)
+            {
+                var slot = slotsForDay[currentSlotIndex];
+                var slotStart = slot.StartTime + currentSlotUsed;
+                if (slotStart >= targetTime)
+                {
+                    return;
+                }
+
+                var slotEnd = slot.StartTime + slot.Duration;
+                if (slotEnd <= targetTime)
+                {
+                    // The rest of this slot falls entirely before the target time; skip it.
+                    currentSlotIndex++;
+                    currentSlotUsed = TimeSpan.Zero;
+                }
+                else
+                {
+                    // The target time falls within this slot; jump the cursor to it.
+                    currentSlotUsed = targetTime - slot.StartTime;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Assigns as many scheduled chunks as will fit for <paramref name="task"/> starting from the
+        /// current slot cursor, splitting across subsequent slots as needed, and advances the cursor.
+        /// Leaves any unassigned remainder of the task's duration unscheduled (caller reports it).
+        /// </summary>
+        private static void PlaceTaskChunks(TaskItem task, List<TimeSlot> slotsForDay, ref int currentSlotIndex, ref TimeSpan currentSlotUsed)
+        {
+            TimeSpan remainingTaskDuration = task.EstimatedDuration - TimeSpan.FromTicks(task.ScheduledParts.Sum(c => c.Duration.Ticks));
+
+            while (remainingTaskDuration > TimeSpan.Zero && currentSlotIndex < slotsForDay.Count)
+            {
+                var slot = slotsForDay[currentSlotIndex];
+                var availableSlotDuration = slot.Duration - currentSlotUsed;
+                var slotStartTime = slot.StartTime + currentSlotUsed;
+
+                // If the current slot is already full, move to the next one.
+                if (availableSlotDuration <= TimeSpan.Zero)
+                {
+                    currentSlotIndex++;
+                    currentSlotUsed = TimeSpan.Zero;
+                    continue;
+                }
+
+                // The chunk to be scheduled is the smaller of the remaining task duration or the available slot space.
+                var chunkDuration = (remainingTaskDuration < availableSlotDuration) ? remainingTaskDuration : availableSlotDuration;
+
+                var chunk = new ScheduledChunk
+                {
+                    StartTime = slotStartTime,
+                    EndTime = slotStartTime + chunkDuration
+                };
+                task.ScheduledParts.Add(chunk);
+
+                // Update counters for the current task and slot.
+                remainingTaskDuration -= chunkDuration;
+                currentSlotUsed += chunkDuration;
+
+                // If the current slot is now full, advance to the next slot.
+                if (currentSlotUsed >= slot.Duration)
+                {
+                    currentSlotIndex++;
+                    currentSlotUsed = TimeSpan.Zero;
+                }
+            }
         }
 
         /// <summary>

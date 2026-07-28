@@ -248,8 +248,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
             var result = strategy.CalculateUrgency(tasks);
 
-            // Invariant: Respect DueDate (the NotBefore half of this rule cannot be tested yet -
-            // TaskItem has no NotBefore property; see docs/TODO.md (B) 1/5 for this tracked gap).
+            // Invariant: Respect DueDate.
             foreach (var task in result.Tasks.Where(t => t.DueDate.HasValue))
             {
                 foreach (var chunk in task.ScheduledParts)
@@ -257,6 +256,31 @@ namespace PriorityTaskManager.Tests.Scheduling
                     Assert.True(chunk.EndTime.Date <= task.DueDate!.Value.Date,
                         $"Task '{task.Title}' scheduled chunk ending {chunk.EndTime:O} exceeds its due date {task.DueDate:O}.");
                 }
+            }
+        }
+
+        [Fact]
+        public void CalculateUrgency_TasksWithNotBefore_AreNeverScheduledBeforeNotBeforeDate()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var profile = CreateProfile();
+            var events = new List<Event>();
+
+            var restrictedTask = CreateTask(52, "Not Before Constrained", 2.0, new DateTime(2026, 7, 13, 17, 0, 0), importance: 6, complexity: 4.0);
+            restrictedTask.NotBefore = new DateTime(2026, 7, 9, 13, 0, 0);
+
+            var tasks = new List<TaskItem> { restrictedTask };
+
+            var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
+            var result = strategy.CalculateUrgency(tasks);
+
+            // Invariant: Respect NotBefore - a task must never be scheduled before its earliest-start date/time.
+            var scheduledTask = result.Tasks.Single(t => t.Id == restrictedTask.Id);
+            Assert.NotEmpty(scheduledTask.ScheduledParts);
+            foreach (var chunk in scheduledTask.ScheduledParts)
+            {
+                Assert.True(chunk.StartTime >= restrictedTask.NotBefore!.Value,
+                    $"Task '{scheduledTask.Title}' scheduled chunk starting {chunk.StartTime:O} is before its NotBefore time {restrictedTask.NotBefore:O}.");
             }
         }
 

@@ -36,6 +36,14 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 // Ensure Complexity has a baseline value.
                 if (task.Complexity <= 0.0)
                     task.Complexity = 1.0;
+
+                // An inverted NotBefore/DueDate range would make the task permanently unschedulable,
+                // so clamp NotBefore back to DueDate as a safe default.
+                if (task.NotBefore.HasValue && task.DueDate.HasValue && task.NotBefore.Value > task.DueDate.Value)
+                {
+                    task.NotBefore = task.DueDate;
+                    context.History.Add($"  -> Task '{task.Title}' had NotBefore after DueDate; clamped NotBefore to DueDate.");
+                }
             }
 
             context.History.Add("TaskNormalizationStage: Task normalization complete. Defaults applied.");

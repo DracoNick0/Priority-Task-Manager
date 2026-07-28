@@ -98,6 +98,13 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                         continue;
                     }
 
+                    // NotBefore Gate: a task cannot be placed on any day earlier than its earliest-start
+                    // constraint. Skip it for today and let it compete again once that day arrives.
+                    if (task.NotBefore.HasValue && task.NotBefore.Value.Date > currentDay)
+                    {
+                        continue;
+                    }
+
                     // If the task fits completely in the remaining space, add it.
                     if (taskDuration <= availableSpace)
                     {
@@ -147,29 +154,31 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 
             // --- Step 3: Handling Leftovers ---
             // Any tasks remaining after the loop fall into two categories:
-            //   - Dependency-blocked: their prerequisite(s) never got placed within the horizon
-            //     (e.g. a prerequisite that also ran out of room, or a dependency cycle). Forcing
-            //     these onto the last day would violate the dependency-order invariant, so they are
-            //     reported as unschedulable instead.
+            //   - Permanently blocked: their prerequisite(s) never got placed within the horizon
+            //     (e.g. a prerequisite that also ran out of room, or a dependency cycle), or their
+            //     NotBefore date falls after the last day in the scheduling horizon. Forcing these
+            //     onto the last day would violate the dependency-order or NotBefore invariant, so
+            //     they are reported as unschedulable instead.
             //   - Capacity overflow: everything else that simply did not fit. As a fallback, these
             //     are added to the last day, which may cause over-scheduling (pre-existing behavior).
             if (remainingTasks.Count > 0)
             {
-                var dependencyBlocked = remainingTasks
-                    .Where(t => !IsDependencySatisfied(t, remainingTasks, activeTaskIds))
+                var lastDay = windowDays.Last();
+                var permanentlyBlocked = remainingTasks
+                    .Where(t => !IsDependencySatisfied(t, remainingTasks, activeTaskIds)
+                        || (t.NotBefore.HasValue && t.NotBefore.Value.Date > lastDay))
                     .ToList();
-                var capacityOverflow = remainingTasks.Except(dependencyBlocked).ToList();
+                var capacityOverflow = remainingTasks.Except(permanentlyBlocked).ToList();
 
                 if (capacityOverflow.Count > 0)
                 {
-                    var lastDay = windowDays.Last();
                     buckets[lastDay].AddRange(capacityOverflow);
                 }
 
-                if (dependencyBlocked.Count > 0)
+                if (permanentlyBlocked.Count > 0)
                 {
-                    context.SharedState["UnschedulableTasks"] = dependencyBlocked;
-                    context.History.Add($"  -> {dependencyBlocked.Count} task(s) could not be scheduled: unresolved prerequisite(s) within the scheduling horizon.");
+                    context.SharedState["UnschedulableTasks"] = permanentlyBlocked;
+                    context.History.Add($"  -> {permanentlyBlocked.Count} task(s) could not be scheduled: unresolved prerequisite(s) or an earliest-start (NotBefore) constraint beyond the scheduling horizon.");
                 }
             }
 

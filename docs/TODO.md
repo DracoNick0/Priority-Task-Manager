@@ -2,15 +2,92 @@
 
 > **Note:** This file is the source of truth for the backlog, roadmap, and currently in-progress work. Keep current-state feature reality in `docs/STATUS.md`; use this file for concise handoff details, blockers, dependencies, and next steps. Tasks are listed in priority order.
 
-## (B) 1/5 Fix Gold Panning Scheduling Algorithm to Align with Invariants
+## Fix Unhandled Crash When Selecting Constraint Optimization Mode
 
-Status: In progress.
+Status: Not started.
 
 Implementation targets:
 
-- ~~Wire a dependency-aware placement mechanism into the active `GoldPanningStrategy` pipeline, then un-skip `CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes` in `SchedulingInvariantTestsBase`.~~ Done: `TaskDistributionStage` now gates placement on same-day/prior-day prerequisite completion (deferring dependents whose prerequisites still have unplaced fragments, and reporting permanently-blocked tasks via `UnschedulableTasks` instead of forcing them onto the last day), and `DailySequencingStage` uses a priority-guided topological sort so a same-day prerequisite is always sequenced before its dependent. The invariant test is un-skipped and passing.
-- Add a `NotBefore` property to `TaskItem` and wire it through the normalization/placement stages; extend the Respect `DueDate` invariant test to also cover `NotBefore`.
-- Re-run the full `SchedulingInvariantTestsBase` suite after each fix and confirm previously-skipped tests now pass before un-skipping them.
+- Guard `TaskManagerService.GetPrioritizedTasks` (or `ModeHandler`) so selecting `SchedulingMode.ConstraintOptimization` does not propagate an unhandled `NotImplementedException` through `ScheduleSnapshotProvider.RefreshActiveListSnapshot` into the CLI main loop and crash the app.
+- Either return a graceful "not implemented" outcome (a `CommandResult`/history entry indicating the solver is unavailable) from `GetPrioritizedTasks`, or block `mode constraint` at the handler level with a clear warning until the solver ships.
+- Add a regression test that selects constraint mode and asserts the CLI/dashboard refresh path does not throw.
+
+## Core Service Boundary Review
+
+Status: Not started.
+
+Implementation targets:
+
+- Review `TaskManagerService` responsibilities against the growth criteria in `docs/ARCHITECTURE_CORE.md` ("Avoiding Unbounded Service Growth") and identify any responsibilities that are already self-contained enough to extract into a dedicated service (following the `TaskMetricsService` pattern).
+- Extract identified candidates into focused services with their own interfaces and tests, updating `docs/ARCHITECTURE_CORE.md` if new services are introduced.
+- Re-check this item periodically as new commands or coordination logic are added rather than treating it as a one-time cleanup.
+- Add an event history command such as `event all` for full event visibility.
+
+Blockers / Dependencies:
+
+- Console-seam cleanup should happen first for testable event command changes.
+
+Next steps:
+
+1. Finish console-seam coverage for event command paths used by tests.
+2. Define default schedule visibility for past events.
+3. Add the event history command and focused command-surface tests.
+
+## Harden Persistence Layer Error Handling and Write Atomicity
+
+Status: Not started.
+
+Implementation targets:
+
+- Replace the empty `catch { }` blocks in `PersistenceService.LoadData()` with logged/surfaced errors so corrupt or partially-written JSON does not silently reset user data with no warning.
+- Make `PersistenceService.SaveData()` write-atomic per file (e.g. temp file + rename) across tasks/lists/events/profile so a mid-save crash cannot leave the four files inconsistent with each other.
+- Add tests covering corrupt-file load behavior and interrupted-save recovery.
+
+## Remove Dead Duplicate Cycle-Detection Code
+
+Status: Not started.
+
+Implementation targets:
+
+- Remove `TaskManagerService.WouldCreateCircularDependency`/`HasCycle`, which duplicate `WouldCreateCycle`/`DetectCycleRecursive` and are never called anywhere.
+- Confirm no test or caller references the removed methods before deleting them.
+
+## Repository and Solution Hygiene Cleanup
+
+Status: Not started.
+
+Implementation targets:
+
+- Remove or populate `PriorityTaskManager.API/` (currently only `bin/`/`obj/` with zero source files) so the solution does not carry empty scaffolding.
+- Consolidate the two solution files (`Priority-Task-Manager.sln` and `PriorityTaskManager.Tests/PriorityTaskManager.Tests.sln`) into a single canonical solution, or document why both must exist.
+
+## Reassess Dual CLI Rendering Ownership Model
+
+Status: Not started.
+
+Implementation targets:
+
+- Review whether the two coexisting rendering ownership models (result-based `ICommandResultHandler` returns vs. handlers that own rendering directly through `IInteractiveConsoleFacade`) should be collapsed to one model as more commands adopt the facade seam.
+- If the split is kept, document explicit decision criteria in `docs/ARCHITECTURE_CLI.md` for choosing one model per new command, so contributors have a checklist rather than tribal knowledge.
+- Note: `docs/ARCHITECTURE_CLI.md` currently treats this split as a deliberate design decision, not migration debt; this item is about periodically re-validating that stance as the command surface grows, not necessarily reversing it.
+
+## Establish a Docs-vs-Code Drift Check
+
+Status: Not started.
+
+Implementation targets:
+
+- Add a recurring review step (manual checklist or lightweight automated check) that verifies `docs/STATUS.md` and `docs/TODO.md` status/completion claims against current test results before relying on them for planning.
+- Note: the specific instance previously flagged (`(B) 1/5` dependency-order scheduling described as "Not started"/skipped) has since been corrected in `docs/TODO.md` and `docs/STATUS.md`; this item addresses the recurring risk pattern, not a currently-open discrepancy.
+
+## (B) 1/5 Fix Gold Panning Scheduling Algorithm to Align with Invariants
+
+Status: Complete.
+
+Completed:
+
+- `TaskDistributionStage` now gates placement on same-day/prior-day prerequisite completion (deferring dependents whose prerequisites still have unplaced fragments, and reporting permanently-blocked tasks via `UnschedulableTasks` instead of forcing them onto the last day), and `DailySequencingStage` uses a priority-guided topological sort so a same-day prerequisite is always sequenced before its dependent. The invariant test is un-skipped and passing.
+- `TaskItem.NotBefore` now exists and is wired through `TaskNormalizationStage` (clamped back to `DueDate` if set later than `DueDate`) and `TaskDistributionStage` (a task cannot be placed on any day earlier than its `NotBefore` date; a task whose `NotBefore` falls after the last day of the scheduling horizon is reported via `UnschedulableTasks` instead of being force-placed). `add`/`edit` CLI commands support setting `NotBefore` (interactive prompts plus `add --not-before <date>`). The Respect `DueDate` invariant test suite in `SchedulingInvariantTestsBase` now also covers `NotBefore`.
 
 ## (B) 2/5 CI Quality Gates
 
@@ -42,21 +119,7 @@ Implementation targets:
 - Implement a React frontend targeting both web and desktop (e.g., via Electron or Tauri) against that API.
 - Explore additional cross-platform clients (e.g., mobile) after the web/desktop frontend and API stabilize.
 
-## (B) 4/5 Release and Demo Polish
-
-Status: Not started.
-
-Prerequisite:
-
-- Complete (B) 3/5.
-
-Implementation targets:
-
-- Produce reproducible CLI (and, once available, frontend) release artifacts.
-- Add a short demo section (quick run path and sample scenario).
-- Add concise engineering highlights and measurable outcomes for portfolio use.
-
-## (B) 5/5 LLM-Assisted Intake for External Planning Sources
+## (B) 4/5 LLM-Assisted Intake for External Planning Sources
 
 Status: Not started.
 
@@ -70,6 +133,20 @@ Implementation targets:
 - Add extraction pipelines that normalize imported source content into candidate tasks, lists, and events.
 - Add review-and-confirm UX so generated tasks/events are editable before persistence.
 - Add provider abstraction and guardrails (rate limits, retries, validation, and source/decision traceability) for LLM-backed generation.
+
+## (B) 5/5 Release and Demo Polish
+
+Status: Not started.
+
+Prerequisite:
+
+- Complete (B) 3/5.
+
+Implementation targets:
+
+- Produce reproducible CLI (and, once available, frontend) release artifacts.
+- Add a short demo section (quick run path and sample scenario).
+- Add concise engineering highlights and measurable outcomes for portfolio use.
 
 ## (A) 1/4 Scheduling Improvements (Gold Panning First)
 
@@ -151,27 +228,6 @@ Remaining:
 
 - Improve event command UX and schedule-view integration.
 - Keep past events retained but hidden from the default schedule view.
-
-## Core Service Boundary Review
-
-Status: Not started.
-
-Implementation targets:
-
-- Review `TaskManagerService` responsibilities against the growth criteria in `docs/ARCHITECTURE_CORE.md` ("Avoiding Unbounded Service Growth") and identify any responsibilities that are already self-contained enough to extract into a dedicated service (following the `TaskMetricsService` pattern).
-- Extract identified candidates into focused services with their own interfaces and tests, updating `docs/ARCHITECTURE_CORE.md` if new services are introduced.
-- Re-check this item periodically as new commands or coordination logic are added rather than treating it as a one-time cleanup.
-- Add an event history command such as `event all` for full event visibility.
-
-Blockers / Dependencies:
-
-- Console-seam cleanup should happen first for testable event command changes.
-
-Next steps:
-
-1. Finish console-seam coverage for event command paths used by tests.
-2. Define default schedule visibility for past events.
-3. Add the event history command and focused command-surface tests.
 
 ## User-Controlled Scheduling Enhancements
 

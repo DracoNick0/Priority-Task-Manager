@@ -173,6 +173,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 $"Duration: {currentTask.EstimatedDuration.TotalHours}h",
                 $"Due Date: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("yyyy-MM-dd") : "None")}",
                 $"Due Time: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("HH:mm") : "End of Day")}",
+                $"Not Before Date: {(currentTask.NotBefore.HasValue ? currentTask.NotBefore.Value.ToString("yyyy-MM-dd") : "None")}",
+                $"Not Before Time: {(currentTask.NotBefore.HasValue ? currentTask.NotBefore.Value.ToString("HH:mm") : "Start of Day")}",
                 $"Dependencies: [{string.Join(", ", currentTask.Dependencies ?? new List<int>())}]",
                 "[Save & Exit]",
                 "[Cancel]"
@@ -270,7 +272,36 @@ namespace PriorityTaskManager.CLI.Handlers
                         _console.ReadKey(true);
                     }
                     break;
-                case 8: // Dependencies
+                case 8: // Not Before Date
+                    PrepareForDateTimeInput(task, "Not Before Date");
+                    _console.WriteLine("Adjust Not Before Date:");
+                    var newNotBeforeDate = ConsoleInputHelper.InteractiveDateInput(task.NotBefore);
+                    if (newNotBeforeDate.HasValue)
+                    {
+                        // Preserve time if already set, otherwise default to start of day.
+                        var timePart = task.NotBefore.HasValue ? task.NotBefore.Value.TimeOfDay : TimeSpan.Zero;
+                        task.NotBefore = newNotBeforeDate.Value.Date + timePart;
+                    }
+                    else
+                    {
+                        task.NotBefore = null;
+                    }
+                    break;
+                case 9: // Not Before Time
+                    PrepareForDateTimeInput(task, "Not Before Time");
+                    _console.WriteLine("Adjust Not Before Time:");
+                    if (task.NotBefore.HasValue)
+                    {
+                        var newNotBeforeTime = ConsoleInputHelper.InteractiveTimeInput(task.NotBefore.Value);
+                        task.NotBefore = task.NotBefore.Value.Date + newNotBeforeTime.TimeOfDay;
+                    }
+                    else
+                    {
+                        _console.WriteLine("No Not Before date set. Please set a Not Before Date first.");
+                        _console.ReadKey(true);
+                    }
+                    break;
+                case 10: // Dependencies
                     RunDependencyEditor(service, task);
                     break;
             }
@@ -478,6 +509,9 @@ namespace PriorityTaskManager.CLI.Handlers
                     break;
                 case "duedate":
                     _console.WriteLine("Direct value editing for due date is not supported via CLI argument. Use interactive mode.");
+                    break;
+                case "notbefore":
+                    _console.WriteLine("Direct value editing for Not Before date is not supported via CLI argument. Use interactive mode.");
                     break;
                 default:
                     _console.WriteLine($"Unknown attribute: {attribute}");

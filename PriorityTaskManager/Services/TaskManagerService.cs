@@ -201,6 +201,7 @@ namespace PriorityTaskManager.Services
             existingTask.Description = updatedTask.Description;
             existingTask.Importance = updatedTask.Importance;
             existingTask.DueDate = updatedTask.DueDate;
+            existingTask.NotBefore = updatedTask.NotBefore;
             existingTask.IsCompleted = updatedTask.IsCompleted;
             existingTask.Dependencies = new List<int>(updatedTask.Dependencies);
 

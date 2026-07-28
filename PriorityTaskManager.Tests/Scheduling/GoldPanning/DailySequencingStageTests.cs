@@ -145,6 +145,66 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             Assert.Equal(today.AddHours(12), tResult.ScheduledParts[1].EndTime);
         }
 
+        [Fact]
+        public void Act_HigherPriorityTaskBlockedByNotBefore_DoesNotPushBackReadyLowerPriorityTasks()
+        {
+            // Scenario: a high-complexity (highest priority) task cannot start until 13:00, but four
+            // 1-hour filler tasks with no restriction are also in today's bucket. The fillers should
+            // fill the 9:00-13:00 gap instead of everything being pushed back to 13:00, and the
+            // restricted task should be placed right at its NotBefore time once the gap is filled.
+            var today = _timeService.GetCurrentTime().Date;
+
+            var restricted = new TaskItem
+            {
+                Id = 1,
+                Title = "Restricted",
+                Complexity = 10,
+                EstimatedDuration = TimeSpan.FromHours(1),
+                NotBefore = today.AddHours(13)
+            };
+
+            var fillers = Enumerable.Range(2, 4)
+                .Select(id => new TaskItem { Id = id, Title = $"Filler{id}", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(1) })
+                .ToList();
+
+            var tasksForDay = new List<TaskItem> { restricted };
+            tasksForDay.AddRange(fillers);
+
+            var buckets = new Dictionary<DateTime, List<TaskItem>>
+            {
+                { today, tasksForDay }
+            };
+
+            var context = CreateContext(buckets);
+            var result = _agent.Act(context);
+
+            var tasks = result.SharedState["Tasks"] as List<TaskItem>;
+            Assert.NotNull(tasks);
+
+            var restrictedResult = tasks.First(t => t.Id == restricted.Id);
+            Assert.Single(restrictedResult.ScheduledParts);
+            Assert.Equal(today.AddHours(13), restrictedResult.ScheduledParts[0].StartTime);
+
+            // All four fillers should have filled the 9:00-13:00 gap rather than being pushed to 14:00+.
+            var fillerResults = tasks.Where(t => t.Id != restricted.Id).ToList();
+            Assert.Equal(4, fillerResults.Count);
+            foreach (var filler in fillerResults)
+            {
+                Assert.Single(filler.ScheduledParts);
+                Assert.True(filler.ScheduledParts[0].StartTime < restrictedResult.ScheduledParts[0].StartTime,
+                    $"Filler task '{filler.Title}' should have been scheduled before the restricted task's NotBefore time.");
+            }
+
+            var fillerStartTimes = fillerResults.Select(t => t.ScheduledParts[0].StartTime).OrderBy(t => t).ToList();
+            Assert.Equal(new List<DateTime>
+            {
+                today.AddHours(9),
+                today.AddHours(10),
+                today.AddHours(11),
+                today.AddHours(12)
+            }, fillerStartTimes);
+        }
+
         [Fact(Skip = "FAILING: Legacy 'Eat the Frog' logic prioritizes Complexity over Importance. Un-skip during V1 migration to implement 'Prioritized Frogs'.")]
         public void Act_PreferImportanceOverComplexity()
         {

@@ -48,7 +48,6 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - There is no undo/redo system.
 - Recurring tasks are not supported.
 - The constraint-optimization scheduling path is not implemented yet.
-- `TaskItem` has no `NotBefore` property yet; user-specified earliest-start constraints are not supported (tracked in `docs/TODO.md` (B) 1/5).
 
 ## Known Issues and Technical Debt
 

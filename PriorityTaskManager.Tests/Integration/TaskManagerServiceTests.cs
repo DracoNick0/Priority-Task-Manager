@@ -179,6 +179,27 @@ namespace PriorityTaskManager.Tests.Integration
             }
 
             [Fact]
+            public void UpdateTask_WhenTaskExists_ShouldPersistDueDateAndNotBefore()
+            {
+                // Arrange
+                var task = new TaskItem { Title = "Original Title", ListId = 1 };
+                _TMS.AddTask(task);
+                var updatedTask = task.Clone();
+                updatedTask.DueDate = new DateTime(2026, 8, 1, 23, 59, 59);
+                updatedTask.NotBefore = new DateTime(2026, 7, 28, 0, 0, 0);
+
+                // Act
+                var result = _TMS.UpdateTask(updatedTask);
+                var retrievedTask = _TMS.GetTaskById(task.Id);
+
+                // Assert
+                Assert.True(result);
+                Assert.NotNull(retrievedTask);
+                Assert.Equal(updatedTask.DueDate, retrievedTask.DueDate);
+                Assert.Equal(updatedTask.NotBefore, retrievedTask.NotBefore);
+            }
+
+            [Fact]
             public void UpdateTask_WhenTaskDoesNotExist_ShouldReturnFalse()
             {
                 // Arrange
