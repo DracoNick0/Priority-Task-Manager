@@ -609,7 +609,7 @@ namespace PriorityTaskManager.Tests.Integration
             }
 
             [Fact]
-            public void GetPrioritizedTasks_WhenListModeIsConstraintOptimization_ShouldThrowNotImplementedException()
+            public void GetPrioritizedTasks_WhenListModeIsConstraintOptimization_ShouldReturnGracefulNotImplementedResult()
             {
                 // Arrange
                 var list = new TaskList
@@ -618,9 +618,16 @@ namespace PriorityTaskManager.Tests.Integration
                     SchedulingMode = SchedulingMode.ConstraintOptimization
                 };
                 _TMS.AddList(list);
+                _TMS.AddTask(new TaskItem { Title = "Some task", ListId = list.Id });
 
-                // Act & Assert
-                Assert.Throws<NotImplementedException>(() => _TMS.GetPrioritizedTasks(list.Id, _timeService));
+                // Act
+                var result = _TMS.GetPrioritizedTasks(list.Id, _timeService);
+
+                // Assert: no exception propagates; the solver stub reports itself as not implemented
+                // and returns all input tasks as unscheduled instead of crashing the caller.
+                Assert.Empty(result.Tasks);
+                Assert.NotEmpty(result.UnscheduledTasks);
+                Assert.Contains(result.History, h => h.Contains("not yet implemented"));
             }
 
             [Fact]

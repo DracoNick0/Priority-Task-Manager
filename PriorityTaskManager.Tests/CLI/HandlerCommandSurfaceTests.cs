@@ -620,6 +620,26 @@ namespace PriorityTaskManager.Tests.CLI
         }
 
         [Fact]
+        public void ModeHandler_Constraint_DashboardRefreshAfterSwitch_ShouldNotThrow()
+        {
+            var ctx = CreateContext();
+            AddTask(ctx.Service, "Existing task");
+            var handler = new ModeHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
+
+            var modeResult = handler.ExecuteWithResult(ctx.Service, new[] { "constraint" });
+            Assert.True(modeResult.ShouldRefreshDashboard);
+
+            // Regression for GH issue #1: selecting Constraint Optimization mode must not let an
+            // unhandled NotImplementedException propagate through the dashboard refresh path.
+            var refreshed = ctx.SnapshotProvider.RefreshActiveListSnapshot(out var error);
+
+            Assert.True(refreshed);
+            Assert.Null(error);
+            Assert.True(ctx.SnapshotProvider.TryGetLatestSnapshot(out var snapshot));
+            Assert.NotNull(snapshot);
+        }
+
+        [Fact]
         public void ModeHandler_WithAliasV1_ShouldUpdateSchedulingModeToConstraint()
         {
             var ctx = CreateContext();

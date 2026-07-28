@@ -18,7 +18,10 @@ namespace PriorityTaskManager.Services
             IUrgencyStrategy strategy;
             if (effectiveProfile.SchedulingMode == SchedulingMode.ConstraintOptimization)
             {
-                    throw new NotImplementedException("Constraint Solver strategy is not yet implemented.");
+                // The Constraint Solver strategy is still under development. Route to its stub
+                // implementation, which returns a graceful "not yet implemented" result instead of
+                // letting an unhandled exception propagate up through the CLI dashboard refresh path.
+                strategy = new PriorityTaskManager.Scheduling.Optimization.ConstraintOptimizationStrategy(effectiveProfile, _data.Events, timeService);
             }
             else
             {
