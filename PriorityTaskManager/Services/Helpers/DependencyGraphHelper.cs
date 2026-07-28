@@ -36,5 +36,41 @@ namespace PriorityTaskManager.Services.Helpers
             }
             return chainTasks.ToList();
         }
+
+        /// <summary>
+        /// Checks if adding the given dependencies to the specified task would create a circular dependency.
+        /// </summary>
+        /// <param name="allTasks">All tasks to search for dependency chains within.</param>
+        /// <param name="taskId">The ID of the task being updated.</param>
+        /// <param name="newDependencies">The list of proposed new dependencies.</param>
+        /// <returns>True if a cycle would be created; otherwise, false.</returns>
+        public bool WouldCreateCycle(List<TaskItem> allTasks, int taskId, List<int> newDependencies)
+        {
+            var visited = new HashSet<int>();
+            foreach (var depId in newDependencies)
+            {
+                if (DetectCycleRecursive(allTasks, taskId, depId, visited))
+                    return true;
+            }
+            return false;
+        }
+
+        private bool DetectCycleRecursive(List<TaskItem> allTasks, int originalTaskId, int currentId, HashSet<int> visited)
+        {
+            if (currentId == originalTaskId)
+                return true;
+            if (visited.Contains(currentId))
+                return false;
+            visited.Add(currentId);
+            var currentTask = allTasks.FirstOrDefault(t => t.Id == currentId);
+            if (currentTask == null)
+                return false;
+            foreach (var depId in currentTask.Dependencies)
+            {
+                if (DetectCycleRecursive(allTasks, originalTaskId, depId, visited))
+                    return true;
+            }
+            return false;
+        }
     }
 }

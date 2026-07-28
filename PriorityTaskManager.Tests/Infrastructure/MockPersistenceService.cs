@@ -63,6 +63,13 @@ namespace PriorityTaskManager.Tests.Infrastructure
             };
         }
 
+        public List<TaskItem> ArchivedTasks { get; } = new List<TaskItem>();
+
+        public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
+        {
+            ArchivedTasks.AddRange(tasksToArchive.Select(t => t.Clone()));
+        }
+
         private TaskList CloneList(TaskList l) => new TaskList
         {
             Id = l.Id,

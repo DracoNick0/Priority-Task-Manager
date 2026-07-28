@@ -129,6 +129,43 @@ namespace PriorityTaskManager.Tests.Services
             }
         }
 
+        [Fact]
+        public void ArchiveTasks_AppendsArchivedTasksToArchiveFile()
+        {
+            var tempDir = CreateTempDirectory();
+            var archivePath = Path.Combine(Directory.GetCurrentDirectory(), "archive.json");
+            var archiveExistedBefore = File.Exists(archivePath);
+            var backupPath = archivePath + ".bak";
+            if (archiveExistedBefore)
+            {
+                File.Move(archivePath, backupPath, overwrite: true);
+            }
+            try
+            {
+                var service = new PersistenceService(tempDir);
+                var task = new TaskItem { Id = 1, DisplayId = 1, Title = "Archived Task", ListId = 1 };
+
+                service.ArchiveTasks(new List<TaskItem> { task });
+
+                Assert.True(File.Exists(archivePath));
+                var archived = System.Text.Json.JsonSerializer.Deserialize<List<TaskItem>>(File.ReadAllText(archivePath));
+                Assert.Single(archived!);
+                Assert.Equal("Archived Task", archived![0].Title);
+            }
+            finally
+            {
+                if (File.Exists(archivePath))
+                {
+                    File.Delete(archivePath);
+                }
+                if (archiveExistedBefore)
+                {
+                    File.Move(backupPath, archivePath, overwrite: true);
+                }
+                DeleteDirectory(tempDir);
+            }
+        }
+
         private static string CreateTempDirectory()
         {
             var path = Path.Combine(Path.GetTempPath(), "ptm-tests-" + Guid.NewGuid().ToString("N"));

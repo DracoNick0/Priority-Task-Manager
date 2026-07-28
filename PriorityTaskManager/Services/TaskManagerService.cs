@@ -1,5 +1,5 @@
-using System.Text.Json;
 using PriorityTaskManager.Models;
+using PriorityTaskManager.Services.Helpers;
 
 namespace PriorityTaskManager.Services
 {
@@ -65,6 +65,8 @@ namespace PriorityTaskManager.Services
 
         private readonly IUrgencyStrategy _urgencyStrategy;
         private readonly IPersistenceService _persistenceService;
+        private readonly IEventService _eventService;
+        private readonly DependencyGraphHelper _dependencyGraphHelper = new DependencyGraphHelper();
         private DataContainer _data;
         public UserProfile UserProfile => _data.UserProfile;
 
@@ -79,6 +81,7 @@ namespace PriorityTaskManager.Services
             _urgencyStrategy = urgencyStrategy;
             _persistenceService = persistenceService;
             _data = data;
+            _eventService = new EventService(_persistenceService, _data);
             // Ensure at least one default list exists
             if (_data.Lists == null || _data.Lists.Count == 0)
             {
@@ -197,7 +200,7 @@ namespace PriorityTaskManager.Services
             if (existingTask == null)
                 return false;
 
-            if (WouldCreateCycle(updatedTask.Id, updatedTask.Dependencies))
+            if (_dependencyGraphHelper.WouldCreateCycle(_data.Tasks, updatedTask.Id, updatedTask.Dependencies))
                 throw new InvalidOperationException("Circular dependency detected. Cannot update task with dependencies that create a cycle.");
 
             existingTask.Title = updatedTask.Title;
@@ -490,57 +493,12 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
-        /// Checks if adding the given dependencies to the specified task would create a circular dependency.
-        /// </summary>
-        /// <param name="taskId">The ID of the task being updated.</param>
-        /// <param name="newDependencies">The list of proposed new dependencies.</param>
-        /// <returns>True if a cycle would be created; otherwise, false.</returns>
-        private bool WouldCreateCycle(int taskId, List<int> newDependencies)
-        {
-            var visited = new HashSet<int>();
-            foreach (var depId in newDependencies)
-            {
-                if (DetectCycleRecursive(taskId, depId, visited))
-                    return true;
-            }
-            return false;
-        }
-
-        private bool DetectCycleRecursive(int originalTaskId, int currentId, HashSet<int> visited)
-        {
-            if (currentId == originalTaskId)
-                return true;
-            if (visited.Contains(currentId))
-                return false;
-            visited.Add(currentId);
-            var currentTask = _data.Tasks.Find(t => t.Id == currentId);
-            if (currentTask == null)
-                return false;
-            foreach (var depId in currentTask.Dependencies)
-            {
-                if (DetectCycleRecursive(originalTaskId, depId, visited))
-                    return true;
-            }
-            return false;
-        }
-
-        /// <summary>
         /// Archives the specified tasks to the archive file.
         /// </summary>
         /// <param name="tasksToArchive">The tasks to archive.</param>
         public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
         {
-            // This method should be moved to PersistenceService in a future refactor.
-            const string archiveFilePath = "archive.json";
-            List<TaskItem> archivedTasks = new List<TaskItem>();
-            if (File.Exists(archiveFilePath))
-            {
-                var existingData = File.ReadAllText(archiveFilePath);
-                archivedTasks = JsonSerializer.Deserialize<List<TaskItem>>(existingData) ?? new List<TaskItem>();
-            }
-            archivedTasks.AddRange(tasksToArchive);
-            var updatedData = JsonSerializer.Serialize(archivedTasks);
-            File.WriteAllText(archiveFilePath, updatedData);
+            _persistenceService.ArchiveTasks(tasksToArchive);
         }
 
         /// <summary>
@@ -566,54 +524,17 @@ namespace PriorityTaskManager.Services
             SaveData();
         }
 
-        // Event Management
-        public void AddEvent(Event newEvent)
-        {
-            newEvent.Id = _data.NextEventId++;
-            _data.Events.Add(newEvent);
-            SaveData();
-        }
+        // Event Management: delegates to IEventService (see docs/ARCHITECTURE_CORE.md "Key Services").
+        public void AddEvent(Event newEvent) => _eventService.AddEvent(newEvent);
 
-        public IEnumerable<Event> GetAllEvents()
-        {
-            return _data.Events;
-        }
+        public IEnumerable<Event> GetAllEvents() => _eventService.GetAllEvents();
 
-        public Event? GetEvent(int id)
-        {
-            return _data.Events.Find(e => e.Id == id);
-        }
+        public Event? GetEvent(int id) => _eventService.GetEvent(id);
 
-        public bool UpdateEvent(Event updatedEvent)
-        {
-            var existingEvent = _data.Events.Find(e => e.Id == updatedEvent.Id);
-            if (existingEvent == null)
-                return false;
+        public bool UpdateEvent(Event updatedEvent) => _eventService.UpdateEvent(updatedEvent);
 
-            existingEvent.Name = updatedEvent.Name;
-            existingEvent.StartTime = updatedEvent.StartTime;
-            existingEvent.EndTime = updatedEvent.EndTime;
-            SaveData();
-            return true;
-        }
+        public bool DeleteEvent(int id) => _eventService.DeleteEvent(id);
 
-        public bool DeleteEvent(int id)
-        {
-            var eventToDelete = _data.Events.FirstOrDefault(e => e.Id == id);
-            if (eventToDelete == null)
-            {
-                return false;
-            }
-
-            _data.Events.Remove(eventToDelete);
-            SaveData();
-            return true;
-        }
-
-        public void ClearEvents()
-        {
-            _data.Events.Clear();
-            SaveData();
-        }
+        public void ClearEvents() => _eventService.ClearEvents();
     }
 }

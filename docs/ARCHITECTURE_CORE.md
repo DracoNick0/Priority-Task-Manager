@@ -18,10 +18,12 @@ The core library must not depend on CLI handlers, console helpers, rendering, or
 
 | Service | Responsibility |
 | --- | --- |
-| `TaskManagerService` | Coordinates task/list/profile/event operations, active-list behavior, default application, and scheduling delegation |
+| `TaskManagerService` | Coordinates task/list/profile operations, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
 | `TaskMetricsService` | Computes schedule-related metrics used by presentation and status indicators |
+| `EventService` | Owns CRUD operations for calendar events (self-contained; extracted from `TaskManagerService` per the growth criteria below) |
 | `TimeService` / `ITimeService` | Provides current or simulated time for deterministic behavior |
-| `PersistenceService` / `IPersistenceService` | Reads and writes persisted state |
+| `PersistenceService` / `IPersistenceService` | Reads and writes persisted state, including task archiving |
+| `DependencyGraphHelper` (`Services/Helpers`) | Computes dependency chains and detects circular dependencies for task updates |
 
 ## TaskManagerService Boundary
 

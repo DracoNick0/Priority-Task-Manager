@@ -134,5 +134,23 @@ namespace PriorityTaskManager.Services
             // Save user profile
             File.WriteAllText(_userProfileFilePath, JsonSerializer.Serialize(data.UserProfile));
         }
+
+        /// <summary>
+        /// Appends the given tasks to the persisted archive record.
+        /// </summary>
+        /// <param name="tasksToArchive">The tasks to archive.</param>
+        public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
+        {
+            const string archiveFilePath = "archive.json";
+            List<TaskItem> archivedTasks = new List<TaskItem>();
+            if (File.Exists(archiveFilePath))
+            {
+                var existingData = File.ReadAllText(archiveFilePath);
+                archivedTasks = JsonSerializer.Deserialize<List<TaskItem>>(existingData) ?? new List<TaskItem>();
+            }
+            archivedTasks.AddRange(tasksToArchive);
+            var updatedData = JsonSerializer.Serialize(archivedTasks);
+            File.WriteAllText(archiveFilePath, updatedData);
+        }
     }
 }

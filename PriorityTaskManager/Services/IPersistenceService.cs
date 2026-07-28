@@ -9,5 +9,11 @@ namespace PriorityTaskManager.Services
     {
         DataContainer LoadData();
         void SaveData(DataContainer data);
+
+        /// <summary>
+        /// Appends the given tasks to the persisted archive record.
+        /// </summary>
+        /// <param name="tasksToArchive">The tasks to archive.</param>
+        void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive);
     }
 }
