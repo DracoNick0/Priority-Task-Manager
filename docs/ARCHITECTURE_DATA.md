@@ -56,6 +56,9 @@ When adding settings, update the model, copy/default behavior, effective profile
 - Keep serialization shape changes intentional and covered by tests when existing data compatibility matters.
 - Preserve ID counters when adding or deleting items; do not infer new IDs in CLI code.
 - Keep persistence ignorant of console/UI behavior.
+- `PersistenceService.LoadData()` fails soft per file: if a single JSON file (tasks/lists/events/user profile) is missing, empty, or unreadable, that file's data resets to its default and a descriptive message is recorded in `DataContainer.LoadWarnings` instead of being silently discarded. Other files still load normally.
+- `DataContainer.LoadWarnings` is populated only by `LoadData()` and is not itself persisted to disk; the CLI (`Program.cs`) prints any warnings once at startup.
+- `PersistenceService.SaveData()` writes each of the 4 files atomically (write to a `.tmp` file in the same directory, then `File.Replace`/`File.Move` into place) so a crash or interruption mid-save cannot leave a destination file partially written.
 
 ## Schema Evolution Guidance
 

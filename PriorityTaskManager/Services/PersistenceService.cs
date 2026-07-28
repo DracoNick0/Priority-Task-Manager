@@ -126,7 +126,7 @@ namespace PriorityTaskManager.Services
                 NextId = data.NextTaskId,
                 NextDisplayId = data.NextDisplayId
             };
-            File.WriteAllText(_tasksFilePath, JsonSerializer.Serialize(tasksData));
+            WriteAtomic(_tasksFilePath, JsonSerializer.Serialize(tasksData));
 
             // Save lists
             var listsData = new
@@ -134,7 +134,7 @@ namespace PriorityTaskManager.Services
                 Lists = data.Lists,
                 NextListId = data.NextListId
             };
-            File.WriteAllText(_listsFilePath, JsonSerializer.Serialize(listsData));
+            WriteAtomic(_listsFilePath, JsonSerializer.Serialize(listsData));
 
             // Save events
             var eventsData = new
@@ -142,10 +142,32 @@ namespace PriorityTaskManager.Services
                 Events = data.Events,
                 NextEventId = data.NextEventId
             };
-            File.WriteAllText(_eventsFilePath, JsonSerializer.Serialize(eventsData));
+            WriteAtomic(_eventsFilePath, JsonSerializer.Serialize(eventsData));
 
             // Save user profile
-            File.WriteAllText(_userProfileFilePath, JsonSerializer.Serialize(data.UserProfile));
+            WriteAtomic(_userProfileFilePath, JsonSerializer.Serialize(data.UserProfile));
+        }
+
+        /// <summary>
+        /// Writes <paramref name="content"/> to <paramref name="filePath"/> atomically by writing
+        /// to a temporary file in the same directory first, then swapping it into place, so a
+        /// crash or interruption mid-write cannot leave <paramref name="filePath"/> partially written.
+        /// </summary>
+        /// <param name="filePath">The destination file path.</param>
+        /// <param name="content">The file content to write.</param>
+        private static void WriteAtomic(string filePath, string content)
+        {
+            var tempFilePath = filePath + ".tmp";
+            File.WriteAllText(tempFilePath, content);
+
+            if (File.Exists(filePath))
+            {
+                File.Replace(tempFilePath, filePath, null);
+            }
+            else
+            {
+                File.Move(tempFilePath, filePath);
+            }
         }
 
         /// <summary>

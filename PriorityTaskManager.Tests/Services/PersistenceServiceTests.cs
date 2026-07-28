@@ -172,6 +172,93 @@ namespace PriorityTaskManager.Tests.Services
             }
         }
 
+        [Fact]
+        public void LoadData_WhenOnlyOneFileIsCorrupt_ShouldResetOnlyThatFileAndKeepOthersValid()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+                var container = new DataContainer
+                {
+                    NextTaskId = 5,
+                    NextDisplayId = 5,
+                    NextListId = 2,
+                    NextEventId = 2,
+                    Lists = new List<TaskList>
+                    {
+                        new TaskList { Id = 1, Name = "Home" }
+                    },
+                    Events = new List<Event>
+                    {
+                        new Event
+                        {
+                            Id = 1,
+                            Name = "Meeting",
+                            StartTime = new DateTime(2026, 7, 10, 9, 0, 0),
+                            EndTime = new DateTime(2026, 7, 10, 10, 0, 0)
+                        }
+                    },
+                    UserProfile = new UserProfile { WorkStartTime = new TimeOnly(9, 0) }
+                };
+                service.SaveData(container);
+
+                // Corrupt only the tasks file; lists/events/profile remain valid on disk.
+                File.WriteAllText(Path.Combine(tempDir, "tasks.json"), "{ not valid json");
+
+                var data = service.LoadData();
+
+                Assert.Empty(data.Tasks);
+                Assert.Single(data.LoadWarnings);
+                Assert.Contains("tasks.json", data.LoadWarnings[0]);
+                Assert.Single(data.Lists);
+                Assert.Equal("Home", data.Lists[0].Name);
+                Assert.Single(data.Events);
+                Assert.Equal("Meeting", data.Events[0].Name);
+                Assert.Equal(new TimeOnly(9, 0), data.UserProfile.WorkStartTime);
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void SaveData_WritesThroughTemporaryFile_SoInterruptedSaveLeavesPreviousDataIntact()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+                var original = new DataContainer
+                {
+                    NextTaskId = 2,
+                    NextDisplayId = 2,
+                    Tasks = new List<TaskItem>
+                    {
+                        new TaskItem { Id = 1, DisplayId = 1, Title = "Original task", ListId = 1 }
+                    }
+                };
+                service.SaveData(original);
+
+                // Simulate a save that was interrupted after the temp file was written but
+                // before it was swapped into place: leave a stale/incomplete .tmp file behind.
+                var tasksTempPath = Path.Combine(tempDir, "tasks.json.tmp");
+                File.WriteAllText(tasksTempPath, "{ incomplete");
+
+                var data = service.LoadData();
+
+                Assert.Single(data.Tasks);
+                Assert.Equal("Original task", data.Tasks[0].Title);
+                Assert.Empty(data.LoadWarnings);
+                Assert.True(File.Exists(tasksTempPath), "Stray temp file should be left untouched by LoadData.");
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
         private static string CreateTempDirectory()
         {
             var path = Path.Combine(Path.GetTempPath(), "ptm-tests-" + Guid.NewGuid().ToString("N"));
