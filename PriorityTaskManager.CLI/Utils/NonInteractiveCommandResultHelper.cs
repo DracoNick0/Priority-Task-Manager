@@ -22,7 +22,7 @@ namespace PriorityTaskManager.CLI.Utils
             result.HasInput = true;
             string input = string.Join(string.Empty, args);
             string[] potentialDisplayIds = input.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            int activeListId = service.GetActiveListId();
+            Guid activeListId = service.GetActiveListId();
 
             foreach (var idString in potentialDisplayIds)
             {
@@ -99,7 +99,7 @@ namespace PriorityTaskManager.CLI.Utils
         /// <summary>
         /// Gets the resolved display ID to real task ID pairs.
         /// </summary>
-        public List<(int DisplayId, int RealId)> ValidTasks { get; } = new();
+        public List<(int DisplayId, Guid RealId)> ValidTasks { get; } = new();
 
         /// <summary>
         /// Gets invalid non-integer argument fragments.

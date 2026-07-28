@@ -214,7 +214,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             var originalImportance = task.Importance;
             var originalComplexity = task.Complexity;
             var originalDueDate = task.DueDate;
-            var originalDependencies = new List<int>(task.Dependencies);
+            var originalDependencies = new List<Guid>(task.Dependencies);
             var originalDuration = task.EstimatedDuration;
 
             var tasks = new List<TaskItem> { task };
@@ -353,20 +353,27 @@ namespace PriorityTaskManager.Tests.Scheduling
             {
                 new Event
                 {
-                    Id = 1,
+                    Id = GuidFromInt(1),
                     Name = "Standup",
                     StartTime = new DateTime(2026, 7, 6, 12, 0, 0),
                     EndTime = new DateTime(2026, 7, 6, 13, 0, 0)
                 },
                 new Event
                 {
-                    Id = 2,
+                    Id = GuidFromInt(2),
                     Name = "Review Meeting",
                     StartTime = new DateTime(2026, 7, 7, 10, 0, 0),
                     EndTime = new DateTime(2026, 7, 7, 11, 0, 0)
                 }
             };
         }
+
+        /// <summary>
+        /// Deterministically derives a <see cref="Guid"/> from a small integer seed so tests can keep
+        /// using short, readable literal IDs (e.g. <c>CreateTask(1, ...)</c>) while satisfying the
+        /// Guid-based identity model.
+        /// </summary>
+        protected static Guid GuidFromInt(int id) => new Guid(id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
         protected static TaskItem CreateTask(
             int id,
@@ -383,7 +390,7 @@ namespace PriorityTaskManager.Tests.Scheduling
                 durationHours: durationHours,
                 dueDate: dueDate);
 
-            task.Id = id;
+            task.Id = GuidFromInt(id);
             return task;
         }
     }

@@ -8,7 +8,7 @@ namespace PriorityTaskManager.Models
         /// <summary>
         /// Gets or sets the unique identifier for the event.
         /// </summary>
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         /// <summary>
         /// Gets or sets the name or title of the event.

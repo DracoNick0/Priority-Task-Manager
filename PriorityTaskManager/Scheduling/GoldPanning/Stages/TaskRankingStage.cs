@@ -23,7 +23,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 return context;
             }
 
-            var weights = new Dictionary<int, double>();
+            var weights = new Dictionary<Guid, double>();
             
             // Use TimeService to get the current date for accurate urgency calculations.
             DateTime today;

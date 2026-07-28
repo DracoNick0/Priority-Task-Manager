@@ -17,7 +17,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
         {
             context.History.Add("Updating dependency references...");
 
-            var idMap = context.SharedState["IdMap"] as Dictionary<int, int>;
+            var idMap = context.SharedState["IdMap"] as Dictionary<Guid, Guid>;
 
             if (idMap == null || idMap.Count == 0)
             {
@@ -30,7 +30,7 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
 
             foreach (var task in allTasks)
             {
-                var newDependencies = new List<int>();
+                var newDependencies = new List<Guid>();
 
                 foreach (var dependencyId in task.Dependencies)
                 {

@@ -14,15 +14,17 @@ Data and persistence architecture covers:
 
 ## Persisted State
 
-`DataContainer` is the in-memory aggregate loaded from and saved to JSON. It contains tasks, lists, events, user profile, ID counters, and the active list ID.
+`DataContainer` is the in-memory aggregate loaded from and saved to JSON. It contains tasks, lists, events, user profile, the `NextDisplayId` counter, and the active list ID.
+
+Each task, list, and event has a globally unique `Guid` `Id` assigned at creation time (`Guid.NewGuid()`), which is the sole identity used for internal references (`TaskItem.ListId`, `TaskItem.Dependencies`, `DataContainer.ActiveListId`). `TaskItem.DisplayId` remains a separate, per-list sequential `int` shown to users in the CLI (e.g. `edit 3`, `depend 3 1`); it is not a unique identifier and is reassigned during re-indexing. `NextDisplayId` is the only remaining ID counter in `DataContainer`.
 
 `PersistenceService` stores state in separate JSON files under the runtime data directory:
 
 | File | Data |
 | --- | --- |
-| `tasks.json` | Tasks plus task ID counters |
-| `lists.json` | Task lists plus list ID counter |
-| `events.json` | Events plus event ID counter |
+| `tasks.json` | Tasks plus the `NextDisplayId` counter |
+| `lists.json` | Task lists |
+| `events.json` | Events |
 | `user_profile.json` | Global user profile defaults |
 
 ## Model Boundaries
@@ -54,9 +56,10 @@ When adding settings, update the model, copy/default behavior, effective profile
 
 - Use `IPersistenceService` for persistence boundaries rather than reading or writing JSON from handlers or scheduling stages.
 - Keep serialization shape changes intentional and covered by tests when existing data compatibility matters.
-- Preserve ID counters when adding or deleting items; do not infer new IDs in CLI code.
+- Preserve the `NextDisplayId` counter when adding or deleting items; do not infer new IDs in CLI code. Real `Id` values (tasks, lists, events) are always generated via `Guid.NewGuid()` at creation time in `TaskManagerService`/`EventService`, never assigned by CLI code.
 - Keep persistence ignorant of console/UI behavior.
 - `PersistenceService.LoadData()` fails soft per file: if a single JSON file (tasks/lists/events/user profile) is missing, empty, or unreadable, that file's data resets to its default and a descriptive message is recorded in `DataContainer.LoadWarnings` instead of being silently discarded. Other files still load normally.
+- `PersistenceService.LoadData()` also transparently migrates JSON files still using the legacy `int`-based `Id` shape (from before the Guid identity migration) to the current `Guid` shape: lists are migrated first (building an old-int-Id → new-Guid map), then tasks (remapping `ListId` and `Dependencies` via that map plus a task-specific map), then events (self-contained, no cross-references). Each migrated file adds a `DataContainer.LoadWarnings` entry noting the migration. See `PersistenceService.IsLegacyIntIdShape`/`MigrateLegacyLists`/`MigrateLegacyTasks`/`MigrateLegacyEvents`.
 - `DataContainer.LoadWarnings` is populated only by `LoadData()` and is not itself persisted to disk; the CLI (`Program.cs`) prints any warnings once at startup.
 - `PersistenceService.SaveData()` writes each of the 4 files atomically (write to a `.tmp` file in the same directory, then `File.Replace`/`File.Move` into place) so a crash or interruption mid-save cannot leave a destination file partially written.
 
@@ -73,5 +76,5 @@ There is currently no versioning field or migration pipeline for the JSON files 
 
 - `DataContainer` should always have at least one task list after service initialization.
 - `ActiveListId` should refer to an existing list after default setup.
-- `NextTaskId`, `NextDisplayId`, `NextListId`, and `NextEventId` should remain monotonic counters for new records.
+- `NextDisplayId` should remain a monotonic per-list-scoped counter for new task display IDs. Task, list, and event `Id` values are `Guid`s generated at creation time and require no counter.
 - List-scoped settings should not unexpectedly mutate global defaults or unrelated lists.

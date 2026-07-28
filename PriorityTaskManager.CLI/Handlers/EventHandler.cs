@@ -107,7 +107,7 @@ namespace PriorityTaskManager.CLI.Handlers
             _snapshotProvider.RefreshActiveListSnapshot(out _);
             ConsoleHelper.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
 
-            if (args.Length == 0 || !int.TryParse(args[0], out int id))
+            if (args.Length == 0 || !Guid.TryParse(args[0], out Guid id))
             {
                 Console.WriteLine("Usage: event remove <ID>");
                 return;

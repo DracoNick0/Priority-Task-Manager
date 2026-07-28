@@ -21,7 +21,7 @@ namespace PriorityTaskManager.Tests.Services
 
             service.AddEvent(newEvent);
 
-            Assert.Equal(1, newEvent.Id);
+            Assert.NotEqual(Guid.Empty, newEvent.Id);
             Assert.Single(data.Events);
         }
 
@@ -43,7 +43,7 @@ namespace PriorityTaskManager.Tests.Services
         {
             var (service, _) = CreateService();
 
-            Assert.Null(service.GetEvent(999));
+            Assert.Null(service.GetEvent(Guid.NewGuid()));
         }
 
         [Fact]
@@ -65,7 +65,7 @@ namespace PriorityTaskManager.Tests.Services
         {
             var (service, _) = CreateService();
 
-            var result = service.UpdateEvent(new Event { Id = 999, Name = "Missing" });
+            var result = service.UpdateEvent(new Event { Id = Guid.NewGuid(), Name = "Missing" });
 
             Assert.False(result);
         }
@@ -88,7 +88,7 @@ namespace PriorityTaskManager.Tests.Services
         {
             var (service, _) = CreateService();
 
-            Assert.False(service.DeleteEvent(999));
+            Assert.False(service.DeleteEvent(Guid.NewGuid()));
         }
 
         [Fact]

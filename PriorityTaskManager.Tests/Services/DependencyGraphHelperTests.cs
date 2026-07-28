@@ -7,16 +7,22 @@ namespace PriorityTaskManager.Tests.Services
     {
         private readonly DependencyGraphHelper _helper = new DependencyGraphHelper();
 
+        /// <summary>
+        /// Deterministically derives a <see cref="Guid"/> from a small integer seed so tests can keep
+        /// using short, readable literal IDs while satisfying the Guid-based identity model.
+        /// </summary>
+        private static Guid Id(int seed) => new Guid(seed, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
         [Fact]
         public void WouldCreateCycle_ReturnsFalse_WhenNoDependenciesExist()
         {
             var tasks = new List<TaskItem>
             {
-                new TaskItem { Id = 1, Title = "A" },
-                new TaskItem { Id = 2, Title = "B" }
+                new TaskItem { Id = Id(1), Title = "A" },
+                new TaskItem { Id = Id(2), Title = "B" }
             };
 
-            var result = _helper.WouldCreateCycle(tasks, taskId: 1, newDependencies: new List<int> { 2 });
+            var result = _helper.WouldCreateCycle(tasks, taskId: Id(1), newDependencies: new List<Guid> { Id(2) });
 
             Assert.False(result);
         }
@@ -26,10 +32,10 @@ namespace PriorityTaskManager.Tests.Services
         {
             var tasks = new List<TaskItem>
             {
-                new TaskItem { Id = 1, Title = "A" }
+                new TaskItem { Id = Id(1), Title = "A" }
             };
 
-            var result = _helper.WouldCreateCycle(tasks, taskId: 1, newDependencies: new List<int> { 1 });
+            var result = _helper.WouldCreateCycle(tasks, taskId: Id(1), newDependencies: new List<Guid> { Id(1) });
 
             Assert.True(result);
         }
@@ -40,11 +46,11 @@ namespace PriorityTaskManager.Tests.Services
             // Task 2 already depends on Task 1. Making Task 1 depend on Task 2 creates a cycle: 1 -> 2 -> 1.
             var tasks = new List<TaskItem>
             {
-                new TaskItem { Id = 1, Title = "A" },
-                new TaskItem { Id = 2, Title = "B", Dependencies = new List<int> { 1 } }
+                new TaskItem { Id = Id(1), Title = "A" },
+                new TaskItem { Id = Id(2), Title = "B", Dependencies = new List<Guid> { Id(1) } }
             };
 
-            var result = _helper.WouldCreateCycle(tasks, taskId: 1, newDependencies: new List<int> { 2 });
+            var result = _helper.WouldCreateCycle(tasks, taskId: Id(1), newDependencies: new List<Guid> { Id(2) });
 
             Assert.True(result);
         }
@@ -55,12 +61,12 @@ namespace PriorityTaskManager.Tests.Services
             // Task 2 already depends on Task 1. Adding an unrelated Task 3 -> Task 1 dependency is not a cycle.
             var tasks = new List<TaskItem>
             {
-                new TaskItem { Id = 1, Title = "A" },
-                new TaskItem { Id = 2, Title = "B", Dependencies = new List<int> { 1 } },
-                new TaskItem { Id = 3, Title = "C" }
+                new TaskItem { Id = Id(1), Title = "A" },
+                new TaskItem { Id = Id(2), Title = "B", Dependencies = new List<Guid> { Id(1) } },
+                new TaskItem { Id = Id(3), Title = "C" }
             };
 
-            var result = _helper.WouldCreateCycle(tasks, taskId: 3, newDependencies: new List<int> { 1 });
+            var result = _helper.WouldCreateCycle(tasks, taskId: Id(3), newDependencies: new List<Guid> { Id(1) });
 
             Assert.False(result);
         }

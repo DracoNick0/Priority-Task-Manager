@@ -228,7 +228,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 IsCompleted = false,
                 EstimatedDuration = duration,
                 Progress = 0.0,
-                Dependencies = new List<int>(),
+                Dependencies = new List<Guid>(),
                 ListId = service.GetActiveListId()
             };
         }

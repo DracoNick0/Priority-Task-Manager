@@ -28,7 +28,7 @@ namespace PriorityTaskManager.Tests.Infrastructure
 
         public static TaskItem CreateTask(
             string title,
-            int listId = 1,
+            Guid listId = default,
             int importance = 3,
             double complexity = 3.0,
             double durationHours = 1,

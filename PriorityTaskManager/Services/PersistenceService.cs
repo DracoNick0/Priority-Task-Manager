@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.Services
@@ -26,6 +27,36 @@ namespace PriorityTaskManager.Services
         public DataContainer LoadData()
         {
             var data = new DataContainer();
+            var listIdMap = new Dictionary<int, Guid>();
+            var taskIdMap = new Dictionary<int, Guid>();
+
+            // Load lists first: tasks reference list IDs, so the list ID map must exist before
+            // tasks are loaded/migrated.
+            if (File.Exists(_listsFilePath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(_listsFilePath);
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                    if (dict != null && dict.ContainsKey("Lists"))
+                    {
+                        var listsElement = dict["Lists"];
+                        if (IsLegacyIntIdShape(listsElement))
+                        {
+                            data.Lists = MigrateLegacyLists(listsElement, listIdMap);
+                            data.LoadWarnings.Add($"Migrated '{_listsFilePath}' from legacy integer list IDs to new unique identifiers.");
+                        }
+                        else
+                        {
+                            data.Lists = JsonSerializer.Deserialize<List<TaskList>>(listsElement.GetRawText()) ?? new List<TaskList>();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    data.LoadWarnings.Add($"Could not load '{_listsFilePath}' ({ex.GetType().Name}: {ex.Message}). Lists were reset to an empty default.");
+                }
+            }
 
             // Load tasks
             if (File.Exists(_tasksFilePath))
@@ -36,9 +67,16 @@ namespace PriorityTaskManager.Services
                     var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
                     if (dict != null && dict.ContainsKey("Tasks"))
                     {
-                        data.Tasks = JsonSerializer.Deserialize<List<TaskItem>>(dict["Tasks"].GetRawText()) ?? new List<TaskItem>();
-                        if (dict.ContainsKey("NextId"))
-                            data.NextTaskId = dict["NextId"].GetInt32();
+                        var tasksElement = dict["Tasks"];
+                        if (IsLegacyIntIdShape(tasksElement))
+                        {
+                            data.Tasks = MigrateLegacyTasks(tasksElement, listIdMap, taskIdMap);
+                            data.LoadWarnings.Add($"Migrated '{_tasksFilePath}' from legacy integer task IDs to new unique identifiers.");
+                        }
+                        else
+                        {
+                            data.Tasks = JsonSerializer.Deserialize<List<TaskItem>>(tasksElement.GetRawText()) ?? new List<TaskItem>();
+                        }
                         if (dict.ContainsKey("NextDisplayId"))
                             data.NextDisplayId = dict["NextDisplayId"].GetInt32();
                     }
@@ -46,26 +84,6 @@ namespace PriorityTaskManager.Services
                 catch (Exception ex)
                 {
                     data.LoadWarnings.Add($"Could not load '{_tasksFilePath}' ({ex.GetType().Name}: {ex.Message}). Tasks were reset to an empty default.");
-                }
-            }
-
-            // Load lists
-            if (File.Exists(_listsFilePath))
-            {
-                try
-                {
-                    var json = File.ReadAllText(_listsFilePath);
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
-                    if (dict != null && dict.ContainsKey("Lists"))
-                    {
-                        data.Lists = JsonSerializer.Deserialize<List<TaskList>>(dict["Lists"].GetRawText()) ?? new List<TaskList>();
-                        if (dict.ContainsKey("NextListId"))
-                            data.NextListId = dict["NextListId"].GetInt32();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    data.LoadWarnings.Add($"Could not load '{_listsFilePath}' ({ex.GetType().Name}: {ex.Message}). Lists were reset to an empty default.");
                 }
             }
 
@@ -78,9 +96,16 @@ namespace PriorityTaskManager.Services
                     var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
                     if (dict != null && dict.ContainsKey("Events"))
                     {
-                        data.Events = JsonSerializer.Deserialize<List<Event>>(dict["Events"].GetRawText()) ?? new List<Event>();
-                        if (dict.ContainsKey("NextEventId"))
-                            data.NextEventId = dict["NextEventId"].GetInt32();
+                        var eventsElement = dict["Events"];
+                        if (IsLegacyIntIdShape(eventsElement))
+                        {
+                            data.Events = MigrateLegacyEvents(eventsElement);
+                            data.LoadWarnings.Add($"Migrated '{_eventsFilePath}' from legacy integer event IDs to new unique identifiers.");
+                        }
+                        else
+                        {
+                            data.Events = JsonSerializer.Deserialize<List<Event>>(eventsElement.GetRawText()) ?? new List<Event>();
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -111,6 +136,114 @@ namespace PriorityTaskManager.Services
             return data;
         }
 
+        /// <summary>
+        /// Determines whether a persisted JSON array of records uses the legacy shape where
+        /// <c>Id</c> was a monotonic <see cref="int"/> instead of the current <see cref="Guid"/> shape.
+        /// An empty array is treated as already-current shape since there is nothing to migrate.
+        /// </summary>
+        private static bool IsLegacyIntIdShape(JsonElement arrayElement)
+        {
+            if (arrayElement.ValueKind != JsonValueKind.Array)
+                return false;
+
+            foreach (var item in arrayElement.EnumerateArray())
+            {
+                if (item.TryGetProperty("Id", out var idProperty))
+                {
+                    return idProperty.ValueKind == JsonValueKind.Number;
+                }
+                return false;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Migrates a legacy int-keyed <c>Lists</c> array to the current Guid-keyed shape,
+        /// recording the old-to-new ID mapping so referencing tasks can be remapped consistently.
+        /// </summary>
+        private static List<TaskList> MigrateLegacyLists(JsonElement listsElement, Dictionary<int, Guid> listIdMap)
+        {
+            var arrayNode = JsonNode.Parse(listsElement.GetRawText())!.AsArray();
+            foreach (var item in arrayNode)
+            {
+                var obj = item!.AsObject();
+                var oldId = obj["Id"]!.GetValue<int>();
+                var newId = Guid.NewGuid();
+                listIdMap[oldId] = newId;
+                obj["Id"] = newId.ToString();
+            }
+
+            return JsonSerializer.Deserialize<List<TaskList>>(arrayNode.ToJsonString()) ?? new List<TaskList>();
+        }
+
+        /// <summary>
+        /// Migrates a legacy int-keyed <c>Tasks</c> array to the current Guid-keyed shape, remapping
+        /// <c>ListId</c> using <paramref name="listIdMap"/> and <c>Dependencies</c> against sibling tasks
+        /// within the same file so cross-references stay consistent after migration.
+        /// </summary>
+        private static List<TaskItem> MigrateLegacyTasks(JsonElement tasksElement, Dictionary<int, Guid> listIdMap, Dictionary<int, Guid> taskIdMap)
+        {
+            var arrayNode = JsonNode.Parse(tasksElement.GetRawText())!.AsArray();
+
+            // First pass: assign new IDs for every task so dependency remapping below can resolve
+            // forward references regardless of array order.
+            foreach (var item in arrayNode)
+            {
+                var obj = item!.AsObject();
+                var oldId = obj["Id"]!.GetValue<int>();
+                if (!taskIdMap.ContainsKey(oldId))
+                    taskIdMap[oldId] = Guid.NewGuid();
+            }
+
+            foreach (var item in arrayNode)
+            {
+                var obj = item!.AsObject();
+                var oldId = obj["Id"]!.GetValue<int>();
+                obj["Id"] = taskIdMap[oldId].ToString();
+
+                if (obj.TryGetPropertyValue("ListId", out var listIdNode) && listIdNode != null)
+                {
+                    var oldListId = listIdNode.GetValue<int>();
+                    obj["ListId"] = (listIdMap.TryGetValue(oldListId, out var newListId) ? newListId : Guid.Empty).ToString();
+                }
+
+                if (obj.TryGetPropertyValue("Dependencies", out var depsNode) && depsNode is JsonArray depsArray)
+                {
+                    var newDeps = new JsonArray();
+                    foreach (var dep in depsArray)
+                    {
+                        if (dep == null)
+                            continue;
+                        var oldDepId = dep.GetValue<int>();
+                        if (taskIdMap.TryGetValue(oldDepId, out var newDepId))
+                        {
+                            newDeps.Add(JsonValue.Create(newDepId.ToString()));
+                        }
+                    }
+                    obj["Dependencies"] = newDeps;
+                }
+            }
+
+            return JsonSerializer.Deserialize<List<TaskItem>>(arrayNode.ToJsonString()) ?? new List<TaskItem>();
+        }
+
+        /// <summary>
+        /// Migrates a legacy int-keyed <c>Events</c> array to the current Guid-keyed shape.
+        /// Events have no cross-file references, so no ID map is required.
+        /// </summary>
+        private static List<Event> MigrateLegacyEvents(JsonElement eventsElement)
+        {
+            var arrayNode = JsonNode.Parse(eventsElement.GetRawText())!.AsArray();
+            foreach (var item in arrayNode)
+            {
+                var obj = item!.AsObject();
+                obj["Id"] = Guid.NewGuid().ToString();
+            }
+
+            return JsonSerializer.Deserialize<List<Event>>(arrayNode.ToJsonString()) ?? new List<Event>();
+        }
+
         public void SaveData(DataContainer data)
         {
             // Ensure data directory exists for all files
@@ -123,7 +256,6 @@ namespace PriorityTaskManager.Services
             var tasksData = new
             {
                 Tasks = data.Tasks,
-                NextId = data.NextTaskId,
                 NextDisplayId = data.NextDisplayId
             };
             WriteAtomic(_tasksFilePath, JsonSerializer.Serialize(tasksData));
@@ -131,22 +263,21 @@ namespace PriorityTaskManager.Services
             // Save lists
             var listsData = new
             {
-                Lists = data.Lists,
-                NextListId = data.NextListId
+                Lists = data.Lists
             };
             WriteAtomic(_listsFilePath, JsonSerializer.Serialize(listsData));
 
             // Save events
             var eventsData = new
             {
-                Events = data.Events,
-                NextEventId = data.NextEventId
+                Events = data.Events
             };
             WriteAtomic(_eventsFilePath, JsonSerializer.Serialize(eventsData));
 
             // Save user profile
             WriteAtomic(_userProfileFilePath, JsonSerializer.Serialize(data.UserProfile));
         }
+
 
         /// <summary>
         /// Writes <paramref name="content"/> to <paramref name="filePath"/> atomically by writing

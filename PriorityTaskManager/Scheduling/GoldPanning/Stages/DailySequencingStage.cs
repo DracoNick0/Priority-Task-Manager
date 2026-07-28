@@ -72,7 +72,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 
                 var idsToday = tasksForDay.Select(t => t.Id).ToHashSet();
                 var remainingForDay = new List<TaskItem>(sequence);
-                var placedIdsToday = new HashSet<int>();
+                var placedIdsToday = new HashSet<Guid>();
 
                 foreach (var task in remainingForDay)
                 {
@@ -145,7 +145,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
         /// A dependency id that does not belong to today's bucket (e.g. it was satisfied on a prior day,
         /// per <see cref="TaskDistributionStage"/>'s dependency gate) is treated as already satisfied.
         /// </summary>
-        private static bool IsDependencyReadyForToday(TaskItem task, HashSet<int> idsToday, HashSet<int> placedIdsToday)
+        private static bool IsDependencyReadyForToday(TaskItem task, HashSet<Guid> idsToday, HashSet<Guid> placedIdsToday)
         {
             return task.Dependencies == null || task.Dependencies.Count == 0 ||
                 task.Dependencies.All(depId => depId == task.Id || !idsToday.Contains(depId) || placedIdsToday.Contains(depId));
@@ -245,7 +245,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             var idsToday = tasksForDay.Select(t => t.Id).ToHashSet();
 
             var remaining = new List<TaskItem>(tasksForDay);
-            var placedIdsToday = new HashSet<int>();
+            var placedIdsToday = new HashSet<Guid>();
             var result = new List<TaskItem>(tasksForDay.Count);
 
             while (remaining.Count > 0)

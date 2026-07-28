@@ -150,7 +150,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
         private void HandleEditEvent(TaskManagerService service, string[] args)
         {
-            if (args.Length == 0 || !int.TryParse(args[0], out int id))
+            if (args.Length == 0 || !Guid.TryParse(args[0], out Guid id))
             {
                 _console.WriteLine("Usage: event edit <ID>");
                 return;
@@ -297,7 +297,7 @@ namespace PriorityTaskManager.CLI.Handlers
 
             foreach (var idStr in idStrings)
             {
-                if (int.TryParse(idStr.Trim(), out int id))
+                if (Guid.TryParse(idStr.Trim(), out Guid id))
                 {
                     if (service.DeleteEvent(id))
                     {

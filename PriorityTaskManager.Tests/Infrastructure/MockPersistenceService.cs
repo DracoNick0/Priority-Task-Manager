@@ -37,10 +37,7 @@ namespace PriorityTaskManager.Tests.Infrastructure
                 Tasks = new List<TaskItem>(Data.Tasks.Select(t => t.Clone())),
                 Lists = new List<TaskList>(Data.Lists.Select(l => CloneList(l))),
                 Events = new List<Event>(Data.Events.Select(e => CloneEvent(e))),
-                NextTaskId = Data.NextTaskId,
                 NextDisplayId = Data.NextDisplayId,
-                NextListId = Data.NextListId,
-                NextEventId = Data.NextEventId,
                 UserProfile = CloneUserProfile(Data.UserProfile),
                 ActiveListId = Data.ActiveListId
             };
@@ -54,10 +51,7 @@ namespace PriorityTaskManager.Tests.Infrastructure
                 Tasks = new List<TaskItem>(data.Tasks.Select(t => t.Clone())),
                 Lists = new List<TaskList>(data.Lists.Select(l => CloneList(l))),
                 Events = new List<Event>(data.Events.Select(e => CloneEvent(e))),
-                NextTaskId = data.NextTaskId,
                 NextDisplayId = data.NextDisplayId,
-                NextListId = data.NextListId,
-                NextEventId = data.NextEventId,
                 UserProfile = CloneUserProfile(data.UserProfile),
                 ActiveListId = data.ActiveListId
             };

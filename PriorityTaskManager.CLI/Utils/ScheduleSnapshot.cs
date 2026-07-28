@@ -7,7 +7,7 @@ namespace PriorityTaskManager.CLI.Utils
     /// </summary>
     public class ScheduleSnapshot
     {
-        public int ActiveListId { get; init; }
+        public Guid ActiveListId { get; init; }
 
         public string ActiveListName { get; init; } = string.Empty;
 

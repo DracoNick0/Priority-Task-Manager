@@ -93,7 +93,7 @@ namespace PriorityTaskManager.CLI.Handlers
             _console.WriteLine("---------------------------------------------");
             int selectorTop = _console.CursorTop;
 
-            var displayItems = BuildEditMenuItems(currentTask);
+            var displayItems = BuildEditMenuItems(service, currentTask);
             _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
 
             while (true)
@@ -143,7 +143,7 @@ namespace PriorityTaskManager.CLI.Handlers
                         _console.CursorVisible = true;
                         EditField(service, currentTask, selectedIndex, selectorTop);
                         _console.CursorVisible = false;
-                        displayItems = BuildEditMenuItems(currentTask);
+                        displayItems = BuildEditMenuItems(service, currentTask);
                         _console.DrawMenuItems(displayItems, selectedIndex, selectorTop);
                         break;
                     case ConsoleKey.Escape:
@@ -161,8 +161,11 @@ namespace PriorityTaskManager.CLI.Handlers
             _console.WriteLine(message);
         }
 
-        private List<string> BuildEditMenuItems(TaskItem currentTask)
+        private List<string> BuildEditMenuItems(TaskManagerService service, TaskItem currentTask)
         {
+            var dependencyLabels = (currentTask.Dependencies ?? new List<Guid>())
+                .Select(depId => service.GetTaskById(depId)?.DisplayId.ToString() ?? "?");
+
             return new List<string>
             {
                 $"Title: {currentTask.Title}",
@@ -175,7 +178,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 $"Due Time: {(currentTask.DueDate.HasValue ? currentTask.DueDate.Value.ToString("HH:mm") : "End of Day")}",
                 $"Not Before Date: {(currentTask.NotBefore.HasValue ? currentTask.NotBefore.Value.ToString("yyyy-MM-dd") : "None")}",
                 $"Not Before Time: {(currentTask.NotBefore.HasValue ? currentTask.NotBefore.Value.ToString("HH:mm") : "Start of Day")}",
-                $"Dependencies: [{string.Join(", ", currentTask.Dependencies ?? new List<int>())}]",
+                $"Dependencies: [{string.Join(", ", dependencyLabels)}]",
                 "[Save & Exit]",
                 "[Cancel]"
             };
@@ -360,7 +363,7 @@ namespace PriorityTaskManager.CLI.Handlers
         private void RunDependencyEditor(TaskManagerService service, TaskItem task)
         {
             // Work on a copy of dependencies so changes can be cancelled
-            var tempDependencies = new List<int>(task.Dependencies);
+            var tempDependencies = new List<Guid>(task.Dependencies);
             int selectedDepIndex = 0;
 
             _console.ClearAndRenderDashboard(_snapshotProvider, _taskMetricsService);
@@ -416,31 +419,29 @@ namespace PriorityTaskManager.CLI.Handlers
                             
                             if (relativeIndex == 0) // [Add New Dependency]
                             {
-                                _console.Write("\nEnter Task ID to depend on: ");
+                                _console.Write("\nEnter Task Display ID to depend on: ");
                                 var input = _console.ReadLine();
-                                if (int.TryParse(input, out int newId))
+                                if (int.TryParse(input, out int newDisplayId))
                                 {
-                                    if (newId == task.Id)
+                                    var newDependency = service.GetTaskByDisplayId(newDisplayId, service.GetActiveListId());
+                                    if (newDependency == null)
+                                    {
+                                        _console.WriteLine($"Task with Display ID {newDisplayId} not found. Press key to continue.");
+                                        _console.ReadKey(true);
+                                    }
+                                    else if (newDependency.Id == task.Id)
                                     {
                                         _console.WriteLine("Cannot depend on self. Press key to continue.");
                                         _console.ReadKey(true);
                                     }
-                                    else if (tempDependencies.Contains(newId))
+                                    else if (tempDependencies.Contains(newDependency.Id))
                                     {
                                         _console.WriteLine("Dependency already exists. Press key to continue.");
                                         _console.ReadKey(true);
                                     }
                                     else
                                     {
-                                        var exists = service.GetTaskById(newId);
-                                        if (exists == null)
-                                        {
-                                            _console.Write($"Warning: Task {newId} not found. Add anyway? (y/n): ");
-                                            var force = _console.ReadLine();
-                                            if (string.IsNullOrWhiteSpace(force) || !force.ToLower().StartsWith("y"))
-                                                continue;
-                                        }
-                                        tempDependencies.Add(newId);
+                                        tempDependencies.Add(newDependency.Id);
                                     }
                                 }
 
@@ -466,14 +467,14 @@ namespace PriorityTaskManager.CLI.Handlers
             }
         }
 
-        private List<string> BuildDependencyMenuItems(TaskManagerService service, TaskItem task, List<int> tempDependencies)
+        private List<string> BuildDependencyMenuItems(TaskManagerService service, TaskItem task, List<Guid> tempDependencies)
         {
             var menuItems = new List<string>();
 
             foreach (var depId in tempDependencies)
             {
                 var depTask = service.GetTaskById(depId);
-                var depLabel = depTask != null ? $"ID {depId}: {depTask.Title}" : $"ID {depId} (Not Found)";
+                var depLabel = depTask != null ? $"ID {depTask.DisplayId}: {depTask.Title}" : "(Not Found)";
                 menuItems.Add($"[Remove] {depLabel}");
             }
 

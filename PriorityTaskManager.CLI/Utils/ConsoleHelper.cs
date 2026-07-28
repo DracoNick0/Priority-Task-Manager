@@ -65,14 +65,14 @@ namespace PriorityTaskManager.CLI.Utils
                     .OrderBy(t => t.ScheduledParts.Min(p => p.StartTime))
                     .ToList();
 
-                var taskLetterMapping = new Dictionary<int, char>();
+                var taskLetterMapping = new Dictionary<Guid, char>();
                 char currentLetter = 'A';
                 foreach (var task in scheduledTasksForDay)
                 {
                     taskLetterMapping[task.Id] = currentLetter++;
                 }
 
-                var eventLetterMapping = new Dictionary<int, char>();
+                var eventLetterMapping = new Dictionary<Guid, char>();
                 char currentEventLetter = 'a';
                 foreach (var ev in eventsForDay)
                 {
@@ -144,7 +144,7 @@ namespace PriorityTaskManager.CLI.Utils
                     meterColor = ConsoleColor.Cyan;
                 }
 
-                var taskColorMap = new Dictionary<int, ConsoleColor>();
+                var taskColorMap = new Dictionary<Guid, ConsoleColor>();
 
                 foreach (var task in scheduledTasksForDay)
                 {
@@ -283,7 +283,7 @@ namespace PriorityTaskManager.CLI.Utils
                     else if (blockOwners[i]?.StartsWith("task:") == true)
                     {
                         var parts = blockOwners[i].Split(':');
-                        if (parts.Length > 1 && int.TryParse(parts[1], out int tId) && taskColorMap.ContainsKey(tId))
+                        if (parts.Length > 1 && Guid.TryParse(parts[1], out Guid tId) && taskColorMap.ContainsKey(tId))
                         {
                             Console.ForegroundColor = taskColorMap[tId];
                             Console.Write(blockChars[i]);
@@ -342,7 +342,7 @@ namespace PriorityTaskManager.CLI.Utils
             {
                 Console.WriteLine("\nScheduled Events:");
 
-                var eventLetterMapping = new Dictionary<int, char>();
+                var eventLetterMapping = new Dictionary<Guid, char>();
                 char currentEventLetter = 'a';
                 foreach (var ev in eventsForDay)
                 {
@@ -366,7 +366,7 @@ namespace PriorityTaskManager.CLI.Utils
                     .OrderBy(t => t.ScheduledParts.Min(p => p.StartTime))
                     .ToList();
 
-                var taskLetterMapping = new Dictionary<int, char>();
+                var taskLetterMapping = new Dictionary<Guid, char>();
                 char currentLetter = 'A';
                 foreach (var task in scheduledTasksForDay)
                 {

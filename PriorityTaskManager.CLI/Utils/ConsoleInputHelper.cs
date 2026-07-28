@@ -220,9 +220,9 @@ namespace PriorityTaskManager.CLI.Utils
         /// <param name="args">The command-line arguments containing task IDs.</param>
         /// <param name="activeListId">The ID of the active task list.</param>
         /// <returns>A list of valid task IDs.</returns>
-        public static List<int> ParseAndValidateTaskIds(TaskManagerService service, string[] args, int activeListId)
+        public static List<Guid> ParseAndValidateTaskIds(TaskManagerService service, string[] args, Guid activeListId)
         {
-            var realIds = new List<int>();
+            var realIds = new List<Guid>();
 
             if (args == null || args.Length == 0)
             {
@@ -247,7 +247,7 @@ namespace PriorityTaskManager.CLI.Utils
                     else
                     {
                         Console.WriteLine($"Error: Task with Display ID {displayId} not found in the current list.");
-                        return new List<int>();
+                        return new List<Guid>();
                     }
                 }
                 else

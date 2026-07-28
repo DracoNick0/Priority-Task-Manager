@@ -20,10 +20,7 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Empty(data.Lists);
                 Assert.Empty(data.Events);
                 Assert.NotNull(data.UserProfile);
-                Assert.Equal(1, data.NextTaskId);
                 Assert.Equal(1, data.NextDisplayId);
-                Assert.Equal(1, data.NextListId);
-                Assert.Equal(1, data.NextEventId);
                 Assert.Empty(data.LoadWarnings);
             }
             finally
@@ -39,13 +36,13 @@ namespace PriorityTaskManager.Tests.Services
             try
             {
                 var service = new PersistenceService(tempDir);
+                var listId = Guid.NewGuid();
+                var taskId = Guid.NewGuid();
+                var eventId = Guid.NewGuid();
                 var container = new DataContainer
                 {
-                    NextTaskId = 42,
                     NextDisplayId = 77,
-                    NextListId = 6,
-                    NextEventId = 9,
-                    ActiveListId = 3,
+                    ActiveListId = listId,
                     UserProfile = new UserProfile
                     {
                         WorkStartTime = new TimeOnly(8, 0),
@@ -53,16 +50,16 @@ namespace PriorityTaskManager.Tests.Services
                     },
                     Lists = new List<TaskList>
                     {
-                        new TaskList { Id = 3, Name = "Work" }
+                        new TaskList { Id = listId, Name = "Work" }
                     },
                     Tasks = new List<TaskItem>
                     {
                         new TaskItem
                         {
-                            Id = 10,
+                            Id = taskId,
                             DisplayId = 1,
                             Title = "Write tests",
-                            ListId = 3,
+                            ListId = listId,
                             EstimatedDuration = TimeSpan.FromHours(2),
                             Importance = 4,
                             Complexity = 2.5,
@@ -73,7 +70,7 @@ namespace PriorityTaskManager.Tests.Services
                     {
                         new Event
                         {
-                            Id = 2,
+                            Id = eventId,
                             Name = "Doctor",
                             StartTime = new DateTime(2026, 7, 10, 10, 0, 0),
                             EndTime = new DateTime(2026, 7, 10, 11, 0, 0)
@@ -87,10 +84,7 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Single(loaded.Lists);
                 Assert.Single(loaded.Tasks);
                 Assert.Single(loaded.Events);
-                Assert.Equal(42, loaded.NextTaskId);
                 Assert.Equal(77, loaded.NextDisplayId);
-                Assert.Equal(6, loaded.NextListId);
-                Assert.Equal(9, loaded.NextEventId);
                 Assert.Equal("Work", loaded.Lists[0].Name);
                 Assert.Equal("Write tests", loaded.Tasks[0].Title);
                 Assert.Equal("Doctor", loaded.Events[0].Name);
@@ -149,7 +143,7 @@ namespace PriorityTaskManager.Tests.Services
             try
             {
                 var service = new PersistenceService(tempDir);
-                var task = new TaskItem { Id = 1, DisplayId = 1, Title = "Archived Task", ListId = 1 };
+                var task = new TaskItem { Id = Guid.NewGuid(), DisplayId = 1, Title = "Archived Task", ListId = Guid.NewGuid() };
 
                 service.ArchiveTasks(new List<TaskItem> { task });
 
@@ -179,21 +173,20 @@ namespace PriorityTaskManager.Tests.Services
             try
             {
                 var service = new PersistenceService(tempDir);
+                var listId = Guid.NewGuid();
+                var eventId = Guid.NewGuid();
                 var container = new DataContainer
                 {
-                    NextTaskId = 5,
                     NextDisplayId = 5,
-                    NextListId = 2,
-                    NextEventId = 2,
                     Lists = new List<TaskList>
                     {
-                        new TaskList { Id = 1, Name = "Home" }
+                        new TaskList { Id = listId, Name = "Home" }
                     },
                     Events = new List<Event>
                     {
                         new Event
                         {
-                            Id = 1,
+                            Id = eventId,
                             Name = "Meeting",
                             StartTime = new DateTime(2026, 7, 10, 9, 0, 0),
                             EndTime = new DateTime(2026, 7, 10, 10, 0, 0)
@@ -232,11 +225,10 @@ namespace PriorityTaskManager.Tests.Services
                 var service = new PersistenceService(tempDir);
                 var original = new DataContainer
                 {
-                    NextTaskId = 2,
                     NextDisplayId = 2,
                     Tasks = new List<TaskItem>
                     {
-                        new TaskItem { Id = 1, DisplayId = 1, Title = "Original task", ListId = 1 }
+                        new TaskItem { Id = Guid.NewGuid(), DisplayId = 1, Title = "Original task", ListId = Guid.NewGuid() }
                     }
                 };
                 service.SaveData(original);
@@ -252,6 +244,98 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Equal("Original task", data.Tasks[0].Title);
                 Assert.Empty(data.LoadWarnings);
                 Assert.True(File.Exists(tasksTempPath), "Stray temp file should be left untouched by LoadData.");
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void LoadData_WhenListsFileHasLegacyIntIds_ShouldMigrateToGuidAndWarn()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                File.WriteAllText(Path.Combine(tempDir, "lists.json"),
+                    "{\"Lists\":[{\"Id\":1,\"Name\":\"Home\",\"SortOption\":0}],\"NextListId\":2}");
+
+                var service = new PersistenceService(tempDir);
+                var data = service.LoadData();
+
+                Assert.Single(data.Lists);
+                Assert.NotEqual(Guid.Empty, data.Lists[0].Id);
+                Assert.Equal("Home", data.Lists[0].Name);
+                Assert.Contains(data.LoadWarnings, w => w.Contains("lists.json") && w.Contains("legacy"));
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void LoadData_WhenTasksFileHasLegacyIntIds_ShouldMigrateListIdAndDependenciesConsistently()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                // Legacy list with int Id 1, referenced by both tasks below via ListId.
+                File.WriteAllText(Path.Combine(tempDir, "lists.json"),
+                    "{\"Lists\":[{\"Id\":1,\"Name\":\"Home\",\"SortOption\":0}],\"NextListId\":2}");
+
+                // Legacy tasks: Task 2 depends on Task 1, and both belong to legacy list Id 1.
+                File.WriteAllText(Path.Combine(tempDir, "tasks.json"),
+                    "{\"Tasks\":[" +
+                    "{\"Id\":1,\"DisplayId\":1,\"Title\":\"Prerequisite\",\"ListId\":1,\"Dependencies\":[]}," +
+                    "{\"Id\":2,\"DisplayId\":2,\"Title\":\"Dependent\",\"ListId\":1,\"Dependencies\":[1]}" +
+                    "],\"NextTaskId\":3,\"NextDisplayId\":3}");
+
+                var service = new PersistenceService(tempDir);
+                var data = service.LoadData();
+
+                Assert.Equal(2, data.Tasks.Count);
+                var prerequisite = data.Tasks.Single(t => t.Title == "Prerequisite");
+                var dependent = data.Tasks.Single(t => t.Title == "Dependent");
+
+                // Ids were migrated to non-empty, distinct Guids.
+                Assert.NotEqual(Guid.Empty, prerequisite.Id);
+                Assert.NotEqual(Guid.Empty, dependent.Id);
+                Assert.NotEqual(prerequisite.Id, dependent.Id);
+
+                // ListId was remapped to the migrated list's new Guid, consistently for both tasks.
+                var migratedList = data.Lists.Single();
+                Assert.Equal(migratedList.Id, prerequisite.ListId);
+                Assert.Equal(migratedList.Id, dependent.ListId);
+
+                // The dependency reference was rewritten from the legacy int Id to the new Guid Id.
+                Assert.Single(dependent.Dependencies);
+                Assert.Equal(prerequisite.Id, dependent.Dependencies[0]);
+
+                Assert.Contains(data.LoadWarnings, w => w.Contains("tasks.json") && w.Contains("legacy"));
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void LoadData_WhenEventsFileHasLegacyIntIds_ShouldMigrateToGuid()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                File.WriteAllText(Path.Combine(tempDir, "events.json"),
+                    "{\"Events\":[{\"Id\":1,\"Name\":\"Standup\",\"StartTime\":\"2026-01-01T09:00:00\",\"EndTime\":\"2026-01-01T09:15:00\"}],\"NextEventId\":2}");
+
+                var service = new PersistenceService(tempDir);
+                var data = service.LoadData();
+
+                Assert.Single(data.Events);
+                Assert.NotEqual(Guid.Empty, data.Events[0].Id);
+                Assert.Equal("Standup", data.Events[0].Name);
+                Assert.Contains(data.LoadWarnings, w => w.Contains("events.json") && w.Contains("legacy"));
             }
             finally
             {

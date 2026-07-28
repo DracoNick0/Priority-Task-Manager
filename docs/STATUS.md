@@ -57,6 +57,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
 - `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net.
 - The interactive `defaults` menu (`SettingsHandler`), `list switch` (`ListHandler`), and `event add`/`event edit`/`event clear` (`EventCommandHandler`) flows have adopted the `IInteractiveConsoleFacade` seam; remaining direct-console interactive flows are limited to simple, non-menu confirm/read-line prompts (e.g. `AddHandler`'s no-arg task creation, `list delete`/`cleanup` confirmations), which are out of scope for the facade seam by design.
+- Task, list, and event `Id` values are now globally unique `Guid`s (see [docs/ARCHITECTURE_DATA.md](ARCHITECTURE_DATA.md)); `TaskItem.DisplayId` remains the short, user-facing sequential identifier for task commands. Events have no `DisplayId` equivalent, so `event`/`e` edit and remove flows currently require typing full GUID strings — a known UX gap, not yet scoped for a fix.
 
 ## Command Surface Summary
 

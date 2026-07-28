@@ -24,7 +24,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="id">The unique ID of the event.</param>
         /// <returns>The event if found; otherwise, null.</returns>
-        Event? GetEvent(int id);
+        Event? GetEvent(Guid id);
 
         /// <summary>
         /// Updates an existing event with new details.
@@ -38,7 +38,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="id">The unique ID of the event to delete.</param>
         /// <returns>True if the event was deleted successfully; otherwise, false.</returns>
-        bool DeleteEvent(int id);
+        bool DeleteEvent(Guid id);
 
         /// <summary>
         /// Removes all events.

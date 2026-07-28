@@ -31,8 +31,8 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             }
 
             var weights = context.SharedState.TryGetValue("TaskWeights", out var weightsObj) 
-                ? weightsObj as Dictionary<int, double> 
-                : new Dictionary<int, double>();
+                ? weightsObj as Dictionary<Guid, double> 
+                : new Dictionary<Guid, double>();
 
             // Tasks that belong to the active scheduling universe. A dependency that points at an
             // id outside this set (e.g. an already-completed or deleted task) can never appear in
@@ -204,7 +204,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
         /// <param name="task">The candidate task being considered for placement.</param>
         /// <param name="remainingTasks">Tasks (or task fragments) not yet placed anywhere in the schedule.</param>
         /// <param name="activeTaskIds">The set of ids belonging to tasks in the active scheduling pass.</param>
-        private static bool IsDependencySatisfied(TaskItem task, List<TaskItem> remainingTasks, HashSet<int> activeTaskIds)
+        private static bool IsDependencySatisfied(TaskItem task, List<TaskItem> remainingTasks, HashSet<Guid> activeTaskIds)
         {
             if (task.Dependencies == null || task.Dependencies.Count == 0)
             {

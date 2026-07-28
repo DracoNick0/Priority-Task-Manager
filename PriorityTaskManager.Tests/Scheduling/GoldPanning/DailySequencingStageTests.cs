@@ -56,8 +56,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         public void Act_SequencesHighComplexityFirst()
         {
             var today = _timeService.GetCurrentTime().Date;
-            var highComp = new TaskItem { Id = 1, Title = "High", Complexity = 5, EstimatedDuration = TimeSpan.FromHours(1) };
-            var lowComp = new TaskItem { Id = 2, Title = "Low", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(1) };
+            var highComp = new TaskItem { Id = Guid.NewGuid(), Title = "High", Complexity = 5, EstimatedDuration = TimeSpan.FromHours(1) };
+            var lowComp = new TaskItem { Id = Guid.NewGuid(), Title = "Low", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(1) };
             
             var buckets = new Dictionary<DateTime, List<TaskItem>>
             {
@@ -85,8 +85,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             var today = _timeService.GetCurrentTime().Date;
             // Both High Complexity (5). A is High Imp (5), B is Low Imp (1).
-            var highImp = new TaskItem { Id = 1, Title = "HighImp", Complexity = 5, Importance = 5, EffectiveImportance = 5, EstimatedDuration = TimeSpan.FromHours(1) };
-            var lowImp = new TaskItem { Id = 2, Title = "LowImp", Complexity = 5, Importance = 1, EffectiveImportance = 1, EstimatedDuration = TimeSpan.FromHours(1) };
+            var highImp = new TaskItem { Id = Guid.NewGuid(), Title = "HighImp", Complexity = 5, Importance = 5, EffectiveImportance = 5, EstimatedDuration = TimeSpan.FromHours(1) };
+            var lowImp = new TaskItem { Id = Guid.NewGuid(), Title = "LowImp", Complexity = 5, Importance = 1, EffectiveImportance = 1, EstimatedDuration = TimeSpan.FromHours(1) };
             
             var buckets = new Dictionary<DateTime, List<TaskItem>>
             {
@@ -121,7 +121,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Should fill Slot 1 (1h), skip gap, fill Slot 2 (1h).
             
             var today = _timeService.GetCurrentTime().Date;
-            var task = new TaskItem { Id = 1, Title = "Span", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(2), IsDivisible = true };
+            var task = new TaskItem { Id = Guid.NewGuid(), Title = "Span", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(2), IsDivisible = true };
             
             var context = new SchedulingContext();
             context.SharedState["DailyBuckets"] = new Dictionary<DateTime, List<TaskItem>> { { today, new List<TaskItem> { task } } };
@@ -156,7 +156,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 
             var restricted = new TaskItem
             {
-                Id = 1,
+                Id = Guid.NewGuid(),
                 Title = "Restricted",
                 Complexity = 10,
                 EstimatedDuration = TimeSpan.FromHours(1),
@@ -164,7 +164,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             };
 
             var fillers = Enumerable.Range(2, 4)
-                .Select(id => new TaskItem { Id = id, Title = $"Filler{id}", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(1) })
+                .Select(id => new TaskItem { Id = Guid.NewGuid(), Title = $"Filler{id}", Complexity = 1, EstimatedDuration = TimeSpan.FromHours(1) })
                 .ToList();
 
             var tasksForDay = new List<TaskItem> { restricted };
@@ -219,7 +219,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             
             var importantTask = new TaskItem 
             { 
-                Id = 1, 
+                Id = Guid.NewGuid(), 
                 Title = "Important", 
                 Importance = 5, 
                 EffectiveImportance = 5,
@@ -229,7 +229,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 
             var complexTask = new TaskItem 
             { 
-                Id = 2, 
+                Id = Guid.NewGuid(), 
                 Title = "Complex", 
                 Importance = 1, 
                 EffectiveImportance = 1,

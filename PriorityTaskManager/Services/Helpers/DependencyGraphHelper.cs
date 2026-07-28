@@ -6,10 +6,10 @@ namespace PriorityTaskManager.Services.Helpers
 {
     public class DependencyGraphHelper
     {
-        public List<TaskItem> GetFullChain(List<TaskItem> allTasks, int startTaskId)
+        public List<TaskItem> GetFullChain(List<TaskItem> allTasks, Guid startTaskId)
         {
-            var visitedTaskIds = new HashSet<int>();
-            var tasksToProcess = new Queue<int>();
+            var visitedTaskIds = new HashSet<Guid>();
+            var tasksToProcess = new Queue<Guid>();
             var chainTasks = new HashSet<TaskItem>();
             tasksToProcess.Enqueue(startTaskId);
 
@@ -44,9 +44,9 @@ namespace PriorityTaskManager.Services.Helpers
         /// <param name="taskId">The ID of the task being updated.</param>
         /// <param name="newDependencies">The list of proposed new dependencies.</param>
         /// <returns>True if a cycle would be created; otherwise, false.</returns>
-        public bool WouldCreateCycle(List<TaskItem> allTasks, int taskId, List<int> newDependencies)
+        public bool WouldCreateCycle(List<TaskItem> allTasks, Guid taskId, List<Guid> newDependencies)
         {
-            var visited = new HashSet<int>();
+            var visited = new HashSet<Guid>();
             foreach (var depId in newDependencies)
             {
                 if (DetectCycleRecursive(allTasks, taskId, depId, visited))
@@ -55,7 +55,7 @@ namespace PriorityTaskManager.Services.Helpers
             return false;
         }
 
-        private bool DetectCycleRecursive(List<TaskItem> allTasks, int originalTaskId, int currentId, HashSet<int> visited)
+        private bool DetectCycleRecursive(List<TaskItem> allTasks, Guid originalTaskId, Guid currentId, HashSet<Guid> visited)
         {
             if (currentId == originalTaskId)
                 return true;

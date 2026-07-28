@@ -16,9 +16,9 @@ namespace PriorityTaskManager.Models
         }
 
         /// <summary>
-        /// Gets or sets the unique numeric identifier for the task list.
+        /// Gets or sets the unique identifier for the task list.
         /// </summary>
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         /// <summary>
         /// Gets or sets the user-defined name of the task list.

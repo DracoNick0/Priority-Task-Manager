@@ -24,7 +24,7 @@ namespace PriorityTaskManager.Models
                 EstimatedDuration = this.EstimatedDuration,
                 Progress = this.Progress,
                 ListName = this.ListName,
-                Dependencies = new List<int>(this.Dependencies),
+                Dependencies = new List<Guid>(this.Dependencies),
                 UrgencyScore = this.UrgencyScore,
                 LatestPossibleStartDate = this.LatestPossibleStartDate,
                 ListId = this.ListId,
@@ -54,7 +54,7 @@ namespace PriorityTaskManager.Models
             Progress = 0.0;
             IsCompleted = false;
             ListName = "General";
-            Dependencies = new List<int>();
+            Dependencies = new List<Guid>();
             UrgencyScore = 0;
             
             // Advanced scheduling defaults
@@ -72,7 +72,7 @@ namespace PriorityTaskManager.Models
         /// <summary>
         /// Gets or sets the unique, persistent identifier for the task.
         /// </summary>
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         /// <summary>
         /// Gets or sets the user-friendly identifier for the task, used for display and interaction in the UI.
@@ -104,9 +104,9 @@ namespace PriorityTaskManager.Models
         #region List & Grouping
 
         /// <summary>
-        /// Gets or sets the numeric ID of the `TaskList` to which this task belongs.
+        /// Gets or sets the ID of the `TaskList` to which this task belongs.
         /// </summary>
-        public int ListId { get; set; }
+        public Guid ListId { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the list this task belongs to.
@@ -156,7 +156,7 @@ namespace PriorityTaskManager.Models
         /// <summary>
         /// Gets or sets the list of other task IDs that must be completed before this task can begin.
         /// </summary>
-        public List<int> Dependencies { get; set; } = new List<int>();
+        public List<Guid> Dependencies { get; set; } = new List<Guid>();
 
         /// <summary>
         /// Gets or sets the calculated urgency score, used by scheduling strategies to prioritize tasks.

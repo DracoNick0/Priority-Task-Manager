@@ -37,7 +37,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow { AvailableSlots = slots };
 
             // Create weights (simulate TaskRankingStage output)
-            var weights = new Dictionary<int, double>();
+            var weights = new Dictionary<Guid, double>();
             foreach (var task in tasks)
             {
                 // Simple weight: Importance * 10
@@ -59,7 +59,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         [Fact]
         public void Act_FitsOnFirstDay_ShouldNotSpread()
         {
-            var task = new TaskItem { Id = 1, Title = "Fits", EstimatedDuration = TimeSpan.FromHours(4), Importance = 1 };
+            var task = new TaskItem { Id = Guid.NewGuid(), Title = "Fits", EstimatedDuration = TimeSpan.FromHours(4), Importance = 1 };
             var context = CreateContext(new List<TaskItem> { task });
 
             var result = _agent.Act(context);
@@ -81,8 +81,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Task A is Heavier (Imp 5) than B (Imp 1).
             // Expect: A stays on Day 1. B splits across Day 1 and Day 2.
             
-            var taskA = new TaskItem { Id = 1, Title = "Heavy", EstimatedDuration = TimeSpan.FromHours(5), Importance = 5 };
-            var taskB = new TaskItem { Id = 2, Title = "Light", EstimatedDuration = TimeSpan.FromHours(5), Importance = 1 };
+            var taskA = new TaskItem { Id = Guid.NewGuid(), Title = "Heavy", EstimatedDuration = TimeSpan.FromHours(5), Importance = 5 };
+            var taskB = new TaskItem { Id = Guid.NewGuid(), Title = "Light", EstimatedDuration = TimeSpan.FromHours(5), Importance = 1 };
             
             var context = CreateContext(new List<TaskItem> { taskA, taskB });
 
@@ -111,9 +111,9 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Day 2: B (2h rem). Rem: 6h. C (5h) fits completely. -> Day 2 with B(rem), C.
             // Day 3: Empty.
             
-            var taskA = new TaskItem { Id = 1, Title = "Heaviest", EstimatedDuration = TimeSpan.FromHours(5), Importance = 10 };
-            var taskB = new TaskItem { Id = 2, Title = "Medium", EstimatedDuration = TimeSpan.FromHours(5), Importance = 5 };
-            var taskC = new TaskItem { Id = 3, Title = "Lightest", EstimatedDuration = TimeSpan.FromHours(5), Importance = 1 };
+            var taskA = new TaskItem { Id = Guid.NewGuid(), Title = "Heaviest", EstimatedDuration = TimeSpan.FromHours(5), Importance = 10 };
+            var taskB = new TaskItem { Id = Guid.NewGuid(), Title = "Medium", EstimatedDuration = TimeSpan.FromHours(5), Importance = 5 };
+            var taskC = new TaskItem { Id = Guid.NewGuid(), Title = "Lightest", EstimatedDuration = TimeSpan.FromHours(5), Importance = 1 };
 
             var context = CreateContext(new List<TaskItem> { taskA, taskB, taskC });
             var result = _agent.Act(context);
@@ -144,7 +144,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Expect: Task splits. 8h fills Day 1. 2h remainder overflows.
             // Since window ends, remainder is pushed back to Day 1 (Overfill).
             
-            var task = new TaskItem { Id = 1, Title = "Too Big", EstimatedDuration = TimeSpan.FromHours(10), Importance = 5 };
+            var task = new TaskItem { Id = Guid.NewGuid(), Title = "Too Big", EstimatedDuration = TimeSpan.FromHours(10), Importance = 5 };
             var context = CreateContext(new List<TaskItem> { task }, days: 1); // Only 1 day window
 
             var result = _agent.Act(context);

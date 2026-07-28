@@ -64,8 +64,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             // Arrange
             var context = CreateContextWithTime();
-            var task1 = new TaskItem { Id = 1, Title = "Due Later", DueDate = DateTime.Now.AddDays(2), Importance = 1 };
-            var task2 = new TaskItem { Id = 2, Title = "Due Sooner", DueDate = DateTime.Now.AddDays(1), Importance = 1 };
+            var task1 = new TaskItem { Id = Guid.NewGuid(), Title = "Due Later", DueDate = DateTime.Now.AddDays(2), Importance = 1 };
+            var task2 = new TaskItem { Id = Guid.NewGuid(), Title = "Due Sooner", DueDate = DateTime.Now.AddDays(1), Importance = 1 };
             var tasks = new List<TaskItem> { task1, task2 };
             context.SharedState["Tasks"] = tasks;
 
@@ -85,8 +85,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Arrange
             var context = CreateContextWithTime();
             var sameDueDate = DateTime.Now.AddDays(1);
-            var task1 = new TaskItem { Id = 1, Title = "Less Important", DueDate = sameDueDate, Importance = 1 };
-            var task2 = new TaskItem { Id = 2, Title = "More Important", DueDate = sameDueDate, Importance = 5 };
+            var task1 = new TaskItem { Id = Guid.NewGuid(), Title = "Less Important", DueDate = sameDueDate, Importance = 1 };
+            var task2 = new TaskItem { Id = Guid.NewGuid(), Title = "More Important", DueDate = sameDueDate, Importance = 5 };
             var tasks = new List<TaskItem> { task1, task2 };
             context.SharedState["Tasks"] = tasks;
 
@@ -105,8 +105,8 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             // Arrange
             var context = CreateContextWithTime();
-            var task1 = new TaskItem { Id = 1, Title = "No Due Date", Importance = 1 }; 
-            var task2 = new TaskItem { Id = 2, Title = "Has Due Date", DueDate = DateTime.Now.AddDays(1), Importance = 1 };
+            var task1 = new TaskItem { Id = Guid.NewGuid(), Title = "No Due Date", Importance = 1 }; 
+            var task2 = new TaskItem { Id = Guid.NewGuid(), Title = "Has Due Date", DueDate = DateTime.Now.AddDays(1), Importance = 1 };
             var tasks = new List<TaskItem> { task1, task2 };
             context.SharedState["Tasks"] = tasks;
 
@@ -141,11 +141,11 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 
             var tasks = new List<TaskItem>
             {
-                new TaskItem { Id = 3, Title = "C: No Due Date, Low Importance", Importance = 1 },
-                new TaskItem { Id = 2, Title = "A: Due Tomorrow, High Importance", DueDate = today.AddDays(1), Importance = 5 },
-                new TaskItem { Id = 4, Title = "D: No Due Date, High Importance", Importance = 5 },
-                new TaskItem { Id = 5, Title = "B: Due Tomorrow, Low Importance", DueDate = today.AddDays(1), Importance = 1 },
-                new TaskItem { Id = 1, Title = "E: Due Today", DueDate = today, Importance = 3 }
+                new TaskItem { Id = Guid.NewGuid(), Title = "C: No Due Date, Low Importance", Importance = 1 },
+                new TaskItem { Id = Guid.NewGuid(), Title = "A: Due Tomorrow, High Importance", DueDate = today.AddDays(1), Importance = 5 },
+                new TaskItem { Id = Guid.NewGuid(), Title = "D: No Due Date, High Importance", Importance = 5 },
+                new TaskItem { Id = Guid.NewGuid(), Title = "B: Due Tomorrow, Low Importance", DueDate = today.AddDays(1), Importance = 1 },
+                new TaskItem { Id = Guid.NewGuid(), Title = "E: Due Today", DueDate = today, Importance = 3 }
             };
             context.SharedState["Tasks"] = tasks;
 

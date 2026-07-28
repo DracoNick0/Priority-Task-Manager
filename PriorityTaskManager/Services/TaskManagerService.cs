@@ -10,7 +10,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="listId">The ID of the list to prioritize tasks for.</param>
         /// <returns>The prioritization result (tasks and history).</returns>
-        public PrioritizationResult GetPrioritizedTasks(int listId, ITimeService timeService)
+        public PrioritizationResult GetPrioritizedTasks(Guid listId, ITimeService timeService)
         {
             var currentList = _data.Lists.FirstOrDefault(l => l.Id == listId);
             var effectiveProfile = BuildEffectiveUserProfile(currentList);
@@ -87,9 +87,8 @@ namespace PriorityTaskManager.Services
             {
                 _data.Lists = new List<TaskList>
                 {
-                    new TaskList { Id = 1, Name = "General" }
+                    new TaskList { Id = Guid.NewGuid(), Name = "General" }
                 };
-                _data.NextListId = 2;
             }
 
             var changed = false;
@@ -99,7 +98,7 @@ namespace PriorityTaskManager.Services
             }
 
             // Ensure an active list is set
-            if (_data.ActiveListId == 0)
+            if (_data.ActiveListId == Guid.Empty)
             {
                 _data.ActiveListId = _data.Lists.First().Id;
                 changed = true;
@@ -141,7 +140,7 @@ namespace PriorityTaskManager.Services
             {
                 throw new ArgumentException("Task title cannot be empty.");
             }
-            task.Id = _data.NextTaskId++;
+            task.Id = Guid.NewGuid();
             task.EffectiveImportance = task.Importance;
             task.DisplayId = _data.NextDisplayId++;
             _data.Tasks.Add(task);
@@ -153,7 +152,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="listId">The ID of the list.</param>
         /// <returns>An enumerable collection of tasks.</returns>
-        public IEnumerable<TaskItem> GetAllTasks(int listId)
+        public IEnumerable<TaskItem> GetAllTasks(Guid listId)
         {
             return _data.Tasks.Where(task => task.ListId == listId);
         }
@@ -168,7 +167,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="id">The unique ID of the task.</param>
         /// <returns>The task if found; otherwise, null.</returns>
-        public TaskItem? GetTaskById(int id)
+        public TaskItem? GetTaskById(Guid id)
         {
             return _data.Tasks.Find(t => t.Id == id);
         }
@@ -179,7 +178,7 @@ namespace PriorityTaskManager.Services
         /// <param name="displayId">The display ID of the task.</param>
         /// <param name="listId">The ID of the list the task belongs to.</param>
         /// <returns>The task if found; otherwise, null.</returns>
-        public TaskItem? GetTaskByDisplayId(int displayId, int listId)
+        public TaskItem? GetTaskByDisplayId(int displayId, Guid listId)
         {
             return _data.Tasks.FirstOrDefault(t => t.DisplayId == displayId && t.ListId == listId);
         }
@@ -209,7 +208,7 @@ namespace PriorityTaskManager.Services
             existingTask.DueDate = updatedTask.DueDate;
             existingTask.NotBefore = updatedTask.NotBefore;
             existingTask.IsCompleted = updatedTask.IsCompleted;
-            existingTask.Dependencies = new List<int>(updatedTask.Dependencies);
+            existingTask.Dependencies = new List<Guid>(updatedTask.Dependencies);
 
             // Update newly supported fields
             existingTask.EstimatedDuration = updatedTask.EstimatedDuration;
@@ -231,7 +230,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="id">The unique ID of the task to delete.</param>
         /// <returns>True if the task was deleted successfully; otherwise, false.</returns>
-        public bool DeleteTask(int id)
+        public bool DeleteTask(Guid id)
         {
             var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
@@ -247,7 +246,7 @@ namespace PriorityTaskManager.Services
         /// <param name="tasksToDelete">The collection of TaskItem objects to delete.</param>
         public void DeleteTasks(IEnumerable<TaskItem> tasksToDelete)
         {
-            var taskIdsToDelete = new HashSet<int>(tasksToDelete.Select(task => task.Id));
+            var taskIdsToDelete = new HashSet<Guid>(tasksToDelete.Select(task => task.Id));
             _data.Tasks.RemoveAll(task => taskIdsToDelete.Contains(task.Id));
             SaveData();
         }
@@ -266,7 +265,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="id">The unique ID of the task to mark as complete.</param>
         /// <returns>True if the task was marked as complete; otherwise, false.</returns>
-        public bool MarkTaskAsComplete(int id)
+        public bool MarkTaskAsComplete(Guid id)
         {
             var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
@@ -281,7 +280,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="id">The unique ID of the task to mark as incomplete.</param>
         /// <returns>True if the task was marked as incomplete; otherwise, false.</returns>
-        public bool MarkTaskAsIncomplete(int id)
+        public bool MarkTaskAsIncomplete(Guid id)
         {
             var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
@@ -302,7 +301,7 @@ namespace PriorityTaskManager.Services
                 throw new InvalidOperationException($"A list with the name '{list.Name}' already exists.");
             }
             list.ApplyDefaultsFrom(_data.UserProfile);
-            list.Id = _data.NextListId++;
+            list.Id = Guid.NewGuid();
             _data.Lists.Add(list);
             SaveData();
         }
@@ -322,7 +321,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="listId">The identifier of the task list.</param>
         /// <returns>The task list if found; otherwise, null.</returns>
-        public TaskList? GetListById(int listId)
+        public TaskList? GetListById(Guid listId)
         {
             return _data.Lists.FirstOrDefault(l => l.Id == listId);
         }
@@ -358,7 +357,7 @@ namespace PriorityTaskManager.Services
             // If we just deleted the last list, recreate a new 'General' list to maintain the invariant
             if (wasLastList)
             {
-                var newGeneralList = new TaskList { Id = _data.NextListId++, Name = "General" };
+                var newGeneralList = new TaskList { Id = Guid.NewGuid(), Name = "General" };
                 newGeneralList.ApplyDefaultsFrom(_data.UserProfile);
                 _data.Lists.Add(newGeneralList);
                 _data.ActiveListId = newGeneralList.Id;
@@ -379,7 +378,7 @@ namespace PriorityTaskManager.Services
         /// <param name="updatedList">The updated task list object.</param>
         public void UpdateList(TaskList updatedList)
         {
-            var existingList = updatedList.Id > 0
+            var existingList = updatedList.Id != Guid.Empty
                 ? _data.Lists.FirstOrDefault(list => list.Id == updatedList.Id)
                 : _data.Lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
             if (existingList != null)
@@ -448,7 +447,7 @@ namespace PriorityTaskManager.Services
         /// </summary>
         /// <param name="listId">The list whose saved time should be applied.</param>
         /// <param name="timeService">The runtime time service.</param>
-        public void ApplyListTimePreference(int listId, ITimeService timeService)
+        public void ApplyListTimePreference(Guid listId, ITimeService timeService)
         {
             var list = GetListById(listId);
             if (list?.SimulatedTime.HasValue == true)
@@ -505,7 +504,7 @@ namespace PriorityTaskManager.Services
         /// Retrieves the ID of the currently active task list.
         /// </summary>
         /// <returns>The ID of the active list.</returns>
-        public int GetActiveListId()
+        public Guid GetActiveListId()
         {
             return _data.ActiveListId;
         }
@@ -514,7 +513,7 @@ namespace PriorityTaskManager.Services
         /// Sets the ID of the currently active task list.
         /// </summary>
         /// <param name="listId">The ID of the list to set as active.</param>
-        public void SetActiveListId(int listId)
+        public void SetActiveListId(Guid listId)
         {
             if (!_data.Lists.Any(list => list.Id == listId))
             {
@@ -529,11 +528,11 @@ namespace PriorityTaskManager.Services
 
         public IEnumerable<Event> GetAllEvents() => _eventService.GetAllEvents();
 
-        public Event? GetEvent(int id) => _eventService.GetEvent(id);
+        public Event? GetEvent(Guid id) => _eventService.GetEvent(id);
 
         public bool UpdateEvent(Event updatedEvent) => _eventService.UpdateEvent(updatedEvent);
 
-        public bool DeleteEvent(int id) => _eventService.DeleteEvent(id);
+        public bool DeleteEvent(Guid id) => _eventService.DeleteEvent(id);
 
         public void ClearEvents() => _eventService.ClearEvents();
     }

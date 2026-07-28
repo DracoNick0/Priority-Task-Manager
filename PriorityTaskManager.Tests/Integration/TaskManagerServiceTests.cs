@@ -40,7 +40,6 @@ namespace PriorityTaskManager.Tests.Integration
                 // Arrange
                 var persistenceService = new MockPersistenceService();
                 persistenceService.Data.Lists.Clear(); // Ensure no lists exist
-                persistenceService.Data.NextListId = 1;
                 var timeService = new MockTimeService();
                 var urgencyStrategy = new GoldPanningStrategy(persistenceService.Data.UserProfile, persistenceService.Data.Events, timeService);
 
@@ -51,7 +50,7 @@ namespace PriorityTaskManager.Tests.Integration
                 // Assert
                 Assert.Single(lists);
                 Assert.Equal("General", lists.First().Name);
-                Assert.Equal(1, lists.First().Id);
+                Assert.NotEqual(Guid.Empty, lists.First().Id);
             }
 
             [Fact]
@@ -63,7 +62,7 @@ namespace PriorityTaskManager.Tests.Integration
                 var list2 = new TaskList { Name = "List Two" };
                 _TMS.AddList(list2);
 
-                _TMS.AddTask(new TaskItem { Title = "Task 1", ListId = 1 }); // Default "General" list
+                _TMS.AddTask(new TaskItem { Title = "Task 1", ListId = _TMS.GetActiveListId() }); // Default "General" list
                 _TMS.AddTask(new TaskItem { Title = "Task 2", ListId = list1.Id });
                 _TMS.AddTask(new TaskItem { Title = "Task 3", ListId = list2.Id });
 
@@ -79,8 +78,8 @@ namespace PriorityTaskManager.Tests.Integration
             {
                 // Arrange
                 Assert.Equal(0, _TMS.GetTaskCount()); // Initial count
-                _TMS.AddTask(new TaskItem { Title = "Task 1", ListId = 1 });
-                _TMS.AddTask(new TaskItem { Title = "Task 2", ListId = 1 });
+                _TMS.AddTask(new TaskItem { Title = "Task 1", ListId = _TMS.GetActiveListId() });
+                _TMS.AddTask(new TaskItem { Title = "Task 2", ListId = _TMS.GetActiveListId() });
 
                 // Act
                 var count = _TMS.GetTaskCount();
@@ -113,11 +112,11 @@ namespace PriorityTaskManager.Tests.Integration
             public void AddTask_WithValidTitle_ShouldAddTaskToContainer()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Test Task", ListId = 1 };
+                var task = new TaskItem { Title = "Test Task", ListId = _TMS.GetActiveListId() };
 
                 // Act
                 _TMS.AddTask(task);
-                var allTasks = _TMS.GetAllTasks(1);
+                var allTasks = _TMS.GetAllTasks(_TMS.GetActiveListId());
 
                 // Assert
                 Assert.Single(allTasks);
@@ -128,7 +127,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void AddTask_WithEmptyTitle_ShouldThrowArgumentException()
             {
                 // Arrange
-                var task = new TaskItem { Title = "", ListId = 1 };
+                var task = new TaskItem { Title = "", ListId = _TMS.GetActiveListId() };
 
                 // Act & Assert
                 Assert.Throws<ArgumentException>(() => _TMS.AddTask(task));
@@ -138,7 +137,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void GetTaskById_WhenTaskExists_ShouldReturnTask()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Test Task", ListId = 1 };
+                var task = new TaskItem { Title = "Test Task", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(task); // Adds the task and assigns an ID
 
                 // Act
@@ -153,7 +152,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void GetTaskById_WhenTaskDoesNotExist_ShouldReturnNull()
             {
                 // Act
-                var retrievedTask = _TMS.GetTaskById(999);
+                var retrievedTask = _TMS.GetTaskById(Guid.NewGuid());
 
                 // Assert
                 Assert.Null(retrievedTask);
@@ -163,7 +162,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WhenTaskExists_ShouldUpdateDetails()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Original Title", ListId = 1 };
+                var task = new TaskItem { Title = "Original Title", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(task);
                 var updatedTask = task.Clone();
                 updatedTask.Title = "Updated Title";
@@ -182,7 +181,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WhenTaskExists_ShouldPersistDueDateAndNotBefore()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Original Title", ListId = 1 };
+                var task = new TaskItem { Title = "Original Title", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(task);
                 var updatedTask = task.Clone();
                 updatedTask.DueDate = new DateTime(2026, 8, 1, 23, 59, 59);
@@ -203,7 +202,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WhenTaskDoesNotExist_ShouldReturnFalse()
             {
                 // Arrange
-                var task = new TaskItem { Id = 999, Title = "Non-existent task" };
+                var task = new TaskItem { Id = Guid.NewGuid(), Title = "Non-existent task" };
 
                 // Act
                 var result = _TMS.UpdateTask(task);
@@ -216,14 +215,14 @@ namespace PriorityTaskManager.Tests.Integration
             public void DeleteTask_WhenTaskExists_ShouldRemoveTask()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Task to delete", ListId = 1 };
+                var task = new TaskItem { Title = "Task to delete", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(task);
                 var taskId = task.Id;
-                Assert.Single(_TMS.GetAllTasks(1)); // Pre-condition check
+                Assert.Single(_TMS.GetAllTasks(_TMS.GetActiveListId())); // Pre-condition check
 
                 // Act
                 var result = _TMS.DeleteTask(taskId);
-                var allTasks = _TMS.GetAllTasks(1);
+                var allTasks = _TMS.GetAllTasks(_TMS.GetActiveListId());
 
                 // Assert
                 Assert.True(result);
@@ -234,7 +233,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void DeleteTask_WhenTaskDoesNotExist_ShouldReturnFalse()
             {
                 // Act
-                var result = _TMS.DeleteTask(999);
+                var result = _TMS.DeleteTask(Guid.NewGuid());
 
                 // Assert
                 Assert.False(result);
@@ -244,7 +243,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void MarkTaskAsComplete_WhenTaskExists_ShouldSetIsCompletedToTrue()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Test", ListId = 1, IsCompleted = false };
+                var task = new TaskItem { Title = "Test", ListId = _TMS.GetActiveListId(), IsCompleted = false };
                 _TMS.AddTask(task);
 
                 // Act
@@ -261,7 +260,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void MarkTaskAsIncomplete_WhenTaskExists_ShouldSetIsCompletedToFalse()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Test", ListId = 1, IsCompleted = true };
+                var task = new TaskItem { Title = "Test", ListId = _TMS.GetActiveListId(), IsCompleted = true };
                 _TMS.AddTask(task);
 
                 // Act
@@ -278,9 +277,9 @@ namespace PriorityTaskManager.Tests.Integration
             public void DeleteTasks_WithMultipleTasks_ShouldRemoveOnlySpecifiedTasks()
             {
                 // Arrange
-                var task1 = new TaskItem { Title = "Task 1", ListId = 1 };
-                var task2 = new TaskItem { Title = "Task 2", ListId = 1 };
-                var task3 = new TaskItem { Title = "Task 3", ListId = 1 };
+                var task1 = new TaskItem { Title = "Task 1", ListId = _TMS.GetActiveListId() };
+                var task2 = new TaskItem { Title = "Task 2", ListId = _TMS.GetActiveListId() };
+                var task3 = new TaskItem { Title = "Task 3", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(task1);
                 _TMS.AddTask(task2);
                 _TMS.AddTask(task3);
@@ -289,7 +288,7 @@ namespace PriorityTaskManager.Tests.Integration
 
                 // Act
                 _TMS.DeleteTasks(tasksToDelete);
-                var remainingTasks = _TMS.GetAllTasks(1).ToList();
+                var remainingTasks = _TMS.GetAllTasks(_TMS.GetActiveListId()).ToList();
 
                 // Assert
                 Assert.Single(remainingTasks);
@@ -323,7 +322,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WithEmptyTitle_ShouldThrowArgumentException()
             {
                 // Arrange
-                var task = new TaskItem { Title = "A valid title", ListId = 1 };
+                var task = new TaskItem { Title = "A valid title", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(task);
 
                 // Act & Assert
@@ -427,7 +426,7 @@ namespace PriorityTaskManager.Tests.Integration
             public void SetActiveListId_WhenListDoesNotExist_ShouldThrowArgumentException()
             {
                 // Act & Assert
-                Assert.Throws<ArgumentException>(() => _TMS.SetActiveListId(999));
+                Assert.Throws<ArgumentException>(() => _TMS.SetActiveListId(Guid.NewGuid()));
             }
         }
 
@@ -503,8 +502,8 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WithDirectCircularDependency_ShouldThrowInvalidOperationException()
             {
                 // Arrange
-                var taskA = new TaskItem { Title = "Task A", ListId = 1 };
-                var taskB = new TaskItem { Title = "Task B", ListId = 1 };
+                var taskA = new TaskItem { Title = "Task A", ListId = _TMS.GetActiveListId() };
+                var taskB = new TaskItem { Title = "Task B", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(taskA);
                 _TMS.AddTask(taskB);
 
@@ -521,9 +520,9 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WithTransitiveCircularDependency_ShouldThrowInvalidOperationException()
             {
                 // Arrange
-                var taskA = new TaskItem { Title = "Task A", ListId = 1 };
-                var taskB = new TaskItem { Title = "Task B", ListId = 1 };
-                var taskC = new TaskItem { Title = "Task C", ListId = 1 };
+                var taskA = new TaskItem { Title = "Task A", ListId = _TMS.GetActiveListId() };
+                var taskB = new TaskItem { Title = "Task B", ListId = _TMS.GetActiveListId() };
+                var taskC = new TaskItem { Title = "Task C", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(taskA);
                 _TMS.AddTask(taskB);
                 _TMS.AddTask(taskC);
@@ -543,8 +542,8 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WithValidDependency_ShouldSucceed()
             {
                 // Arrange
-                var taskA = new TaskItem { Title = "Task A", ListId = 1 };
-                var taskB = new TaskItem { Title = "Task B", ListId = 1 };
+                var taskA = new TaskItem { Title = "Task A", ListId = _TMS.GetActiveListId() };
+                var taskB = new TaskItem { Title = "Task B", ListId = _TMS.GetActiveListId() };
                 _TMS.AddTask(taskA);
                 _TMS.AddTask(taskB);
 

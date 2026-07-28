@@ -24,12 +24,12 @@ namespace PriorityTaskManager.CLI.MCP.Agents.Cleanup
             _taskManagerService.CalculateUrgencyForAllTasks();
             remainingTasks = remainingTasks.OrderByDescending(task => task.UrgencyScore).ToList();
 
-            var idMap = new Dictionary<int, int>();
+            var idMap = new Dictionary<Guid, Guid>();
             int newDisplayId = 1;
 
             foreach (var task in remainingTasks)
             {
-                idMap[task.Id] = newDisplayId;
+                idMap[task.Id] = task.Id;
                 task.DisplayId = newDisplayId;
                 newDisplayId++;
             }

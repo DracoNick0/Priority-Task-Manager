@@ -24,7 +24,7 @@ namespace PriorityTaskManager.Services
         /// <inheritdoc />
         public void AddEvent(Event newEvent)
         {
-            newEvent.Id = _data.NextEventId++;
+            newEvent.Id = Guid.NewGuid();
             _data.Events.Add(newEvent);
             _persistenceService.SaveData(_data);
         }
@@ -36,7 +36,7 @@ namespace PriorityTaskManager.Services
         }
 
         /// <inheritdoc />
-        public Event? GetEvent(int id)
+        public Event? GetEvent(Guid id)
         {
             return _data.Events.Find(e => e.Id == id);
         }
@@ -56,7 +56,7 @@ namespace PriorityTaskManager.Services
         }
 
         /// <inheritdoc />
-        public bool DeleteEvent(int id)
+        public bool DeleteEvent(Guid id)
         {
             var eventToDelete = _data.Events.FirstOrDefault(e => e.Id == id);
             if (eventToDelete == null)

@@ -550,7 +550,7 @@ namespace PriorityTaskManager.Tests.CLI
             var secondId = eventIds[1];
             var handler = new EventCommandHandler(ctx.SnapshotProvider, ctx.TaskMetricsService);
 
-            handler.ExecuteWithResult(ctx.Service, new[] { "delete", $"{firstId},not-a-number,{secondId + 999}" });
+            handler.ExecuteWithResult(ctx.Service, new[] { "delete", $"{firstId},not-a-number,{Guid.NewGuid()}" });
 
             var remaining = ctx.Service.GetAllEvents().ToList();
             Assert.Single(remaining);
