@@ -43,15 +43,6 @@ Implementation targets:
 - Make `PersistenceService.SaveData()` write-atomic per file (e.g. temp file + rename) across tasks/lists/events/profile so a mid-save crash cannot leave the four files inconsistent with each other.
 - Add tests covering corrupt-file load behavior and interrupted-save recovery.
 
-## Remove Dead Duplicate Cycle-Detection Code
-
-Status: Not started.
-
-Implementation targets:
-
-- Remove `TaskManagerService.WouldCreateCircularDependency`/`HasCycle`, which duplicate `WouldCreateCycle`/`DetectCycleRecursive` and are never called anywhere.
-- Confirm no test or caller references the removed methods before deleting them.
-
 ## Repository and Solution Hygiene Cleanup
 
 Status: Not started.
@@ -71,25 +62,7 @@ Implementation targets:
 - If the split is kept, document explicit decision criteria in `docs/ARCHITECTURE_CLI.md` for choosing one model per new command, so contributors have a checklist rather than tribal knowledge.
 - Note: `docs/ARCHITECTURE_CLI.md` currently treats this split as a deliberate design decision, not migration debt; this item is about periodically re-validating that stance as the command surface grows, not necessarily reversing it.
 
-## Establish a Docs-vs-Code Drift Check
-
-Status: Not started.
-
-Implementation targets:
-
-- Add a recurring review step (manual checklist or lightweight automated check) that verifies `docs/STATUS.md` and `docs/TODO.md` status/completion claims against current test results before relying on them for planning.
-- Note: the specific instance previously flagged (`(B) 1/5` dependency-order scheduling described as "Not started"/skipped) has since been corrected in `docs/TODO.md` and `docs/STATUS.md`; this item addresses the recurring risk pattern, not a currently-open discrepancy.
-
-## (B) 1/5 Fix Gold Panning Scheduling Algorithm to Align with Invariants
-
-Status: Complete.
-
-Completed:
-
-- `TaskDistributionStage` now gates placement on same-day/prior-day prerequisite completion (deferring dependents whose prerequisites still have unplaced fragments, and reporting permanently-blocked tasks via `UnschedulableTasks` instead of forcing them onto the last day), and `DailySequencingStage` uses a priority-guided topological sort so a same-day prerequisite is always sequenced before its dependent. The invariant test is un-skipped and passing.
-- `TaskItem.NotBefore` now exists and is wired through `TaskNormalizationStage` (clamped back to `DueDate` if set later than `DueDate`) and `TaskDistributionStage` (a task cannot be placed on any day earlier than its `NotBefore` date; a task whose `NotBefore` falls after the last day of the scheduling horizon is reported via `UnschedulableTasks` instead of being force-placed). `add`/`edit` CLI commands support setting `NotBefore` (interactive prompts plus `add --not-before <date>`). The Respect `DueDate` invariant test suite in `SchedulingInvariantTestsBase` now also covers `NotBefore`.
-
-## (B) 2/5 CI Quality Gates
+## (A) 1/4 CI Quality Gates
 
 Status: Not started.
 
@@ -105,7 +78,7 @@ Implementation targets:
 - Add coverage reporting and baseline threshold (initially modest, then raise over time).
 - Add an automated architecture-boundary check (for example, a dependency-direction test such as NetArchTest, or a simple project-reference assertion) that fails CI if `PriorityTaskManager` ever references `PriorityTaskManager.CLI` or console types, so the core/CLI boundary in `docs/ARCHITECTURE_CORE.md` is enforced mechanically rather than by convention alone.
 
-## (B) 3/5 React Frontend for Web and Desktop
+## (A) 2/4 React Frontend for Web and Desktop
 
 Status: Not started.
 
@@ -119,7 +92,7 @@ Implementation targets:
 - Implement a React frontend targeting both web and desktop (e.g., via Electron or Tauri) against that API.
 - Explore additional cross-platform clients (e.g., mobile) after the web/desktop frontend and API stabilize.
 
-## (B) 4/5 LLM-Assisted Intake for External Planning Sources
+## (A) 3/4 LLM-Assisted Intake for External Planning Sources
 
 Status: Not started.
 
@@ -134,7 +107,7 @@ Implementation targets:
 - Add review-and-confirm UX so generated tasks/events are editable before persistence.
 - Add provider abstraction and guardrails (rate limits, retries, validation, and source/decision traceability) for LLM-backed generation.
 
-## (B) 5/5 Release and Demo Polish
+## (A) 4/4 Release and Demo Polish
 
 Status: Not started.
 
@@ -148,7 +121,7 @@ Implementation targets:
 - Add a short demo section (quick run path and sample scenario).
 - Add concise engineering highlights and measurable outcomes for portfolio use.
 
-## (A) 1/4 Scheduling Improvements (Gold Panning First)
+## (B) 1/4 Scheduling Improvements (Gold Panning First)
 
 Status: Not started.
 
@@ -164,7 +137,7 @@ Candidate anti-starvation approaches:
 
 Note: This item covers heuristic/quality improvements to Gold Panning and is independent of the `(B)` chain. It is distinct from `(B) 1/5`, which only fixes correctness gaps required to satisfy the hard scheduling invariants (dependency ordering, `NotBefore`).
 
-## (A) 2/4 Constraint Solver MVP (Narrow Scope)
+## (B) 2/4 Constraint Solver MVP (Narrow Scope)
 
 Status: Blocked.
 
@@ -180,7 +153,7 @@ Implementation targets:
 - Add explicit explanation output for solver scheduling decisions.
 - Keep scope intentionally small and defer full solver depth to (A) 4/4.
 
-## (A) 3/4 Benchmark Scenarios and Strategy Comparison
+## (B) 3/4 Benchmark Scenarios and Strategy Comparison
 
 Status: Blocked.
 
@@ -194,7 +167,7 @@ Implementation targets:
 - Compare Gold Panning and Solver outputs on measurable metrics.
 - Publish benchmark results in documentation for repeatable comparison over time.
 
-## (A) 4/4 Constraint Solver Full Implementation Path (Post-MVP)
+## (B) 4/4 Constraint Solver Full Implementation Path (Post-MVP)
 
 Status: Blocked.
 

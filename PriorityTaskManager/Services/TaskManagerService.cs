@@ -522,41 +522,6 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
-        /// Checks if updating a task's dependencies would create a circular dependency.
-        /// </summary>
-        private bool WouldCreateCircularDependency(int taskId, List<int> newDependencies)
-        {
-            var visited = new HashSet<int>();
-            foreach (var depId in newDependencies)
-            {
-                if (HasCycle(taskId, depId, visited))
-                    return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Recursively checks for cycles in the dependency graph.
-        /// </summary>
-        private bool HasCycle(int originalTaskId, int currentId, HashSet<int> visited)
-        {
-            if (currentId == originalTaskId)
-                return true;
-            if (visited.Contains(currentId))
-                return false;
-            visited.Add(currentId);
-            var currentTask = _data.Tasks.Find(t => t.Id == currentId);
-            if (currentTask == null)
-                return false;
-            foreach (var depId in currentTask.Dependencies)
-            {
-                if (HasCycle(originalTaskId, depId, visited))
-                    return true;
-            }
-            return false;
-        }
-
-        /// <summary>
         /// Archives the specified tasks to the archive file.
         /// </summary>
         /// <param name="tasksToArchive">The tasks to archive.</param>
