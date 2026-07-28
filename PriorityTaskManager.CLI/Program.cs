@@ -25,6 +25,13 @@ namespace PriorityTaskManager.CLI
 			var dataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
 			var persistenceService = new PersistenceService(dataDirectory);
 			var dataContainer = persistenceService.LoadData();
+			if (dataContainer.LoadWarnings.Count > 0)
+			{
+				foreach (var warning in dataContainer.LoadWarnings)
+				{
+					Console.WriteLine($"Warning: {warning}");
+				}
+			}
 			var timeService = new TimeService();
 
 			var urgencyStrategy = new GoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);

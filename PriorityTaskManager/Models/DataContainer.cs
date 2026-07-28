@@ -53,5 +53,12 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the ID of the currently active task list.
         /// </summary>
         public int ActiveListId { get; set; } = 0;
+
+        /// <summary>
+        /// Gets warnings recorded while loading persisted data (e.g. a corrupt or unreadable
+        /// JSON file that was reset to its default value). Populated by <see cref="PersistenceService"/>
+        /// during <c>LoadData()</c> and not itself persisted to disk.
+        /// </summary>
+        public List<string> LoadWarnings { get; } = new List<string>();
     }
 }

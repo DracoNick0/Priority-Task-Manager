@@ -43,7 +43,10 @@ namespace PriorityTaskManager.Services
                             data.NextDisplayId = dict["NextDisplayId"].GetInt32();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    data.LoadWarnings.Add($"Could not load '{_tasksFilePath}' ({ex.GetType().Name}: {ex.Message}). Tasks were reset to an empty default.");
+                }
             }
 
             // Load lists
@@ -60,7 +63,10 @@ namespace PriorityTaskManager.Services
                             data.NextListId = dict["NextListId"].GetInt32();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    data.LoadWarnings.Add($"Could not load '{_listsFilePath}' ({ex.GetType().Name}: {ex.Message}). Lists were reset to an empty default.");
+                }
             }
 
             // Load events
@@ -77,7 +83,10 @@ namespace PriorityTaskManager.Services
                             data.NextEventId = dict["NextEventId"].GetInt32();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    data.LoadWarnings.Add($"Could not load '{_eventsFilePath}' ({ex.GetType().Name}: {ex.Message}). Events were reset to an empty default.");
+                }
             }
 
             // Load user profile
@@ -88,7 +97,11 @@ namespace PriorityTaskManager.Services
                     var json = File.ReadAllText(_userProfileFilePath);
                     data.UserProfile = JsonSerializer.Deserialize<UserProfile>(json) ?? new UserProfile();
                 }
-                catch { data.UserProfile = new UserProfile(); }
+                catch (Exception ex)
+                {
+                    data.UserProfile = new UserProfile();
+                    data.LoadWarnings.Add($"Could not load '{_userProfileFilePath}' ({ex.GetType().Name}: {ex.Message}). User profile was reset to defaults.");
+                }
             }
             else
             {

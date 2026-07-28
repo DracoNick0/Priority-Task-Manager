@@ -24,6 +24,7 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Equal(1, data.NextDisplayId);
                 Assert.Equal(1, data.NextListId);
                 Assert.Equal(1, data.NextEventId);
+                Assert.Empty(data.LoadWarnings);
             }
             finally
             {
@@ -122,6 +123,11 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Empty(data.Lists);
                 Assert.Empty(data.Events);
                 Assert.NotNull(data.UserProfile);
+                Assert.Equal(4, data.LoadWarnings.Count);
+                Assert.Contains(data.LoadWarnings, w => w.Contains("tasks.json"));
+                Assert.Contains(data.LoadWarnings, w => w.Contains("lists.json"));
+                Assert.Contains(data.LoadWarnings, w => w.Contains("events.json"));
+                Assert.Contains(data.LoadWarnings, w => w.Contains("user_profile.json"));
             }
             finally
             {
