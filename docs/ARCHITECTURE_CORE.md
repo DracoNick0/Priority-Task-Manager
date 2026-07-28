@@ -44,7 +44,7 @@ Prefer existing service methods before adding duplicates. Important reusable res
 - Do not grow `TaskManagerService` by adding formatting, console-facing, or presentation-shaping logic; that belongs in the CLI layer per `docs/ARCHITECTURE_CLI.md`.
 - A new unrelated domain concern (not tasks, lists, events, profiles, or their direct coordination) is a signal to introduce a new service rather than extend `TaskManagerService`.
 
-For current backlog status on extracting existing responsibilities, see `docs/TODO.md`.
+For current backlog status on extracting existing responsibilities, see the repository's GitHub Issues.
 
 ## Business Rule Placement
 

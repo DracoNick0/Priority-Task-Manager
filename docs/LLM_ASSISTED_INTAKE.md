@@ -69,6 +69,6 @@ This document covers planned behavior only. It does not define current implement
 
 ## Related Documents
 - docs/ARCHITECTURE.md
-- docs/TODO.md
+- Repository GitHub Issues
 - docs/CONSTRAINT_SOLVER.md
 - docs/WORKFLOW.md

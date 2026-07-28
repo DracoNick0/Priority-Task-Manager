@@ -20,7 +20,6 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | docs/ARCHITECTURE_INTEGRATIONS.md | Future integration, API, provider, and intake boundaries |
 | docs/WORKFLOW.md | Contribution and delivery process |
 | docs/TESTING_STRATEGY.md | Testing approach and quality expectations |
-| docs/TODO.md | Backlog, planned work, and concise active-work handoff |
 | docs/LLM_ASSISTED_INTAKE.md | Planned LLM-assisted intake scope and MVP delivery approach |
 | docs/GOLD_PANNING.md | Gold Panning algorithm details |
 | docs/CONSTRAINT_SOLVER.md | Constraint Solver specification and contract |
@@ -44,7 +43,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | Integration architecture | docs/ARCHITECTURE_INTEGRATIONS.md |
 | Current feature reality | docs/STATUS.md |
 | Command reference | docs/STATUS.md |
-| Planned work, roadmap, and active-work handoff | docs/TODO.md |
+| Planned work, roadmap, and active-work handoff | Repository GitHub Issues |
 | LLM-assisted intake planning | docs/LLM_ASSISTED_INTAKE.md |
 | Scheduling algorithm details | docs/GOLD_PANNING.md, docs/CONSTRAINT_SOLVER.md |
 | Testing philosophy | docs/TESTING_STRATEGY.md |

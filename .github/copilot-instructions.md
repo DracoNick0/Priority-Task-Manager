@@ -5,7 +5,7 @@ applyTo: '**'
 ## Start Here
 - Before coding, review `docs/STATUS.md` and the architecture guidance relevant to the task.
 - Start architecture review with `docs/ARCHITECTURE.md`, then read the focused `docs/ARCHITECTURE_*.md` document for the area being changed.
-- For backlog or active-work context, use `docs/TODO.md` as the source of truth.
+- For backlog or active-work context, use the repository's GitHub Issues as the source of truth.
 - For documentation ownership, use `docs/DOC_INDEX.md`.
 - If a request conflicts with documented architecture or current status, call it out and propose an aligned path.
 
@@ -32,7 +32,7 @@ applyTo: '**'
 ## CLI And Command Handling
 - Keep command handlers focused on parsing, orchestration, and user feedback; do not add business scheduling logic to CLI handlers.
 - Every command path must produce clear feedback: success, warning, usage guidance, or actionable error.
-- Follow the current command orchestration migration state in `docs/ARCHITECTURE_CLI.md`, `docs/STATUS.md`, and `docs/TODO.md` before changing handler contracts.
+- Follow the current command orchestration migration state in `docs/ARCHITECTURE_CLI.md` and `docs/STATUS.md`, and the relevant GitHub Issues, before changing handler contracts.
 
 ## Scheduling And Tests
 - Treat documented scheduling invariants as correctness requirements, not as behavior to weaken when tests expose defects.

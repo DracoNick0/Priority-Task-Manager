@@ -101,7 +101,7 @@ Conditionally update by change type:
 - Testing model changes:
   - Update docs/TESTING_STRATEGY.md.
 - Roadmap/backlog changes:
-  - Update docs/TODO.md.
+  - Note that roadmap/backlog items are tracked as GitHub Issues, not in this repository's docs.
 - Algorithm-specific changes:
   - Update docs/GOLD_PANNING.md or docs/CONSTRAINT_SOLVER.md.
 - Complexity semantics changes:
@@ -116,7 +116,6 @@ After doc edits, verify:
 - Terminology consistency with docs/TERMINOLOGY.md.
 - No stale/broken references introduced.
 - No roadmap content leaked into docs/STATUS.md.
-- No current-state claims leaked into docs/TODO.md.
 
 ## Missing Documentation Findings Format
 If refusing updates due to low confidence, return:

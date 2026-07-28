@@ -4,7 +4,7 @@ This document outlines the standard workflow for contributing to the Priority Ta
 
 ## Guiding Principles
 
--   **Task-Driven Development.** All work should be guided by a task list. Currently, this is the root `TODO.md` file. For larger teams, this will transition to GitHub Issues.
+-   **Task-Driven Development.** All work should be guided by a task list, tracked as GitHub Issues in this repository.
 -   **Architecture First.** Before implementing a new feature, refer to `docs/ARCHITECTURE.md` to understand the existing design patterns and ensure your changes are consistent with the project's structure.
 -   **Check the Status.** For a high-level overview of the project's current capabilities and state, refer to `docs/STATUS.md`.
 -   **Small, iterative changes.** Prefer small, well-defined commits over large, monolithic ones.
@@ -23,12 +23,12 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 
 ## Standard Workflow
 
-1.  **Select a Task**: Choose the highest-priority task from `TODO.md` that has not yet been completed.
+1.  **Select a Task**: Choose the highest-priority open GitHub Issue that has not yet been completed.
 2.  **Understand the Goal**: Read the task description and analyze the relevant parts of the codebase. Refer to `docs/ARCHITECTURE.md` and `docs/STATUS.md` to understand how the feature fits into the overall system.
 3.  **Implement the Changes**: Write the necessary code, following the established patterns.
 4.  **Build and Verify**: Ensure the project builds and runs without errors.
 5.  **Update Documentation**: If the changes affect the architecture, workflow, or status, update the relevant `.md` files in the `docs/` folder.
-6.  **Update `TODO.md`**: Mark the task as complete or update its status.
+6.  **Update the GitHub Issue**: Mark the issue as complete or update its status.
 7.  **Commit**: Write a clear and concise commit message describing the changes.
 
 ## Building and Running the Application

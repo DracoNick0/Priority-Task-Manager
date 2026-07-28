@@ -9,7 +9,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 - The CLI project builds successfully.
 - Gold Panning is the active scheduling strategy; constraint optimization is routed but not implemented.
-- CLI command dispatch is consolidated onto a single `ICommandResultHandler` contract; see `docs/TODO.md` for remaining testing-overhaul work.
+- CLI command dispatch is consolidated onto a single `ICommandResultHandler` contract; see the repository's GitHub Issues for remaining testing-overhaul work.
 - The test suite passes. CLI handler tests no longer fail on real console clearing/cursor behavior; broader interactive seam adoption and dependency-order scheduling coverage remain pending.
 
 ## Feature Matrix
@@ -94,4 +94,4 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
 - Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (146 passed, 1 skipped).
-- Use `docs/TODO.md` for the current active-work sequence, blockers, and next steps.
+- Use the repository's GitHub Issues for the current active-work sequence, blockers, and next steps.

@@ -2,7 +2,7 @@
 
 This document is the architecture map for Priority Task Manager. It explains the major system boundaries and points to focused architecture documents for implementation guidance.
 
-For current feature reality, see [STATUS.md](STATUS.md). For planned work and active handoff, see [TODO.md](TODO.md). For canonical vocabulary, see [TERMINOLOGY.md](TERMINOLOGY.md).
+For current feature reality, see [STATUS.md](STATUS.md). For planned work and active handoff, see the repository's GitHub Issues. For canonical vocabulary, see [TERMINOLOGY.md](TERMINOLOGY.md).
 
 ## Architecture Overview
 
