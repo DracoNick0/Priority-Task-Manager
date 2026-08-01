@@ -7,6 +7,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | Document | Purpose | Audience |
 | --- | --- | --- |
 | README.md | Entry point and quick orientation | New users, maintainers, AI agents |
+| docs/VISION.md | Long-term desired outcome, target users, and core differentiator | Maintainer, contributors, AI agents |
 | docs/ARCHITECTURE.md | Architecture map, shared boundaries, and focused architecture reading paths | Developers and refactors |
 | docs/STATUS.md | Current state of working, partial, broken, in progress | Maintainer and contributors |
 
@@ -35,6 +36,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | Topic | Source of Truth |
 | --- | --- |
 | Onboarding and project overview | README.md |
+| Long-term vision, desired outcome, and core differentiator | docs/VISION.md |
 | Architecture overview and reading paths | docs/ARCHITECTURE.md |
 | CLI and user interaction architecture | docs/ARCHITECTURE_CLI.md |
 | Business logic architecture | docs/ARCHITECTURE_CORE.md |
@@ -53,21 +55,24 @@ Use this file to find the canonical document for each topic. If a topic appears 
 ## Reading Paths by Persona
 ### New user
 1. README.md
-2. docs/STATUS.md
-3. docs/WORKFLOW.md
+2. docs/VISION.md
+3. docs/STATUS.md
+4. docs/WORKFLOW.md
 
 ### Maintainer
-1. docs/STATUS.md
-2. docs/ARCHITECTURE.md
-3. Relevant docs/ARCHITECTURE_*.md file
-4. docs/TERMINOLOGY.md
+1. docs/VISION.md
+2. docs/STATUS.md
+3. docs/ARCHITECTURE.md
+4. Relevant docs/ARCHITECTURE_*.md file
+5. docs/TERMINOLOGY.md
 
 ### AI coding agent
 1. docs/DOCUMENTATION_STANDARDS.md
 2. docs/TERMINOLOGY.md
-3. docs/STATUS.md
-4. docs/ARCHITECTURE.md
-5. Relevant docs/ARCHITECTURE_*.md file
+3. docs/VISION.md
+4. docs/STATUS.md
+5. docs/ARCHITECTURE.md
+6. Relevant docs/ARCHITECTURE_*.md file
 
 ## Maintenance Notes
 - Review this index whenever a document is added, removed, renamed, or repurposed.

@@ -47,6 +47,7 @@ dotnet run
 
 Use these docs as the canonical references:
 
+- [docs/VISION.md](docs/VISION.md): long-term desired outcome, target users, and core differentiator.
 - [docs/STATUS.md](docs/STATUS.md): current capabilities, limitations, known issues, and command surface.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture map, shared boundaries, and links to focused architecture documents.
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): contribution workflow and day-to-day development process.

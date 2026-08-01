@@ -21,6 +21,7 @@ This document defines documentation structure, ownership, style, verification, a
 | Topic | Canonical Document | Notes |
 | --- | --- | --- |
 | Project entry and navigation | README.md | High-level orientation only |
+| Long-term vision and desired outcome | docs/VISION.md | Direction and intent only; not current status |
 | Architecture map and shared boundaries | docs/ARCHITECTURE.md | Entry point for architecture reading paths |
 | CLI architecture | docs/ARCHITECTURE_CLI.md | Command handling, console interaction, and rendering boundaries |
 | Core business logic architecture | docs/ARCHITECTURE_CORE.md | Core services and business-rule placement |
@@ -51,6 +52,24 @@ Must not include:
 - Full command catalog
 - Deep architecture internals
 - Long issue lists
+
+### Vision
+Required sections:
+- Purpose
+- Scope
+- Problem Statement
+- Target Users
+- Core Differentiator
+- Desired End State
+- Milestones
+- Success Definition
+- Non-Goals
+- How to Use This Document
+
+Must not include:
+- Current implementation status (owned by docs/STATUS.md)
+- Architecture contracts (owned by docs/ARCHITECTURE.md and docs/ARCHITECTURE_*.md)
+- Scheduled or in-progress work (owned by the repository's GitHub Issues)
 
 ### Architecture
 Required sections:
