@@ -35,6 +35,19 @@ namespace PriorityTaskManager.Services
 		public static ComposedServices Compose(string dataDirectory)
 		{
 			var persistenceService = new PersistenceService(dataDirectory);
+			return Compose(persistenceService);
+		}
+
+		/// <summary>
+		/// Constructs the core service graph on top of an arbitrary <see cref="IPersistenceService"/>
+		/// implementation (e.g. the CLI's JSON-file-backed service, or a front end's own
+		/// database-backed service), so every front end assembles <see cref="TaskManagerService"/>
+		/// and its dependencies the same way regardless of storage backend.
+		/// </summary>
+		/// <param name="persistenceService">The persistence backend to load/save data through.</param>
+		/// <returns>The composed core services, ready for a front end to build handlers/endpoints on top of.</returns>
+		public static ComposedServices Compose(IPersistenceService persistenceService)
+		{
 			var dataContainer = persistenceService.LoadData();
 			var timeService = new TimeService();
 
