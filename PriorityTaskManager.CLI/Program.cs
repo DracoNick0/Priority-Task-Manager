@@ -23,21 +23,17 @@ namespace PriorityTaskManager.CLI
 
 			// Set up services
 			var dataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
-			var persistenceService = new PersistenceService(dataDirectory);
-			var dataContainer = persistenceService.LoadData();
-			if (dataContainer.LoadWarnings.Count > 0)
+			var composed = ServiceComposer.Compose(dataDirectory);
+			if (composed.DataContainer.LoadWarnings.Count > 0)
 			{
-				foreach (var warning in dataContainer.LoadWarnings)
+				foreach (var warning in composed.DataContainer.LoadWarnings)
 				{
 					Console.WriteLine($"Warning: {warning}");
 				}
 			}
-			var timeService = new TimeService();
-
-			var urgencyStrategy = new GoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
-			var service = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
-			var taskMetricsService = new TaskMetricsService();
-			service.ApplyListTimePreference(service.GetActiveListId(), timeService);
+			var timeService = composed.TimeService;
+			var service = composed.TaskManagerService;
+			var taskMetricsService = composed.TaskMetricsService;
 
 			var scheduleSnapshotProvider = new ScheduleSnapshotProvider(service, taskMetricsService, timeService);
 			scheduleSnapshotProvider.RefreshActiveListSnapshot(out _);
