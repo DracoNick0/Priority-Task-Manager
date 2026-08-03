@@ -24,6 +24,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 | Event system | 🟡 Under review | Add, edit, list, and delete are available, but the event experience is still being refined. |
 | Task dependencies | � Working | Dependency add/remove is supported, and the active Gold Panning pipeline now enforces dependency-order placement (a dependent task is never scheduled before its prerequisite completes). |
 | Unit tests | � Passing / under overhaul | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant/replay coverage (including dependency-order scheduling), exist. Broader interactive seam adoption remains pending. |
+| Networked API | 🟡 Partially implemented | `PriorityTaskManager.API` has account/JWT auth (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) and minimal REST endpoints for task/list/event CRUD wrapping `TaskManagerService`; no client (CLI or Flutter) authenticates against it yet (tracked by issue #44). |
 
 ## Confirmed Capabilities
 
@@ -41,6 +42,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - Shared interactive console behavior for keyboard-driven handlers is abstracted through `IInteractiveConsoleFacade`.
 - `HelpHandler`, `EditHandler`, interactive `list settings` flow, interactive `list switch` flow, the interactive `defaults` menu (`SettingsHandler`), and `event add`/`event edit`/`event clear` interactive paths currently use the interactive console facade seam.
 - `EditHandler` interactive field updates now use row-anchored editing/toggling for strings, numeric values, duration, and booleans; due date/time use `ConsoleInputHelper` interactive pickers, with dashboard clear/rerender before picker launch and on edit-exit.
+- `PriorityTaskManager.API` exposes authenticated REST endpoints (`/api/tasks`, `/api/lists`, `/api/events`) for CRUD, each built only on `TaskManagerService` calls per the integrations boundary; no scheduling or persistence logic is duplicated in the API layer.
 
 ## Known Limitations
 
@@ -94,5 +96,6 @@ This document is the current-state snapshot for Priority Task Manager. It record
 ## Validation Notes
 
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
+- Build check: `dotnet build .\PriorityTaskManager.API\PriorityTaskManager.API.csproj` succeeds.
 - Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (146 passed, 1 skipped).
 - Use the repository's GitHub Issues for the current active-work sequence, blockers, and next steps.

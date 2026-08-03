@@ -4,7 +4,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using PriorityTaskManager.API.Auth;
+using PriorityTaskManager.API.Events;
+using PriorityTaskManager.API.Lists;
 using PriorityTaskManager.API.Persistence;
+using PriorityTaskManager.API.Tasks;
 using PriorityTaskManager.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +21,6 @@ builder.Services.AddHttpContextAccessor();
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
 	?? throw new InvalidOperationException("Missing required 'ConnectionStrings:Postgres' configuration value.");
 
-// Account model + JWT auth (issue #35, MVP: email + password, no 2FA/OAuth - see issue #36).
 // Server-side only so far; no client logs in with this yet (client integration is issue #44, V1).
 var jwtOptions = new JwtOptions
 {
@@ -96,6 +98,9 @@ app.UseAuthorization();
 
 app.MapAuthEndpoints();
 app.MapAccountEndpoints();
+app.MapTaskEndpoints();
+app.MapListEndpoints();
+app.MapEventEndpoints();
 
 app.Run();
 
