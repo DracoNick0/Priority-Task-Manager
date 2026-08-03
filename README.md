@@ -40,6 +40,7 @@ dotnet run
 | --- | --- |
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
 | `PriorityTaskManager.CLI/` | Command-line entry point, handlers, and console rendering |
+| `PriorityTaskManager.API/` | ASP.NET Core Web API surface sharing the core service composition (in progress) |
 | `PriorityTaskManager.Tests/` | Unit test project |
 | `docs/` | Architecture, status, workflow, testing, and roadmap docs |
 
@@ -50,6 +51,7 @@ Use these docs as the canonical references:
 - [docs/VISION.md](docs/VISION.md): long-term desired outcome, target users, and core differentiator.
 - [docs/STATUS.md](docs/STATUS.md): current capabilities, limitations, known issues, and command surface.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture map, shared boundaries, and links to focused architecture documents.
+- [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md): API surface, external integrations, and shared service composition.
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): contribution workflow and day-to-day development process.
 - [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md): test philosophy and quality approach.
 - Repository GitHub Issues: backlog and planned work.

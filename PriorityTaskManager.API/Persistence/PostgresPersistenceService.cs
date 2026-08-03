@@ -13,9 +13,10 @@ namespace PriorityTaskManager.API.Persistence
 	///
 	/// Mirrors the shape of <see cref="PersistenceService"/>'s per-document JSON files (tasks, lists,
 	/// events, user profile), but stores each document as a JSONB row in a single table instead of a
-	/// file on disk. This avoids introducing a full relational schema before the account model
-	/// (issue #31's account bullet) lands and multi-tenant storage is actually needed.
-	/// </summary>
+	/// file on disk. Every row is scoped by <c>account_id</c> (issue #35's MVP account model), so each
+	/// instance of this class is bound to a single account and only ever reads/writes that account's
+	/// documents; the API composes one instance per authenticated request (see
+	/// <c>PriorityTaskManager.API/Program.cs</c>) rather than sharing one across all accounts.	/// No client authenticates against this yet - that integration is tracked by issue #44 (V1).	/// </summary>
 	public class PostgresPersistenceService : IPersistenceService
 	{
 		private const string TasksDocumentId = "tasks";
@@ -25,10 +26,17 @@ namespace PriorityTaskManager.API.Persistence
 		private const string ArchiveDocumentId = "archive";
 
 		private readonly string _connectionString;
+		private readonly Guid _accountId;
 
-		public PostgresPersistenceService(string connectionString)
+		/// <summary>
+		/// Creates a persistence service scoped to a single account's documents.
+		/// </summary>
+		/// <param name="connectionString">The Postgres connection string.</param>
+		/// <param name="accountId">The authenticated account whose documents this instance reads/writes.</param>
+		public PostgresPersistenceService(string connectionString, Guid accountId)
 		{
 			_connectionString = connectionString;
+			_accountId = accountId;
 			EnsureSchema();
 		}
 
@@ -41,9 +49,11 @@ namespace PriorityTaskManager.API.Persistence
 			using var command = connection.CreateCommand();
 			command.CommandText = @"
 				CREATE TABLE IF NOT EXISTS persisted_documents (
-					id text PRIMARY KEY,
+					account_id uuid NOT NULL,
+					id text NOT NULL,
 					data jsonb NOT NULL,
-					updated_at timestamptz NOT NULL DEFAULT now()
+					updated_at timestamptz NOT NULL DEFAULT now(),
+					PRIMARY KEY (account_id, id)
 				);";
 			command.ExecuteNonQuery();
 		}
@@ -61,7 +71,7 @@ namespace PriorityTaskManager.API.Persistence
 
 			using var connection = OpenConnection();
 
-			var tasksDocument = ReadDocument(connection, TasksDocumentId);
+			var tasksDocument = ReadDocument(connection, _accountId, TasksDocumentId);
 			if (tasksDocument != null)
 			{
 				try
@@ -82,7 +92,7 @@ namespace PriorityTaskManager.API.Persistence
 				}
 			}
 
-			var listsDocument = ReadDocument(connection, ListsDocumentId);
+			var listsDocument = ReadDocument(connection, _accountId, ListsDocumentId);
 			if (listsDocument != null)
 			{
 				try
@@ -99,7 +109,7 @@ namespace PriorityTaskManager.API.Persistence
 				}
 			}
 
-			var eventsDocument = ReadDocument(connection, EventsDocumentId);
+			var eventsDocument = ReadDocument(connection, _accountId, EventsDocumentId);
 			if (eventsDocument != null)
 			{
 				try
@@ -116,7 +126,7 @@ namespace PriorityTaskManager.API.Persistence
 				}
 			}
 
-			var userProfileDocument = ReadDocument(connection, UserProfileDocumentId);
+			var userProfileDocument = ReadDocument(connection, _accountId, UserProfileDocumentId);
 			if (userProfileDocument != null)
 			{
 				try
@@ -142,15 +152,15 @@ namespace PriorityTaskManager.API.Persistence
 			using var connection = OpenConnection();
 
 			var tasksData = new { Tasks = data.Tasks, NextDisplayId = data.NextDisplayId };
-			WriteDocument(connection, TasksDocumentId, JsonSerializer.Serialize(tasksData));
+			WriteDocument(connection, _accountId, TasksDocumentId, JsonSerializer.Serialize(tasksData));
 
 			var listsData = new { Lists = data.Lists };
-			WriteDocument(connection, ListsDocumentId, JsonSerializer.Serialize(listsData));
+			WriteDocument(connection, _accountId, ListsDocumentId, JsonSerializer.Serialize(listsData));
 
 			var eventsData = new { Events = data.Events };
-			WriteDocument(connection, EventsDocumentId, JsonSerializer.Serialize(eventsData));
+			WriteDocument(connection, _accountId, EventsDocumentId, JsonSerializer.Serialize(eventsData));
 
-			WriteDocument(connection, UserProfileDocumentId, JsonSerializer.Serialize(data.UserProfile));
+			WriteDocument(connection, _accountId, UserProfileDocumentId, JsonSerializer.Serialize(data.UserProfile));
 		}
 
 		public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
@@ -158,33 +168,35 @@ namespace PriorityTaskManager.API.Persistence
 			using var connection = OpenConnection();
 
 			var archivedTasks = new List<TaskItem>();
-			var archiveDocument = ReadDocument(connection, ArchiveDocumentId);
+			var archiveDocument = ReadDocument(connection, _accountId, ArchiveDocumentId);
 			if (archiveDocument != null)
 			{
 				archivedTasks = JsonSerializer.Deserialize<List<TaskItem>>(archiveDocument) ?? new List<TaskItem>();
 			}
 
 			archivedTasks.AddRange(tasksToArchive);
-			WriteDocument(connection, ArchiveDocumentId, JsonSerializer.Serialize(archivedTasks));
+			WriteDocument(connection, _accountId, ArchiveDocumentId, JsonSerializer.Serialize(archivedTasks));
 		}
 
-		private static string? ReadDocument(NpgsqlConnection connection, string documentId)
+		private static string? ReadDocument(NpgsqlConnection connection, Guid accountId, string documentId)
 		{
 			using var command = connection.CreateCommand();
-			command.CommandText = "SELECT data FROM persisted_documents WHERE id = @id;";
+			command.CommandText = "SELECT data FROM persisted_documents WHERE account_id = @accountId AND id = @id;";
+			command.Parameters.AddWithValue("accountId", accountId);
 			command.Parameters.AddWithValue("id", documentId);
 
 			var result = command.ExecuteScalar();
 			return result as string;
 		}
 
-		private static void WriteDocument(NpgsqlConnection connection, string documentId, string json)
+		private static void WriteDocument(NpgsqlConnection connection, Guid accountId, string documentId, string json)
 		{
 			using var command = connection.CreateCommand();
 			command.CommandText = @"
-				INSERT INTO persisted_documents (id, data, updated_at)
-				VALUES (@id, @data::jsonb, now())
-				ON CONFLICT (id) DO UPDATE SET data = @data::jsonb, updated_at = now();";
+				INSERT INTO persisted_documents (account_id, id, data, updated_at)
+				VALUES (@accountId, @id, @data::jsonb, now())
+				ON CONFLICT (account_id, id) DO UPDATE SET data = @data::jsonb, updated_at = now();";
+			command.Parameters.AddWithValue("accountId", accountId);
 			command.Parameters.AddWithValue("id", documentId);
 			command.Parameters.AddWithValue("data", json);
 			command.ExecuteNonQuery();

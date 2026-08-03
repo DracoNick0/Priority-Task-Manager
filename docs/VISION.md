@@ -31,8 +31,8 @@ Each milestone assumes everything in the milestones before it is retained and co
 
 ### MVP — Minimum Viable Product
 - A prototype scheduling algorithm that prioritizes and places tasks using importance, complexity, due dates, dependencies, fixed events, and simple day boundaries (a single configured start and end time per day).
-- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, a web client, and a desktop client.
-- Email + password authentication, laying the foundation for future account-backed features.
+- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, a web client, and a desktop client — with command and API contracts designed so a future native mobile client can reuse them without rework, even though mobile isn't built until V1.
+- Account model and password-hashing foundation on the API (server-side only) — no client yet logs a user in with it; see V1 for an end-to-end usable login experience.
 - Offline local storage so the tool works without a network connection.
 - LLM-assisted intake for external planning sources, with user review before anything is persisted.
 - The application is packaged, deployed, and downloadable by a real user outside the development environment.
@@ -42,6 +42,7 @@ Each milestone assumes everything in the milestones before it is retained and co
 - Fleshed-out, polished interfaces for CLI, web, and desktop (beyond MVP-level usability).
 - Native mobile apps published on the Android and iOS app stores.
 - Cross-device data sync, with online storage as the backing mechanism.
+- Email + password authentication usable end-to-end from every interface (CLI, web, desktop), building on the MVP-built account model foundation.
 - Stronger account security: two-factor authentication and OAuth/social login.
 - Basic recurring/repeating tasks, so periodic work doesn't require manual re-entry.
 - Scheduled-block reminders/notifications across devices, keeping the plan visible without requiring the user to keep checking the app.

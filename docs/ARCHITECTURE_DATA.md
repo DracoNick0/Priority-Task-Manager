@@ -27,10 +27,13 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 | `events.json` | Events |
 | `user_profile.json` | Global user profile defaults |
 
+The CLI's JSON files hold a single local user's data and have no account concept. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead.
+
 ## Model Boundaries
 
 | Model | Architectural Role |
 | --- | --- |
+| `Account` | MVP email + password account (id, normalized email, hashed password); the tenant boundary for API-hosted persisted data |
 | `TaskItem` | Unit of work with scheduling metadata, completion state, and dependencies |
 | `TaskList` | Named task container with copied list-specific scheduling and display settings |
 | `UserProfile` | Global defaults and scheduling preferences |
