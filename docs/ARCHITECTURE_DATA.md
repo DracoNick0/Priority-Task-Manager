@@ -29,6 +29,8 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 
 The CLI's JSON files hold a single local user's data and have no account concept. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead.
 
+Front ends with their own local store (the CLI's JSON files today; a future Flutter client's local Hive database) are expected to keep that local store as their permanent, offline-capable source of truth rather than treating it as a disposable cache of the API. Once a front end gains account/sync capability (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)), the API-backed Postgres store becomes an additional sync target that the local store is reconciled against, not a replacement for the local store. This keeps the "local-first data ownership" desired end state in [docs/VISION.md](VISION.md) true even after sync exists.
+
 ## Model Boundaries
 
 | Model | Architectural Role |

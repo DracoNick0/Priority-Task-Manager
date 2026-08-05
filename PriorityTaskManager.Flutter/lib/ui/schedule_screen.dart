@@ -53,9 +53,13 @@ class ScheduleScreen extends ConsumerWidget {
                   key: const ValueKey('minimalist'),
                   schedule: schedule,
                 )
-              : DenseDataView(key: const ValueKey('dense'), schedule: schedule),
+              : DenseDataView(
+                  key: const ValueKey('dense'),
+                  schedule: schedule,
+                ),
         ),
       ),
     );
   }
 }
+
