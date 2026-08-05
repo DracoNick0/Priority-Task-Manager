@@ -25,6 +25,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 | Task dependencies | � Working | Dependency add/remove is supported, and the active Gold Panning pipeline now enforces dependency-order placement (a dependent task is never scheduled before its prerequisite completes). |
 | Unit tests | � Passing / under overhaul | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant/replay coverage (including dependency-order scheduling), exist. Broader interactive seam adoption remains pending. |
 | Networked API | 🟡 Partially implemented | `PriorityTaskManager.API` has account/JWT auth (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) and minimal REST endpoints for task/list/event CRUD wrapping `TaskManagerService`; no client (CLI or Flutter) authenticates against it yet (tracked by issue #44). |
+| Flutter client | 🟡 Partially implemented | `PriorityTaskManager.Flutter/` is a local-only (guest/offline) web + Windows desktop shell with Riverpod state management and a Hive-backed `TaskRepository` implementation; supports add/edit/complete/delete and dependency management. No login or API-backed repository yet (tracked by issue #44). |
 
 ## Confirmed Capabilities
 
@@ -43,6 +44,7 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - `HelpHandler`, `EditHandler`, interactive `list settings` flow, interactive `list switch` flow, the interactive `defaults` menu (`SettingsHandler`), and `event add`/`event edit`/`event clear` interactive paths currently use the interactive console facade seam.
 - `EditHandler` interactive field updates now use row-anchored editing/toggling for strings, numeric values, duration, and booleans; due date/time use `ConsoleInputHelper` interactive pickers, with dashboard clear/rerender before picker launch and on edit-exit.
 - `PriorityTaskManager.API` exposes authenticated REST endpoints (`/api/tasks`, `/api/lists`, `/api/events`) for CRUD, each built only on `TaskManagerService` calls per the integrations boundary; no scheduling or persistence logic is duplicated in the API layer.
+- `PriorityTaskManager.Flutter/` is a separate Dart/Flutter codebase (web + Windows desktop targets scaffolded; macOS/Linux desktop folders present but unverified) implementing its own local `TaskRepository` abstraction backed by Hive, independent of the .NET solution; it does not call into `PriorityTaskManager`/`PriorityTaskManager.API` for this offline/guest shell.
 
 ## Known Limitations
 
@@ -98,4 +100,5 @@ This document is the current-state snapshot for Priority Task Manager. It record
 - Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
 - Build check: `dotnet build .\PriorityTaskManager.API\PriorityTaskManager.API.csproj` succeeds.
 - Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (146 passed, 1 skipped).
+- Build check: `flutter build web` and `flutter build windows` succeed in `PriorityTaskManager.Flutter/`; `flutter analyze` and `flutter test` pass.
 - Use the repository's GitHub Issues for the current active-work sequence, blockers, and next steps.

@@ -12,6 +12,8 @@ The solution is organized into three projects with clear separation of concerns:
 | --- | --- |
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
 | `PriorityTaskManager.CLI/` | Command parsing, user interaction, console output, and orchestration |
+| `PriorityTaskManager.API/` | Authenticated REST endpoints wrapping core services for networked clients |
+| `PriorityTaskManager.Flutter/` | Flutter web/desktop client; local-only (offline/guest) for the MVP shell, with its own `TaskRepository` abstraction (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) |
 | `PriorityTaskManager.Tests/` | Tests for core behavior, scheduling, and CLI handler behavior |
 
 The core library must remain independent of console presentation concerns. CLI code may call core services, but core services must not depend on CLI handlers, console helpers, or command output policy.

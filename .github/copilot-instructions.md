@@ -23,6 +23,14 @@ applyTo: '**'
 - Keep documentation updates scoped to the canonical owner document defined in `docs/DOC_INDEX.md`.
 - Update relevant documentation when behavior, command surface, architecture, status, backlog priority, or testing expectations change.
 
+## GitHub Issue Management
+- Use the `gh` CLI (e.g. `gh issue view`, `gh issue edit`, `gh issue create`, `gh issue close`, `gh api graphql`) to read and edit issues; do not guess issue content or fabricate issue URLs.
+- Every issue must belong to the "Priority Task Manager Roadmap" project and have a milestone assigned ((MVP) Minimum Viable Product, (V1) Online Daily Planner, (V2) Flexible Smart Planner, or Dream Product Future Issues). If an issue blocks or is a sub-issue of an issue in an earlier milestone, it generally belongs in that same milestone.
+- Set parent/child and blocked-by/blocking relationships using GitHub's native issue-relationship fields (via `gh api graphql` mutations `addSubIssue`/`removeSubIssue` and `addBlockedBy`/`removeBlockedBy`, using each issue's GraphQL node `id`), not by only writing `#123` mentions in the body.
+- Only restate a dependency or relationship in the issue body when the relationship itself needs explanation (why it blocks, what part is shared, scope boundaries); do not restate a plain "depends on #N" once the relationship is attached natively.
+- When closing an issue as superseded/duplicated by another, add a closing comment explaining why and pointing to the superseding issue, and update any relationships/body text on related issues that referenced the closed issue.
+- When splitting or resolving overlapping scope between issues, prefer asking before closing or substantially rescoping an issue if the intended resolution is ambiguous.
+
 ## Architecture Boundaries
 - `PriorityTaskManager` contains core business logic, models, services, persistence, and scheduling. It must not depend on CLI/UI behavior.
 - `PriorityTaskManager.CLI` owns command parsing, user interaction, output, and orchestration. It should catch core exceptions and show actionable user feedback.
