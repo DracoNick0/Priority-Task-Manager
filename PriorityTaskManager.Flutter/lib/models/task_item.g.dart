@@ -27,13 +27,18 @@ class TaskItemAdapter extends TypeAdapter<TaskItem> {
           ? 60
           : (fields[6] as num).toInt(),
       dependencies: (fields[7] as List?)?.cast<String>(),
+      importance: fields[8] == null ? 5 : (fields[8] as num).toInt(),
+      complexity: fields[9] == null ? 1.0 : (fields[9] as num).toDouble(),
+      notBefore: fields[10] as DateTime?,
+      isPinned: fields[11] == null ? false : fields[11] as bool,
+      isDivisible: fields[12] == null ? true : fields[12] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskItem obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -49,7 +54,17 @@ class TaskItemAdapter extends TypeAdapter<TaskItem> {
       ..writeByte(6)
       ..write(obj.estimatedDurationMinutes)
       ..writeByte(7)
-      ..write(obj.dependencies);
+      ..write(obj.dependencies)
+      ..writeByte(8)
+      ..write(obj.importance)
+      ..writeByte(9)
+      ..write(obj.complexity)
+      ..writeByte(10)
+      ..write(obj.notBefore)
+      ..writeByte(11)
+      ..write(obj.isPinned)
+      ..writeByte(12)
+      ..write(obj.isDivisible);
   }
 
   @override

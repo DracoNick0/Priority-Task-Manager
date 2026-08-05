@@ -1,0 +1,5 @@
+mutation {
+  addBlockedBy(input: {issueId: "I_kwDOPkXBw88AAAABLofBzA", blockingIssueId: "I_kwDOPkXBw88AAAABKcYE0g"}) {
+    issue { title }
+  }
+}

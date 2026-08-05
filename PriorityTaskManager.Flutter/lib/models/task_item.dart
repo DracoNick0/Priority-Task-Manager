@@ -14,6 +14,11 @@ class TaskItem extends HiveObject {
     this.dueDate,
     this.estimatedDurationMinutes = 60,
     List<String>? dependencies,
+    this.importance = 5,
+    this.complexity = 1.0,
+    this.notBefore,
+    this.isPinned = false,
+    this.isDivisible = true,
   }) : dependencies = dependencies ?? <String>[];
 
   @HiveField(0)
@@ -42,6 +47,31 @@ class TaskItem extends HiveObject {
   @HiveField(7)
   List<String> dependencies;
 
+  /// User-defined importance (1-10), mirroring `PriorityTaskManager.Models.TaskItem.Importance`.
+  /// Feeds the scheduling algorithm; not yet editable from the UI (defaults to 5).
+  @HiveField(8)
+  int importance;
+
+  /// Cognitive load/effort, mirroring `PriorityTaskManager.Models.TaskItem.Complexity`.
+  /// Not yet editable from the UI (defaults to 1.0).
+  @HiveField(9)
+  double complexity;
+
+  /// Earliest allowed start time, mirroring `PriorityTaskManager.Models.TaskItem.NotBefore`.
+  /// Not yet editable from the UI.
+  @HiveField(10)
+  DateTime? notBefore;
+
+  /// Whether the scheduling algorithm should skip this task, mirroring
+  /// `PriorityTaskManager.Models.TaskItem.IsPinned`. Not yet editable from the UI.
+  @HiveField(11)
+  bool isPinned;
+
+  /// Whether the task can be split across multiple scheduled chunks, mirroring
+  /// `PriorityTaskManager.Models.TaskItem.IsDivisible`. Not yet editable from the UI.
+  @HiveField(12)
+  bool isDivisible;
+
   TaskItem copyWith({
     String? title,
     String? description,
@@ -50,6 +80,12 @@ class TaskItem extends HiveObject {
     bool clearDueDate = false,
     int? estimatedDurationMinutes,
     List<String>? dependencies,
+    int? importance,
+    double? complexity,
+    DateTime? notBefore,
+    bool clearNotBefore = false,
+    bool? isPinned,
+    bool? isDivisible,
   }) {
     return TaskItem(
       id: id,
@@ -61,6 +97,11 @@ class TaskItem extends HiveObject {
       estimatedDurationMinutes:
           estimatedDurationMinutes ?? this.estimatedDurationMinutes,
       dependencies: dependencies ?? List<String>.from(this.dependencies),
+      importance: importance ?? this.importance,
+      complexity: complexity ?? this.complexity,
+      notBefore: clearNotBefore ? null : (notBefore ?? this.notBefore),
+      isPinned: isPinned ?? this.isPinned,
+      isDivisible: isDivisible ?? this.isDivisible,
     );
   }
 }

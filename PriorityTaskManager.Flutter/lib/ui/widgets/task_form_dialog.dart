@@ -63,56 +63,97 @@ class _TaskFormDialogState extends ConsumerState<TaskFormDialog> {
               TextField(
                 controller: _titleController,
                 autofocus: true,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _dueDate == null
-                          ? 'No due date'
-                          : 'Due ${_dueDate!.toLocal().toString().split(' ').first}',
-                    ),
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _dueDate == null
+                              ? 'No due date set'
+                              : 'Due: ${_dueDate!.toLocal().toString().split(' ').first}',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: _dueDate == null
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _pickDueDate,
+                        child: const Text('Pick date'),
+                      ),
+                      if (_dueDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _dueDate = null),
+                          tooltip: 'Clear date',
+                        ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: _pickDueDate,
-                    child: const Text('Pick date'),
-                  ),
-                  if (_dueDate != null)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _dueDate = null),
-                    ),
-                ],
+                ),
               ),
               if (candidateDependencies.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Depends on',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                for (final candidate in candidateDependencies)
-                  CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(candidate.title),
-                    value: _selectedDependencyIds.contains(candidate.id),
-                    onChanged: (checked) {
-                      setState(() {
-                        if (checked ?? false) {
-                          _selectedDependencyIds.add(candidate.id);
-                        } else {
-                          _selectedDependencyIds.remove(candidate.id);
-                        }
-                      });
-                    },
+                const SizedBox(height: 16),
+                Text(
+                  'Dependencies',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Column(
+                    children: [
+                      for (final candidate in candidateDependencies)
+                        CheckboxListTile(
+                          dense: true,
+                          title: Text(candidate.title),
+                          value: _selectedDependencyIds.contains(candidate.id),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked ?? false) {
+                                _selectedDependencyIds.add(candidate.id);
+                              } else {
+                                _selectedDependencyIds.remove(candidate.id);
+                              }
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ],
           ),

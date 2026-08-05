@@ -23,7 +23,7 @@ This is reinforced by three supporting differentiators:
 ## Desired End State
 - **Product form**: A single scheduling core reachable from multiple clients — command-line, web, and desktop today, extending to native mobile — backed by a shared account and sync layer so a user's schedule is consistent everywhere they work.
 - **Local-first data ownership**: Even as cloud sync and mobile apps mature, the user's data should remain exportable and usable offline by default — a deliberate contrast to cloud-only competitors, not just a technical fallback.
-- **Protected scheduling algorithms**: the scheduling algorithms are the app's core value and should be protected accordingly. Not every algorithm needs to run on the client — some may remain offline-available (bundled with the client for baseline use), while more advanced or proprietary algorithms can be online-exclusive (executed server-side only) once the account/API layer exists.
+- **Protected scheduling algorithms (future-facing)**: once a scheduling algorithm is mature enough to be worth protecting as the app's core value, some algorithms may remain offline-available (bundled with the client for baseline use) while more advanced or proprietary ones become online-exclusive (executed server-side only) once the account/API layer exists. No algorithm needs this protection today — everything in the codebase is still a prototype — but revisit the offline-vs-online-exclusive split whenever a new algorithm is developed that would actually benefit from staying server-side.
 - **Reduced cognitive load, measurably**: every feature should be evaluated against whether it reduces the number of decisions and the amount of manual upkeep required from the user, not just whether it adds capability.
 
 ## Milestones
@@ -31,7 +31,7 @@ Each milestone assumes everything in the milestones before it is retained and co
 
 ### MVP — Minimum Viable Product
 - A prototype scheduling algorithm that prioritizes and places tasks using importance, complexity, due dates, dependencies, fixed events, and simple day boundaries (a single configured start and end time per day).
-- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, a web client, and a desktop client — with command and API contracts designed so a future native mobile client can reuse them without rework, even though mobile isn't built until V1.
+- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, and a Flutter-based web and desktop client. The Flutter client is fully functional offline and reaches feature parity with the CLI — including running the actual scheduling algorithm against locally stored data, not just task/list CRUD — with command and API contracts designed so both the transition to online storage/sync (V1) and a future native mobile client can reuse them without rework, even though mobile isn't built until V1.
 - Account model and password-hashing foundation on the API (server-side only) — no client yet logs a user in with it; see V1 for an end-to-end usable login experience.
 - Offline local storage so the tool works without a network connection.
 - LLM-assisted intake for external planning sources, with user review before anything is persisted.

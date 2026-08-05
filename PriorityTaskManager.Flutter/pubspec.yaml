@@ -40,6 +40,8 @@ dependencies:
   path_provider: ^2.1.6
   uuid: ^4.6.0
   riverpod: 2.6.1
+  intl: ^0.20.3
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

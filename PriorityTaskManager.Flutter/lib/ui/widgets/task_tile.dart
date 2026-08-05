@@ -20,24 +20,28 @@ class TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Checkbox(
-        value: task.isCompleted,
-        onChanged: (value) => onToggleCompleted(value ?? false),
-      ),
-      title: Text(
-        task.title,
-        style: task.isCompleted
-            ? const TextStyle(decoration: TextDecoration.lineThrough)
-            : null,
-      ),
-      subtitle: dependencyTitles.isEmpty
-          ? null
-          : Text('Depends on: ${dependencyTitles.join(', ')}'),
-      onTap: onTap,
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline),
-        onPressed: onDelete,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      elevation: 2,
+      child: ListTile(
+        leading: Checkbox(
+          value: task.isCompleted,
+          onChanged: (value) => onToggleCompleted(value ?? false),
+        ),
+        title: Text(
+          task.title,
+          style: task.isCompleted
+              ? const TextStyle(decoration: TextDecoration.lineThrough)
+              : const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: dependencyTitles.isEmpty
+            ? null
+            : Text('Depends on: ${dependencyTitles.join(', ')}'),
+        onTap: onTap,
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline),
+          onPressed: onDelete,
+        ),
       ),
     );
   }

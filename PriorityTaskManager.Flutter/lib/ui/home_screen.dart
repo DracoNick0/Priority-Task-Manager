@@ -5,6 +5,7 @@ import '../models/task_list.dart';
 import '../providers/task_providers.dart';
 import 'widgets/task_form_dialog.dart';
 import 'widgets/task_tile.dart';
+import 'schedule_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -36,6 +37,20 @@ class HomeScreen extends ConsumerWidget {
         return Scaffold(
           appBar: AppBar(
             title: Text(activeList?.name ?? 'Priority Task Manager'),
+            centerTitle: true,
+            elevation: 2,
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.calendar_view_day),
+                tooltip: 'Daily Schedule View',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                  );
+                },
+              ),
+            ],
           ),
           drawer: _ListsDrawer(lists: lists, activeListId: activeListId),
           body: activeListId == null
@@ -43,11 +58,12 @@ class HomeScreen extends ConsumerWidget {
               : _TaskListView(listId: activeListId),
           floatingActionButton: activeListId == null
               ? null
-              : FloatingActionButton(
+              : FloatingActionButton.extended(
                   onPressed: () =>
                       _showAddTaskDialog(context, ref, activeListId),
                   tooltip: 'Add task',
-                  child: const Icon(Icons.add),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Task'),
                 ),
         );
       },

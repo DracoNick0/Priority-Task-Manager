@@ -14,6 +14,17 @@
             "cwd": "${workspaceFolder}/PriorityTaskManager.CLI",
             "stopAtEntry": false,
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Flutter (Windows)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "windows"
+            ]
         }
     ]
 }
