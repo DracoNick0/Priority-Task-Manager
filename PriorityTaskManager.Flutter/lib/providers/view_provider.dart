@@ -5,7 +5,7 @@ import '../data/schedule_repository.dart';
 import '../models/schedule_models.dart';
 import 'task_providers.dart';
 
-enum ViewMode { minimalist, dense }
+enum ViewMode { minimalist, dense, fluid }
 
 final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.minimalist);
 

@@ -560,6 +560,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
+  split_view:
+    dependency: "direct main"
+    description:
+      name: split_view
+      sha256: "724968694ca8becaa58d5c6392caf3ca9d83548514aaa6d7c59bc41f1c1aa042"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   stack_trace:
     dependency: transitive
     description:

@@ -42,6 +42,7 @@ dependencies:
   riverpod: 2.6.1
   intl: ^0.20.3
   http: ^1.2.2
+  split_view: ^3.2.2
 
 dev_dependencies:
   flutter_test:

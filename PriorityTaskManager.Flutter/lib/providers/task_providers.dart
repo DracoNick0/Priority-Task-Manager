@@ -34,6 +34,13 @@ class TaskListsNotifier extends AsyncNotifier<List<TaskList>> {
     await future;
   }
 
+  Future<void> updateList(TaskList list) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.updateList(list);
+    ref.invalidateSelf();
+    await future;
+  }
+
   Future<void> deleteList(String listId) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     await repository.deleteList(listId);
