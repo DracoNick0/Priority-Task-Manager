@@ -15,6 +15,10 @@ The project exists to reduce decision fatigue when planning work. Instead of for
 - Events: add, list, edit, and delete calendar-style event blocks.
 - Local persistence: data is stored in JSON files.
 
+![alt text](docs/images/defaults_image.png)
+
+![alt text](docs/images/edit_image.png)
+
 ## Quick Start
 
 Prerequisite:

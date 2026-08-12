@@ -25,6 +25,17 @@
                 "-d",
                 "windows"
             ]
+        },
+        {
+            "name": "Flutter (Web)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "edge"
+            ]
         }
     ]
 }
