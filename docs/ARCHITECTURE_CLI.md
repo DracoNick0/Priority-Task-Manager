@@ -47,7 +47,7 @@ When adding user-input behavior, extend or reuse `ConsoleInputHelper` if the beh
 ## Dashboard And Schedule Rendering
 
 - `ScheduleSnapshotProvider` builds and caches the latest active-list schedule snapshot.
-- `ConsoleHelper.ClearAndRenderDashboard(...)` renders from the cached snapshot and should not own scheduling decisions.
+- `ConsoleHelper.ClearAndRenderDashboard(...)` renders from the cached snapshot and should not own scheduling decisions. It tolerates environments with no attached console handle (e.g. test hosts) as a safety net.
 - Handlers that mutate schedule-relevant data should refresh the snapshot through the established orchestration path.
 - Result-based handlers should use `CommandResult.ShouldRefreshDashboard` and let `Program.cs` perform refresh/rendering.
 
@@ -56,7 +56,8 @@ When adding user-input behavior, extend or reuse `ConsoleInputHelper` if the beh
 Every handler wired in `Program.cs` implements `ICommandResultHandler`. `Program.cs` dispatches through a single `Dictionary<string, ICommandResultHandler>` and calls `ExecuteWithResult(...)` for every command; there is no remaining legacy `ICommandHandler` contract or multi-contract branching.
 
 - New command behavior must implement `ICommandResultHandler`.
-- Interactive/menu-driven handlers (`HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`, and the no-arg branch of `SettingsHandler`) still own their console rendering end-to-end through `IInteractiveConsoleFacade` and return an inert `CommandResult`; do not collapse their rendering into `CommandResult.Message`.
+- Interactive/menu-driven handlers (`HelpHandler`, `EditHandler`, `ListHandler`, `EventCommandHandler`, and the no-arg branch of `SettingsHandler`) still own their console rendering end-to-end through `IInteractiveConsoleFacade` and return an inert `CommandResult`; do not collapse their rendering into `CommandResult.Message`. `EditHandler` interactive field updates use row-anchored editing/toggling for strings, numeric values, duration, and booleans; due date/time use `ConsoleInputHelper` interactive pickers, with dashboard clear/rerender before picker launch and on edit-exit.
+- `EventHandler` exists for contract consistency but is currently unused/unwired in `Program.cs`; `event`/`e` route to `EventCommandHandler` instead.
 
 ### Why Two Rendering Ownership Models Coexist
 

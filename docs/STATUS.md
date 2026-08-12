@@ -7,63 +7,82 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 ## Status Snapshot
 
-- The CLI project builds successfully.
-- Gold Panning is the active scheduling strategy; constraint optimization is routed but not implemented.
-- CLI command dispatch is consolidated onto a single `ICommandResultHandler` contract; see the repository's GitHub Issues for remaining testing-overhaul work.
-- The test suite passes. CLI handler tests no longer fail on real console clearing/cursor behavior; broader interactive seam adoption and dependency-order scheduling coverage remain pending.
+- The CLI runs and all documented commands work.
+- Gold Panning is the active scheduling strategy; constraint optimization is not yet available as a selectable mode.
+- The test suite passes. See the repository's GitHub Issues for remaining testing-overhaul work.
 
 ## Feature Matrix
 
+### Core (C# backend)
+
+`PriorityTaskManager` is the shared business-logic library used by the CLI and API.
+
 | Feature Area | Status | Notes |
 | --- | --- | --- |
-| Task management | 🟢 Working | Core add, edit, view, complete, uncomplete, delete, and dependency commands are available through the CLI. |
-| List management | 🟢 Working | Create, switch, delete, and list flows work, and lists carry copied settings for scheduling and presentation. |
+| Task management | 🟢 Working | Add, edit, view, complete, uncomplete, and delete are implemented in core services. |
+| List management | 🟢 Working | Create, switch, delete, and settings flows work, and lists carry copied settings for scheduling and presentation. |
 | Data persistence | 🟢 Working | JSON-backed data loads and saves through the core persistence service. |
-| Settings and defaults | 🟢 Working | `defaults` controls global defaults, while list-specific settings are edited on the active list. |
+| Settings and defaults | 🟢 Working | Global defaults and per-list settings overrides are both supported. |
 | Scheduling logic | 🟡 Partially implemented | Gold Panning is active; the constraint-optimization mode is routed but not implemented in the current code path. |
-| Event system | 🟡 Under review | Add, edit, list, and delete are available, but the event experience is still being refined. |
-| Task dependencies | � Working | Dependency add/remove is supported, and the active Gold Panning pipeline now enforces dependency-order placement (a dependent task is never scheduled before its prerequisite completes). |
-| Unit tests | � Passing / under overhaul | Deterministic core-service, first-pass CLI command-surface, Gold Panning invariant/replay coverage (including dependency-order scheduling), exist. Broader interactive seam adoption remains pending. |
-| Networked API | 🟡 Partially implemented | `PriorityTaskManager.API` has account/JWT auth (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) and minimal REST endpoints for task/list/event CRUD wrapping `TaskManagerService`; no client (CLI or Flutter) authenticates against it yet (tracked by issue #44). A separate unauthenticated `/api/local/schedule` route runs the real scheduling strategies statelessly for the offline Flutter client (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)). |
-| Flutter client | 🟡 Partially implemented | `PriorityTaskManager.Flutter/` is a local-only (guest/offline) web + Windows desktop shell with Riverpod state management and a Hive-backed `TaskRepository` implementation; supports add/edit/complete/delete and dependency management. The single home screen is now a "Three-Pane Command Center" (`CommandCenterScreen`: Left Rail, Center Stage, Right Inspector) rather than separate home/schedule screens; it computes real schedules by sending Hive task data to a locally spawned `PriorityTaskManager.API` sidecar (`/api/local/schedule`), not mock data (tracked by issue #47). No login or API-backed repository yet (tracked by issue #44). |
+| Event system | 🟢 Working | Add, edit, list, and delete are implemented in core services. |
+| Task dependencies | 🟢 Working | Dependency add/remove is supported, and the active Gold Panning pipeline enforces dependency-order placement (a dependent task is never scheduled before its prerequisite completes). |
+| Unit tests | 🟢 Passing / under overhaul | Deterministic core-service and Gold Panning invariant/replay coverage (including dependency-order scheduling) exist. See the repository's GitHub Issues for remaining testing-overhaul work. |
+| Networked API | 🟡 Partially implemented | `PriorityTaskManager.API` has account/JWT auth (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) and minimal REST endpoints for task/list/event CRUD wrapping core services; no client (CLI or Flutter) authenticates against it yet (tracked by issue #44). A separate unauthenticated `/api/local/schedule` route runs the real scheduling strategies statelessly for the offline Flutter client (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)). |
+
+### CLI integration
+
+Tracks how much of the Core feature set is exposed through `PriorityTaskManager.CLI`.
+
+| Feature Area | Status | Notes |
+| --- | --- | --- |
+| Task management | 🟢 Integrated | `add`, `edit`, `view`, `complete`, `uncomplete`, and `delete` commands are available. |
+| List management | 🟢 Integrated | `list create`, `list switch`, `list delete`, and `list settings` are available. |
+| Data persistence | 🟢 Integrated | Data loads and saves automatically on CLI startup/exit. |
+| Settings and defaults | 🟢 Integrated | `defaults` controls global defaults, while list-specific settings are edited on the active list. |
+| Scheduling logic | 🟡 Partially integrated | `mode` switches scheduling mode, but constraint optimization is not yet a usable mode. |
+| Event system | 🟡 Under review | `event`/`e` add, edit, list, and delete are available, but the event experience is still being refined. |
+| Task dependencies | 🟢 Integrated | `depend` manages dependencies. |
+| Networked API | ⚪ Not integrated | The CLI does not call `PriorityTaskManager.API`; it uses core services directly in-process. |
+
+### Flutter client integration
+
+Tracks how much of the Core feature set is exposed through `PriorityTaskManager.Flutter` (local-only guest/offline web + Windows desktop client).
+
+| Feature Area | Status | Notes |
+| --- | --- | --- |
+| Task management | 🟢 Integrated | Add, edit, complete, and delete are supported against the Hive-backed local repository. |
+| List management | 🟡 Partially integrated | List switching is supported through the Left Rail; create/delete/settings flows are still limited (tracked by ongoing Flutter issues). |
+| Data persistence | 🟢 Integrated | Local persistence is Hive-backed, independent of the .NET JSON persistence. |
+| Settings and defaults | 🔴 Not yet integrated | No defaults/settings screen exists in the Flutter client yet. |
+| Scheduling logic | 🟢 Integrated | The Command Center computes real schedules by sending Hive task data to a locally spawned `PriorityTaskManager.API` sidecar (`/api/local/schedule`), not mock data (tracked by issue #47). |
+| Event system | 🔴 Not yet integrated | Core event CRUD exists, but the Flutter client has no event UI yet. |
+| Task dependencies | 🟢 Integrated | Dependency management is supported in the inline task inspector form. |
+| Networked API | 🔴 Not yet integrated | No login or API-backed repository yet; the client only reaches the local `/api/local/schedule` sidecar (tracked by issue #44). |
 
 ## Confirmed Capabilities
 
-- The CLI starts from `PriorityTaskManager.CLI/Program.cs` and wires the core services at startup.
-- The core library owns business logic, persistence coordination, and scheduling behavior.
+- The CLI starts up and loads existing data automatically.
 - Gold Panning is the currently active scheduling strategy.
-- The app stores data in JSON files and loads that state into memory on startup.
-- Lists can carry copied settings snapshots instead of mutating only global defaults.
-- The CLI now supports command orchestration through a single canonical contract: every wired handler implements `ICommandResultHandler` and returns `CommandResult` values that let `Program.cs` own dashboard refresh and message output.
-- `DeleteHandler`, `CompleteHandler`, `UncompleteHandler`, `DependHandler`, `TimeHandler`, `ModeHandler`, `CleanupHandler`, `AddHandler`, `ViewHandler`, and the flag-based branch of `SettingsHandler` build real `CommandResult` outcomes (status, message, dashboard-refresh flag).
-- `HelpHandler`, `EditHandler`, `ListHandler`, and `EventCommandHandler` also implement `ICommandResultHandler`, but return an inert `CommandResult` (no message, no refresh) because these handlers already own their console rendering end-to-end through `IInteractiveConsoleFacade`. `Program.cs` does no extra work for them beyond what already happened before migration.
-- `SettingsHandler`'s no-arg (`defaults`) branch also renders through `IInteractiveConsoleFacade` and returns an inert `CommandResult`; its flag-based (`--default-*`) branch returns a real `CommandResult` built from parsed arguments.
-- `EventHandler` (currently unused/unwired in `Program.cs`; `event`/`e` route to `EventCommandHandler` instead) has the same `ICommandResultHandler` shape for contract consistency.
-- Shared parsing/usage-result behavior for migrated non-interactive handlers is centralized via `NonInteractiveCommandResultHelper`.
-- Shared interactive console behavior for keyboard-driven handlers is abstracted through `IInteractiveConsoleFacade`.
-- `HelpHandler`, `EditHandler`, interactive `list settings` flow, interactive `list switch` flow, the interactive `defaults` menu (`SettingsHandler`), and `event add`/`event edit`/`event clear` interactive paths currently use the interactive console facade seam.
-- `EditHandler` interactive field updates now use row-anchored editing/toggling for strings, numeric values, duration, and booleans; due date/time use `ConsoleInputHelper` interactive pickers, with dashboard clear/rerender before picker launch and on edit-exit.
-- `PriorityTaskManager.API` exposes authenticated REST endpoints (`/api/tasks`, `/api/lists`, `/api/events`) for CRUD, each built only on `TaskManagerService` calls per the integrations boundary; no scheduling or persistence logic is duplicated in the API layer.
-- `PriorityTaskManager.API` also exposes an unauthenticated, stateless `POST /api/local/schedule` endpoint (gated behind a `LocalOnly` startup flag so it never requires Postgres/JWT) that runs the real `GoldPanningStrategy`/`ConstraintOptimizationStrategy` against a request body and returns computed schedule/slack data without persisting anything server-side.
-- `PriorityTaskManager.Flutter/` is a separate Dart/Flutter codebase (web + Windows desktop targets scaffolded; macOS/Linux desktop folders present but unverified) implementing its own local `TaskRepository` abstraction backed by Hive, independent of the .NET solution for task/list CRUD. For scheduling, the desktop client's `ScheduleRepository` spawns/reaches a local `PriorityTaskManager.API` sidecar and posts Hive-derived task data to `/api/local/schedule`, so the displayed schedule is computed by the real algorithm rather than mock data; the web target does not get a sidecar and remains online-only for this feature.
-- The Flutter UI (`lib/ui/command_center/`) is a single "Three-Pane Command Center" layout: a persistent Left Rail (list switcher, Archive/Settings nav, Engine Status clock/mode indicator), a horizontally scrolling Center Stage (a pipeline of daily columns — Today, Tomorrow, ..., Unscheduled — each holding scheduled task cards and fixed event cards), and a Right Inspector that shows an inline CRUD form for whichever task, event, or list is currently selected (`selectedInspectorProvider`/`InspectorTarget`). At narrow/medium window widths the Left Rail and/or Right Inspector collapse into `Drawer`/`endDrawer` overlays instead of docked panels; each docked pane can also be resized via `ResizableDivider` and manually dragged past its minimum width to collapse into a drawer, with a "dock panel" button in the drawer header to restore it. Selecting an item while the inspector isn't docked auto-opens the end drawer. `ResizableTextField` gives multi-line inputs (e.g. task descriptions) a drag handle to resize their height.
+- Data is stored in local JSON files and persists between runs.
+- Lists can carry their own settings snapshot instead of always inheriting only global defaults.
+- Every command produces clear feedback: a success message, a warning, usage guidance, or an actionable error.
+- `PriorityTaskManager.API` exposes authenticated REST endpoints (`/api/tasks`, `/api/lists`, `/api/events`) for CRUD, and an unauthenticated, stateless `/api/local/schedule` endpoint that computes a real Gold Panning (or constraint-optimization) schedule from posted task data without persisting anything server-side.
+- `PriorityTaskManager.Flutter/` is a local-only (guest/offline) web + Windows desktop client with its own task/list/event CRUD, supporting add/edit/complete/delete and dependency management. Its single-screen "Three-Pane Command Center" (Left Rail, Center Stage, Right Inspector) computes real schedules by calling the local `PriorityTaskManager.API` sidecar rather than using mock data (tracked by issue #47). No login or API-backed repository yet (tracked by issue #44).
+- The Flutter Command Center layout: a persistent Left Rail (list switcher, Archive/Settings nav, Engine Status clock/mode indicator), a horizontally scrolling Center Stage (daily columns — Today, Tomorrow, ..., Unscheduled — with scheduled task cards and fixed event cards), and a Right Inspector with an inline CRUD form for the selected task, event, or list. At narrow/medium window widths the Left Rail and/or Right Inspector collapse into drawer overlays; each docked pane can be resized or dragged into a drawer, with a button to restore it. Selecting an item while the inspector isn't docked auto-opens the drawer. Multi-line inputs (e.g. task descriptions) have a drag handle to resize their height.
 
 ## Known Limitations
 
 - The application is designed for a single local user.
 - There is no undo/redo system.
 - Recurring tasks are not supported.
-- The constraint-optimization scheduling path is not implemented yet.
+- The constraint-optimization scheduling mode is not implemented yet.
 
 ## Known Issues and Technical Debt
 
 - The scheduling system still needs future refinement around slack handling, intra-day focus heuristics, and backlog fairness.
 - The event workflow is functional but still under UX refinement.
-- The test suite overhaul is in progress; deterministic core-service coverage, first-pass CLI handler command-surface coverage, Gold Panning invariant/replay coverage, dependency-order scheduling coverage, and console-handle-safe CLI handler tests are now in place, while deep interactive CLI flows remain pending.
-- Most CLI handlers still directly own console rendering/refresh and remain pending migration to result-based orchestration.
-- `ConsoleHelper.ClearAndRenderDashboard` tolerates environments with no attached console handle (e.g. test hosts) as a safety net.
-- The interactive `defaults` menu (`SettingsHandler`), `list switch` (`ListHandler`), and `event add`/`event edit`/`event clear` (`EventCommandHandler`) flows have adopted the `IInteractiveConsoleFacade` seam; remaining direct-console interactive flows are limited to simple, non-menu confirm/read-line prompts (e.g. `AddHandler`'s no-arg task creation, `list delete`/`cleanup` confirmations), which are out of scope for the facade seam by design.
-- Task, list, and event `Id` values are now globally unique `Guid`s (see [docs/ARCHITECTURE_DATA.md](ARCHITECTURE_DATA.md)); `TaskItem.DisplayId` remains the short, user-facing sequential identifier for task commands. Events have no `DisplayId` equivalent, so `event`/`e` edit and remove flows currently require typing full GUID strings — a known UX gap, not yet scoped for a fix.
+- The test suite overhaul is in progress; see the repository's GitHub Issues for current scope and remaining work.
+- Task, list, and event `Id` values are globally unique `Guid`s; `TaskItem.DisplayId` remains the short, user-facing sequential identifier for task commands. Events have no `DisplayId` equivalent, so `event`/`e` edit and remove flows currently require typing full GUID strings — a known UX gap, not yet scoped for a fix.
 
 ## Command Surface Summary
 

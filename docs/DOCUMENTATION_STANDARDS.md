@@ -102,17 +102,22 @@ Must not include:
 ### Status
 Required sections:
 - Status Snapshot
-- Feature Matrix
+- Feature Matrix (subsections: Core (C# backend), CLI integration, Flutter client integration)
 - Confirmed Capabilities
 - Known Limitations
 - Known Issues and Technical Debt
 - Command Surface Summary
 - Validation Notes
 
+The Feature Matrix separates what Core implements from what each client (CLI, Flutter) actually exposes; a feature can be Working in Core while Not yet integrated in a client.
+
+docs/STATUS.md is a user-facing document: describe what a user can observe or do (features, commands, behavior, limitations), not how it is implemented internally.
+
 Must not include:
 - Future plans
 - Design debate notes
 - Changelog narrative
+- Internal implementation details (class names, contracts, interfaces, method names, migration/refactor state) — these belong in the matching docs/ARCHITECTURE_*.md document instead
 
 ## Writing Style and Formatting Rules
 - Use clear, concrete language and short paragraphs.
