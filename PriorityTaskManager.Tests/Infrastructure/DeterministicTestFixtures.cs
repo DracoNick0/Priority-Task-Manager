@@ -30,7 +30,7 @@ namespace PriorityTaskManager.Tests.Infrastructure
             string title,
             Guid listId = default,
             int importance = 3,
-            double complexity = 3.0,
+            int complexity = 3,
             double durationHours = 1,
             DateTime? dueDate = null)
         {

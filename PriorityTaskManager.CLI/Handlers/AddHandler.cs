@@ -221,7 +221,7 @@ namespace PriorityTaskManager.CLI.Handlers
                 Title = title,
                 Description = "", // Description is left empty for quick add. Can be added via 'edit'.
                 Importance = importance,
-                Complexity = (double)complexity,
+                Complexity = complexity,
                 IsPinned = isPinned,
                 DueDate = dueDate,
                 NotBefore = notBefore,

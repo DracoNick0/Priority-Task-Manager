@@ -216,15 +216,15 @@ namespace PriorityTaskManager.CLI.Handlers
                     }
                     break;
                 case 3: // Complexity
-                    if (_console.TryPromptInlineInput(selectorTop + index, "> Complexity (1-10): ", task.Complexity.ToString("0.##"), out var complexityInput))
+                    if (_console.TryPromptInlineInput(selectorTop + index, "> Complexity (1-10): ", task.Complexity.ToString(), out var complexityInput))
                     {
-                        if (double.TryParse(complexityInput, out double complexity) && complexity >= 1 && complexity <= 10)
+                        if (int.TryParse(complexityInput, out int complexity) && complexity >= 1 && complexity <= 10)
                         {
                             task.Complexity = complexity;
                         }
                         else
                         {
-                            _console.WriteLine("Invalid complexity. Enter a number from 1 to 10.");
+                            _console.WriteLine("Invalid complexity. Enter a whole number from 1 to 10.");
                             _console.ReadKey(true);
                         }
                     }
@@ -499,7 +499,7 @@ namespace PriorityTaskManager.CLI.Handlers
                     if (int.TryParse(directValue, out int imp)) task.Importance = Math.Clamp(imp, 1, 10);
                     break;
                 case "complexity":
-                    if (double.TryParse(directValue, out double comp)) task.Complexity = Math.Clamp(comp, 1, 10);
+                    if (int.TryParse(directValue, out int comp)) task.Complexity = Math.Clamp(comp, 1, 10);
                     break;
                 case "pinned":
                 case "pin":

@@ -59,7 +59,7 @@ namespace PriorityTaskManager.Models
             
             // Advanced scheduling defaults
             IsPinned = false;
-            Complexity = 1.0;
+            Complexity = 1;
             Points = 0.0;
             BeforePadding = null;
             AfterPadding = null;
@@ -151,7 +151,7 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the cognitive load or mental effort required for the task, on an arbitrary scale.
         /// Higher values represent more demanding tasks. Defaults to 1.0.
         /// </summary>
-        public double Complexity { get; set; }
+        public int Complexity { get; set; }
 
         /// <summary>
         /// Gets or sets the list of other task IDs that must be completed before this task can begin.

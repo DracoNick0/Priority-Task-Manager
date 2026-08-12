@@ -34,8 +34,8 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                     task.EstimatedDuration = TimeSpan.FromHours(1);
 
                 // Ensure Complexity has a baseline value.
-                if (task.Complexity <= 0.0)
-                    task.Complexity = 1.0;
+                if (task.Complexity <= 0)
+                    task.Complexity = 1;
 
                 // An inverted NotBefore/DueDate range would make the task permanently unschedulable,
                 // so clamp NotBefore back to DueDate as a safe default.

@@ -32,9 +32,9 @@ namespace PriorityTaskManager.Tests.Scheduling
 
             var tasks = new List<TaskItem>
             {
-                CreateTask(1, "Design", 3.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 8, complexity: 6.0),
-                CreateTask(2, "Implementation", 4.0, new DateTime(2026, 7, 9, 17, 0, 0), importance: 9, complexity: 7.0),
-                CreateTask(3, "Review", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 6, complexity: 4.0)
+                CreateTask(1, "Design", 3.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 8, complexity: 6),
+                CreateTask(2, "Implementation", 4.0, new DateTime(2026, 7, 9, 17, 0, 0), importance: 9, complexity: 7),
+                CreateTask(3, "Review", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 6, complexity: 4)
             };
 
             var expectedDurations = tasks.ToDictionary(t => t.Id, t => t.EstimatedDuration);
@@ -94,9 +94,9 @@ namespace PriorityTaskManager.Tests.Scheduling
 
             var taskTemplates = new List<TaskItem>
             {
-                CreateTask(10, "A", 2.5, new DateTime(2026, 7, 8, 17, 0, 0), importance: 7, complexity: 5.0),
-                CreateTask(11, "B", 1.5, new DateTime(2026, 7, 7, 17, 0, 0), importance: 8, complexity: 6.0),
-                CreateTask(12, "C", 3.0, null, importance: 4, complexity: 3.0)
+                CreateTask(10, "A", 2.5, new DateTime(2026, 7, 8, 17, 0, 0), importance: 7, complexity: 5),
+                CreateTask(11, "B", 1.5, new DateTime(2026, 7, 7, 17, 0, 0), importance: 8, complexity: 6),
+                CreateTask(12, "C", 3.0, null, importance: 4, complexity: 3)
             };
 
             // Invariant: Idempotency - identical inputs must produce an identical schedule.
@@ -151,10 +151,10 @@ namespace PriorityTaskManager.Tests.Scheduling
             var profile = CreateProfile();
             var events = new List<Event>();
 
-            var completedTask = CreateTask(20, "Already Done", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 3.0);
+            var completedTask = CreateTask(20, "Already Done", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 3);
             completedTask.IsCompleted = true;
 
-            var activeTask = CreateTask(21, "Still Open", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 3.0);
+            var activeTask = CreateTask(21, "Still Open", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 3);
 
             var tasks = new List<TaskItem> { completedTask, activeTask };
             var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
@@ -179,7 +179,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             var events = new List<Event>();
 
             // 12 hours cannot fit in a single 8-hour workday, so a divisible task must split.
-            var task = CreateTask(30, "Big Divisible", 12.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 5.0);
+            var task = CreateTask(30, "Big Divisible", 12.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 5);
             task.IsDivisible = true;
 
             var tasks = new List<TaskItem> { task };
@@ -209,7 +209,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             var profile = CreateProfile();
             var events = CreateEvents();
 
-            var task = CreateTask(40, "Immutable Check", 2.0, new DateTime(2026, 7, 9, 17, 0, 0), importance: 4, complexity: 2.0);
+            var task = CreateTask(40, "Immutable Check", 2.0, new DateTime(2026, 7, 9, 17, 0, 0), importance: 4, complexity: 2);
             var originalTitle = task.Title;
             var originalImportance = task.Importance;
             var originalComplexity = task.Complexity;
@@ -241,8 +241,8 @@ namespace PriorityTaskManager.Tests.Scheduling
 
             var tasks = new List<TaskItem>
             {
-                CreateTask(50, "Due Soon", 3.0, new DateTime(2026, 7, 7, 17, 0, 0), importance: 6, complexity: 4.0),
-                CreateTask(51, "Due Later", 4.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 6, complexity: 4.0)
+                CreateTask(50, "Due Soon", 3.0, new DateTime(2026, 7, 7, 17, 0, 0), importance: 6, complexity: 4),
+                CreateTask(51, "Due Later", 4.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 6, complexity: 4)
             };
 
             var strategy = CreateStrategy(profile, events, DeterministicTestFixtures.CreateMockTimeService(now));
@@ -266,7 +266,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             var profile = CreateProfile();
             var events = new List<Event>();
 
-            var restrictedTask = CreateTask(52, "Not Before Constrained", 2.0, new DateTime(2026, 7, 13, 17, 0, 0), importance: 6, complexity: 4.0);
+            var restrictedTask = CreateTask(52, "Not Before Constrained", 2.0, new DateTime(2026, 7, 13, 17, 0, 0), importance: 6, complexity: 4);
             restrictedTask.NotBefore = new DateTime(2026, 7, 9, 13, 0, 0);
 
             var tasks = new List<TaskItem> { restrictedTask };
@@ -291,8 +291,8 @@ namespace PriorityTaskManager.Tests.Scheduling
             var profile = CreateProfile();
             var events = new List<Event>();
 
-            var prerequisite = CreateTask(60, "Prerequisite", 4.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 4.0);
-            var dependent = CreateTask(61, "Dependent", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 9, complexity: 8.0);
+            var prerequisite = CreateTask(60, "Prerequisite", 4.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 5, complexity: 4);
+            var dependent = CreateTask(61, "Dependent", 2.0, new DateTime(2026, 7, 10, 17, 0, 0), importance: 9, complexity: 8);
             dependent.Dependencies.Add(prerequisite.Id);
 
             var tasks = new List<TaskItem> { dependent, prerequisite };
@@ -381,7 +381,7 @@ namespace PriorityTaskManager.Tests.Scheduling
             double durationHours,
             DateTime? dueDate,
             int importance,
-            double complexity)
+            int complexity)
         {
             var task = DeterministicTestFixtures.CreateTask(
                 title,

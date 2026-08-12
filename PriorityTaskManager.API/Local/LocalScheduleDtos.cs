@@ -9,7 +9,7 @@ namespace PriorityTaskManager.API.Local
 		bool IsCompleted,
 		double Progress,
 		int Importance,
-		double Complexity,
+		int Complexity,
 		double Points,
 		DateTime? DueDate,
 		DateTime? NotBefore,

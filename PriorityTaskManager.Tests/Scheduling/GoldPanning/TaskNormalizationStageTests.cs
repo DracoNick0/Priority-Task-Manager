@@ -70,7 +70,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
                 Title = "Fully Defined Task",
                 Importance = 5,
                 EstimatedDuration = TimeSpan.FromMinutes(30),
-                Complexity = 2.5
+                Complexity = 3
             };
             var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
@@ -83,7 +83,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             Assert.NotNull(resultTask);
             Assert.Equal(5, resultTask.Importance);
             Assert.Equal(TimeSpan.FromMinutes(30), resultTask.EstimatedDuration);
-            Assert.Equal(2.5, resultTask.Complexity);
+            Assert.Equal(3, resultTask.Complexity);
         }
 
         [Fact]
@@ -95,7 +95,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
                 Title = "Default Task",
                 Importance = 0, // Should become 1
                 EstimatedDuration = TimeSpan.Zero, // Should become 1 hour
-                Complexity = 0.0 // Should become 1.0
+                Complexity = 0 // Should become 1
             };
             var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
@@ -108,7 +108,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             Assert.NotNull(resultTask);
             Assert.Equal(1, resultTask.Importance);
             Assert.Equal(TimeSpan.FromHours(1), resultTask.EstimatedDuration);
-            Assert.Equal(1.0, resultTask.Complexity);
+            Assert.Equal(1, resultTask.Complexity);
         }
 
         [Fact]
@@ -160,7 +160,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var task = new TaskItem
             {
                 Title = "Negative Complexity Task",
-                Complexity = -10.0 // Should become 1.0
+                Complexity = -10 // Should become 1
             };
             var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem> { task };
@@ -171,7 +171,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
 
             // Assert
             Assert.NotNull(resultTask);
-            Assert.Equal(1.0, resultTask.Complexity);
+            Assert.Equal(1, resultTask.Complexity);
         }
 
         [Fact]

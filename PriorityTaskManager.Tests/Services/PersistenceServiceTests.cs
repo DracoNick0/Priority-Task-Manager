@@ -62,7 +62,7 @@ namespace PriorityTaskManager.Tests.Services
                             ListId = listId,
                             EstimatedDuration = TimeSpan.FromHours(2),
                             Importance = 4,
-                            Complexity = 2.5,
+                            Complexity = 3,
                             DueDate = new DateTime(2026, 7, 20, 12, 0, 0)
                         }
                     },
