@@ -63,34 +63,34 @@ class CenterStage extends ConsumerWidget {
         .firstOrNull;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingMd,
-        vertical: AppTheme.spacingSm,
-      ),
-      child: Row(
-        children: [
-          if (showHamburger)
-            IconButton(
-              icon: const Icon(Icons.menu),
-              tooltip: 'Show navigation',
-              onPressed: onOpenLeftRail,
-            ),
-          Expanded(
-            child: Text(
-              activeList?.name ?? 'Priority Task Manager',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
+      child: SizedBox(
+        height: AppTheme.paneHeaderHeight,
+        child: Row(
+          children: [
+            if (showHamburger)
+              IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: 'Show navigation',
+                onPressed: onOpenLeftRail,
               ),
-              overflow: TextOverflow.ellipsis,
+            Expanded(
+              child: Text(
+                activeList?.name ?? 'Priority Task Manager',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-          if (showInspectorToggle)
-            IconButton(
-              icon: const Icon(Icons.info_outline),
-              tooltip: 'Show inspector',
-              onPressed: onOpenInspector,
-            ),
-        ],
+            if (showInspectorToggle)
+              IconButton(
+                icon: const Icon(Icons.info_outline),
+                tooltip: 'Show inspector',
+                onPressed: onOpenInspector,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -269,9 +269,6 @@ class _Pipeline extends ConsumerWidget {
         title: 'Unscheduled',
         subtitle: '${unscheduledTasks.length} task(s)',
         cards: unscheduledTasks.map(buildPlainTaskCard).toList(),
-        onAddTask: () => openNewTask(today),
-        onAddEvent: () => openNewEvent(today),
-        onCleanup: () {},
       ),
     ];
 

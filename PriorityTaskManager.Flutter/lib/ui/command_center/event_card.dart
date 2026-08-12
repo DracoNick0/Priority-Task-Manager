@@ -50,18 +50,17 @@ class EventCard extends StatelessWidget {
                             event.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             '${timeFormat.format(event.startTime)} \u2013 ${timeFormat.format(event.endTime)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white70,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.white70),
                           ),
                         ],
                       ),
@@ -81,9 +80,8 @@ class _DiagonalHashPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..strokeWidth = 1;
-
     const spacing = 10.0;
     for (double x = -size.height; x < size.width; x += spacing) {
       canvas.drawLine(

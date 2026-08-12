@@ -15,7 +15,7 @@ class TaskItem extends HiveObject {
     this.estimatedDurationMinutes = 60,
     List<String>? dependencies,
     this.importance = 5,
-    this.complexity = 1.0,
+    this.complexity = 1,
     this.notBefore,
     this.isPinned = false,
     this.isDivisible = true,
@@ -55,7 +55,7 @@ class TaskItem extends HiveObject {
   /// Cognitive load/effort, mirroring `PriorityTaskManager.Models.TaskItem.Complexity`.
   /// Not yet editable from the UI (defaults to 1.0).
   @HiveField(9)
-  double complexity;
+  int complexity;
 
   /// Earliest allowed start time, mirroring `PriorityTaskManager.Models.TaskItem.NotBefore`.
   /// Not yet editable from the UI.
@@ -81,7 +81,7 @@ class TaskItem extends HiveObject {
     int? estimatedDurationMinutes,
     List<String>? dependencies,
     int? importance,
-    double? complexity,
+    int? complexity,
     DateTime? notBefore,
     bool clearNotBefore = false,
     bool? isPinned,

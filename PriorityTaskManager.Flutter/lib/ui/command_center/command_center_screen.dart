@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
 import 'center_stage.dart';
 import 'left_rail.dart';
 import 'resizable_divider.dart';
 import 'right_inspector.dart';
 
-const double _leftMinWidth = 200;
-const double _leftMaxWidth = 420;
+const double _leftMinWidth = 150;
+const double _leftMaxWidth = 350;
 const double _centerMinWidth = 400;
 const double _rightMinWidth = 300;
-const double _rightMaxWidth = 520;
+const double _rightMaxWidth = 500;
 const double _dividerWidth = 12;
+// How far past a pane's minimum width the user must drag before it snaps
+// shut and collapses into a drawer/button, independent of window size.
+const double _collapseThreshold = 60;
 
 /// Root widget for the "Three-Pane Command Center" layout: a persistent
 /// Left Rail, a horizontally scrolling Center Stage pipeline, and a Right
@@ -30,6 +34,10 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   double _leftWidth = 260;
   double _rightWidth = 340;
+  // Manually collapsed via drag, independent of the window-size-driven
+  // isWide/isMedium/isNarrow breakpoints.
+  bool _leftCollapsed = false;
+  bool _rightCollapsed = false;
 
   @override
   void initState() {
@@ -59,85 +67,162 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
       }
     });
 
+    // ref.listen must run directly in build(), not inside a nested builder
+    // closure, so the right-docked check is mirrored here off MediaQuery
+    // rather than the LayoutBuilder constraints used below.
+    final mediaWidth = MediaQuery.sizeOf(context).width;
+    final isWideForInspector =
+        mediaWidth >= _leftMinWidth + _centerMinWidth + _rightMinWidth;
+    final rightDockedForInspector = isWideForInspector && !_rightCollapsed;
+
+    // Pop the inspector open like the "show inspector" button would
+    // whenever something gets selected but the pane isn't docked.
+    ref.listen<InspectorTarget>(selectedInspectorProvider, (previous, next) {
+      if (next.kind != InspectorKind.none && !rightDockedForInspector) {
+        _scaffoldKey.currentState?.openEndDrawer();
+      }
+    });
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final isWide = width >= _leftMinWidth + _centerMinWidth + _rightMinWidth;
-        final isMedium =
-            !isWide && width >= _leftMinWidth + _centerMinWidth;
+        final isWide =
+            width >= _leftMinWidth + _centerMinWidth + _rightMinWidth;
+        final isMedium = !isWide && width >= _leftMinWidth + _centerMinWidth;
         final isNarrow = !isWide && !isMedium;
 
-        final leftWidth = _leftWidth.clamp(
-          _leftMinWidth,
-          _leftMaxWidth,
-        ).toDouble();
-        final rightWidth = _rightWidth.clamp(
-          _rightMinWidth,
-          _rightMaxWidth,
-        ).toDouble();
+        // Docked (in-line) visibility, factoring in manual drag-to-collapse
+        // on top of the window-size-driven breakpoints.
+        final leftDocked = (isWide || isMedium) && !_leftCollapsed;
+        final rightDocked = isWide && !_rightCollapsed;
+
+        final leftWidth = _leftWidth
+            .clamp(_leftMinWidth, _leftMaxWidth)
+            .toDouble();
+        final rightWidth = _rightWidth
+            .clamp(_rightMinWidth, _rightMaxWidth)
+            .toDouble();
 
         return Scaffold(
           key: _scaffoldKey,
-          drawer: isNarrow
-              ? Drawer(width: 280, child: const LeftRail())
+          drawer: !leftDocked
+              ? Drawer(
+                  width: 280,
+                  child: Column(
+                    children: [
+                      if (!isNarrow)
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: IconButton(
+                            icon: const Icon(Icons.dock),
+                            tooltip: 'Dock panel',
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              setState(() {
+                                _leftCollapsed = false;
+                                _leftWidth = _leftMinWidth;
+                              });
+                            },
+                          ),
+                        ),
+                      const Expanded(child: LeftRail()),
+                    ],
+                  ),
+                )
               : null,
-          endDrawer: !isWide
+          endDrawer: !rightDocked
               ? Drawer(
                   width: rightWidth.clamp(_rightMinWidth, 400).toDouble(),
                   child: RightInspector(
-                    onClose: () => Navigator.of(context).pop(),
+                    headerAction: isWide
+                        ? IconButton(
+                            icon: const Icon(Icons.dock),
+                            tooltip: 'Dock panel',
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              setState(() {
+                                _rightCollapsed = false;
+                                _rightWidth = _rightMinWidth;
+                              });
+                            },
+                          )
+                        : null,
                   ),
                 )
               : null,
           body: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (isWide || isMedium)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: leftWidth,
-                  child: const LeftRail(),
-                ),
-              if (isWide || isMedium)
+              if (leftDocked)
+                SizedBox(width: leftWidth, child: const LeftRail()),
+              if (leftDocked)
                 ResizableDivider(
                   onDrag: (delta) {
-                    final maxLeft = (width - rightWidth - _centerMinWidth -
-                            _dividerWidth * 2)
-                        .clamp(_leftMinWidth, _leftMaxWidth);
+                    final maxLeft =
+                        (width -
+                                rightWidth -
+                                _centerMinWidth -
+                                _dividerWidth * 2)
+                            .clamp(_leftMinWidth, _leftMaxWidth);
+                    final proposed = _leftWidth + delta;
+                    if (proposed < _leftMinWidth - _collapseThreshold) {
+                      setState(() {
+                        _leftCollapsed = true;
+                        _leftWidth = _leftMinWidth;
+                      });
+                      return;
+                    }
+                    // Only clamp the upper bound here; the lower bound is
+                    // intentionally left unclamped (down to the collapse
+                    // threshold) so consecutive small drag deltas below the
+                    // visual minimum still accumulate toward collapsing.
                     setState(() {
-                      _leftWidth = (_leftWidth + delta)
-                          .clamp(_leftMinWidth, maxLeft)
+                      _leftWidth = proposed
+                          .clamp(_leftMinWidth - _collapseThreshold, maxLeft)
                           .toDouble();
                     });
                   },
                 ),
               Expanded(
                 child: CenterStage(
-                  showHamburger: isNarrow,
-                  onOpenLeftRail: () =>
-                      _scaffoldKey.currentState?.openDrawer(),
-                  showInspectorToggle: !isWide,
+                  showHamburger: !leftDocked,
+                  onOpenLeftRail: () => _scaffoldKey.currentState?.openDrawer(),
+                  showInspectorToggle: !rightDocked,
                   onOpenInspector: () =>
                       _scaffoldKey.currentState?.openEndDrawer(),
                 ),
               ),
-              if (isWide) ...[
+              if (rightDocked) ...[
                 ResizableDivider(
                   onDrag: (delta) {
-                    final maxRight = (width - leftWidth - _centerMinWidth -
-                            _dividerWidth * 2)
-                        .clamp(_rightMinWidth, _rightMaxWidth);
+                    final maxRight =
+                        (width -
+                                leftWidth -
+                                _centerMinWidth -
+                                _dividerWidth * 2)
+                            .clamp(_rightMinWidth, _rightMaxWidth);
+                    final proposed = _rightWidth - delta;
+                    if (proposed < _rightMinWidth - _collapseThreshold) {
+                      setState(() {
+                        _rightCollapsed = true;
+                        _rightWidth = _rightMinWidth;
+                      });
+                      return;
+                    }
+                    // See the left divider's onDrag for why the lower bound
+                    // is intentionally left unclamped here.
                     setState(() {
-                      _rightWidth = (_rightWidth - delta)
-                          .clamp(_rightMinWidth, maxRight)
+                      _rightWidth = proposed
+                          .clamp(_rightMinWidth - _collapseThreshold, maxRight)
                           .toDouble();
                     });
                   },
                 ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
+                SizedBox(
                   width: rightWidth,
-                  child: const RightInspector(),
+                  child: RightInspector(
+                    onClose: () => setState(() => _rightCollapsed = true),
+                  ),
                 ),
               ],
             ],

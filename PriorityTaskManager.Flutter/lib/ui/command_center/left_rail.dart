@@ -24,24 +24,30 @@ class LeftRail extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppTheme.spacingMd,
-                AppTheme.spacingMd,
-                AppTheme.spacingMd,
-                AppTheme.spacingSm,
-              ),
-              child: Text(
-                'Priority Task Manager',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                overflow: TextOverflow.ellipsis,
+            SizedBox(
+              height: AppTheme.paneHeaderHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingMd,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Priority Task Manager',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const Divider(height: 1),
             Expanded(
               child: listsAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(child: Text('Error: $error')),
                 data: (lists) => ListView(
                   padding: const EdgeInsets.symmetric(
@@ -54,24 +60,27 @@ class LeftRail extends ConsumerWidget {
                       ),
                       child: Text(
                         'LISTS',
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: AppTheme.spacingSm),
                     for (final list in lists)
                       _RailItem(
                         icon: Icons.list_alt,
                         label: list.name,
                         isSelected: list.id == activeListId,
-                        onTap: () => ref
-                            .read(activeListIdProvider.notifier)
-                            .state = list.id,
-                        onSettings: () => ref
-                            .read(selectedInspectorProvider.notifier)
-                            .state = InspectorTarget(
-                          kind: InspectorKind.list,
-                          id: list.id,
-                        ),
+                        onTap: () =>
+                            ref.read(activeListIdProvider.notifier).state =
+                                list.id,
+                        onSettings: () =>
+                            ref
+                                .read(selectedInspectorProvider.notifier)
+                                .state = InspectorTarget(
+                              kind: InspectorKind.list,
+                              id: list.id,
+                            ),
                       ),
                     _RailItem(
                       icon: Icons.add,
@@ -161,7 +170,7 @@ class _RailItem extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppTheme.spacingMd,
-            vertical: AppTheme.spacingSm,
+            vertical: AppTheme.spacingXs,
           ),
           child: Row(
             children: [
@@ -177,7 +186,7 @@ class _RailItem extends StatelessWidget {
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: isSelected
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurface,
@@ -213,7 +222,7 @@ class _EngineStatus extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingMd),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
       ),
       child: Row(
         children: [
@@ -236,15 +245,15 @@ class _EngineStatus extends ConsumerWidget {
                     loading: () => '--:--',
                     error: (_, error) => '--:--',
                   ),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   algorithmMode,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

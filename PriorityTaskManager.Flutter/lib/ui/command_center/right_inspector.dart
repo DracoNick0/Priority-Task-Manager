@@ -11,11 +11,15 @@ import 'inspector_forms/task_inspector_form.dart';
 /// The Right Inspector: shows the full CRUD form for whatever task, event,
 /// or list is currently selected via [selectedInspectorProvider].
 class RightInspector extends ConsumerWidget {
-  const RightInspector({super.key, this.onClose});
+  const RightInspector({super.key, this.onClose, this.headerAction});
 
   /// If provided, shows a close button (used when the inspector is a
   /// detached overlay/EndDrawer rather than a docked panel).
   final VoidCallback? onClose;
+
+  /// Overrides the header's trailing icon button (e.g. a "dock" action for
+  /// the detached overlay). Takes precedence over [onClose]'s close icon.
+  final Widget? headerAction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,22 +32,31 @@ class RightInspector extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingMd),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Inspector',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          SizedBox(
+            height: AppTheme.paneHeaderHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingMd,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Inspector',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                if (onClose != null)
-                  IconButton(icon: const Icon(Icons.close), onPressed: onClose),
-              ],
+                  if (headerAction != null)
+                    headerAction!
+                  else if (onClose != null)
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: onClose,
+                    ),
+                ],
+              ),
             ),
           ),
           const Divider(height: 1),

@@ -11,9 +11,9 @@ class DayColumn extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.cards,
-    required this.onAddTask,
-    required this.onAddEvent,
-    required this.onCleanup,
+    this.onAddTask,
+    this.onAddEvent,
+    this.onCleanup,
   });
 
   static const double width = 320;
@@ -21,9 +21,9 @@ class DayColumn extends StatelessWidget {
   final String title;
   final String? subtitle;
   final List<Widget> cards;
-  final VoidCallback onAddTask;
-  final VoidCallback onAddEvent;
-  final VoidCallback onCleanup;
+  final VoidCallback? onAddTask;
+  final VoidCallback? onAddEvent;
+  final VoidCallback? onCleanup;
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +54,8 @@ class DayColumn extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (subtitle != null)
@@ -69,21 +67,27 @@ class DayColumn extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add_task, size: 18),
-                  tooltip: 'Add Task',
-                  onPressed: onAddTask,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.event, size: 18),
-                  tooltip: 'Add Event',
-                  onPressed: onAddEvent,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.cleaning_services_outlined, size: 18),
-                  tooltip: 'Cleanup completed',
-                  onPressed: onCleanup,
-                ),
+                if (onAddTask != null)
+                  IconButton(
+                    icon: const Icon(Icons.add_task, size: 18),
+                    tooltip: 'Add Task',
+                    onPressed: onAddTask,
+                  ),
+                if (onAddEvent != null)
+                  IconButton(
+                    icon: const Icon(Icons.event, size: 18),
+                    tooltip: 'Add Event',
+                    onPressed: onAddEvent,
+                  ),
+                if (onCleanup != null)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.cleaning_services_outlined,
+                      size: 18,
+                    ),
+                    tooltip: 'Cleanup',
+                    onPressed: onCleanup,
+                  ),
               ],
             ),
           ),
@@ -95,8 +99,9 @@ class DayColumn extends StatelessWidget {
                       padding: const EdgeInsets.all(AppTheme.spacingLg),
                       child: Text(
                         'Nothing here',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   )

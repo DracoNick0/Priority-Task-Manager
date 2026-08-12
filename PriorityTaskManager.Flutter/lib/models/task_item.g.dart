@@ -28,7 +28,7 @@ class TaskItemAdapter extends TypeAdapter<TaskItem> {
           : (fields[6] as num).toInt(),
       dependencies: (fields[7] as List?)?.cast<String>(),
       importance: fields[8] == null ? 5 : (fields[8] as num).toInt(),
-      complexity: fields[9] == null ? 1.0 : (fields[9] as num).toDouble(),
+      complexity: fields[9] == null ? 1 : (fields[9] as num).toInt(),
       notBefore: fields[10] as DateTime?,
       isPinned: fields[11] == null ? false : fields[11] as bool,
       isDivisible: fields[12] == null ? true : fields[12] as bool,

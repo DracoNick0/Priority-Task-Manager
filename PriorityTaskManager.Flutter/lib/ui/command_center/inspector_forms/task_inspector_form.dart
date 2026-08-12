@@ -5,6 +5,7 @@ import '../../../models/task_item.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../theme/app_theme.dart';
+import '../resizable_text_field.dart';
 
 /// Inline CRUD form for a single task, shown in the Right Inspector.
 ///
@@ -27,7 +28,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   DateTime? _dueDate;
   DateTime? _notBefore;
   int _importance = 5;
-  double _complexity = 1.0;
+  int _complexity = 1;
   bool _isPinned = false;
   bool _isDivisible = true;
   TaskItem? _loadedFrom;
@@ -98,88 +99,142 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           decoration: const InputDecoration(labelText: 'Title'),
         ),
         const SizedBox(height: AppTheme.spacingMd),
-        TextField(
+        ResizableTextField(
           controller: _descriptionController,
-          decoration: const InputDecoration(labelText: 'Description'),
-          maxLines: 3,
-        ),
-        const SizedBox(height: AppTheme.spacingMd),
-        TextField(
-          controller: _durationController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Estimated minutes'),
+          label: 'Description',
         ),
         const SizedBox(height: AppTheme.spacingMd),
         _DatePickerRow(
+          icon: Icons.event_outlined,
           label: 'Due date',
           value: _dueDate,
           onPick: () => _pickDate((d) => setState(() => _dueDate = d)),
           onClear: () => setState(() => _dueDate = null),
         ),
-        const SizedBox(height: AppTheme.spacingSm),
-        _DatePickerRow(
-          label: 'Not before',
-          value: _notBefore,
-          onPick: () => _pickDate((d) => setState(() => _notBefore = d)),
-          onClear: () => setState(() => _notBefore = null),
+        const SizedBox(height: AppTheme.spacingMd),
+        TextField(
+          controller: _durationController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Estimated minutes',
+            prefixIcon: Icon(Icons.timer_outlined),
+          ),
         ),
         const SizedBox(height: AppTheme.spacingMd),
-        Text('Importance: $_importance'),
-        Slider(
+        _SliderField(
+          icon: Icons.priority_high,
+          label: 'Importance',
+          valueLabel: '$_importance',
           value: _importance.toDouble(),
           min: 1,
           max: 10,
           divisions: 9,
-          label: '$_importance',
           onChanged: (value) => setState(() => _importance = value.round()),
         ),
-        Text('Complexity: ${_complexity.toStringAsFixed(1)}'),
-        Slider(
-          value: _complexity,
-          min: 0.5,
-          max: 5,
+        const SizedBox(height: AppTheme.spacingSm),
+        _SliderField(
+          icon: Icons.bar_chart,
+          label: 'Complexity',
+          valueLabel: '$_complexity',
+          value: _complexity.toDouble(),
+          min: 1,
+          max: 10,
           divisions: 9,
-          label: _complexity.toStringAsFixed(1),
-          onChanged: (value) => setState(() => _complexity = value),
+          onChanged: (value) => setState(() => _complexity = value.round()),
         ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Pinned (skip scheduling)'),
-          value: _isPinned,
-          onChanged: (value) => setState(() => _isPinned = value),
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Divisible (can be split)'),
-          value: _isDivisible,
-          onChanged: (value) => setState(() => _isDivisible = value),
-        ),
-        if (candidateDependencies.isNotEmpty) ...[
-          const SizedBox(height: AppTheme.spacingMd),
-          Text(
-            'Dependencies',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
+        const SizedBox(height: AppTheme.spacingSm),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text(
+              'Advanced Settings',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
+            children: [
+              _DatePickerRow(
+                icon: Icons.hourglass_empty,
+                label: 'Not before',
+                value: _notBefore,
+                onPick: () => _pickDate((d) => setState(() => _notBefore = d)),
+                onClear: () => setState(() => _notBefore = null),
+              ),
+              const SizedBox(height: AppTheme.spacingSm),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.push_pin_outlined, size: 20),
+                title: const Text('Pinned'),
+                subtitle: const Text('Skip scheduling'),
+                trailing: Transform.scale(
+                  scale: 0.8,
+                  child: Switch(
+                    value: _isPinned,
+                    onChanged: (value) => setState(() => _isPinned = value),
+                  ),
+                ),
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.call_split, size: 20),
+                title: const Text('Divisible'),
+                subtitle: const Text('Can be split across sessions'),
+                trailing: Transform.scale(
+                  scale: 0.8,
+                  child: Switch(
+                    value: _isDivisible,
+                    onChanged: (value) => setState(() => _isDivisible = value),
+                  ),
+                ),
+              ),
+              if (candidateDependencies.isNotEmpty) ...[
+                const SizedBox(height: AppTheme.spacingMd),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.account_tree_outlined,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppTheme.spacingXs),
+                    Text(
+                      'Dependencies',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.spacingSm),
+                Wrap(
+                  spacing: AppTheme.spacingSm,
+                  runSpacing: AppTheme.spacingSm,
+                  children: [
+                    for (final candidate in candidateDependencies)
+                      FilterChip(
+                        label: Text(candidate.title),
+                        selected: _selectedDependencyIds.contains(candidate.id),
+                        onSelected: (checked) {
+                          setState(() {
+                            if (checked) {
+                              _selectedDependencyIds.add(candidate.id);
+                            } else {
+                              _selectedDependencyIds.remove(candidate.id);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ],
           ),
-          for (final candidate in candidateDependencies)
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              title: Text(candidate.title),
-              value: _selectedDependencyIds.contains(candidate.id),
-              onChanged: (checked) {
-                setState(() {
-                  if (checked ?? false) {
-                    _selectedDependencyIds.add(candidate.id);
-                  } else {
-                    _selectedDependencyIds.remove(candidate.id);
-                  }
-                });
-              },
-            ),
-        ],
+        ),
         const SizedBox(height: AppTheme.spacingLg),
         Row(
           children: [
@@ -270,12 +325,14 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
 
 class _DatePickerRow extends StatelessWidget {
   const _DatePickerRow({
+    required this.icon,
     required this.label,
     required this.value,
     required this.onPick,
     required this.onClear,
   });
 
+  final IconData icon;
   final String label;
   final DateTime? value;
   final VoidCallback onPick;
@@ -283,18 +340,114 @@ class _DatePickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            value == null
-                ? '$label: not set'
-                : '$label: ${value!.toLocal().toString().split(' ').first}',
-          ),
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingMd,
+          vertical: AppTheme.spacingSm,
         ),
-        TextButton(onPressed: onPick, child: const Text('Pick')),
-        if (value != null)
-          IconButton(icon: const Icon(Icons.clear), onPressed: onClear),
+        decoration: BoxDecoration(
+          border: Border.all(color: colorScheme.outline),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: AppTheme.spacingSm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    value == null
+                        ? 'Not set'
+                        : value!.toLocal().toString().split(' ').first,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (value != null)
+              IconButton(
+                icon: const Icon(Icons.clear, size: 18),
+                tooltip: 'Clear $label',
+                onPressed: onClear,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Labeled slider with a leading icon and a value badge, used for the
+/// Importance and Complexity fields.
+class _SliderField extends StatelessWidget {
+  const _SliderField({
+    required this.icon,
+    required this.label,
+    required this.valueLabel,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final String valueLabel;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: AppTheme.spacingXs),
+            Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingSm,
+                vertical: 2,
+              ),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+              child: Text(
+                valueLabel,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          divisions: divisions,
+          label: valueLabel,
+          onChanged: onChanged,
+        ),
       ],
     );
   }

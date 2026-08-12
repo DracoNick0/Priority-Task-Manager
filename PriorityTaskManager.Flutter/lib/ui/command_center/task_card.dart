@@ -39,9 +39,7 @@ class TaskCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final timeFormat = DateFormat.jm();
 
-    final double opacity = task.isCompleted
-        ? 0.4
-        : (isBlocked ? 0.5 : 1.0);
+    final double opacity = task.isCompleted ? 0.4 : (isBlocked ? 0.5 : 1.0);
 
     Widget card = Container(
       margin: const EdgeInsets.symmetric(vertical: AppTheme.spacingXs),
@@ -83,12 +81,13 @@ class TaskCard extends StatelessWidget {
                               task.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    decoration: task.isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
                             ),
                           ),
                           if (isBlocked) ...[
@@ -151,8 +150,7 @@ class _FragmentBadge extends StatelessWidget {
       ),
       child: Text(
         '$index/$total',
-        style: TextStyle(
-          fontSize: 11,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.bold,
           color: colorScheme.onPrimaryContainer,
         ),

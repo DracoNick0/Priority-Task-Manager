@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 
+/// Central design tokens for the app.
+///
+/// Convention: use [spacingXs]..[spacingXl] for all padding/margin/gaps and
+/// [radiusSm]..[radiusLg] for corner radii — never hardcode pixel values.
+/// For text, use `Theme.of(context).textTheme.<role>` (titleMedium,
+/// titleSmall, bodyMedium, bodySmall, labelSmall, etc.) and `.copyWith()`
+/// only to adjust color/weight/decoration — never construct a bare
+/// `TextStyle(fontSize: ...)`. This keeps font sizes consistent and lets
+/// Material's type scale drive them in one place.
 class AppTheme {
   // Define standard spacing
   static const double spacingXs = 4.0;
@@ -13,12 +22,15 @@ class AppTheme {
   static const double radiusMd = 8.0;
   static const double radiusLg = 12.0;
 
+  // Fixed height for the Command Center's Left Rail / Center Stage /
+  // Right Inspector headers, so their divider lines stay lined up.
+  static const double paneHeaderHeight = 56.0;
+
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: const Color(0xFF2A4365), // A slate/navy base
       brightness: Brightness.light,
       surface: const Color(0xFFF8FAFC),
-      background: const Color(0xFFF1F5F9),
       primary: const Color(0xFF3B82F6),
       secondary: const Color(0xFF10B981),
       error: const Color(0xFFEF4444),
@@ -32,7 +44,6 @@ class AppTheme {
       seedColor: const Color(0xFF1E293B),
       brightness: Brightness.dark,
       surface: const Color(0xFF0F172A),
-      background: const Color(0xFF020617),
       primary: const Color(0xFF60A5FA),
       secondary: const Color(0xFF34D399),
       error: const Color(0xFFF87171),
@@ -79,7 +90,7 @@ class AppTheme {
           vertical: spacingSm,
         ),
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

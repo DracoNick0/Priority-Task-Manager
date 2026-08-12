@@ -5,6 +5,7 @@ import '../../../models/task_list.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../theme/app_theme.dart';
+import '../resizable_text_field.dart';
 
 /// Inline CRUD form for renaming/deleting a task list, shown in the Right
 /// Inspector.
@@ -67,10 +68,9 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
           decoration: const InputDecoration(labelText: 'Name'),
         ),
         const SizedBox(height: AppTheme.spacingMd),
-        TextField(
+        ResizableTextField(
           controller: _descriptionController,
-          decoration: const InputDecoration(labelText: 'Description'),
-          maxLines: 3,
+          label: 'Description',
         ),
         const SizedBox(height: AppTheme.spacingLg),
         Row(
