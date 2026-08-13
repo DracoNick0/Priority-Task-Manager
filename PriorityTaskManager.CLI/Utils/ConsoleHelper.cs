@@ -305,7 +305,7 @@ namespace PriorityTaskManager.CLI.Utils
                 Console.ResetColor();
 
                 var realisticSlack = taskMetricsService.CalculateRealisticSlack(closestTask, userProfile);
-                var actualSlack = taskMetricsService.CalculateActualSlack(closestTask);
+                var actualSlack = taskMetricsService.CalculateActualSlack(closestTask, userProfile);
 
                 Console.ForegroundColor = meterColor;
                 Console.WriteLine($"Task with least slack: '{closestTask.Title}'");

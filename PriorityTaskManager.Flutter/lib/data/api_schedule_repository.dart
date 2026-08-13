@@ -17,7 +17,9 @@ String _formatDuration(Duration duration) {
 }
 
 /// Renders total minutes as a "D days H hours M minutes" string, matching the
-/// CLI dashboard's slack summary formatting.
+/// CLI dashboard's slack summary formatting. Leading zero-value units (days,
+/// then hours) are dropped so e.g. "0 days 5 hours 0 minutes" reads as
+/// "5 hours 0 minutes".
 String _formatSlackMinutes(double? totalMinutes) {
   if (totalMinutes == null) return '-';
   final isNegative = totalMinutes < 0;
@@ -26,7 +28,11 @@ String _formatSlackMinutes(double? totalMinutes) {
   final hours = (absMinutes % (24 * 60)) ~/ 60;
   final minutes = absMinutes % 60;
   final sign = isNegative ? '-' : '';
-  return '$sign$days days $hours hours $minutes minutes';
+  final parts = <String>[];
+  if (days != 0) parts.add('$days days');
+  if (parts.isNotEmpty || hours != 0) parts.add('$hours hours');
+  parts.add('$minutes minutes');
+  return '$sign${parts.join(' ')}';
 }
 
 /// [ScheduleRepository] implementation that computes the schedule by calling

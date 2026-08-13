@@ -52,7 +52,7 @@ namespace PriorityTaskManager.API.Local
 						t.IsPinned,
 						t.ScheduledParts.Select(p => new LocalScheduledChunkResponse(p.StartTime, p.EndTime)).ToList(),
 						metrics.CalculateRealisticSlack(t, profile).TotalMinutes,
-						metrics.CalculateActualSlack(t).TotalMinutes))
+						metrics.CalculateActualSlack(t, profile).TotalMinutes))
 					.ToList();
 
 				// Mirrors the CLI dashboard's "closest task to due date" pick (see ConsoleHelper.FindClosestTaskToDueDate).
@@ -67,7 +67,7 @@ namespace PriorityTaskManager.API.Local
 					leastSlackTask?.Id,
 					leastSlackTask?.Title,
 					leastSlackTask is null ? null : metrics.CalculateRealisticSlack(leastSlackTask, profile).TotalMinutes,
-					leastSlackTask is null ? null : metrics.CalculateActualSlack(leastSlackTask).TotalMinutes);
+					leastSlackTask is null ? null : metrics.CalculateActualSlack(leastSlackTask, profile).TotalMinutes);
 
 				return Results.Ok(response);
 			});

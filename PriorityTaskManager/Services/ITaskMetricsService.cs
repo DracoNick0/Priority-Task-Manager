@@ -7,6 +7,6 @@ namespace PriorityTaskManager.Services
     {
         DateTime FindTargetDayForSlackMeter(DateTime currentTime, UserProfile profile);
         TimeSpan CalculateRealisticSlack(TaskItem task, UserProfile userProfile);
-        TimeSpan CalculateActualSlack(TaskItem task);
+        TimeSpan CalculateActualSlack(TaskItem task, UserProfile userProfile);
     }
 }

@@ -81,8 +81,9 @@ namespace PriorityTaskManager.Services
         /// Calculates the actual slack time for a task.
         /// </summary>
         /// <param name="task">The task to calculate slack for.</param>
+        /// <param name="userProfile">The user profile.</param>
         /// <returns>The calculated slack time.</returns>
-        public TimeSpan CalculateActualSlack(TaskItem task)
+        public TimeSpan CalculateActualSlack(TaskItem task, UserProfile userProfile)
         {
             if (task.ScheduledParts == null || !task.ScheduledParts.Any() || !task.DueDate.HasValue)
             {
@@ -90,7 +91,7 @@ namespace PriorityTaskManager.Services
             }
             // Use the latest scheduled chunk end time
             var scheduledEnd = task.ScheduledParts.Max(p => p.EndTime);
-            return task.DueDate.Value - scheduledEnd;
+            return GetEffectiveDueTime(task, userProfile) - scheduledEnd;
         }
 
         private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)

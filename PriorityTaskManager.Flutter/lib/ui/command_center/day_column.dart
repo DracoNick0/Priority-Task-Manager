@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// A single column in the Center Stage pipeline (e.g. "Today", "Tomorrow",
-/// or "Unscheduled"). Has its own sticky header with quick actions and an
-/// independently scrollable body of task/event cards.
+/// or "Unscheduled"). Has its own sticky header showing the day, remaining
+/// free time, and an independently scrollable body of task/event cards.
+/// Quick actions (add task/event, cleanup) live in the Center Stage's
+/// top bar instead of per-column, since they aren't day-specific.
 class DayColumn extends StatelessWidget {
   const DayColumn({
     super.key,
     required this.title,
     required this.subtitle,
     required this.cards,
-    this.onAddTask,
-    this.onAddEvent,
-    this.onCleanup,
+    this.freeTimeLabel,
   });
 
   static const double width = 320;
@@ -21,9 +21,7 @@ class DayColumn extends StatelessWidget {
   final String title;
   final String? subtitle;
   final List<Widget> cards;
-  final VoidCallback? onAddTask;
-  final VoidCallback? onAddEvent;
-  final VoidCallback? onCleanup;
+  final String? freeTimeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +41,7 @@ class DayColumn extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(
               AppTheme.spacingMd,
               AppTheme.spacingMd,
-              AppTheme.spacingSm,
+              AppTheme.spacingMd,
               AppTheme.spacingSm,
             ),
             child: Row(
@@ -67,26 +65,12 @@ class DayColumn extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onAddTask != null)
-                  IconButton(
-                    icon: const Icon(Icons.add_task, size: 18),
-                    tooltip: 'Add Task',
-                    onPressed: onAddTask,
-                  ),
-                if (onAddEvent != null)
-                  IconButton(
-                    icon: const Icon(Icons.event, size: 18),
-                    tooltip: 'Add Event',
-                    onPressed: onAddEvent,
-                  ),
-                if (onCleanup != null)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.cleaning_services_outlined,
-                      size: 18,
+                if (freeTimeLabel != null)
+                  Text(
+                    freeTimeLabel!,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                    tooltip: 'Cleanup',
-                    onPressed: onCleanup,
                   ),
               ],
             ),
