@@ -258,14 +258,36 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     );
   }
 
+  // Mirrors the default UserProfile.WorkEndTime until profile settings are
+  // editable from the Flutter UI.
+  static const TimeOfDay _defaultEndOfWorkday = TimeOfDay(hour: 17, minute: 0);
+
   Future<void> _pickDate(ValueChanged<DateTime> onPicked) async {
-    final picked = await showDatePicker(
+    final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
-    if (picked != null) onPicked(picked);
+    if (pickedDate == null) return;
+    if (!mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _defaultEndOfWorkday,
+      helpText: 'Due time (defaults to end of workday)',
+    );
+    final time = pickedTime ?? _defaultEndOfWorkday;
+
+    onPicked(
+      DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        time.hour,
+        time.minute,
+      ),
+    );
   }
 
   Future<void> _save(TaskItem? existing) async {
@@ -365,7 +387,8 @@ class _DatePickerRow extends StatelessWidget {
                   Text(
                     value == null
                         ? 'Not set'
-                        : value!.toLocal().toString().split(' ').first,
+                        : '${value!.toLocal().toString().split(' ').first} '
+                              '${TimeOfDay.fromDateTime(value!.toLocal()).format(context)}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),

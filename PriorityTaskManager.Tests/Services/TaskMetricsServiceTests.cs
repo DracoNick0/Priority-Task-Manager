@@ -67,6 +67,7 @@ namespace PriorityTaskManager.Tests.Services
         [Fact]
         public void CalculateActualSlack_ShouldUseLatestScheduledChunkEnd()
         {
+            var profile = DeterministicTestFixtures.CreateStandardUserProfile();
             var task = DeterministicTestFixtures.CreateTask(
                 title: "Chunks",
                 durationHours: 3,
@@ -86,7 +87,7 @@ namespace PriorityTaskManager.Tests.Services
                 }
             };
 
-            var slack = _service.CalculateActualSlack(task);
+            var slack = _service.CalculateActualSlack(task, profile);
 
             Assert.Equal(TimeSpan.FromHours(1.5), slack);
         }

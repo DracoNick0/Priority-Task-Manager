@@ -33,11 +33,17 @@ class CenterStage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeListId = ref.watch(activeListIdProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final scheduleAsync = ref.watch(scheduleProvider);
+    final schedule = scheduleAsync.asData?.value;
 
     return Column(
       children: [
         _buildHeader(context, ref, activeListId),
         const Divider(height: 1),
+        if (activeListId != null &&
+            schedule != null &&
+            schedule.leastSlackTask != 'None')
+          _buildLeastSlackBar(context, schedule),
         Expanded(
           child: activeListId == null
               ? Center(
@@ -62,6 +68,27 @@ class CenterStage extends ConsumerWidget {
         .where((list) => list.id == activeListId)
         .firstOrNull;
 
+    void openNewTask() {
+      ref.read(selectedInspectorProvider.notifier).state =
+          const InspectorTarget(kind: InspectorKind.task, id: null);
+    }
+
+    void openNewEvent() {
+      ref.read(selectedInspectorProvider.notifier).state =
+          const InspectorTarget(kind: InspectorKind.event, id: null);
+    }
+
+    void cleanupCompleted() {
+      if (activeListId == null) return;
+      final tasks =
+          ref.read(tasksProvider(activeListId)).asData?.value ??
+          const <TaskItem>[];
+      final notifier = ref.read(tasksProvider(activeListId).notifier);
+      for (final task in tasks.where((task) => task.isCompleted)) {
+        notifier.deleteTask(task.id);
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
       child: SizedBox(
@@ -83,6 +110,21 @@ class CenterStage extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.add_task),
+              tooltip: 'Add Task',
+              onPressed: activeListId == null ? null : openNewTask,
+            ),
+            IconButton(
+              icon: const Icon(Icons.event),
+              tooltip: 'Add Event',
+              onPressed: activeListId == null ? null : openNewEvent,
+            ),
+            IconButton(
+              icon: const Icon(Icons.cleaning_services_outlined),
+              tooltip: 'Cleanup completed tasks',
+              onPressed: activeListId == null ? null : cleanupCompleted,
+            ),
             if (showInspectorToggle)
               IconButton(
                 icon: const Icon(Icons.info_outline),
@@ -91,6 +133,55 @@ class CenterStage extends ConsumerWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLeastSlackBar(BuildContext context, DailySchedule schedule) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final bodySmall = Theme.of(context).textTheme.bodySmall;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingMd,
+        vertical: AppTheme.spacingXs,
+      ),
+      color: colorScheme.surfaceContainerLow,
+      child: Row(
+        children: [
+          Icon(
+            Icons.hourglass_bottom,
+            size: 16,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppTheme.spacingXs),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Least slack: ',
+                    style: bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(
+                    text: '"${schedule.leastSlackTask}"  ',
+                    style: bodySmall,
+                  ),
+                  TextSpan(
+                    text:
+                        'Realistic ${schedule.realisticSlack} · Actual ${schedule.actualSlack}',
+                    style: bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -185,25 +276,57 @@ class _Pipeline extends ConsumerWidget {
       );
     }
 
-    void openNewTask(DateTime day) {
-      ref.read(selectedInspectorProvider.notifier).state =
-          const InspectorTarget(kind: InspectorKind.task, id: null);
-    }
-
-    void openNewEvent(DateTime day) {
-      ref.read(selectedInspectorProvider.notifier).state =
-          const InspectorTarget(kind: InspectorKind.event, id: null);
-    }
-
-    void cleanupDay(List<TaskItem> completedInDay) {
-      final notifier = ref.read(tasksProvider(listId).notifier);
-      for (final task in completedInDay) {
-        notifier.deleteTask(task.id);
-      }
-    }
+    // The list's work window (mirrors ApiScheduleRepository's default
+    // profile) used to derive each day's "Free Time" remainder.
+    const workStartHour = 9;
+    const workEndHour = 17;
+    bool isWorkDay(DateTime day) =>
+        day.weekday >= DateTime.monday && day.weekday <= DateTime.friday;
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final todayWorkEnd = DateTime(
+      today.year,
+      today.month,
+      today.day,
+      workEndHour,
+    );
+    final isPastWorkEnd = now.isAfter(todayWorkEnd);
+
+    /// Minutes remaining in [day]'s work window: the full window for future
+    /// days, or only what's left after [now] when [day] is today.
+    int windowMinutesFor(DateTime day) {
+      if (!isWorkDay(day)) return 0;
+      final isToday =
+          day.year == today.year &&
+          day.month == today.month &&
+          day.day == today.day;
+      final workStart = DateTime(day.year, day.month, day.day, workStartHour);
+      final workEnd = DateTime(day.year, day.month, day.day, workEndHour);
+      final effectiveStart = (isToday && now.isAfter(workStart))
+          ? now
+          : workStart;
+      if (!effectiveStart.isBefore(workEnd)) return 0;
+      return workEnd.difference(effectiveStart).inMinutes;
+    }
+
+    String freeTimeLabel(
+      DateTime day,
+      List<ScheduledTask> dayTasks,
+      List<FixedEvent> dayEvents,
+    ) {
+      final windowMinutes = windowMinutesFor(day);
+      final usedMinutes =
+          dayTasks.fold<double>(0, (sum, t) => sum + t.chunkHours * 60) +
+          dayEvents.fold<double>(
+            0,
+            (sum, e) => sum + e.endTime.difference(e.startTime).inMinutes,
+          );
+      final remaining = (windowMinutes - usedMinutes).clamp(0, windowMinutes);
+      final hours = remaining ~/ 60;
+      final minutes = (remaining % 60).round();
+      return 'Free Time: ${hours}h ${minutes}m';
+    }
 
     // Completed tasks aren't sent through the scheduler, so surface them
     // directly in Today's column so they remain visible (dimmed/struck-through)
@@ -241,30 +364,33 @@ class _Pipeline extends ConsumerWidget {
         .toList();
 
     final columns = <DayColumn>[
-      DayColumn(
-        title: 'Today',
-        subtitle: _formatDate(today),
-        cards: todayCards,
-        onAddTask: () => openNewTask(today),
-        onAddEvent: () => openNewEvent(today),
-        onCleanup: () => cleanupDay(completedTasks),
-      ),
-      for (final day in futureDays)
+      if (todayCards.isNotEmpty && !isPastWorkEnd)
         DayColumn(
-          title: isSameDay(day, today.add(const Duration(days: 1)))
-              ? 'Tomorrow'
-              : _formatWeekday(day),
-          subtitle: _formatDate(day),
-          cards: [
-            ...futureByDay[day]!.map(buildTaskCard),
-            ...events
-                .where((event) => isSameDay(event.startTime, day))
-                .map(buildEventCard),
-          ],
-          onAddTask: () => openNewTask(day),
-          onAddEvent: () => openNewEvent(day),
-          onCleanup: () {},
+          title: 'Today',
+          subtitle: _formatDate(today),
+          freeTimeLabel: freeTimeLabel(today, schedule.todayTasks, todayEvents),
+          cards: todayCards,
         ),
+      for (final day in futureDays)
+        if (futureByDay[day]!.isNotEmpty ||
+            events.any((event) => isSameDay(event.startTime, day)))
+          DayColumn(
+            title: isSameDay(day, today.add(const Duration(days: 1)))
+                ? 'Tomorrow'
+                : _formatWeekday(day),
+            subtitle: _formatDate(day),
+            freeTimeLabel: freeTimeLabel(
+              day,
+              futureByDay[day]!,
+              events.where((event) => isSameDay(event.startTime, day)).toList(),
+            ),
+            cards: [
+              ...futureByDay[day]!.map(buildTaskCard),
+              ...events
+                  .where((event) => isSameDay(event.startTime, day))
+                  .map(buildEventCard),
+            ],
+          ),
       DayColumn(
         title: 'Unscheduled',
         subtitle: '${unscheduledTasks.length} task(s)',
