@@ -22,7 +22,7 @@ namespace PriorityTaskManager.CLI
 		{
 
 			// Set up services
-			var dataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
+			var dataDirectory = Path.Combine(FindRepoRoot(), "Data");
 			var composed = ServiceComposer.Compose(dataDirectory);
 			if (composed.DataContainer.LoadWarnings.Count > 0)
 			{
@@ -117,6 +117,22 @@ namespace PriorityTaskManager.CLI
 					backgroundRefreshScheduler.Start();
 				}
 			}
+		}
+
+		/// <summary>
+		/// Walks up from the running assembly's directory to find the repository root (identified by
+		/// the solution file), so persisted data lives in a stable location instead of the build output
+		/// directory, which is prone to interference from debuggers/antivirus and is wiped on clean builds.
+		/// </summary>
+		/// <returns>The repository root directory, or the assembly directory if it cannot be found.</returns>
+		private static string FindRepoRoot()
+		{
+			var dir = new DirectoryInfo(AppContext.BaseDirectory);
+			while (dir != null && dir.GetFiles("*.sln").Length == 0)
+			{
+				dir = dir.Parent;
+			}
+			return dir?.FullName ?? AppContext.BaseDirectory;
 		}
 	}
 }

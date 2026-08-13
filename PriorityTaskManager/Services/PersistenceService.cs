@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using PriorityTaskManager.Models;
 
 namespace PriorityTaskManager.Services
@@ -15,6 +16,7 @@ namespace PriorityTaskManager.Services
         private readonly string _listsFilePath;
         private readonly string _userProfileFilePath;
         private readonly string _eventsFilePath;
+        private readonly string _archiveFilePath;
 
         public PersistenceService(string dataDirectory)
         {
@@ -22,6 +24,7 @@ namespace PriorityTaskManager.Services
             _listsFilePath = Path.Combine(dataDirectory, "lists.json");
             _userProfileFilePath = Path.Combine(dataDirectory, "user_profile.json");
             _eventsFilePath = Path.Combine(dataDirectory, "events.json");
+            _archiveFilePath = Path.Combine(dataDirectory, "archive.json");
         }
 
         public DataContainer LoadData()
@@ -291,13 +294,27 @@ namespace PriorityTaskManager.Services
             var tempFilePath = filePath + ".tmp";
             File.WriteAllText(tempFilePath, content);
 
-            if (File.Exists(filePath))
+            // File.Replace/Move can transiently fail with IOException if another process (e.g. an
+            // antivirus scanner) has the destination briefly open, so retry a few times before giving up.
+            const int maxAttempts = 5;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                File.Replace(tempFilePath, filePath, null);
-            }
-            else
-            {
-                File.Move(tempFilePath, filePath);
+                try
+                {
+                    if (File.Exists(filePath))
+                    {
+                        File.Replace(tempFilePath, filePath, null);
+                    }
+                    else
+                    {
+                        File.Move(tempFilePath, filePath);
+                    }
+                    return;
+                }
+                catch (IOException) when (attempt < maxAttempts)
+                {
+                    Thread.Sleep(50 * attempt);
+                }
             }
         }
 
@@ -307,16 +324,17 @@ namespace PriorityTaskManager.Services
         /// <param name="tasksToArchive">The tasks to archive.</param>
         public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
         {
-            const string archiveFilePath = "archive.json";
+            Directory.CreateDirectory(Path.GetDirectoryName(_archiveFilePath) ?? ".");
+
             List<TaskItem> archivedTasks = new List<TaskItem>();
-            if (File.Exists(archiveFilePath))
+            if (File.Exists(_archiveFilePath))
             {
-                var existingData = File.ReadAllText(archiveFilePath);
+                var existingData = File.ReadAllText(_archiveFilePath);
                 archivedTasks = JsonSerializer.Deserialize<List<TaskItem>>(existingData) ?? new List<TaskItem>();
             }
             archivedTasks.AddRange(tasksToArchive);
             var updatedData = JsonSerializer.Serialize(archivedTasks);
-            File.WriteAllText(archiveFilePath, updatedData);
+            WriteAtomic(_archiveFilePath, updatedData);
         }
     }
 }
