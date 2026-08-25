@@ -15,8 +15,7 @@ class EventInspectorForm extends ConsumerStatefulWidget {
   final String? eventId;
 
   @override
-  ConsumerState<EventInspectorForm> createState() =>
-      _EventInspectorFormState();
+  ConsumerState<EventInspectorForm> createState() => _EventInspectorFormState();
 }
 
 class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
@@ -53,11 +52,10 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
 
     FixedEvent? existing;
     if (_isEditing) {
-      existing = events.where((event) => event.id == widget.eventId).firstOrNull;
-      if (existing == null) {
-        return const Center(child: Text('Event not found.'));
-      }
-      _loadFrom(existing);
+      existing = events
+          .where((event) => event.id == widget.eventId)
+          .firstOrNull;
+      if (existing != null) _loadFrom(existing);
     }
 
     return ListView(
@@ -122,9 +120,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
       initialTime: TimeOfDay.now(),
     );
     if (time == null) return;
-    onPicked(
-      DateTime(date.year, date.month, date.day, time.hour, time.minute),
-    );
+    onPicked(DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
   void _save(FixedEvent? existing) {
