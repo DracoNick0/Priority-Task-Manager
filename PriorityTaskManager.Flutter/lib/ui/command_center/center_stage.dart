@@ -200,7 +200,7 @@ class _Pipeline extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(tasksProvider(listId));
     final scheduleAsync = ref.watch(scheduleProvider);
-    final events = ref.watch(eventsProvider(listId));
+    final events = ref.watch(eventsProvider(listId)).asData?.value ?? const [];
 
     if (tasksAsync.isLoading || scheduleAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());

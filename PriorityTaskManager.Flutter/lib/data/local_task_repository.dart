@@ -1,34 +1,51 @@
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/fixed_event.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
+import '../models/user_profile.dart';
 import 'task_repository.dart';
 
 const String taskListsBoxName = 'task_lists';
 const String tasksBoxName = 'tasks';
+const String userProfileBoxName = 'user_profile';
+const String eventsBoxName = 'events';
+const String _profileKey = 'profile';
 
 /// Local, on-device [TaskRepository] implementation backed by Hive boxes.
 ///
 /// This is the only wired implementation for the offline/guest MVP shell;
 /// an API-backed implementation is out of scope here (see issue #44).
 class LocalTaskRepository implements TaskRepository {
-  LocalTaskRepository(this._listsBox, this._tasksBox);
+  LocalTaskRepository(
+    this._listsBox,
+    this._tasksBox,
+    this._profileBox,
+    this._eventsBox,
+  );
 
   final Box<TaskList> _listsBox;
   final Box<TaskItem> _tasksBox;
+  final Box<UserProfile> _profileBox;
+  final Box<FixedEvent> _eventsBox;
   final Uuid _uuid = const Uuid();
 
   static Future<LocalTaskRepository> open() async {
     final listsBox = await Hive.openBox<TaskList>(taskListsBoxName);
     final tasksBox = await Hive.openBox<TaskItem>(tasksBoxName);
+    final profileBox = await Hive.openBox<UserProfile>(userProfileBoxName);
+    final eventsBox = await Hive.openBox<FixedEvent>(eventsBoxName);
 
     if (listsBox.isEmpty) {
       final defaultList = TaskList(id: const Uuid().v4(), name: 'General');
       await listsBox.put(defaultList.id, defaultList);
     }
+    if (profileBox.isEmpty) {
+      await profileBox.put(_profileKey, UserProfile());
+    }
 
-    return LocalTaskRepository(listsBox, tasksBox);
+    return LocalTaskRepository(listsBox, tasksBox, profileBox, eventsBox);
   }
 
   @override
@@ -57,6 +74,13 @@ class LocalTaskRepository implements TaskRepository {
         .toList();
     for (final taskId in tasksToRemove) {
       await _tasksBox.delete(taskId);
+    }
+    final eventsToRemove = _eventsBox.values
+        .where((event) => event.listId == listId)
+        .map((event) => event.id)
+        .toList();
+    for (final eventId in eventsToRemove) {
+      await _eventsBox.delete(eventId);
     }
     await _listsBox.delete(listId);
   }
@@ -129,5 +153,46 @@ class LocalTaskRepository implements TaskRepository {
     task.dependencies = List<String>.from(task.dependencies)
       ..remove(dependsOnTaskId);
     await _tasksBox.put(task.id, task);
+  }
+
+  @override
+  Future<UserProfile> getProfile() async =>
+      _profileBox.get(_profileKey) ?? UserProfile();
+
+  @override
+  Future<void> updateProfile(UserProfile profile) async {
+    await _profileBox.put(_profileKey, profile);
+  }
+
+  @override
+  Future<List<FixedEvent>> getEvents(String listId) async =>
+      _eventsBox.values.where((event) => event.listId == listId).toList();
+
+  @override
+  Future<FixedEvent> addEvent({
+    required String listId,
+    required String title,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    final event = FixedEvent(
+      id: _uuid.v4(),
+      listId: listId,
+      title: title,
+      startTime: startTime,
+      endTime: endTime,
+    );
+    await _eventsBox.put(event.id, event);
+    return event;
+  }
+
+  @override
+  Future<void> updateEvent(FixedEvent event) async {
+    await _eventsBox.put(event.id, event);
+  }
+
+  @override
+  Future<void> deleteEvent(String eventId) async {
+    await _eventsBox.delete(eventId);
   }
 }

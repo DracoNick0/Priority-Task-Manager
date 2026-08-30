@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
 import '../theme/app_theme.dart';
+import 'inspector_forms/defaults_inspector_form.dart';
 import 'inspector_forms/event_inspector_form.dart';
 import 'inspector_forms/list_inspector_form.dart';
 import 'inspector_forms/task_inspector_form.dart';
@@ -98,6 +99,8 @@ class RightInspector extends ConsumerWidget {
           key: ValueKey('list-${selection.id}'),
           listId: selection.id!,
         );
+      case InspectorKind.defaults:
+        return const DefaultsInspectorForm(key: ValueKey('defaults'));
     }
   }
 }

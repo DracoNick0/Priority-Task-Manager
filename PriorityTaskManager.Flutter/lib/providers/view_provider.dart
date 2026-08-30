@@ -2,8 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/api_schedule_repository.dart';
 import '../data/schedule_repository.dart';
+import '../models/effective_settings.dart';
 import '../models/schedule_models.dart';
+import 'event_providers.dart';
 import 'task_providers.dart';
+import 'user_profile_provider.dart';
 
 enum ViewMode { minimalist, dense, fluid }
 
@@ -17,7 +20,9 @@ final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
 });
 
 /// The computed schedule for the active list's incomplete tasks, run through
-/// the real `PriorityTaskManager` scheduling algorithm via the local sidecar.
+/// the real `PriorityTaskManager` scheduling algorithm via the local sidecar,
+/// with the list's effective settings (list overrides merged with the global
+/// defaults) and fixed events applied.
 final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
   final activeListId = ref.watch(activeListIdProvider);
   if (activeListId == null) {
@@ -26,6 +31,24 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
 
   final tasks = await ref.watch(tasksProvider(activeListId).future);
   final incompleteTasks = tasks.where((t) => !t.isCompleted).toList();
+
+  final lists = await ref.watch(taskListsProvider.future);
+  final list = lists.where((l) => l.id == activeListId).firstOrNull;
+  final profile = await ref.watch(userProfileProvider.future);
+  final settings = list == null
+      ? EffectiveListSettings.fromProfile(profile)
+      : EffectiveListSettings.resolve(list, profile);
+
+  final events = await ref.watch(eventsProvider(activeListId).future);
+
   final repository = ref.watch(scheduleRepositoryProvider);
-  return repository.computeSchedule(tasks: incompleteTasks);
+  return repository.computeSchedule(
+    tasks: incompleteTasks,
+    settings: settings,
+    events: events,
+  );
 });
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
+}

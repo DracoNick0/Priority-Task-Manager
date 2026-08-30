@@ -1,75 +1,52 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
-/// A fixed, immovable calendar event shown alongside scheduled tasks.
-///
-/// This is a UI-only placeholder model: no backend Event API is wired for the
-/// Flutter client yet (see docs/ARCHITECTURE_INTEGRATIONS.md). Events here are
-/// kept in memory per list and are lost on restart until a real repository
-/// backs this provider.
-class FixedEvent {
-  FixedEvent({
-    required this.id,
-    required this.listId,
-    required this.title,
-    required this.startTime,
-    required this.endTime,
-  });
+import '../models/fixed_event.dart';
+import 'task_providers.dart';
 
-  final String id;
-  final String listId;
-  String title;
-  DateTime startTime;
-  DateTime endTime;
+export '../models/fixed_event.dart' show FixedEvent;
 
-  FixedEvent copyWith({String? title, DateTime? startTime, DateTime? endTime}) {
-    return FixedEvent(
-      id: id,
-      listId: listId,
-      title: title ?? this.title,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-    );
-  }
-}
-
-/// In-memory fixed events for a given list id. Placeholder until a real
-/// backend-backed event repository is introduced.
+/// Fixed events for a given list id, backed by the active [TaskRepository]
+/// (Hive-persisted; see docs/ARCHITECTURE_INTEGRATIONS.md).
 final eventsProvider =
-    StateNotifierProvider.family<EventsNotifier, List<FixedEvent>, String>(
-      (ref, listId) => EventsNotifier(listId),
+    AsyncNotifierProvider.family<EventsNotifier, List<FixedEvent>, String>(
+      EventsNotifier.new,
     );
 
-class EventsNotifier extends StateNotifier<List<FixedEvent>> {
-  EventsNotifier(this.listId) : super(const []);
+class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
+  @override
+  Future<List<FixedEvent>> build(String arg) async {
+    final repository = await ref.watch(taskRepositoryProvider.future);
+    return repository.getEvents(arg);
+  }
 
-  final String listId;
-  final _uuid = const Uuid();
-
-  FixedEvent addEvent({
+  Future<FixedEvent> addEvent({
     required String title,
     required DateTime startTime,
     required DateTime endTime,
-  }) {
-    final event = FixedEvent(
-      id: _uuid.v4(),
-      listId: listId,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    final created = await repository.addEvent(
+      listId: arg,
       title: title,
       startTime: startTime,
       endTime: endTime,
     );
-    state = [...state, event];
-    return event;
+    ref.invalidateSelf();
+    await future;
+    return created;
   }
 
-  void updateEvent(FixedEvent event) {
-    state = [
-      for (final existing in state)
-        if (existing.id == event.id) event else existing,
-    ];
+  Future<void> updateEvent(FixedEvent event) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.updateEvent(event);
+    ref.invalidateSelf();
+    await future;
   }
 
-  void deleteEvent(String eventId) {
-    state = state.where((event) => event.id != eventId).toList();
+  Future<void> deleteEvent(String eventId) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.deleteEvent(eventId);
+    ref.invalidateSelf();
+    await future;
   }
 }

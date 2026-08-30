@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/effective_settings.dart';
+import '../models/fixed_event.dart';
 import '../models/schedule_models.dart';
 import '../models/task_item.dart';
 import 'local_sidecar.dart';
@@ -50,6 +52,8 @@ class ApiScheduleRepository implements ScheduleRepository {
   @override
   Future<DailySchedule> computeSchedule({
     required List<TaskItem> tasks,
+    required EffectiveListSettings settings,
+    List<FixedEvent> events = const [],
     DateTime? now,
   }) async {
     if (tasks.isEmpty) {
@@ -61,8 +65,8 @@ class ApiScheduleRepository implements ScheduleRepository {
 
     final requestBody = jsonEncode({
       'tasks': tasks.map(_taskToJson).toList(),
-      'events': const <Object?>[],
-      'profile': _defaultProfileJson(),
+      'events': events.map(_eventToJson).toList(),
+      'profile': _profileJson(settings),
       'now': effectiveNow.toIso8601String(),
     });
 
@@ -102,18 +106,27 @@ class ApiScheduleRepository implements ScheduleRepository {
     'isDivisible': task.isDivisible,
   };
 
-  /// Default scheduling preferences (mirrors `UserProfile`'s defaults) until
-  /// list/profile settings are editable from the Flutter UI.
-  Map<String, dynamic> _defaultProfileJson() => {
-    'workStartTime': '09:00:00',
-    'workEndTime': '17:00:00',
-    'workDays': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    'schedulingMode': 'GoldPanning',
-    'desiredBreatherDuration': '00:15:00',
-    'slackThresholdDire': 0.5,
-    'slackThresholdPressing': 1.0,
-    'slackThresholdFocus': 3.0,
-    'slackThresholdSafe': 5.0,
+  Map<String, dynamic> _eventToJson(FixedEvent event) => {
+    'id': event.id,
+    'name': event.title,
+    'startTime': event.startTime.toIso8601String(),
+    'endTime': event.endTime.toIso8601String(),
+  };
+
+  Map<String, dynamic> _profileJson(EffectiveListSettings settings) => {
+    'workStartTime': formatMinutesAsTimeOfDay(settings.workStartMinutes),
+    'workEndTime': formatMinutesAsTimeOfDay(settings.workEndMinutes),
+    'workDays': settings.workDays
+        .map((day) => dartWeekdayToDotNetName[day] ?? 'Monday')
+        .toList(),
+    'schedulingMode': schedulingModeNames[settings.schedulingMode],
+    'desiredBreatherDuration': _formatDuration(
+      Duration(minutes: settings.desiredBreatherMinutes),
+    ),
+    'slackThresholdDire': settings.slackThresholdDire,
+    'slackThresholdPressing': settings.slackThresholdPressing,
+    'slackThresholdFocus': settings.slackThresholdFocus,
+    'slackThresholdSafe': settings.slackThresholdSafe,
   };
 
   DailySchedule _toDailySchedule(Map<String, dynamic> json, DateTime now) {

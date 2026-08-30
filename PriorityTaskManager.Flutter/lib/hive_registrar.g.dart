@@ -3,19 +3,25 @@
 // Check in to version control
 
 import 'package:hive_ce/hive.dart';
+import 'package:priority_task_manager/models/fixed_event.dart';
 import 'package:priority_task_manager/models/task_item.dart';
 import 'package:priority_task_manager/models/task_list.dart';
+import 'package:priority_task_manager/models/user_profile.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
+    registerAdapter(FixedEventAdapter());
     registerAdapter(TaskItemAdapter());
     registerAdapter(TaskListAdapter());
+    registerAdapter(UserProfileAdapter());
   }
 }
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
+    registerAdapter(FixedEventAdapter());
     registerAdapter(TaskItemAdapter());
     registerAdapter(TaskListAdapter());
+    registerAdapter(UserProfileAdapter());
   }
 }

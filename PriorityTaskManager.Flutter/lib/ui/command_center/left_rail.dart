@@ -105,9 +105,8 @@ class LeftRail extends ConsumerWidget {
               icon: Icons.settings_outlined,
               label: 'Settings',
               isSelected: false,
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings is not wired yet.')),
-              ),
+              onTap: () => ref.read(selectedInspectorProvider.notifier).state =
+                  const InspectorTarget(kind: InspectorKind.defaults),
             ),
             const _EngineStatus(),
           ],

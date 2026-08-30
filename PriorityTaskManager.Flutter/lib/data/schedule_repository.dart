@@ -1,3 +1,5 @@
+import '../models/effective_settings.dart';
+import '../models/fixed_event.dart';
 import '../models/schedule_models.dart';
 import '../models/task_item.dart';
 
@@ -9,10 +11,12 @@ import '../models/task_item.dart';
 /// [TaskRepository]/Hive remains the single source of truth for task data.
 abstract class ScheduleRepository {
   /// Computes the schedule for [tasks] as of [now] (defaults to the caller's
-  /// current time), using default scheduling preferences until list/profile
-  /// settings are editable from the Flutter UI.
+  /// current time), applying [settings] (resolved list overrides merged with
+  /// the global defaults) and any fixed, unmovable [events].
   Future<DailySchedule> computeSchedule({
     required List<TaskItem> tasks,
+    required EffectiveListSettings settings,
+    List<FixedEvent> events,
     DateTime? now,
   });
 }

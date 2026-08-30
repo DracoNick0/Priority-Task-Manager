@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// The kind of entity currently shown in the Right Inspector.
-enum InspectorKind { none, task, event, list }
+enum InspectorKind { none, task, event, list, defaults }
 
 /// What the Right Inspector should render.
 ///

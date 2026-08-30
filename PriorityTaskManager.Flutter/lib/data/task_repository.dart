@@ -1,7 +1,10 @@
+import '../models/fixed_event.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
+import '../models/user_profile.dart';
 
-/// Client-side abstraction over task/list persistence and mutation.
+/// Client-side abstraction over task/list/event/profile persistence and
+/// mutation.
 ///
 /// This is the seam a future API-backed implementation (see issue #44) plugs
 /// into; UI and state-management code must depend only on this interface,
@@ -34,4 +37,21 @@ abstract class TaskRepository {
   Future<void> addDependency(String taskId, String dependsOnTaskId);
 
   Future<void> removeDependency(String taskId, String dependsOnTaskId);
+
+  Future<UserProfile> getProfile();
+
+  Future<void> updateProfile(UserProfile profile);
+
+  Future<List<FixedEvent>> getEvents(String listId);
+
+  Future<FixedEvent> addEvent({
+    required String listId,
+    required String title,
+    required DateTime startTime,
+    required DateTime endTime,
+  });
+
+  Future<void> updateEvent(FixedEvent event);
+
+  Future<void> deleteEvent(String eventId);
 }
