@@ -38,6 +38,7 @@ If there are no staged changes, inspect unstaged content.
    - Prefer a stable subsystem, package, or folder name
    - Omit the scope when the change spans multiple areas or the scope is unclear
 4. Write the subject line in imperative mood.
+   - The subject line must always start with `type:` or `type(scope):` (per Conventional Commits) — never omit the type prefix, even in a quick draft or a follow-up revision
    - Keep it lowercase after the type and scope
    - Keep it concise and specific
    - Avoid trailing punctuation
