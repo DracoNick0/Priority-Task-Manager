@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 
 import '../../providers/engine_status_provider.dart';
 import '../../providers/selection_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
+import '../auth/login_screen.dart';
 import '../theme/app_theme.dart';
 
 /// The Left Rail: list switcher, global nav (Settings/Archive), and the
@@ -108,6 +110,8 @@ class LeftRail extends ConsumerWidget {
               onTap: () => ref.read(selectedInspectorProvider.notifier).state =
                   const InspectorTarget(kind: InspectorKind.defaults),
             ),
+            const Divider(height: 1),
+            const _AccountRow(),
             const _EngineStatus(),
           ],
         ),
@@ -204,6 +208,51 @@ class _RailItem extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AccountRow extends ConsumerWidget {
+  const _AccountRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final session = ref.watch(sessionControllerProvider).valueOrNull;
+    final isAuthenticated = session?.status == SessionStatus.authenticated;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingMd,
+        vertical: AppTheme.spacingSm,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isAuthenticated ? Icons.person : Icons.person_outline,
+            size: 18,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppTheme.spacingSm),
+          Expanded(
+            child: Text(
+              isAuthenticated ? (session?.email ?? 'Signed in') : 'Guest',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton(
+            onPressed: () => isAuthenticated
+                ? ref.read(sessionControllerProvider.notifier).logout()
+                : Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+            child: Text(isAuthenticated ? 'Log out' : 'Log in'),
+          ),
+        ],
       ),
     );
   }

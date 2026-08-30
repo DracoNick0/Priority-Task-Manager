@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/api_schedule_repository.dart';
-import '../dev/dev_auto_login.dart';
+import 'session_provider.dart';
 
-/// The bearer token to attach to authenticated API calls, resolved once via
-/// dev auto-login (see `lib/dev/dev_auto_login.dart`). Resolves to `null`
-/// when `PTM_DEV_AUTOLOGIN` isn't set, since the app has no login screen yet;
+/// The bearer token to attach to authenticated API calls, derived from
+/// [sessionControllerProvider] (see `lib/providers/session_provider.dart`).
+/// Resolves to `null` while Guest or still resolving the entry choice, since
 /// callers should fall back to unauthenticated local endpoints in that case.
-final authTokenProvider = FutureProvider<String?>((ref) {
-  return resolveDevAutoLoginToken(
-    baseUri: ApiScheduleRepository.defaultBaseUri,
-  );
+final authTokenProvider = FutureProvider<String?>((ref) async {
+  final session = await ref.watch(sessionControllerProvider.future);
+  return session.token;
 });
+
