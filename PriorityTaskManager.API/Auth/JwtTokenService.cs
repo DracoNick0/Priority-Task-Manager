@@ -43,6 +43,7 @@ namespace PriorityTaskManager.API.Auth
 				new Claim(JwtRegisteredClaimNames.Sub, account.Id.ToString()),
 				new Claim(ClaimTypes.NameIdentifier, account.Id.ToString()),
 				new Claim(ClaimTypes.Email, account.Email),
+				new Claim(SubscriptionPolicy.ClaimType, account.SubscriptionTier.ToString()),
 				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
 			};
 

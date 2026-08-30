@@ -28,5 +28,12 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the UTC timestamp the account was created.
         /// </summary>
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets or sets the account's membership tier. Defaults to <see cref="SubscriptionTier.Free"/>
+        /// for newly registered accounts; only <see cref="SubscriptionTier.Subscription"/> is entitled to
+        /// online scheduling or cross-device sync (see docs/VISION.md).
+        /// </summary>
+        public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Free;
     }
 }

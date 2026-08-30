@@ -22,7 +22,7 @@ namespace PriorityTaskManager.Services
         /// Registers a new account with the given email and password. Throws
         /// <see cref="InvalidOperationException"/> if an account already exists for that email.
         /// </summary>
-        public Account Register(string email, string password)
+        public Account Register(string email, string password, SubscriptionTier tier = SubscriptionTier.Free)
         {
             var normalizedEmail = NormalizeEmail(email);
             if (_accountRepository.FindByEmail(normalizedEmail) != null)
@@ -30,7 +30,7 @@ namespace PriorityTaskManager.Services
                 throw new InvalidOperationException("An account with this email already exists.");
             }
 
-            var account = new Account { Email = normalizedEmail };
+            var account = new Account { Email = normalizedEmail, SubscriptionTier = tier };
             account.PasswordHash = _passwordHasher.HashPassword(account, password);
             _accountRepository.Add(account);
             return account;

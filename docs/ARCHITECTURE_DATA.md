@@ -35,7 +35,7 @@ Front ends with their own local store (the CLI's JSON files today; a future Flut
 
 | Model | Architectural Role |
 | --- | --- |
-| `Account` | MVP email + password account (id, normalized email, hashed password); the tenant boundary for API-hosted persisted data |
+| `Account` | MVP email + password account (id, normalized email, hashed password, `SubscriptionTier`); the tenant boundary for API-hosted persisted data |
 | `TaskItem` | Unit of work with scheduling metadata, completion state, and dependencies |
 | `TaskList` | Named task container with copied list-specific scheduling and display settings |
 | `UserProfile` | Global defaults and scheduling preferences |

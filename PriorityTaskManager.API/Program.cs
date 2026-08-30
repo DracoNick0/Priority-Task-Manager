@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using PriorityTaskManager.API.Auth;
+using PriorityTaskManager.API.Dev;
 using PriorityTaskManager.API.Events;
 using PriorityTaskManager.API.Local;
 using PriorityTaskManager.API.Lists;
 using PriorityTaskManager.API.Persistence;
+using PriorityTaskManager.API.Schedule;
 using PriorityTaskManager.API.Tasks;
 using PriorityTaskManager.Services;
 
@@ -83,7 +85,12 @@ if (cloudModeEnabled)
 				ClockSkew = TimeSpan.FromSeconds(30)
 			};
 		});
-	builder.Services.AddAuthorization();
+	builder.Services.AddAuthorization(options =>
+	{
+		// Gates online scheduling (and, later, sync) behind the Subscription tier (docs/VISION.md).
+		options.AddPolicy(SubscriptionPolicy.PolicyName, policy =>
+			policy.RequireClaim(SubscriptionPolicy.ClaimType, PriorityTaskManager.Models.SubscriptionTier.Subscription.ToString()));
+	});
 
 	// Blunt brute-force/credential-stuffing attempts against login/register (baseline security hygiene).
 	builder.Services.AddRateLimiter(options =>
@@ -99,6 +106,14 @@ if (cloudModeEnabled)
 }
 
 var app = builder.Build();
+
+// Dev-only convenience: seed fixed, known-credential Free/Subscription test accounts so a developer can
+// log in as either tier without registering by hand (see PriorityTaskManager.API/Dev/DevAccountSeeder.cs).
+// Never runs outside Development, and is a no-op unless Postgres/cloud mode is configured.
+if (cloudModeEnabled && app.Environment.IsDevelopment())
+{
+	DevAccountSeeder.Seed(app.Services.GetRequiredService<AccountService>());
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -120,6 +135,7 @@ if (cloudModeEnabled)
 	app.MapTaskEndpoints();
 	app.MapListEndpoints();
 	app.MapEventEndpoints();
+	app.MapScheduleEndpoints();
 }
 
 // Always available, even without Postgres configured: unauthenticated, stateless schedule compute for

@@ -31,8 +31,10 @@ namespace PriorityTaskManager.API.Persistence
 					id uuid PRIMARY KEY,
 					email text NOT NULL UNIQUE,
 					password_hash text NOT NULL,
-					created_at timestamptz NOT NULL DEFAULT now()
-				);";
+					created_at timestamptz NOT NULL DEFAULT now(),
+					subscription_tier text NOT NULL DEFAULT 'Free'
+				);
+				ALTER TABLE accounts ADD COLUMN IF NOT EXISTS subscription_tier text NOT NULL DEFAULT 'Free';";
 			command.ExecuteNonQuery();
 		}
 
@@ -47,7 +49,7 @@ namespace PriorityTaskManager.API.Persistence
 		{
 			using var connection = OpenConnection();
 			using var command = connection.CreateCommand();
-			command.CommandText = "SELECT id, email, password_hash, created_at FROM accounts WHERE email = @email;";
+			command.CommandText = "SELECT id, email, password_hash, created_at, subscription_tier FROM accounts WHERE email = @email;";
 			command.Parameters.AddWithValue("email", normalizedEmail);
 
 			using var reader = command.ExecuteReader();
@@ -58,7 +60,7 @@ namespace PriorityTaskManager.API.Persistence
 		{
 			using var connection = OpenConnection();
 			using var command = connection.CreateCommand();
-			command.CommandText = "SELECT id, email, password_hash, created_at FROM accounts WHERE id = @id;";
+			command.CommandText = "SELECT id, email, password_hash, created_at, subscription_tier FROM accounts WHERE id = @id;";
 			command.Parameters.AddWithValue("id", id);
 
 			using var reader = command.ExecuteReader();
@@ -70,12 +72,13 @@ namespace PriorityTaskManager.API.Persistence
 			using var connection = OpenConnection();
 			using var command = connection.CreateCommand();
 			command.CommandText = @"
-				INSERT INTO accounts (id, email, password_hash, created_at)
-				VALUES (@id, @email, @passwordHash, @createdAt);";
+				INSERT INTO accounts (id, email, password_hash, created_at, subscription_tier)
+				VALUES (@id, @email, @passwordHash, @createdAt, @subscriptionTier);";
 			command.Parameters.AddWithValue("id", account.Id);
 			command.Parameters.AddWithValue("email", account.Email);
 			command.Parameters.AddWithValue("passwordHash", account.PasswordHash);
 			command.Parameters.AddWithValue("createdAt", account.CreatedAtUtc);
+			command.Parameters.AddWithValue("subscriptionTier", account.SubscriptionTier.ToString());
 			command.ExecuteNonQuery();
 		}
 
@@ -84,7 +87,8 @@ namespace PriorityTaskManager.API.Persistence
 			Id = reader.GetGuid(0),
 			Email = reader.GetString(1),
 			PasswordHash = reader.GetString(2),
-			CreatedAtUtc = reader.GetDateTime(3)
+			CreatedAtUtc = reader.GetDateTime(3),
+			SubscriptionTier = Enum.Parse<SubscriptionTier>(reader.GetString(4))
 		};
 	}
 }
