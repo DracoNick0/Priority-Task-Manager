@@ -9,7 +9,10 @@ namespace PriorityTaskManager.API.Auth
 	{
 		private const int MinimumPasswordLength = 8;
 
-		public static void MapAuthEndpoints(this WebApplication app)
+		private const string BetaGracePeriodNoticeText =
+			"You have full access during our free beta preview. This is temporary and not a paid plan.";
+
+		public static void MapAuthEndpoints(this WebApplication app, bool betaGracePeriodEnabled)
 		{
 			app.MapPost("/api/auth/register", (RegisterRequest request, AccountService accountService, JwtTokenService tokenService) =>
 			{
@@ -26,7 +29,7 @@ namespace PriorityTaskManager.API.Auth
 				{
 					var account = accountService.Register(request.Email, request.Password);
 					var (token, expiresAtUtc) = tokenService.CreateToken(account);
-					return Results.Ok(new AuthResponse(token, expiresAtUtc));
+					return Results.Ok(new AuthResponse(token, expiresAtUtc, betaGracePeriodEnabled ? BetaGracePeriodNoticeText : null));
 				}
 				catch (InvalidOperationException ex)
 				{
@@ -45,7 +48,7 @@ namespace PriorityTaskManager.API.Auth
 				}
 
 				var (token, expiresAtUtc) = tokenService.CreateToken(account);
-				return Results.Ok(new AuthResponse(token, expiresAtUtc));
+				return Results.Ok(new AuthResponse(token, expiresAtUtc, betaGracePeriodEnabled ? BetaGracePeriodNoticeText : null));
 			}).RequireRateLimiting(RateLimiterPolicies.Auth);
 		}
 	}

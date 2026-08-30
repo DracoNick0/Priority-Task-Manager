@@ -36,6 +36,11 @@ var connectionString = builder.Configuration.GetConnectionString("Postgres");
 var localOnly = builder.Configuration.GetValue<bool>("LocalOnly");
 var cloudModeEnabled = !localOnly && !string.IsNullOrWhiteSpace(connectionString);
 
+// Issue #50's MVP/beta grace period flag: while true, real self-registration (POST /api/auth/register)
+// grants Subscription tier instead of Free, since no real payment integration exists yet. Flip to
+// false in config at V1 once real payment/entitlement enforcement lands.
+var betaGracePeriodEnabled = builder.Configuration.GetValue<bool>("BetaGracePeriod:DefaultNewAccountsToSubscription");
+
 if (cloudModeEnabled)
 {
 	// Server-side only so far; no client logs in with this yet (client integration is issue #44, V1).
@@ -51,7 +56,7 @@ if (cloudModeEnabled)
 	builder.Services.AddSingleton<JwtTokenService>();
 
 	builder.Services.AddSingleton<IAccountRepository>(new PostgresAccountRepository(connectionString!));
-	builder.Services.AddSingleton<AccountService>();
+	builder.Services.AddSingleton(sp => new AccountService(sp.GetRequiredService<IAccountRepository>(), betaGracePeriodEnabled));
 
 	// Persisted task/list/event data is scoped per authenticated account (issue #35), so the core service
 	// graph (TaskManagerService, IPersistenceService, etc.) is built per request instead of once at
@@ -130,7 +135,7 @@ if (cloudModeEnabled)
 	app.UseAuthentication();
 	app.UseAuthorization();
 
-	app.MapAuthEndpoints();
+	app.MapAuthEndpoints(betaGracePeriodEnabled);
 	app.MapAccountEndpoints();
 	app.MapTaskEndpoints();
 	app.MapListEndpoints();

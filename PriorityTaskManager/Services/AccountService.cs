@@ -12,17 +12,35 @@ namespace PriorityTaskManager.Services
     {
         private readonly IAccountRepository _accountRepository;
         private readonly PasswordHasher<Account> _passwordHasher = new();
+        private readonly bool _defaultNewAccountsToSubscription;
 
-        public AccountService(IAccountRepository accountRepository)
+        /// <param name="accountRepository">Backing store for accounts.</param>
+        /// <param name="defaultNewAccountsToSubscription">
+        /// Issue #50's MVP/beta grace period flag: when <c>true</c>, <see cref="Register(string, string)"/>
+        /// (the overload used by real self-service registration) grants <see cref="SubscriptionTier.Subscription"/>
+        /// instead of <see cref="SubscriptionTier.Free"/>, since no real payment integration exists yet. Flip to
+        /// <c>false</c> at V1 once real payment/entitlement enforcement lands.
+        /// </param>
+        public AccountService(IAccountRepository accountRepository, bool defaultNewAccountsToSubscription = false)
         {
             _accountRepository = accountRepository;
+            _defaultNewAccountsToSubscription = defaultNewAccountsToSubscription;
         }
 
         /// <summary>
-        /// Registers a new account with the given email and password. Throws
+        /// Registers a new account with the given email and password, granting the beta-grace-period
+        /// default tier (see <see cref="_defaultNewAccountsToSubscription"/>). Throws
         /// <see cref="InvalidOperationException"/> if an account already exists for that email.
         /// </summary>
-        public Account Register(string email, string password, SubscriptionTier tier = SubscriptionTier.Free)
+        public Account Register(string email, string password) =>
+            Register(email, password, _defaultNewAccountsToSubscription ? SubscriptionTier.Subscription : SubscriptionTier.Free);
+
+        /// <summary>
+        /// Registers a new account with the given email, password, and an explicit tier (bypassing the
+        /// beta-grace-period default; used by dev seeding and tests). Throws
+        /// <see cref="InvalidOperationException"/> if an account already exists for that email.
+        /// </summary>
+        public Account Register(string email, string password, SubscriptionTier tier)
         {
             var normalizedEmail = NormalizeEmail(email);
             if (_accountRepository.FindByEmail(normalizedEmail) != null)
