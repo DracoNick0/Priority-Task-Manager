@@ -5,11 +5,13 @@ import '../../models/schedule_models.dart';
 import '../../models/task_item.dart';
 import '../../providers/event_providers.dart';
 import '../../providers/selection_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/view_provider.dart';
 import '../theme/app_theme.dart';
 import 'day_column.dart';
 import 'event_card.dart';
+import 'guest_task_list.dart';
 import 'task_card.dart';
 
 /// The Center Stage: a horizontally scrolling pipeline of Daily Columns
@@ -33,17 +35,14 @@ class CenterStage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeListId = ref.watch(activeListIdProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final scheduleAsync = ref.watch(scheduleProvider);
-    final schedule = scheduleAsync.asData?.value;
+    final isAuthenticated =
+        ref.watch(sessionControllerProvider).asData?.value.status ==
+        SessionStatus.authenticated;
 
     return Column(
       children: [
         _buildHeader(context, ref, activeListId),
         const Divider(height: 1),
-        if (activeListId != null &&
-            schedule != null &&
-            schedule.leastSlackTask != 'None')
-          _buildLeastSlackBar(context, schedule),
         Expanded(
           child: activeListId == null
               ? Center(
@@ -52,7 +51,9 @@ class CenterStage extends ConsumerWidget {
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                 )
-              : _Pipeline(listId: activeListId),
+              : isAuthenticated
+              ? _AuthenticatedBody(listId: activeListId)
+              : GuestTaskList(listId: activeListId),
         ),
       ],
     );
@@ -137,58 +138,83 @@ class CenterStage extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeastSlackBar(BuildContext context, DailySchedule schedule) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final bodySmall = Theme.of(context).textTheme.bodySmall;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingMd,
-        vertical: AppTheme.spacingXs,
-      ),
-      color: colorScheme.surfaceContainerLow,
-      child: Row(
-        children: [
-          Icon(
-            Icons.hourglass_bottom,
-            size: 16,
-            color: colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: AppTheme.spacingXs),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Least slack: ',
-                    style: bodySmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(
-                    text: '"${schedule.leastSlackTask}"  ',
-                    style: bodySmall,
-                  ),
-                  TextSpan(
-                    text:
-                        'Realistic ${schedule.realisticSlack} · Actual ${schedule.actualSlack}',
-                    style: bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+}
+
+/// The authenticated Center Stage body: the least-slack summary bar (once a
+/// schedule with a tracked task is available) above the Daily Column
+/// pipeline. Only rendered for logged-in accounts, since scheduling is an
+/// online-exclusive, Subscription-gated capability (see docs/VISION.md);
+/// Guests see [GuestTaskList] instead.
+class _AuthenticatedBody extends ConsumerWidget {
+  const _AuthenticatedBody({required this.listId});
+
+  final String listId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final schedule = ref.watch(scheduleProvider).asData?.value;
+
+    return Column(
+      children: [
+        if (schedule != null && schedule.leastSlackTask != 'None')
+          _buildLeastSlackBar(context, schedule),
+        Expanded(child: _Pipeline(listId: listId)),
+      ],
+    );
+  }
+}
+
+Widget _buildLeastSlackBar(BuildContext context, DailySchedule schedule) {
+  final colorScheme = Theme.of(context).colorScheme;
+  final bodySmall = Theme.of(context).textTheme.bodySmall;
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppTheme.spacingMd,
+      vertical: AppTheme.spacingXs,
+    ),
+    color: colorScheme.surfaceContainerLow,
+    child: Row(
+      children: [
+        Icon(
+          Icons.hourglass_bottom,
+          size: 16,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: AppTheme.spacingXs),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Least slack: ',
+                  style: bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(
+                  text: '"${schedule.leastSlackTask}"  ',
+                  style: bodySmall,
+                ),
+                TextSpan(
+                  text:
+                      'Realistic ${schedule.realisticSlack} · Actual ${schedule.actualSlack}',
+                  style: bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Pipeline extends ConsumerWidget {

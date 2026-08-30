@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/api_schedule_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/secure_token_store.dart';
-import '../dev/dev_auto_login.dart';
 
 enum SessionStatus {
   /// First run: the user has never made the Guest-vs-Authenticated entry
@@ -47,16 +45,6 @@ class SessionController extends AsyncNotifier<SessionState> {
 
   @override
   Future<SessionState> build() async {
-    // Dev-only shim (see lib/dev/dev_auto_login.dart): bypasses the entry
-    // flow/login screens entirely so existing debug launch configs keep
-    // working unchanged. Never used outside `--dart-define=PTM_DEV_AUTOLOGIN`.
-    final devToken = await resolveDevAutoLoginToken(
-      baseUri: ApiScheduleRepository.defaultBaseUri,
-    );
-    if (devToken != null) {
-      return SessionState(status: SessionStatus.authenticated, token: devToken);
-    }
-
     final stored = await _tokenStore.readSession();
     if (stored == null) {
       return SessionState.needsEntryChoice;

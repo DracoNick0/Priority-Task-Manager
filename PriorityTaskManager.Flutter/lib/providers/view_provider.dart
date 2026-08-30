@@ -13,15 +13,22 @@ enum ViewMode { minimalist, dense, fluid }
 
 final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.minimalist);
 
-/// The [ScheduleRepository] used to compute the displayed schedule. Currently
-/// always the API-backed implementation (see docs/VISION.md's MVP scope: the
-/// Flutter client runs the real scheduling algorithm, not a mock). Depends on
-/// [authTokenProvider] so it calls the authenticated `/api/schedule` route
-/// when dev auto-login is active, or the unauthenticated local route otherwise.
+/// The [ScheduleRepository] used to compute the displayed schedule for a
+/// logged-in account (see docs/VISION.md: scheduling is an online-exclusive,
+/// Subscription-gated capability). Callers must only watch this while
+/// [authTokenProvider] resolves to a non-null token (i.e. the session is
+/// authenticated); Guests use [GuestTaskList] instead and never call the
+/// scheduling API.
 final scheduleRepositoryProvider = FutureProvider<ScheduleRepository>((
   ref,
 ) async {
   final authToken = await ref.watch(authTokenProvider.future);
+  if (authToken == null) {
+    throw StateError(
+      'scheduleRepositoryProvider requires an authenticated session; '
+      'Guests should not compute a schedule.',
+    );
+  }
   return ApiScheduleRepository(authToken: authToken);
 });
 

@@ -18,7 +18,7 @@ Local-only (offline/guest) Flutter web + Windows desktop client for Priority Tas
    flutter run -d chrome    # Web
    ```
 
-This client calls a locally-running `PriorityTaskManager.API` instance (started separately, e.g. via the "API (LocalOnly :5299)" launch config or `dotnet run` from `PriorityTaskManager.API/`) to compute schedules using the real scheduling strategies; see the root [README.md](../README.md) and [docs/WORKFLOW.md](../docs/WORKFLOW.md) for how to run it.
+This client calls a locally-running `PriorityTaskManager.API` instance (started separately, e.g. via the "API (Cloud, dev seed :5299)" launch config or `dotnet run` from `PriorityTaskManager.API/`) to compute schedules using the real scheduling strategies for logged-in accounts; see the root [README.md](../README.md) and [docs/WORKFLOW.md](../docs/WORKFLOW.md) for how to run it.
 
 ## Verifying Changes
 

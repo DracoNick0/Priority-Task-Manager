@@ -16,21 +16,6 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "API (LocalOnly :5299)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build API",
-            "program": "${workspaceFolder}/PriorityTaskManager.API/bin/Debug/net8.0/PriorityTaskManager.API.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/PriorityTaskManager.API",
-            "stopAtEntry": false,
-            "console": "integratedTerminal",
-            "env": {
-                "ASPNETCORE_URLS": "http://127.0.0.1:5299",
-                "LocalOnly": "true"
-            }
-        },
-        {
             "name": "API (Cloud, dev seed :5299)",
             "type": "coreclr",
             "request": "launch",
@@ -66,59 +51,21 @@
                 "-d",
                 "edge"
             ]
-        },
-        {
-            "name": "Flutter (Windows, auto-login: Free)",
-            "type": "dart",
-            "request": "launch",
-            "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
-            "program": "lib/main.dart",
-            "args": [
-                "-d",
-                "windows",
-                "--dart-define=PTM_DEV_AUTOLOGIN=free"
-            ]
-        },
-        {
-            "name": "Flutter (Windows, auto-login: Subscription)",
-            "type": "dart",
-            "request": "launch",
-            "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
-            "program": "lib/main.dart",
-            "args": [
-                "-d",
-                "windows",
-                "--dart-define=PTM_DEV_AUTOLOGIN=subscriber"
-            ]
         }
     ],
     "compounds": [
         {
             "name": "API + CLI",
             "configurations": [
-                "API (LocalOnly :5299)",
+                "API (Cloud, dev seed :5299)",
                 ".NET Core Launch (CLI)"
             ]
         },
         {
             "name": "API + Flutter (Windows)",
             "configurations": [
-                "API (LocalOnly :5299)",
+                "API (Cloud, dev seed :5299)",
                 "Flutter (Windows)"
-            ]
-        },
-        {
-            "name": "API + Flutter (Windows, auto-login: Free)",
-            "configurations": [
-                "API (Cloud, dev seed :5299)",
-                "Flutter (Windows, auto-login: Free)"
-            ]
-        },
-        {
-            "name": "API + Flutter (Windows, auto-login: Subscription)",
-            "configurations": [
-                "API (Cloud, dev seed :5299)",
-                "Flutter (Windows, auto-login: Subscription)"
             ]
         }
     ]

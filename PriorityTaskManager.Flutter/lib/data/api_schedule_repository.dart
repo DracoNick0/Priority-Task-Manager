@@ -44,17 +44,20 @@ String _formatSlackMinutes(double? totalMinutes) {
 /// docs/WORKFLOW.md for how to run it during development); it only calls
 /// [baseUri], which must already be reachable.
 ///
-/// When [authToken] is supplied (currently only via dev auto-login, see
-/// `lib/dev/dev_auto_login.dart`), calls go to the authenticated,
+/// When [authToken] is supplied (the signed-in account's JWT, see
+/// `lib/providers/session_provider.dart`), calls go to the authenticated,
 /// Subscription-gated `/api/schedule` route with an `Authorization: Bearer`
-/// header. Otherwise this falls back to the unauthenticated
-/// `/api/local/schedule` route (see
-/// `PriorityTaskManager.API/Local/LocalScheduleEndpoints.cs`), since the app
-/// has no login screen yet.
+/// header. There is no unauthenticated fallback route: scheduling is an
+/// online-exclusive, subscription-gated capability (see docs/VISION.md and
+/// issue #41), so callers without a token (Guests) should not use this
+/// repository to compute a schedule at all.
 class ApiScheduleRepository implements ScheduleRepository {
-  ApiScheduleRepository({Uri? baseUri, http.Client? httpClient, this.authToken})
-    : baseUri = baseUri ?? defaultBaseUri,
-      _httpClient = httpClient ?? http.Client();
+  ApiScheduleRepository({
+    Uri? baseUri,
+    http.Client? httpClient,
+    required this.authToken,
+  }) : baseUri = baseUri ?? defaultBaseUri,
+       _httpClient = httpClient ?? http.Client();
 
   /// The API instance to call when no [baseUri] is supplied; matches the
   /// port used by the API's dev launch config (see .vscode/launch.json).
@@ -62,7 +65,7 @@ class ApiScheduleRepository implements ScheduleRepository {
 
   final Uri baseUri;
   final http.Client _httpClient;
-  final String? authToken;
+  final String authToken;
 
   @override
   Future<DailySchedule> computeSchedule({
@@ -84,16 +87,15 @@ class ApiScheduleRepository implements ScheduleRepository {
       'now': effectiveNow.toIso8601String(),
     });
 
-    final route = authToken == null ? '/api/local/schedule' : '/api/schedule';
     final headers = {
       'Content-Type': 'application/json',
-      if (authToken != null) 'Authorization': 'Bearer $authToken',
+      'Authorization': 'Bearer $authToken',
     };
 
     http.Response response;
     try {
       response = await _httpClient.post(
-        baseUri.resolve(route),
+        baseUri.resolve('/api/schedule'),
         headers: headers,
         body: requestBody,
       );

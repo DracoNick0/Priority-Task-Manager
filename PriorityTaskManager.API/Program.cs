@@ -28,13 +28,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 	options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 });
 
-// The cloud/multi-tenant routes (auth, accounts, tasks/lists/events) need Postgres; the unauthenticated
-// local schedule-compute route (docs/VISION.md MVP scope) does not. A fully offline client (e.g. the
-// Flutter app's local sidecar) launches this process with LocalOnly=true so it never attempts cloud
-// wiring even though appsettings.json ships a default (dev-convenience) Postgres connection string.
+// Scheduling is online-exclusive and subscription-gated (docs/VISION.md, issue #41): every route needs
+// Postgres, so cloud mode is enabled whenever a connection string is configured.
 var connectionString = builder.Configuration.GetConnectionString("Postgres");
-var localOnly = builder.Configuration.GetValue<bool>("LocalOnly");
-var cloudModeEnabled = !localOnly && !string.IsNullOrWhiteSpace(connectionString);
+var cloudModeEnabled = !string.IsNullOrWhiteSpace(connectionString);
 
 // Issue #50's MVP/beta grace period flag: while true, real self-registration (POST /api/auth/register)
 // grants Subscription tier instead of Free, since no real payment integration exists yet. Flip to
@@ -142,10 +139,6 @@ if (cloudModeEnabled)
 	app.MapEventEndpoints();
 	app.MapScheduleEndpoints();
 }
-
-// Always available, even without Postgres configured: unauthenticated, stateless schedule compute for
-// fully offline/local clients (see PriorityTaskManager.API/Local/LocalScheduleEndpoints.cs).
-app.MapLocalScheduleEndpoints();
 
 app.Run();
 

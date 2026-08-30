@@ -6,8 +6,7 @@ using PriorityTaskManager.Services;
 namespace PriorityTaskManager.API.Local
 {
 	/// <summary>
-	/// Runs a stateless schedule computation from a posted <see cref="LocalScheduleRequest"/>, shared by
-	/// the unauthenticated <c>/api/local/schedule</c> route (<see cref="LocalScheduleEndpoints"/>) and the
+	/// Runs a stateless schedule computation from a posted <see cref="LocalScheduleRequest"/>, used by the
 	/// authenticated, Subscription-gated <c>/api/schedule</c> route
 	/// (<see cref="PriorityTaskManager.API.Schedule.ScheduleEndpoints"/>). Nothing here reads or writes
 	/// server-side persistence: the caller sends its current tasks/events/profile and gets back a computed
