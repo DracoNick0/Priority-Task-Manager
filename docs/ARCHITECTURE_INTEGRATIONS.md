@@ -39,7 +39,7 @@ Future integration architecture should cover:
 
 ## Planned Direction: Online-Only Scheduling And Subscription Gating
 
-The decisions below supersede the current local-sidecar design (`Local/LocalScheduleEndpoints.cs`, `LocalOnly` startup flag, `PriorityTaskManager.Flutter/lib/data/local_sidecar.dart`) described in [STATUS.md](STATUS.md); the sidecar remains in place until this direction is implemented, tracked by a future GitHub Issue.
+The decisions below supersede the current local-schedule design (`Local/LocalScheduleEndpoints.cs`, `LocalOnly` startup flag) described in [STATUS.md](STATUS.md). The client-spawned sidecar process has already been removed (clients call a separately-running local API instead), but the route itself is still unauthenticated and un-gated until this direction is implemented, tracked by a future GitHub Issue.
 
 - Scheduling (`GoldPanningStrategy`/`ConstraintOptimizationStrategy`) becomes an online-exclusive, subscription-gated capability served only through the authenticated, account-scoped API (no unauthenticated local-schedule route, no client-spawned sidecar process, no client-side scheduling implementation). Every client — CLI, web, desktop, and future mobile — always calls the networked API to compute a schedule.
 - Cross-device sync is likewise subscription-gated and served through the authenticated API.

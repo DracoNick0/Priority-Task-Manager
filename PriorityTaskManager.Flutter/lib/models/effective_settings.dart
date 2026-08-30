@@ -78,7 +78,7 @@ const List<String> schedulingModeNames = [
 ];
 
 /// Dart weekday int (Monday = 1 ... Sunday = 7) to the .NET `DayOfWeek` name
-/// used by the API/local sidecar JSON contract.
+/// used by the local schedule-compute API's JSON contract.
 const Map<int, String> dartWeekdayToDotNetName = {
   1: 'Monday',
   2: 'Tuesday',

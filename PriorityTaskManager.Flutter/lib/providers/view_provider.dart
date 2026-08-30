@@ -13,15 +13,16 @@ enum ViewMode { minimalist, dense, fluid }
 final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.minimalist);
 
 /// The [ScheduleRepository] used to compute the displayed schedule. Currently
-/// always the sidecar-backed implementation (see docs/VISION.md's MVP scope:
-/// the Flutter client runs the real scheduling algorithm, not a mock).
+/// always the API-backed implementation (see docs/VISION.md's MVP scope: the
+/// Flutter client runs the real scheduling algorithm, not a mock).
 final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
   return ApiScheduleRepository();
 });
 
 /// The computed schedule for the active list's incomplete tasks, run through
-/// the real `PriorityTaskManager` scheduling algorithm via the local sidecar,
-/// with the list's effective settings (list overrides merged with the global
+/// the real `PriorityTaskManager` scheduling algorithm via a locally-running
+/// scheduling API (see docs/WORKFLOW.md for how to start it), with the
+/// list's effective settings (list overrides merged with the global
 /// defaults) and fixed events applied.
 final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
   final activeListId = ref.watch(activeListIdProvider);

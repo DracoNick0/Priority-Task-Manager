@@ -18,7 +18,7 @@ Local-only (offline/guest) Flutter web + Windows desktop client for Priority Tas
    flutter run -d chrome    # Web
    ```
 
-This client launches a local `PriorityTaskManager.API` sidecar process to compute schedules using the real scheduling strategies, so a working .NET SDK is also required (see the root [README.md](../README.md)).
+This client calls a locally-running `PriorityTaskManager.API` instance (started separately, e.g. via the "API (LocalOnly :5299)" launch config or `dotnet run` from `PriorityTaskManager.API/`) to compute schedules using the real scheduling strategies; see the root [README.md](../README.md) and [docs/WORKFLOW.md](../docs/WORKFLOW.md) for how to run it.
 
 ## Verifying Changes
 

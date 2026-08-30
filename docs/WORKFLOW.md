@@ -47,6 +47,21 @@ cd PriorityTaskManager.CLI
 dotnet run
 ```
 
+**Run the API (required before running the Flutter client):**
+
+The Flutter client computes schedules by calling a separately-running `PriorityTaskManager.API` instance; it no longer starts this process itself, so start it first:
+
+```bash
+dotnet run --project PriorityTaskManager.API --no-launch-profile
+```
+Set the `LocalOnly` environment variable to `true` and `ASPNETCORE_URLS` to `http://127.0.0.1:5299` to match the Flutter client's default (no Postgres required in this mode). In VS Code, use the "API (LocalOnly :5299)" launch config, or the "API + Flutter (Windows)" compound to start both together with debugging.
+
+**Run the Flutter client:**
+```bash
+cd PriorityTaskManager.Flutter
+flutter run -d windows   # or -d chrome for web
+```
+
 ## Testing
 
 The project `PriorityTaskManager.Tests/` contains the unit tests for the core library.

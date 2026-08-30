@@ -6,7 +6,6 @@ import '../models/effective_settings.dart';
 import '../models/fixed_event.dart';
 import '../models/schedule_models.dart';
 import '../models/task_item.dart';
-import 'local_sidecar.dart';
 import 'schedule_repository.dart';
 
 /// Formats a duration as .NET's default `TimeSpan` JSON shape (`hh:mm:ss`).
@@ -38,15 +37,24 @@ String _formatSlackMinutes(double? totalMinutes) {
 }
 
 /// [ScheduleRepository] implementation that computes the schedule by calling
-/// the unauthenticated local sidecar's `/api/local/schedule` endpoint (see
-/// `PriorityTaskManager.API/Local/LocalScheduleEndpoints.cs`), which runs the
-/// real `PriorityTaskManager` scheduling strategies against the tasks/profile
-/// this client sends. Nothing is persisted server-side; Hive stays the source
-/// of truth.
+/// the unauthenticated `/api/local/schedule` endpoint (see
+/// `PriorityTaskManager.API/Local/LocalScheduleEndpoints.cs`) on an already-
+/// running `PriorityTaskManager.API` instance, which runs the real
+/// `PriorityTaskManager` scheduling strategies against the tasks/profile this
+/// client sends. Nothing is persisted server-side; Hive stays the source of
+/// truth. This client does not start or manage the API process (see
+/// docs/WORKFLOW.md for how to run it during development); it only calls
+/// [baseUri], which must already be reachable.
 class ApiScheduleRepository implements ScheduleRepository {
-  ApiScheduleRepository({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  ApiScheduleRepository({Uri? baseUri, http.Client? httpClient})
+    : baseUri = baseUri ?? defaultBaseUri,
+      _httpClient = httpClient ?? http.Client();
 
+  /// The API instance to call when no [baseUri] is supplied; matches the
+  /// port used by the API's dev launch config (see .vscode/launch.json).
+  static final Uri defaultBaseUri = Uri.parse('http://127.0.0.1:5299');
+
+  final Uri baseUri;
   final http.Client _httpClient;
 
   @override
@@ -60,7 +68,6 @@ class ApiScheduleRepository implements ScheduleRepository {
       return DailySchedule.empty();
     }
 
-    final baseUri = await LocalSidecar.instance.ensureRunning();
     final effectiveNow = now ?? DateTime.now();
 
     final requestBody = jsonEncode({
@@ -70,11 +77,20 @@ class ApiScheduleRepository implements ScheduleRepository {
       'now': effectiveNow.toIso8601String(),
     });
 
-    final response = await _httpClient.post(
-      baseUri.resolve('/api/local/schedule'),
-      headers: {'Content-Type': 'application/json'},
-      body: requestBody,
-    );
+    http.Response response;
+    try {
+      response = await _httpClient.post(
+        baseUri.resolve('/api/local/schedule'),
+        headers: {'Content-Type': 'application/json'},
+        body: requestBody,
+      );
+    } catch (error) {
+      throw StateError(
+        'Could not reach the scheduling API at $baseUri. Make sure '
+        'PriorityTaskManager.API is running (see docs/WORKFLOW.md). '
+        'Underlying error: $error',
+      );
+    }
 
     if (response.statusCode != 200) {
       throw StateError(
