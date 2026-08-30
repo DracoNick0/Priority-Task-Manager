@@ -38,6 +38,22 @@ cd PriorityTaskManager.CLI
 dotnet run
 ```
 
+### Flutter Client
+
+Prerequisite:
+
+- Flutter SDK matching the version pinned in `PriorityTaskManager.Flutter/pubspec.yaml` (`environment.sdk`). If `flutter pub get` fails with an SDK version solving error, run `flutter upgrade` (stable channel) and retry.
+
+Fetch dependencies and run:
+
+```bash
+cd PriorityTaskManager.Flutter
+flutter pub get
+flutter run -d windows   # or -d chrome for web
+```
+
+The Flutter client calls a local `PriorityTaskManager.API` sidecar to compute schedules; see [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for how that sidecar is launched.
+
 ## Repository Map
 
 | Path | Purpose |
@@ -45,6 +61,8 @@ dotnet run
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
 | `PriorityTaskManager.CLI/` | Command-line entry point, handlers, and console rendering |
 | `PriorityTaskManager.API/` | ASP.NET Core Web API surface sharing the core service composition (in progress) |
+| `PriorityTaskManager.Flutter/` | Flutter web/desktop client (local-only for the MVP shell) |
+| `pt_prototyping/` | Standalone Flutter sandbox for UI/UX prototyping, not part of the shipped product |
 | `PriorityTaskManager.Tests/` | Unit test project |
 | `docs/` | Architecture, status, workflow, testing, and roadmap docs |
 

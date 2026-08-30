@@ -74,10 +74,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     TaskItem? existing;
     if (_isEditing) {
       existing = tasks.where((task) => task.id == widget.taskId).firstOrNull;
-      if (existing == null) {
-        return const Center(child: Text('Task not found.'));
-      }
-      _loadFrom(existing);
+      if (existing != null) _loadFrom(existing);
     }
 
     final candidateDependencies = tasks
