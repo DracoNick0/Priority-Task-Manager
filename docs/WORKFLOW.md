@@ -56,6 +56,15 @@ dotnet run --project PriorityTaskManager.API --no-launch-profile
 ```
 Set the `LocalOnly` environment variable to `true` and `ASPNETCORE_URLS` to `http://127.0.0.1:5299` to match the Flutter client's default (no Postgres required in this mode). In VS Code, use the "API (LocalOnly :5299)" launch config, or the "API + Flutter (Windows)" compound to start both together with debugging.
 
+**Run the API in cloud mode with dev auto-login (to exercise the authenticated `/api/schedule` route):**
+
+The Flutter client has no login screen yet. To test the authenticated, Subscription-gated `/api/schedule` route without one, build the client with the `PTM_DEV_AUTOLOGIN` define set to `free` or `subscriber`; on startup it logs in as one of two fixed dev accounts seeded automatically by the API (`free@dev.local` / `subscriber@dev.local`, see `PriorityTaskManager.API/Dev/DevAccountSeeder.cs`) and uses the resulting token instead of calling the unauthenticated local route. This requires a reachable Postgres database (see `PriorityTaskManager.API/appsettings.json`'s default connection string) and `ASPNETCORE_ENVIRONMENT=Development` — do **not** set `LocalOnly`, since dev seeding and auth are both skipped in `LocalOnly` mode.
+
+```bash
+flutter run -d windows --dart-define=PTM_DEV_AUTOLOGIN=free        # or =subscriber
+```
+In VS Code, use the "API (Cloud, dev seed :5299)" + "Flutter (Windows, auto-login: Free)" (or "...Subscription)") launch configs, or the matching "API + Flutter (Windows, auto-login: ...)" compounds.
+
 **Run the Flutter client:**
 ```bash
 cd PriorityTaskManager.Flutter
