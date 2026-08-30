@@ -22,8 +22,9 @@ This is reinforced by three supporting differentiators:
 
 ## Desired End State
 - **Product form**: A single scheduling core reachable from multiple clients — command-line, web, and desktop today, extending to native mobile — backed by a shared account and sync layer so a user's schedule is consistent everywhere they work.
-- **Local-first data ownership**: Even as cloud sync and mobile apps mature, the user's data should remain exportable and usable offline by default — a deliberate contrast to cloud-only competitors, not just a technical fallback.
-- **Protected scheduling algorithms (future-facing)**: once a scheduling algorithm is mature enough to be worth protecting as the app's core value, some algorithms may remain offline-available (bundled with the client for baseline use) while more advanced or proprietary ones become online-exclusive (executed server-side only) once the account/API layer exists. No algorithm needs this protection today — everything in the codebase is still a prototype — but revisit the offline-vs-online-exclusive split whenever a new algorithm is developed that would actually benefit from staying server-side.
+- **Local-first data ownership for tasks, not scheduling**: task/list/event data should remain exportable and usable offline by default — a deliberate contrast to cloud-only competitors, not just a technical fallback. Scheduling is the deliberate exception to this: computing a schedule is an online-exclusive, subscription-gated capability served by the API, not something any client reproduces offline.
+- **Protected, subscription-gated scheduling**: scheduling always runs server-side, behind an authenticated, subscribed account, rather than splitting into offline-bundled vs. online-exclusive algorithms. This protects the app's core value and gives the subscription a clear, load-bearing feature to sell, at the cost of scheduling requiring connectivity.
+- **Monetization**: the product is subscription-based. Scheduling and cross-device sync are the paid features; task/list/event CRUD and LLM-assisted intake remain free (intake is protected from abuse by a traffic/rate limiter, not a paywall).
 - **Reduced cognitive load, measurably**: every feature should be evaluated against whether it reduces the number of decisions and the amount of manual upkeep required from the user, not just whether it adds capability.
 
 ## Milestones
@@ -31,9 +32,9 @@ Each milestone assumes everything in the milestones before it is retained and co
 
 ### MVP — Minimum Viable Product
 - A prototype scheduling algorithm that prioritizes and places tasks using importance, complexity, due dates, dependencies, fixed events, and simple day boundaries (a single configured start and end time per day).
-- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, and a Flutter-based web and desktop client. The Flutter client is fully functional offline and reaches feature parity with the CLI — including running the actual scheduling algorithm against locally stored data, not just task/list CRUD — with command and API contracts designed so both the transition to online storage/sync (V1) and a future native mobile client can reuse them without rework, even though mobile isn't built until V1.
+- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, and a Flutter-based web and desktop client. The Flutter client's task/list/event CRUD works fully offline against locally stored data; scheduling is a subscription-gated, online-only call to the API rather than a client-side capability. Command and API contracts are designed so both the transition to online storage/sync (V1) and a future native mobile client can reuse them without rework, even though mobile isn't built until V1.
 - Account model and password-hashing foundation on the API (server-side only) — no client yet logs a user in with it; see V1 for an end-to-end usable login experience.
-- Offline local storage so the tool works without a network connection.
+- Offline local storage for task/list/event data so the tool's CRUD works without a network connection; scheduling itself requires connectivity.
 - LLM-assisted intake for external planning sources, with user review before anything is persisted.
 - The application is packaged, deployed, and downloadable by a real user outside the development environment.
 
@@ -47,7 +48,7 @@ Each milestone assumes everything in the milestones before it is retained and co
 - Basic recurring/repeating tasks, so periodic work doesn't require manual re-entry.
 - Scheduled-block reminders/notifications across devices, keeping the plan visible without requiring the user to keep checking the app.
 - Expanded scheduling support: load warnings when a day's scheduled complexity exceeds configured thresholds, and deadline risk indicators that surface how much realistic slack remains before an at-risk task's due date.
-- Algorithm protection: distinguish which scheduling algorithms remain offline-available (bundled with the client) versus online-exclusive (executed server-side only) now that networked accounts and sync exist.
+- Cross-device sync and scheduling are both subscription-gated, enforced server-side against the authenticated account, now that networked accounts and sync exist.
 
 ### V2 — Flexible Smart Planner
 - A second, meaningfully different scheduling algorithm the owner is confident in, giving users a real choice of planning styles.
@@ -62,11 +63,11 @@ Each milestone assumes everything in the milestones before it is retained and co
 
 ### Dream Product
 A single, self-contained picture of the fully realized product:
-- **Scheduling**: multiple interchangeable scheduling algorithms, including an optional scheduling AI trained on data contributed by consenting users; handles fixed working hours, flexible/open-ended days with honest capacity and deadline-risk visibility, dependencies, complexity, load thresholds, energy level, and user-initiated postponement; explains its placements in plain language and re-plans gracefully around overrides or missed days. Advanced or proprietary algorithms remain online-exclusive to protect the app's core value, while baseline algorithms stay offline-available.
+- **Scheduling**: multiple interchangeable scheduling algorithms, including an optional scheduling AI trained on data contributed by consenting users; handles fixed working hours, flexible/open-ended days with honest capacity and deadline-risk visibility, dependencies, complexity, load thresholds, energy level, and user-initiated postponement; explains its placements in plain language and re-plans gracefully around overrides or missed days. All scheduling runs server-side, gated behind an authenticated, subscribed account, protecting the app's core value and funding the product.
 - **Intake**: LLM-assisted intake for external planning sources, plus an optional personally-trained AI-assisted intake path — offered as an addition, not a replacement, unless it considerably outperforms the LLM path — and a feedback loop that learns from estimated vs. actual time.
 - **Capture and connectivity**: two-way calendar sync (writing scheduled blocks back to external calendars, not just importing events), building on the quick-capture surfaces (browser extension, email-to-task, voice input) introduced in V2 so getting a task into the system is never the bottleneck.
 - **Interfaces**: professional-grade, accessible, best-in-class UI/UX across CLI, web, desktop, iOS, and Android.
-- **Accounts and data**: email+password, 2FA, and OAuth/social login; seamless cross-device sync; local-first data ownership preserved even at full maturity (offline-capable, exportable).
+- **Accounts and data**: email+password, 2FA, and OAuth/social login; seamless cross-device sync (subscription-gated, alongside scheduling); local-first data ownership for task/list/event data preserved even at full maturity (offline-capable, exportable).
 - **Trust**: every AI feature is strictly consent-based, scheduling decisions are transparent, and the system never requires the user to fight it to keep a plan useful.
 - **Optional engagement**: opt-in, non-manipulative motivational features (for example, gentle progress reflection or streaks) explored only after the core trust and stress-reduction goals are met, and never at their expense.
 
