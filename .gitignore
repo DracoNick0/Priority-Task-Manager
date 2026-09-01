@@ -2,6 +2,9 @@
 bin/
 obj/
 
+# Ignore local secrets (e.g. JWT_KEY for docker compose); .env.example is the committed template
+.env
+
 # Ignore user task data file
 tasks.json
 lists.json

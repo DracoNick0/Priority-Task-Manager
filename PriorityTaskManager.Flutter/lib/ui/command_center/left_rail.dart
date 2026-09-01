@@ -12,7 +12,11 @@ import '../theme/app_theme.dart';
 /// The Left Rail: list switcher, global nav (Settings/Archive), and the
 /// Engine Status indicator (time simulation clock + algorithm mode).
 class LeftRail extends ConsumerWidget {
-  const LeftRail({super.key});
+  const LeftRail({super.key, this.dockAction});
+
+  /// Optional leading action (e.g. a "dock panel" button) shown alongside
+  /// the title, used when the rail is displayed in an undocked Drawer.
+  final Widget? dockAction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,6 +38,10 @@ class LeftRail extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
+                    if (dockAction != null) ...[
+                      dockAction!,
+                      const SizedBox(width: AppTheme.spacingSm),
+                    ],
                     Expanded(
                       child: Text(
                         'Priority Task Manager',

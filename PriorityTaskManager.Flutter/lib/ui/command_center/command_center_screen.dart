@@ -108,12 +108,10 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
           drawer: !leftDocked
               ? Drawer(
                   width: 280,
-                  child: Column(
-                    children: [
-                      if (!isNarrow)
-                        Align(
-                          alignment: Alignment.topRight,
-                          child: IconButton(
+                  child: LeftRail(
+                    dockAction: isNarrow
+                        ? null
+                        : IconButton(
                             icon: const Icon(Icons.dock),
                             tooltip: 'Dock panel',
                             onPressed: () {
@@ -124,9 +122,6 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                               });
                             },
                           ),
-                        ),
-                      const Expanded(child: LeftRail()),
-                    ],
                   ),
                 )
               : null,
@@ -155,7 +150,10 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
             children: [
               if (leftDocked)
                 SizedBox(width: leftWidth, child: const LeftRail()),
-              if (leftDocked)
+              // Kept mounted even while collapsed (not gated on leftDocked)
+              // so a single continuous drag can collapse and then
+              // re-expand the pane without releasing the mouse button.
+              if (isWide || isMedium)
                 ResizableDivider(
                   onDrag: (delta) {
                     final maxLeft =
@@ -165,18 +163,16 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                                 _dividerWidth * 2)
                             .clamp(_leftMinWidth, _leftMaxWidth);
                     final proposed = _leftWidth + delta;
-                    if (proposed < _leftMinWidth - _collapseThreshold) {
-                      setState(() {
-                        _leftCollapsed = true;
-                        _leftWidth = _leftMinWidth;
-                      });
-                      return;
-                    }
-                    // Only clamp the upper bound here; the lower bound is
-                    // intentionally left unclamped (down to the collapse
-                    // threshold) so consecutive small drag deltas below the
-                    // visual minimum still accumulate toward collapsing.
+                    // Lower bound intentionally left unclamped (down to the
+                    // collapse threshold) so consecutive small drag deltas
+                    // below the visual minimum still accumulate toward
+                    // collapsing, and dragging back the other way un-collapses.
+                    // TODO: the divider should stay glued to the cursor
+                    // 1:1 throughout the drag instead of lagging/detaching
+                    // once a clamp/collapse limit is hit.
                     setState(() {
+                      _leftCollapsed =
+                          proposed < _leftMinWidth - _collapseThreshold;
                       _leftWidth = proposed
                           .clamp(_leftMinWidth - _collapseThreshold, maxLeft)
                           .toDouble();
@@ -192,7 +188,10 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                       _scaffoldKey.currentState?.openEndDrawer(),
                 ),
               ),
-              if (rightDocked) ...[
+              // Kept mounted even while collapsed (not gated on rightDocked)
+              // so a single continuous drag can collapse and then
+              // re-expand the pane without releasing the mouse button.
+              if (isWide)
                 ResizableDivider(
                   onDrag: (delta) {
                     final maxRight =
@@ -202,29 +201,26 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                                 _dividerWidth * 2)
                             .clamp(_rightMinWidth, _rightMaxWidth);
                     final proposed = _rightWidth - delta;
-                    if (proposed < _rightMinWidth - _collapseThreshold) {
-                      setState(() {
-                        _rightCollapsed = true;
-                        _rightWidth = _rightMinWidth;
-                      });
-                      return;
-                    }
                     // See the left divider's onDrag for why the lower bound
                     // is intentionally left unclamped here.
+                    // TODO: same as the left divider — it should stay
+                    // glued to the cursor 1:1 instead of lagging/detaching.
                     setState(() {
+                      _rightCollapsed =
+                          proposed < _rightMinWidth - _collapseThreshold;
                       _rightWidth = proposed
                           .clamp(_rightMinWidth - _collapseThreshold, maxRight)
                           .toDouble();
                     });
                   },
                 ),
+              if (rightDocked)
                 SizedBox(
                   width: rightWidth,
                   child: RightInspector(
                     onClose: () => setState(() => _rightCollapsed = true),
                   ),
                 ),
-              ],
             ],
           ),
         );
