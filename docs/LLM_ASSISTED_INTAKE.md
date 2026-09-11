@@ -40,9 +40,31 @@ This document covers planned behavior only. It does not define current implement
 
 ## Intermediate Candidate Model (Concept)
 - CandidateList: title, description, source metadata.
-- CandidateTask: title, notes, due date, complexity hint, dependencies, source metadata.
+- CandidateTask: title, description, importance, estimated duration, not-before, due date, list assignment, source metadata. Fields already scoped as advanced scheduling on `TaskItem` (pinned, divisible, complexity, points, padding) are out of scope for LLM-generated candidates; they take `TaskItem`'s own constructor defaults and are left for the user to set explicitly, not inferred.
 - CandidateEvent: title, start/end, location or link, source metadata.
-- CandidateMetadata: source ID, source URL, extraction timestamp, confidence score, model version.
+- CandidateMetadata: source ID, source URL, extraction timestamp, model version, per-field confidence scores and needs-review flags (see below).
+
+## Confidence And Field-Level Review
+- Confidence is tracked per field, not per candidate.
+- The LLM always produces a best-effort value for every field it can reasonably infer; it never leaves a field null solely because confidence is low.
+- Any field below the confidence threshold is populated with the LLM's best-effort value and flagged as needing review, surfaced distinctly in the review UX rather than accepted silently.
+- A field the LLM cannot infer at all from source content still receives a system default (matching `TaskItem`'s own constructor defaults) and is flagged as needing review, rather than being left null.
+- The concrete confidence threshold that triggers a needs-review flag is not yet defined; it is expected to be tuned empirically once a provider is chosen.
+
+## List Assignment
+- Candidate tasks are pre-assigned to whichever list is currently open/active in the client at the time intake is run. LLM-driven list selection or new-list proposal is out of scope for this pass.
+
+## Duplicate And Merge Detection
+- Detecting or merging candidates against already-approved tasks (for example, on repeated sync of the same source) is out of scope until a later pass.
+- Structured sources with a natural external identifier (for example, a GitHub issue or pull request number) should still carry that identifier in candidate source metadata now, so future duplicate/merge detection does not require a later data migration.
+
+## Candidate Persistence and Tiering
+- Candidates are persisted (not held only in transient UI state), since extraction can be asynchronous and review may not happen in the same session.
+- A candidate is deleted once the user accepts it (after being converted into a real task/list/event through core services) or rejects it; candidates do not linger after a decision is made.
+- Free tier: candidates persist only in the client's local store (CLI JSON, Flutter Hive) and are never written to the account-scoped API/Postgres store.
+- Subscription tier: candidates persist server-side, account-scoped, the same way tasks/lists/events are (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)), so review can continue across devices.
+- Extraction requests and quota enforcement always go through the API for both tiers; only the resulting candidates' persistence location differs by tier.
+- Quota is measured in LLM tokens consumed, not request count or candidate count.
 
 ## UX and Safety Rules
 - Never silently overwrite user-edited tasks/events.
@@ -63,7 +85,8 @@ This document covers planned behavior only. It does not define current implement
 5. Add optional VS Code extension as a thin client over the same intake services.
 
 ## Open Questions
-- Which confidence threshold should auto-group candidates for bulk approval?
+- Which confidence threshold triggers a needs-review flag on a field?
+- Which LLM provider/model is used for extraction? Not yet chosen; tracked as part of provider-abstraction work.
 - Which fields are required before a candidate task can be persisted?
 - How long should raw source payloads be retained versus normalized facts only?
 
