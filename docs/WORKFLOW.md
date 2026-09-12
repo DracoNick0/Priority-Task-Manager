@@ -62,6 +62,22 @@ cd PriorityTaskManager.Flutter
 flutter run -d windows   # or -d chrome for web
 ```
 
+**Run the API and Postgres together via Docker Compose:**
+
+`docker-compose.yml` (repo root) runs the API container alongside a Postgres container, as an alternative to a manually-run Postgres container plus `dotnet run`. Copy `.env.example` to `.env` and set a real `JWT_KEY` first, then:
+```bash
+docker compose up
+```
+The API listens on `http://127.0.0.1:5299` (mapped to its internal port 8080), matching the Flutter client's default.
+
+**Deploying the API (Fly.io):**
+
+`PriorityTaskManager.API/Dockerfile` and `fly.toml` (repo root) define the production container and Fly.io app (`tpm-api`, internal port 8080, HTTPS terminated at Fly's edge). Deploy from the repo root with:
+```bash
+flyctl deploy -a tpm-api
+```
+Production secrets (`ConnectionStrings__Postgres`, `Jwt__Key`, etc.) are set via `flyctl secrets set` and never committed; `appsettings.json` intentionally ships no `Jwt:Key` so a missing production secret fails fast at startup.
+
 ## Testing
 
 The project `PriorityTaskManager.Tests/` contains the unit tests for the core library.

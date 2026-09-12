@@ -51,6 +51,18 @@
                 "-d",
                 "edge"
             ]
+        },
+        {
+            "name": "Flutter (Windows, Fly.io prod)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "windows",
+                "--dart-define=API_BASE_URL=https://tpm-api.fly.dev"
+            ]
         }
     ],
     "compounds": [

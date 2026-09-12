@@ -124,7 +124,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// No UseHttpsRedirection: Fly's edge (force_https in fly.toml) terminates TLS and forwards plain
+// HTTP internally, so this app never sees an HTTPS port to redirect to.
 
 if (cloudModeEnabled)
 {

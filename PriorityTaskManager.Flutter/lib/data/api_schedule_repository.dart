@@ -59,9 +59,21 @@ class ApiScheduleRepository implements ScheduleRepository {
   }) : baseUri = baseUri ?? defaultBaseUri,
        _httpClient = httpClient ?? http.Client();
 
-  /// The API instance to call when no [baseUri] is supplied; matches the
-  /// port used by the API's dev launch config (see .vscode/launch.json).
-  static final Uri defaultBaseUri = Uri.parse('http://127.0.0.1:5299');
+  /// The API instance to call when no [baseUri] is supplied. Defaults to the
+  /// port used by the API's dev launch config (see .vscode/launch.json);
+  /// override at build/run time with `--dart-define=API_BASE_URL=<url>`
+  /// (e.g. the production Fly.io URL) without touching this default.
+  ///
+  /// `String.fromEnvironment` only reads `--dart-define` values when it is
+  /// evaluated as a const expression, so the read must be hoisted into its
+  /// own `const` (a non-const context like `Uri.parse(...)` below always
+  /// falls back to [defaultValue], regardless of the define passed in).
+  static const String _defaultBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:5299',
+  );
+
+  static final Uri defaultBaseUri = Uri.parse(_defaultBaseUrl);
 
   final Uri baseUri;
   final http.Client _httpClient;
