@@ -1,13 +1,15 @@
 # Project Status
 
-**Framework**: .NET 8 Console
-**Storage**: Local JSON files
+**Framework**: .NET 8 (console CLI + ASP.NET Core API) and Flutter (web + Windows)
+**Storage**: Local JSON files (CLI), Postgres (API/hosted), Hive (Flutter local-only data)
 
 This document is the current-state snapshot for Priority Task Manager. It records what is working now, what is partial, what is broken, and what is under active revision.
 
 ## Status Snapshot
 
-- The CLI runs and all documented commands work.
+- The CLI runs standalone (offline, in-process core services, local JSON storage) and all documented commands work.
+- `PriorityTaskManager.API` is deployed to a real, publicly reachable hosted instance backed by Postgres, providing account/JWT auth and an authenticated, Subscription-tier-gated schedule-computation endpoint. This gives the app a genuine networked path to its core differentiator (computed scheduling), not just a per-developer local process. See [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md) for hosting/deployment details.
+- The Flutter client (web + Windows) has real login/register and a guest-first entry flow, and can be configured at build time to target either a local development API or the hosted production API.
 - Gold Panning is the active scheduling strategy; constraint optimization is not yet available as a selectable mode.
 - The test suite passes. See the repository's GitHub Issues for remaining testing-overhaul work.
 
@@ -122,4 +124,5 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 - Build check: `dotnet build .\PriorityTaskManager.API\PriorityTaskManager.API.csproj` succeeds.
 - Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (146 passed, 1 skipped).
 - Build check: `flutter build web` and `flutter build windows` succeed in `PriorityTaskManager.Flutter/`; `flutter analyze` and `flutter test` pass.
+- Live check: register, login, and an authenticated schedule computation have been verified end to end against the hosted production API, including a Flutter Windows client build pointed at the hosted instance.
 - Use the repository's GitHub Issues for the current active-work sequence, blockers, and next steps.

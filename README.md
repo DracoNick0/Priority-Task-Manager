@@ -1,6 +1,6 @@
 # Priority Task Manager
 
-Priority Task Manager is a .NET console application that helps turn task lists into prioritized, schedule-aware work plans. It combines task management, list-scoped settings, JSON persistence, and a staged scheduling engine in a single local-first tool.
+Priority Task Manager helps turn task lists into prioritized, schedule-aware work plans. It combines task management, list-scoped settings, and a staged scheduling engine, exposed through a standalone .NET console CLI (local-only, JSON persistence) and a Flutter web/desktop client backed by a hosted ASP.NET Core API (account-based, Postgres persistence).
 
 ## Why This Exists
 
@@ -13,7 +13,8 @@ The project exists to reduce decision fatigue when planning work. Instead of for
 - List-scoped settings: work hours, work days, sort option, scheduling mode, and simulated time preference.
 - Scheduling: Gold Panning is the active scheduling strategy.
 - Events: add, list, edit, and delete calendar-style event blocks.
-- Local persistence: data is stored in JSON files.
+- Local persistence: the CLI stores data in JSON files; the Flutter client stores data locally in Hive.
+- Networked accounts and hosted API: the Flutter client supports real login/register and a guest-first entry flow, with scheduling served by a hosted `PriorityTaskManager.API` instance backed by Postgres. See [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for hosting details.
 
 ![alt text](docs/images/defaults_image.png)
 
@@ -52,7 +53,7 @@ flutter pub get
 flutter run -d windows   # or -d chrome for web
 ```
 
-The Flutter client calls a local `PriorityTaskManager.API` sidecar to compute schedules; see [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for how that sidecar is launched.
+The Flutter client requires a running `PriorityTaskManager.API` instance to compute schedules for logged-in accounts (Guests see a plain, sortable task list instead). By default it targets a local API at `http://127.0.0.1:5299`; pass `--dart-define=API_BASE_URL=https://tpm-api.fly.dev` to point it at the hosted production API instead (see the "Flutter (Windows, Fly.io prod)" launch config in `.vscode/launch.json`). See [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for hosting/deployment details and [docs/WORKFLOW.md](docs/WORKFLOW.md) for running the API locally.
 
 ## Repository Map
 
@@ -60,8 +61,8 @@ The Flutter client calls a local `PriorityTaskManager.API` sidecar to compute sc
 | --- | --- |
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
 | `PriorityTaskManager.CLI/` | Command-line entry point, handlers, and console rendering |
-| `PriorityTaskManager.API/` | ASP.NET Core Web API surface sharing the core service composition (in progress) |
-| `PriorityTaskManager.Flutter/` | Flutter web/desktop client (local-only for the MVP shell) |
+| `PriorityTaskManager.API/` | ASP.NET Core Web API surface sharing the core service composition; hosted in production on Fly.io (`https://tpm-api.fly.dev`) |
+| `PriorityTaskManager.Flutter/` | Flutter web/desktop client with local-only Hive data plus networked accounts/login and API-backed scheduling |
 | `pt_prototyping/` | Standalone Flutter sandbox for UI/UX prototyping, not part of the shipped product |
 | `PriorityTaskManager.Tests/` | Unit test project |
 | `docs/` | Architecture, status, workflow, testing, and roadmap docs |
