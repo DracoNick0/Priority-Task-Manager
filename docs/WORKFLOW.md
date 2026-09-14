@@ -72,11 +72,13 @@ The API listens on `http://127.0.0.1:5299` (mapped to its internal port 8080), m
 
 **Deploying the API (Fly.io):**
 
-`PriorityTaskManager.API/Dockerfile` and `fly.toml` (repo root) define the production container and Fly.io app (`tpm-api`, internal port 8080, HTTPS terminated at Fly's edge). Deploy from the repo root with:
+`PriorityTaskManager.API/Dockerfile` and `fly.toml` (repo root) define the production container and Fly.io app (`tpm-api`, internal port 8080, HTTPS terminated at Fly's edge). The Dockerfile must be built with the repo root as the build context (`docker build -f PriorityTaskManager.API/Dockerfile .`), since it needs the `PriorityTaskManager` core project reference alongside `PriorityTaskManager.API`. Deploy from the repo root with:
 ```bash
 flyctl deploy -a tpm-api
 ```
-Production secrets (`ConnectionStrings__Postgres`, `Jwt__Key`, etc.) are set via `flyctl secrets set` and never committed; `appsettings.json` intentionally ships no `Jwt:Key` so a missing production secret fails fast at startup.
+Production secrets (`ConnectionStrings__Postgres`, `Jwt__Key`, etc.) are set via `flyctl secrets set` and never committed; `appsettings.json` intentionally ships no `Jwt:Key` so a missing production secret fails fast at startup. ASP.NET Core's config binder needs a double underscore for nested keys (`Jwt__Key`, not `JWT_KEY`) — a single underscore or all-caps flat name silently fails to bind.
+
+To point a local Flutter build at the hosted production API instead of a local one, pass `--dart-define=API_BASE_URL=https://tpm-api.fly.dev` (or use the "Flutter (Windows, Fly.io prod)" launch config).
 
 ## Testing
 

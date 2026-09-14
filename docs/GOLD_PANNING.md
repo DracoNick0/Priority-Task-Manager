@@ -82,7 +82,7 @@ The Gold Panning strategy prioritizes **Throughput** (filling the day) and **Ene
 *   **Consequence**: Long-term strategic work (High Importance, Low Urgency) risks being perpetually washed downstream by a stream of incoming fire-fighting tasks.
 *   **Mitigation**: The system relies on "Aging" (tasks getting more urgent as they approach deadline) to eventually force them through.
 
-## 5. Summary
+## 6. Summary
 *   **Gold Panning Algorithm**:
     *   **Gravity**: Pulls everything to Day 1.
     *   **Water Pressure**: Pushes excess volume to Day N+1.
