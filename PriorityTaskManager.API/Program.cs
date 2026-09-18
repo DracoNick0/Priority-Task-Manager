@@ -9,6 +9,7 @@ using PriorityTaskManager.API.Events;
 using PriorityTaskManager.API.Local;
 using PriorityTaskManager.API.Lists;
 using PriorityTaskManager.API.Persistence;
+using PriorityTaskManager.API.Profile;
 using PriorityTaskManager.API.Schedule;
 using PriorityTaskManager.API.Tasks;
 using PriorityTaskManager.Services;
@@ -138,6 +139,7 @@ if (cloudModeEnabled)
 	app.MapTaskEndpoints();
 	app.MapListEndpoints();
 	app.MapEventEndpoints();
+	app.MapProfileEndpoints();
 	app.MapScheduleEndpoints();
 }
 

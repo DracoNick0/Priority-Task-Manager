@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PriorityTaskManager\PriorityTaskManager.csproj" />
     <ProjectReference Include="..\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj" />
+    <ProjectReference Include="..\PriorityTaskManager.API\PriorityTaskManager.API.csproj" />
   </ItemGroup>
 
 </Project>

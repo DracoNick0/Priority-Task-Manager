@@ -1,16 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/api_task_repository.dart';
 import '../data/local_task_repository.dart';
 import '../data/task_repository.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
+import 'session_provider.dart';
 
-/// Provides the active [TaskRepository] implementation.
-///
-/// Only [LocalTaskRepository] is wired for this offline/guest MVP shell; an
-/// API-backed implementation is expected to be swapped in here for #44
-/// without changing any consuming provider or widget.
+/// Provides the active [TaskRepository] implementation: [LocalTaskRepository]
+/// for Guests (and while the session is still resolving), or
+/// [ApiTaskRepository] once Authenticated. Guest data does not migrate when
+/// logging in (see issue #46, out of scope here).
 final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
+  final session = await ref.watch(sessionControllerProvider.future);
+  if (session.status == SessionStatus.authenticated && session.token != null) {
+    return ApiTaskRepository(authToken: session.token!);
+  }
   return LocalTaskRepository.open();
 });
 

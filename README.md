@@ -1,20 +1,29 @@
 # Priority Task Manager
 
-Priority Task Manager helps turn task lists into prioritized, schedule-aware work plans. It combines task management, list-scoped settings, and a staged scheduling engine, exposed through a standalone .NET console CLI (local-only, JSON persistence) and a Flutter web/desktop client backed by a hosted ASP.NET Core API (account-based, Postgres persistence).
+Priority Task Manager is an automated, constraint-aware scheduling engine and productivity platform designed to reduce decision fatigue. Unlike conventional task managers that act as passive backlogs, Priority Task Manager evaluates task complexity, deadlines, topological dependencies, and calendar constraints to generate realistic, conflict-free daily work schedules.
 
-## Why This Exists
+---
 
-The project exists to reduce decision fatigue when planning work. Instead of forcing the user to manually sort every task, the application builds a schedule from task data, due dates, dependencies, and availability.
+## Core Differentiators
 
-## Current Capabilities
+Traditional task management applications require users to manually plan and re-triage their schedules. Priority Task Manager automates this process through its staged **Gold Panning** scheduling engine:
 
-- Task CRUD: add, edit, view, complete, uncomplete, and delete tasks.
-- List management: create, switch, list, and delete task lists.
-- List-scoped settings: work hours, work days, sort option, scheduling mode, and simulated time preference.
-- Scheduling: Gold Panning is the active scheduling strategy.
-- Events: add, list, edit, and delete calendar-style event blocks.
-- Local persistence: the CLI stores data in JSON files; the Flutter client stores data locally in Hive.
-- Networked accounts and hosted API: the Flutter client supports real login/register and a guest-first entry flow, with scheduling served by a hosted `PriorityTaskManager.API` instance backed by Postgres. See [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for hosting details.
+* **Constraint-Aware Time Packing**: Dynamically places tasks into available working windows around fixed calendar events and commitments.
+* **Intelligent Task Chunking**: Automatically segments large tasks across open time slots and day boundaries to maximize schedule throughput without manual intervention.
+* **Cognitive Load & Deadline Sequencing**: Anchors imminent deadlines first and sequences high-complexity tasks during peak focus windows.
+* **Topological Dependency Resolution**: Enforces prerequisite relationships to ensure dependent tasks are never scheduled before prerequisites are completed.
+* **Realistic Capacity & Risk Visibility**: Evaluates available working hours against task workloads to surface deadline risks and prevent overcommitment.
+
+---
+
+## Architecture Overview
+
+Priority Task Manager is built with a decoupled, clean architecture supporting both local-first offline workflows and cloud synchronization:
+
+* **Core Engine (`PriorityTaskManager/`)**: Domain models, persistence interfaces, and the multi-stage scheduling pipeline implemented in .NET Core.
+* **Web API (`PriorityTaskManager.API/`)**: ASP.NET Core REST API backed by PostgreSQL and deployed to Fly.io, providing authentication, data sync, and server-side schedule computation.
+* **Cross-Platform Client (`PriorityTaskManager.Flutter/`)**: Desktop and Web application built with Flutter, featuring guest-first onboarding, local offline storage (Hive), and cloud synchronization.
+* **Command-Line Interface (`PriorityTaskManager.CLI/`)**: Standalone .NET console application supporting interactive menus and direct commands with local JSON persistence.
 
 ![alt text](docs/images/defaults_image.png)
 
