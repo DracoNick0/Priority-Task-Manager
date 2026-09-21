@@ -37,6 +37,12 @@ applyTo: '**'
 - `TaskManagerService` coordinates task/list/profile operations and delegates prioritization through `IUrgencyStrategy`.
 - Scheduling and prioritization logic belongs under `PriorityTaskManager/Scheduling/**`.
 
+## Deploying API Changes (Fly.io)
+- There is no CI/CD for `PriorityTaskManager.API`. A merge to `main` does not redeploy the hosted instance (`tpm-api` on Fly.io); it keeps serving whichever build was last deployed with `flyctl deploy` until someone runs it again.
+- After changing anything under `PriorityTaskManager.API/` or `PriorityTaskManager/` that the hosted API needs (new/changed endpoints, routes, contracts, persistence, auth), redeploy with `flyctl deploy -a tpm-api` from the repo root, or explicitly flag to the user that a redeploy is needed before the change is live.
+- If the Flutter client reports unexpected 404s/errors against `https://tpm-api.fly.dev`, check `flyctl releases -a tpm-api` against the commit history of the affected endpoint before assuming a code defect — the hosted build may simply be stale.
+- See `docs/WORKFLOW.md` ("Deploying the API (Fly.io)") for deploy commands and secrets handling.
+
 ## CLI And Command Handling
 - Keep command handlers focused on parsing, orchestration, and user feedback; do not add business scheduling logic to CLI handlers.
 - Every command path must produce clear feedback: success, warning, usage guidance, or actionable error.

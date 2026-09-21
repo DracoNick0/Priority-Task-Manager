@@ -80,6 +80,8 @@ Production secrets (`ConnectionStrings__Postgres`, `Jwt__Key`, etc.) are set via
 
 To point a local Flutter build at the hosted production API instead of a local one, pass `--dart-define=API_BASE_URL=https://tpm-api.fly.dev` (or use the "Flutter (Windows, Fly.io prod)" launch config).
 
+**There is no CI/CD for the API.** Merging or pushing to `main` does not redeploy `tpm-api`; the hosted instance keeps serving whichever build was last deployed with `flyctl deploy` until someone runs it again. Any change under `PriorityTaskManager.API/` or `PriorityTaskManager/` (new/changed endpoints, routes, request/response contracts, persistence, auth) is **not live** until redeployed. Run `flyctl releases -a tpm-api` to check the last deploy date/commit before assuming the hosted API matches `main`, and redeploy after merging such a change if the hosted instance needs it (e.g. before testing the Flutter client against `https://tpm-api.fly.dev`).
+
 ## Testing
 
 The project `PriorityTaskManager.Tests/` contains the unit tests for the core library.

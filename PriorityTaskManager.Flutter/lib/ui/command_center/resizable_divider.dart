@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 
-/// A draggable vertical divider between two resizable panes.
+/// A draggable divider between two resizable panes.
 ///
-/// Reports incremental horizontal drag deltas via [onDrag]; callers own the
-/// actual width state and are responsible for clamping to min/max bounds.
+/// [axis] selects the drag direction (and which drag-delta axis is reported
+/// via [onDrag]): [Axis.horizontal] (default) is a vertical line dragged
+/// left/right, used between side panes; [Axis.vertical] is a horizontal line
+/// dragged up/down, used above a bottom-docked panel (e.g. the Dev Log
+/// panel). Callers own the actual size state and are responsible for
+/// clamping to min/max bounds.
 class ResizableDivider extends StatefulWidget {
-  const ResizableDivider({super.key, required this.onDrag});
+  const ResizableDivider({
+    super.key,
+    required this.onDrag,
+    this.axis = Axis.horizontal,
+  });
 
   final ValueChanged<double> onDrag;
+  final Axis axis;
 
   @override
   State<ResizableDivider> createState() => _ResizableDividerState();
@@ -21,31 +30,54 @@ class _ResizableDividerState extends State<ResizableDivider> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final highlighted = _hovering || _dragging;
+    final isHorizontalDrag = widget.axis == Axis.horizontal;
+
+    final bar = AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      width: isHorizontalDrag ? (highlighted ? 4 : 1) : double.infinity,
+      height: isHorizontalDrag ? double.infinity : (highlighted ? 4 : 1),
+      decoration: BoxDecoration(
+        color: highlighted ? colorScheme.primary : colorScheme.outlineVariant,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
 
     return MouseRegion(
-      cursor: SystemMouseCursors.resizeColumn,
+      cursor: isHorizontalDrag
+          ? SystemMouseCursors.resizeColumn
+          : SystemMouseCursors.resizeRow,
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: (_) => setState(() => _dragging = true),
-        onHorizontalDragEnd: (_) => setState(() => _dragging = false),
-        onHorizontalDragCancel: () => setState(() => _dragging = false),
-        onHorizontalDragUpdate: (details) => widget.onDrag(details.delta.dx),
+        onHorizontalDragStart: isHorizontalDrag
+            ? (_) => setState(() => _dragging = true)
+            : null,
+        onHorizontalDragEnd: isHorizontalDrag
+            ? (_) => setState(() => _dragging = false)
+            : null,
+        onHorizontalDragCancel: isHorizontalDrag
+            ? () => setState(() => _dragging = false)
+            : null,
+        onHorizontalDragUpdate: isHorizontalDrag
+            ? (details) => widget.onDrag(details.delta.dx)
+            : null,
+        onVerticalDragStart: isHorizontalDrag
+            ? null
+            : (_) => setState(() => _dragging = true),
+        onVerticalDragEnd: isHorizontalDrag
+            ? null
+            : (_) => setState(() => _dragging = false),
+        onVerticalDragCancel: isHorizontalDrag
+            ? null
+            : () => setState(() => _dragging = false),
+        onVerticalDragUpdate: isHorizontalDrag
+            ? null
+            : (details) => widget.onDrag(details.delta.dy),
         child: SizedBox(
-          width: 12,
-          child: Center(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              width: highlighted ? 4 : 1,
-              decoration: BoxDecoration(
-                color: highlighted
-                    ? colorScheme.primary
-                    : colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
+          width: isHorizontalDrag ? 12 : double.infinity,
+          height: isHorizontalDrag ? double.infinity : 12,
+          child: Center(child: bar),
         ),
       ),
     );

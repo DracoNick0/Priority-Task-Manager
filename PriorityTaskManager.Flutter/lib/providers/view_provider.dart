@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/api_schedule_repository.dart';
 import '../data/schedule_repository.dart';
+import '../dev/logging_http_client.dart';
 import '../models/effective_settings.dart';
 import '../models/schedule_models.dart';
 import 'auth_provider.dart';
@@ -29,7 +32,10 @@ final scheduleRepositoryProvider = FutureProvider<ScheduleRepository>((
       'Guests should not compute a schedule.',
     );
   }
-  return ApiScheduleRepository(authToken: authToken);
+  return ApiScheduleRepository(
+    authToken: authToken,
+    httpClient: kDebugMode ? LoggingHttpClient(http.Client()) : null,
+  );
 });
 
 /// The computed schedule for the active list's incomplete tasks, run through

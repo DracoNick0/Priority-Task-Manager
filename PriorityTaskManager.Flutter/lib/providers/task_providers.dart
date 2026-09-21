@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/api_task_repository.dart';
 import '../data/local_task_repository.dart';
 import '../data/task_repository.dart';
+import '../dev/logging_http_client.dart';
+import '../dev/logging_task_repository.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import 'session_provider.dart';
@@ -11,12 +15,20 @@ import 'session_provider.dart';
 /// for Guests (and while the session is still resolving), or
 /// [ApiTaskRepository] once Authenticated. Guest data does not migrate when
 /// logging in (see issue #46, out of scope here).
+///
+/// In debug builds (issue #59), API calls are logged via [LoggingHttpClient]
+/// and local (Guest) mutations are logged via [LoggingTaskRepository] —
+/// neither wrapper is constructed in release builds.
 final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
   final session = await ref.watch(sessionControllerProvider.future);
   if (session.status == SessionStatus.authenticated && session.token != null) {
-    return ApiTaskRepository(authToken: session.token!);
+    return ApiTaskRepository(
+      authToken: session.token!,
+      httpClient: kDebugMode ? LoggingHttpClient(http.Client()) : null,
+    );
   }
-  return LocalTaskRepository.open();
+  final local = await LocalTaskRepository.open();
+  return kDebugMode ? LoggingTaskRepository(local) : local;
 });
 
 /// All task lists known to the active repository.

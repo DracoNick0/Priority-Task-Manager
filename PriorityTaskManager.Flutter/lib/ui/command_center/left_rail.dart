@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../providers/dev_log_provider.dart';
 import '../../providers/engine_status_provider.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/session_provider.dart';
@@ -118,6 +120,14 @@ class LeftRail extends ConsumerWidget {
               onTap: () => ref.read(selectedInspectorProvider.notifier).state =
                   const InspectorTarget(kind: InspectorKind.defaults),
             ),
+            if (kDebugMode)
+              _RailItem(
+                icon: Icons.bug_report_outlined,
+                label: 'Dev Log',
+                isSelected: ref.watch(devLogPanelOpenProvider),
+                onTap: () => ref.read(devLogPanelOpenProvider.notifier).state =
+                    !ref.read(devLogPanelOpenProvider),
+              ),
             const Divider(height: 1),
             const _AccountRow(),
             const _EngineStatus(),

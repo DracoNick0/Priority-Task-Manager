@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/auth_repository.dart';
 import '../data/secure_token_store.dart';
+import '../dev/logging_http_client.dart';
 
 enum SessionStatus {
   /// First run: the user has never made the Guest-vs-Authenticated entry
@@ -40,7 +43,9 @@ class SessionState {
 /// choice, and performs login/register/logout. UI code should never touch
 /// [AuthRepository]/[SecureTokenStore] directly; go through this controller.
 class SessionController extends AsyncNotifier<SessionState> {
-  late final AuthRepository _authRepository = AuthRepository();
+  late final AuthRepository _authRepository = AuthRepository(
+    httpClient: kDebugMode ? LoggingHttpClient(http.Client()) : null,
+  );
   late final SecureTokenStore _tokenStore = SecureTokenStore();
 
   @override

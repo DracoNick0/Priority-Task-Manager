@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:priority_task_manager/data/api_task_repository.dart';
-import 'package:priority_task_manager/models/task_item.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
 
 void main() {
