@@ -16,16 +16,20 @@ import 'session_provider.dart';
 /// [ApiTaskRepository] once Authenticated. Guest data does not migrate when
 /// logging in (see issue #46, out of scope here).
 ///
-/// In debug builds (issue #59), API calls are logged via [LoggingHttpClient]
-/// and local (Guest) mutations are logged via [LoggingTaskRepository] —
-/// neither wrapper is constructed in release builds.
+/// In debug builds (issue #59), API calls are logged twice at different
+/// levels: [LoggingHttpClient] records the raw HTTP request/response, and
+/// [LoggingTaskRepository] wraps the whole repository (both [ApiTaskRepository]
+/// and [LocalTaskRepository]) to record the higher-level call (e.g.
+/// `addTask(...)`) regardless of auth state. Neither wrapper is constructed
+/// in release builds.
 final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
   final session = await ref.watch(sessionControllerProvider.future);
   if (session.status == SessionStatus.authenticated && session.token != null) {
-    return ApiTaskRepository(
+    final api = ApiTaskRepository(
       authToken: session.token!,
       httpClient: kDebugMode ? LoggingHttpClient(http.Client()) : null,
     );
+    return kDebugMode ? LoggingTaskRepository(api) : api;
   }
   final local = await LocalTaskRepository.open();
   return kDebugMode ? LoggingTaskRepository(local) : local;
@@ -88,6 +92,12 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     String description = '',
     DateTime? dueDate,
     int estimatedDurationMinutes = 60,
+    List<String>? dependencies,
+    int importance = 5,
+    int complexity = 1,
+    DateTime? notBefore,
+    bool isPinned = false,
+    bool isDivisible = true,
   }) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     final created = await repository.addTask(
@@ -96,6 +106,12 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
       description: description,
       dueDate: dueDate,
       estimatedDurationMinutes: estimatedDurationMinutes,
+      dependencies: dependencies,
+      importance: importance,
+      complexity: complexity,
+      notBefore: notBefore,
+      isPinned: isPinned,
+      isDivisible: isDivisible,
     );
     ref.invalidateSelf();
     await future;

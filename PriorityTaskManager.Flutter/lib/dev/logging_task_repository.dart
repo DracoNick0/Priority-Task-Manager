@@ -7,10 +7,13 @@ import 'dev_log_sink.dart';
 import '../data/task_repository.dart';
 
 /// [TaskRepository] decorator that logs every call as a [DevLogEntry]
-/// (issue #59), for repositories whose mutations don't already go over HTTP
-/// (e.g. [LocalTaskRepository], used by Guests) and therefore aren't covered
-/// by `LoggingHttpClient`. Delegates every method to [_inner] unchanged; only
-/// used when `kDebugMode` is true (see `taskRepositoryProvider`).
+/// (issue #59). Wraps both [LocalTaskRepository] (Guests, the only logging
+/// those calls get since there's no HTTP layer underneath) and
+/// [ApiTaskRepository] (Authenticated, in addition to the raw HTTP-level
+/// logging [LoggingHttpClient] already provides) so the higher-level call
+/// (e.g. `addTask(...)`) is always visible regardless of auth state.
+/// Delegates every method to [_inner] unchanged; only used when
+/// `kDebugMode` is true (see `taskRepositoryProvider`).
 class LoggingTaskRepository implements TaskRepository {
   LoggingTaskRepository(this._inner, {DevLogSink? sink})
     : _sink = sink ?? DevLogSink.instance;
@@ -78,6 +81,12 @@ class LoggingTaskRepository implements TaskRepository {
     String description = '',
     DateTime? dueDate,
     int estimatedDurationMinutes = 60,
+    List<String>? dependencies,
+    int importance = 5,
+    int complexity = 1,
+    DateTime? notBefore,
+    bool isPinned = false,
+    bool isDivisible = true,
   }) => _logged(
     'addTask(listId: $listId, title: $title)',
     () => _inner.addTask(
@@ -86,6 +95,12 @@ class LoggingTaskRepository implements TaskRepository {
       description: description,
       dueDate: dueDate,
       estimatedDurationMinutes: estimatedDurationMinutes,
+      dependencies: dependencies,
+      importance: importance,
+      complexity: complexity,
+      notBefore: notBefore,
+      isPinned: isPinned,
+      isDivisible: isDivisible,
     ),
   );
 

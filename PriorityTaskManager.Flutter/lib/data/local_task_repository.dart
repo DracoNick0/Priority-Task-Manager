@@ -96,6 +96,12 @@ class LocalTaskRepository implements TaskRepository {
     String description = '',
     DateTime? dueDate,
     int estimatedDurationMinutes = 60,
+    List<String>? dependencies,
+    int importance = 5,
+    int complexity = 1,
+    DateTime? notBefore,
+    bool isPinned = false,
+    bool isDivisible = true,
   }) async {
     final task = TaskItem(
       id: _uuid.v4(),
@@ -104,6 +110,12 @@ class LocalTaskRepository implements TaskRepository {
       description: description,
       dueDate: dueDate,
       estimatedDurationMinutes: estimatedDurationMinutes,
+      dependencies: dependencies,
+      importance: importance,
+      complexity: complexity,
+      notBefore: notBefore,
+      isPinned: isPinned,
+      isDivisible: isDivisible,
     );
     await _tasksBox.put(task.id, task);
     return task;

@@ -34,4 +34,9 @@ class DevLogEntry {
   final String? detail;
 
   final int? durationMs;
+
+  /// Calls at/above this duration are flagged as slow in the dev log panel.
+  static const int slowThresholdMs = 1000;
+
+  bool get isSlow => durationMs != null && durationMs! >= slowThresholdMs;
 }

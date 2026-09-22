@@ -43,6 +43,12 @@ class _FakeTaskRepository implements TaskRepository {
     String description = '',
     DateTime? dueDate,
     int estimatedDurationMinutes = 60,
+    List<String>? dependencies,
+    int importance = 5,
+    int complexity = 1,
+    DateTime? notBefore,
+    bool isPinned = false,
+    bool isDivisible = true,
   }) => throw UnimplementedError();
 
   @override

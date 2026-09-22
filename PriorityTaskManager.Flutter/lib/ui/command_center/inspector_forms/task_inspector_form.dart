@@ -299,17 +299,12 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         description: _descriptionController.text.trim(),
         dueDate: _dueDate,
         estimatedDurationMinutes: duration,
-      );
-      await notifier.updateTask(
-        created.copyWith(
-          notBefore: _notBefore,
-          clearNotBefore: _notBefore == null,
-          importance: _importance,
-          complexity: _complexity,
-          isPinned: _isPinned,
-          isDivisible: _isDivisible,
-          dependencies: _selectedDependencyIds.toList(),
-        ),
+        notBefore: _notBefore,
+        importance: _importance,
+        complexity: _complexity,
+        isPinned: _isPinned,
+        isDivisible: _isDivisible,
+        dependencies: _selectedDependencyIds.toList(),
       );
       ref.read(selectedInspectorProvider.notifier).state = InspectorTarget(
         kind: InspectorKind.task,
