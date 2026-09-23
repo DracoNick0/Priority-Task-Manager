@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/task_item.dart';
+import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../theme/app_theme.dart';
@@ -28,7 +29,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   DateTime? _dueDate;
   DateTime? _notBefore;
   int _importance = 5;
-  int _complexity = 1;
+  int _complexity = 5;
   bool _isPinned = false;
   bool _isDivisible = true;
   TaskItem? _loadedFrom;
@@ -294,7 +295,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     final notifier = ref.read(tasksProvider(widget.listId).notifier);
 
     if (existing == null) {
-      final created = await notifier.addTask(
+      await notifier.addTask(
         title: title,
         description: _descriptionController.text.trim(),
         dueDate: _dueDate,
@@ -305,10 +306,6 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         isPinned: _isPinned,
         isDivisible: _isDivisible,
         dependencies: _selectedDependencyIds.toList(),
-      );
-      ref.read(selectedInspectorProvider.notifier).state = InspectorTarget(
-        kind: InspectorKind.task,
-        id: created.id,
       );
     } else {
       await notifier.updateTask(
@@ -328,10 +325,30 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         ),
       );
     }
+
+    if (!mounted) return;
+    ref.read(appNotificationProvider.notifier).state = AppNotification(
+      existing == null ? 'Task created' : 'Task saved',
+      icon: existing == null ? Icons.add_task : Icons.check_circle,
+    );
+    _closeInspector();
   }
 
   Future<void> _delete(TaskItem task) async {
     await ref.read(tasksProvider(widget.listId).notifier).deleteTask(task.id);
+    if (!mounted) return;
+    ref.read(appNotificationProvider.notifier).state = const AppNotification(
+      'Task deleted',
+      icon: Icons.delete_outline,
+    );
+    _closeInspector();
+  }
+
+  void _closeInspector() {
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold != null && scaffold.isEndDrawerOpen) {
+      scaffold.closeEndDrawer();
+    }
     ref.read(selectedInspectorProvider.notifier).state =
         const InspectorTarget.none();
   }

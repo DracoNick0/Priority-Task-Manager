@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/task_item.dart';
+import '../../providers/app_notifications_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
@@ -66,9 +67,13 @@ class GuestTaskList extends ConsumerWidget {
         key: ValueKey(task.id),
         task: task,
         isBlocked: isBlocked,
-        onToggleCompleted: (value) => ref
-            .read(tasksProvider(listId).notifier)
-            .setCompleted(task.id, value),
+        onToggleCompleted: (value) {
+          ref.read(tasksProvider(listId).notifier).setCompleted(task.id, value);
+          if (value) {
+            ref.read(appNotificationProvider.notifier).state =
+                const AppNotification('Task completed', icon: Icons.task_alt);
+          }
+        },
         onTap: () => ref.read(selectedInspectorProvider.notifier).state =
             InspectorTarget(kind: InspectorKind.task, id: task.id),
       );
@@ -128,11 +133,12 @@ class GuestTaskList extends ConsumerWidget {
                   key: ValueKey(event.id),
                   event: event,
                   onTap: () =>
-                      ref.read(selectedInspectorProvider.notifier).state =
-                          InspectorTarget(
-                            kind: InspectorKind.event,
-                            id: event.id,
-                          ),
+                      ref
+                          .read(selectedInspectorProvider.notifier)
+                          .state = InspectorTarget(
+                        kind: InspectorKind.event,
+                        id: event.id,
+                      ),
                 ),
               for (final task in incompleteTasks) buildTaskCard(task),
               for (final task in completedTasks) buildTaskCard(task),
@@ -155,8 +161,7 @@ class GuestTaskList extends ConsumerWidget {
           return a.dueDate!.compareTo(b.dueDate!);
         };
       case GuestTaskSort.alphabetical:
-        return (a, b) =>
-            a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        return (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase());
     }
   }
 }

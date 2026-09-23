@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/schedule_models.dart';
 import '../../models/task_item.dart';
+import '../../providers/app_notifications_provider.dart';
 import '../../providers/engine_status_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../providers/selection_provider.dart';
@@ -272,9 +273,13 @@ class _Pipeline extends ConsumerWidget {
         isBlocked: isBlocked(task),
         fragmentIndex: fragmentIndex,
         fragmentTotal: group.length,
-        onToggleCompleted: (value) => ref
-            .read(tasksProvider(listId).notifier)
-            .setCompleted(task.id, value),
+        onToggleCompleted: (value) {
+          ref.read(tasksProvider(listId).notifier).setCompleted(task.id, value);
+          if (value) {
+            ref.read(appNotificationProvider.notifier).state =
+                const AppNotification('Task completed', icon: Icons.task_alt);
+          }
+        },
         onTap: () => ref.read(selectedInspectorProvider.notifier).state =
             InspectorTarget(kind: InspectorKind.task, id: task.id),
       );
@@ -285,9 +290,13 @@ class _Pipeline extends ConsumerWidget {
         key: ValueKey('plain-${task.id}'),
         task: task,
         isBlocked: isBlocked(task),
-        onToggleCompleted: (value) => ref
-            .read(tasksProvider(listId).notifier)
-            .setCompleted(task.id, value),
+        onToggleCompleted: (value) {
+          ref.read(tasksProvider(listId).notifier).setCompleted(task.id, value);
+          if (value) {
+            ref.read(appNotificationProvider.notifier).state =
+                const AppNotification('Task completed', icon: Icons.task_alt);
+          }
+        },
         onTap: () => ref.read(selectedInspectorProvider.notifier).state =
             InspectorTarget(kind: InspectorKind.task, id: task.id),
       );

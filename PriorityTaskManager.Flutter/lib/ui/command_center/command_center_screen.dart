@@ -2,10 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/app_notifications_provider.dart';
 import '../../providers/dev_log_provider.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
 import '../dev/dev_log_panel.dart';
+import '../theme/app_theme.dart';
 import 'center_stage.dart';
 import 'left_rail.dart';
 import 'resizable_divider.dart';
@@ -82,11 +84,45 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
     final rightDockedForInspector = isWideForInspector && !_rightCollapsed;
 
     // Pop the inspector open like the "show inspector" button would
-    // whenever something gets selected but the pane isn't docked.
+    // whenever something gets selected but the pane isn't docked, and
+    // collapse/undock it once the selection is cleared (e.g. after a save
+    // or delete) while it is docked.
     ref.listen<InspectorTarget>(selectedInspectorProvider, (previous, next) {
       if (next.kind != InspectorKind.none && !rightDockedForInspector) {
         _scaffoldKey.currentState?.openEndDrawer();
+      } else if (next.kind == InspectorKind.none && rightDockedForInspector) {
+        setState(() => _rightCollapsed = true);
       }
+    });
+
+    ref.listen<AppNotification?>(appNotificationProvider, (previous, next) {
+      if (next == null) return;
+      final colorScheme = Theme.of(context).colorScheme;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: colorScheme.inverseSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            margin: const EdgeInsets.all(AppTheme.spacingMd),
+            duration: const Duration(seconds: 2),
+            content: Row(
+              children: [
+                Icon(next.icon, color: colorScheme.inversePrimary, size: 20),
+                const SizedBox(width: AppTheme.spacingSm),
+                Expanded(
+                  child: Text(
+                    next.message,
+                    style: TextStyle(color: colorScheme.onInverseSurface),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
     });
 
     final devLogOpen = kDebugMode && ref.watch(devLogPanelOpenProvider);
