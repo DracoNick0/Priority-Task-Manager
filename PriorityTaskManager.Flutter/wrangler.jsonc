@@ -1,0 +1,8 @@
+{
+	// Static-assets-only Worker (no server-side script) serving the Flutter web build (issue #61).
+	"name": "tpm-web",
+	"compatibility_date": "2024-09-23",
+	"assets": {
+		"directory": "./build/web"
+	}
+}
