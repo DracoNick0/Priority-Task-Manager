@@ -39,6 +39,20 @@ var cloudModeEnabled = !string.IsNullOrWhiteSpace(connectionString);
 // false in config at V1 once real payment/entitlement enforcement lands.
 var betaGracePeriodEnabled = builder.Configuration.GetValue<bool>("BetaGracePeriod:DefaultNewAccountsToSubscription");
 
+// Config-driven so the web client's hosting origin (issue #61) can change, or move providers entirely,
+// without a code change here — just an "AllowedOrigins" update in config/environment variables.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy(CorsPolicies.WebClient, policy =>
+	{
+		policy.SetIsOriginAllowed(origin =>
+				allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) || CorsPolicies.IsLocalhostOrigin(origin))
+			.AllowAnyHeader()
+			.AllowAnyMethod();
+	});
+});
+
 if (cloudModeEnabled)
 {
 	// Server-side only so far; no client logs in with this yet (client integration is issue #44, V1).
@@ -130,6 +144,7 @@ if (app.Environment.IsDevelopment())
 
 if (cloudModeEnabled)
 {
+	app.UseCors(CorsPolicies.WebClient);
 	app.UseRateLimiter();
 	app.UseAuthentication();
 	app.UseAuthorization();
@@ -144,4 +159,16 @@ if (cloudModeEnabled)
 }
 
 app.Run();
+
+// Web-client CORS policy (issue #61): policy name shared between AddCors and UseCors above, plus a dev
+// convenience allowing any localhost origin regardless of scheme/port, since flutter run -d chrome
+// binds to a random localhost port each run and so can't be listed as a fixed origin in config.
+static class CorsPolicies
+{
+	public const string WebClient = "WebClient";
+
+	public static bool IsLocalhostOrigin(string origin) =>
+		Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+		(uri.Host is "localhost" or "127.0.0.1");
+}
 
