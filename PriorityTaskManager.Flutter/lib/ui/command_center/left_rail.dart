@@ -285,68 +285,131 @@ class _EngineStatus extends ConsumerWidget {
     final clockAsync = ref.watch(engineClockProvider);
     final algorithmMode = ref.watch(algorithmModeProvider);
     final isSimulated = ref.watch(isSimulatedTimeProvider);
+    final session = ref.watch(sessionControllerProvider).asData?.value;
+    final isAuthenticated = session?.status == SessionStatus.authenticated;
+    final activeListId = ref.watch(activeListIdProvider);
+    final canSetSimulatedTime = isAuthenticated && activeListId != null;
 
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingMd),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: isSimulated ? colorScheme.tertiary : colorScheme.secondary,
-              shape: BoxShape.circle,
+    return InkWell(
+      onTap: canSetSimulatedTime
+          ? () => _pickSimulatedTime(
+              context,
+              ref,
+              activeListId,
+              clockAsync.asData?.value,
+            )
+          : null,
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacingMd),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isSimulated
+                    ? colorScheme.tertiary
+                    : colorScheme.secondary,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-          const SizedBox(width: AppTheme.spacingSm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      clockAsync.when(
-                        data: (time) => isSimulated
-                            ? DateFormat('MMM d, h:mm a').format(time)
-                            : DateFormat.jm().format(time),
-                        loading: () => '--:--',
-                        error: (_, error) => '--:--',
-                      ),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (isSimulated) ...[
-                      const SizedBox(width: AppTheme.spacingXs),
-                      Tooltip(
-                        message: 'Frozen simulated time, not real time',
-                        child: Icon(
-                          Icons.science_outlined,
-                          size: 14,
-                          color: colorScheme.tertiary,
+            const SizedBox(width: AppTheme.spacingSm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        clockAsync.when(
+                          data: (time) => isSimulated
+                              ? DateFormat('MMM d, h:mm a').format(time)
+                              : DateFormat.jm().format(time),
+                          loading: () => '--:--',
+                          error: (_, error) => '--:--',
+                        ),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      if (isSimulated) ...[
+                        const SizedBox(width: AppTheme.spacingXs),
+                        Tooltip(
+                          message: 'Frozen simulated time, not real time',
+                          child: Icon(
+                            Icons.science_outlined,
+                            size: 14,
+                            color: colorScheme.tertiary,
+                          ),
+                        ),
+                      ],
+                      if (canSetSimulatedTime) ...[
+                        const SizedBox(width: AppTheme.spacingXs),
+                        Icon(
+                          Icons.edit_calendar_outlined,
+                          size: 14,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-                Text(
-                  algorithmMode,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isSimulated
-                        ? colorScheme.tertiary
-                        : colorScheme.onSurfaceVariant,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  Text(
+                    algorithmMode,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isSimulated
+                          ? colorScheme.tertiary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  Future<void> _pickSimulatedTime(
+    BuildContext context,
+    WidgetRef ref,
+    String activeListId,
+    DateTime? currentTime,
+  ) async {
+    final initial = currentTime ?? DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null) return;
+
+    final picked = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    final lists = ref.read(taskListsProvider).asData?.value ?? const [];
+    final list = lists.where((l) => l.id == activeListId).firstOrNull;
+    if (list == null) return;
+    await ref
+        .read(taskListsProvider.notifier)
+        .updateList(list.copyWith(simulatedTime: picked));
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }
