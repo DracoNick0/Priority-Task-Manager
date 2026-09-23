@@ -105,6 +105,15 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                         continue;
                     }
 
+                    // DueDate Gate: once a task's due date has already passed, placing it today (or any
+                    // later day) would violate the "never scheduled past due date" invariant. Leave it
+                    // in `remainingTasks` so Step 3 below classifies it as unschedulable instead of the
+                    // capacity-overflow fallback silently cramming it onto the last day past its deadline.
+                    if (task.DueDate.HasValue && task.DueDate.Value.Date < currentDay)
+                    {
+                        continue;
+                    }
+
                     // If the task fits completely in the remaining space, add it.
                     if (taskDuration <= availableSpace)
                     {
@@ -155,18 +164,21 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             // --- Step 3: Handling Leftovers ---
             // Any tasks remaining after the loop fall into two categories:
             //   - Permanently blocked: their prerequisite(s) never got placed within the horizon
-            //     (e.g. a prerequisite that also ran out of room, or a dependency cycle), or their
-            //     NotBefore date falls after the last day in the scheduling horizon. Forcing these
-            //     onto the last day would violate the dependency-order or NotBefore invariant, so
-            //     they are reported as unschedulable instead.
-            //   - Capacity overflow: everything else that simply did not fit. As a fallback, these
-            //     are added to the last day, which may cause over-scheduling (pre-existing behavior).
+            //     (e.g. a prerequisite that also ran out of room, or a dependency cycle), their
+            //     NotBefore date falls after the last day in the scheduling horizon, or their DueDate
+            //     falls on or before the last day (they already had every eligible day to be placed and
+            //     still didn't fit). Forcing these onto the last day would violate the dependency-order,
+            //     NotBefore, or DueDate invariant, so they are reported as unschedulable instead.
+            //   - Capacity overflow: everything else that simply did not fit (no DueDate, or a DueDate
+            //     after the last day, i.e. the horizon itself is undersized). As a fallback, these are
+            //     added to the last day, which may cause over-scheduling (pre-existing behavior).
             if (remainingTasks.Count > 0)
             {
                 var lastDay = windowDays.Last();
                 var permanentlyBlocked = remainingTasks
                     .Where(t => !IsDependencySatisfied(t, remainingTasks, activeTaskIds)
-                        || (t.NotBefore.HasValue && t.NotBefore.Value.Date > lastDay))
+                        || (t.NotBefore.HasValue && t.NotBefore.Value.Date > lastDay)
+                        || (t.DueDate.HasValue && t.DueDate.Value.Date <= lastDay))
                     .ToList();
                 var capacityOverflow = remainingTasks.Except(permanentlyBlocked).ToList();
 
@@ -178,7 +190,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 if (permanentlyBlocked.Count > 0)
                 {
                     context.SharedState["UnschedulableTasks"] = permanentlyBlocked;
-                    context.History.Add($"  -> {permanentlyBlocked.Count} task(s) could not be scheduled: unresolved prerequisite(s) or an earliest-start (NotBefore) constraint beyond the scheduling horizon.");
+                    context.History.Add($"  -> {permanentlyBlocked.Count} task(s) could not be scheduled: unresolved prerequisite(s), an earliest-start (NotBefore) constraint beyond the scheduling horizon, or a due date that has already passed the available capacity.");
                 }
             }
 

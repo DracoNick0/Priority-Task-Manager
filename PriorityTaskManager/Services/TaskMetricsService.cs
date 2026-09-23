@@ -33,7 +33,8 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
-        /// Calculates the realistic slack time for a task based on working hours.
+        /// Calculates the realistic slack time for a task: how much working time is left between when the
+        /// task's last scheduled chunk ends and its due date, counting only working hours on working days.
         /// </summary>
         /// <param name="task">The task to calculate slack for.</param>
         /// <param name="userProfile">The user profile.</param>
@@ -43,12 +44,12 @@ namespace PriorityTaskManager.Services
             if (task.ScheduledParts == null || !task.ScheduledParts.Any() || !task.DueDate.HasValue)
                 return TimeSpan.MaxValue;
 
-            // Use the earliest scheduled chunk for slack calculation
-            var startTime = task.ScheduledParts.Min(p => p.StartTime);
+            // Use the latest scheduled chunk end for slack calculation
+            var endTime = task.ScheduledParts.Max(p => p.EndTime);
             var effectiveDueTime = GetEffectiveDueTime(task, userProfile);
 
             TimeSpan totalSlack = TimeSpan.Zero;
-            var currentDay = startTime.Date;
+            var currentDay = endTime.Date;
 
             while (currentDay <= effectiveDueTime.Date)
             {
@@ -57,9 +58,9 @@ namespace PriorityTaskManager.Services
                     var workStart = currentDay.Add(userProfile.WorkStartTime.ToTimeSpan());
                     var workEnd = currentDay.Add(userProfile.WorkEndTime.ToTimeSpan());
 
-                    if (currentDay == startTime.Date)
+                    if (currentDay == endTime.Date)
                     {
-                        totalSlack += workEnd - (startTime > workStart ? startTime : workStart);
+                        totalSlack += workEnd - (endTime > workStart ? endTime : workStart);
                     }
                     else if (currentDay == effectiveDueTime.Date)
                     {
@@ -74,11 +75,14 @@ namespace PriorityTaskManager.Services
                 currentDay = currentDay.AddDays(1);
             }
 
-            return totalSlack - task.EstimatedDuration;
+            return totalSlack;
         }
 
         /// <summary>
-        /// Calculates the actual slack time for a task.
+        /// Calculates the actual slack time for a task: the raw wall-clock time between when the task's last
+        /// scheduled chunk ends and its due date. Unlike <see cref="CalculateRealisticSlack"/>, this does not
+        /// cap the due date to the end of a workday, so non-working hours between the scheduled end and the
+        /// due date are counted as slack.
         /// </summary>
         /// <param name="task">The task to calculate slack for.</param>
         /// <param name="userProfile">The user profile.</param>
@@ -89,9 +93,9 @@ namespace PriorityTaskManager.Services
             {
                 return TimeSpan.MaxValue;
             }
-            // Use the latest scheduled chunk end time
+
             var scheduledEnd = task.ScheduledParts.Max(p => p.EndTime);
-            return GetEffectiveDueTime(task, userProfile) - scheduledEnd;
+            return task.DueDate.Value - scheduledEnd;
         }
 
         private DateTime GetEffectiveDueTime(TaskItem task, UserProfile userProfile)

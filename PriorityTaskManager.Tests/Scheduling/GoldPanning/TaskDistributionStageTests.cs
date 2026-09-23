@@ -161,5 +161,33 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             var totalDuration = buckets[day1].Sum(t => t.EstimatedDuration.TotalHours);
             Assert.Equal(10, totalDuration, 1);
         }
+
+        [Fact]
+        public void Act_CapacityOverflowPastDueDate_ShouldReportUnschedulableInsteadOfForcingLastDay()
+        {
+            // Window: 1 Day. Cap 8h. Task: 10h, DueDate is the same (only) day in the window.
+            // Forcing the 2h remainder onto the last day would schedule it past its own due date
+            // (once the day's true capacity is exhausted), which must be reported as unschedulable
+            // instead of silently overfilling the day.
+            var dueDate = _timeService.GetCurrentTime().Date.AddHours(17);
+            var task = new TaskItem { Id = Guid.NewGuid(), Title = "Too Big", EstimatedDuration = TimeSpan.FromHours(10), Importance = 5, DueDate = dueDate };
+            var context = CreateContext(new List<TaskItem> { task }, days: 1);
+
+            var result = _agent.Act(context);
+            var buckets = result.SharedState["DailyBuckets"] as Dictionary<DateTime, List<TaskItem>>;
+            var day1 = _timeService.GetCurrentTime().Date;
+
+            // Only the 8h part that fits within the day/due date is scheduled.
+            Assert.NotNull(buckets);
+            Assert.Single(buckets[day1]);
+            Assert.Equal(8, buckets[day1][0].EstimatedDuration.TotalHours, 1);
+
+            // The 2h remainder is reported as unschedulable, not force-placed past the due date.
+            Assert.True(result.SharedState.ContainsKey("UnschedulableTasks"));
+            var unschedulable = result.SharedState["UnschedulableTasks"] as List<TaskItem>;
+            Assert.NotNull(unschedulable);
+            Assert.Single(unschedulable);
+            Assert.Equal(2, unschedulable[0].EstimatedDuration.TotalHours, 1);
+        }
     }
 }
