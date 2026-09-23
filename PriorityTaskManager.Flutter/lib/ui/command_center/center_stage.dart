@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/schedule_models.dart';
 import '../../models/task_item.dart';
+import '../../providers/engine_status_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/session_provider.dart';
@@ -137,7 +138,6 @@ class CenterStage extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 extension _FirstOrNull<T> on Iterable<T> {
@@ -309,7 +309,11 @@ class _Pipeline extends ConsumerWidget {
     bool isWorkDay(DateTime day) =>
         day.weekday >= DateTime.monday && day.weekday <= DateTime.friday;
 
-    final now = DateTime.now();
+    // Mirrors the active list's frozen simulated time (see
+    // engineClockProvider) instead of always using real wall-clock time, so
+    // "Today"/"Free Time" rendering stays consistent with the schedule
+    // computed against that same instant.
+    final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final todayWorkEnd = DateTime(
       today.year,

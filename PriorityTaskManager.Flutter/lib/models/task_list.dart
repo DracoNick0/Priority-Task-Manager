@@ -18,6 +18,7 @@ class TaskList extends HiveObject {
     this.slackThresholdPressing,
     this.slackThresholdFocus,
     this.slackThresholdSafe,
+    this.simulatedTime,
   });
 
   @HiveField(0)
@@ -62,6 +63,13 @@ class TaskList extends HiveObject {
   @HiveField(11)
   double? slackThresholdSafe;
 
+  /// Frozen "current time" override used when computing this list's
+  /// schedule (mirrors the CLI's `TaskList.SimulatedTime`); null means use
+  /// real wall-clock time. Only affects Authenticated sessions, since
+  /// scheduling is online-exclusive and Guests never call `/api/schedule`.
+  @HiveField(12)
+  DateTime? simulatedTime;
+
   TaskList copyWith({
     String? name,
     String? description,
@@ -80,6 +88,8 @@ class TaskList extends HiveObject {
     double? slackThresholdFocus,
     double? slackThresholdSafe,
     bool clearSlackThresholds = false,
+    DateTime? simulatedTime,
+    bool clearSimulatedTime = false,
   }) {
     return TaskList(
       id: id,
@@ -108,6 +118,9 @@ class TaskList extends HiveObject {
       slackThresholdSafe: clearSlackThresholds
           ? null
           : (slackThresholdSafe ?? this.slackThresholdSafe),
+      simulatedTime: clearSimulatedTime
+          ? null
+          : (simulatedTime ?? this.simulatedTime),
     );
   }
 }

@@ -66,6 +66,7 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
     tasks: incompleteTasks,
     settings: settings,
     events: events,
+    now: list?.simulatedTime,
   );
 });
 

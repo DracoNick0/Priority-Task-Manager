@@ -284,6 +284,7 @@ class _EngineStatus extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final clockAsync = ref.watch(engineClockProvider);
     final algorithmMode = ref.watch(algorithmModeProvider);
+    final isSimulated = ref.watch(isSimulatedTimeProvider);
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingMd),
@@ -296,7 +297,7 @@ class _EngineStatus extends ConsumerWidget {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: colorScheme.secondary,
+              color: isSimulated ? colorScheme.tertiary : colorScheme.secondary,
               shape: BoxShape.circle,
             ),
           ),
@@ -305,20 +306,39 @@ class _EngineStatus extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  clockAsync.when(
-                    data: (time) => DateFormat.jm().format(time),
-                    loading: () => '--:--',
-                    error: (_, error) => '--:--',
-                  ),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Text(
+                      clockAsync.when(
+                        data: (time) => isSimulated
+                            ? DateFormat('MMM d, h:mm a').format(time)
+                            : DateFormat.jm().format(time),
+                        loading: () => '--:--',
+                        error: (_, error) => '--:--',
+                      ),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (isSimulated) ...[
+                      const SizedBox(width: AppTheme.spacingXs),
+                      Tooltip(
+                        message: 'Frozen simulated time, not real time',
+                        child: Icon(
+                          Icons.science_outlined,
+                          size: 14,
+                          color: colorScheme.tertiary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 Text(
                   algorithmMode,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                    color: isSimulated
+                        ? colorScheme.tertiary
+                        : colorScheme.onSurfaceVariant,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

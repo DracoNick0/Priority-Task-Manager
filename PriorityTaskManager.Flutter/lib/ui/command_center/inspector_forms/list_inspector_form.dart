@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../models/task_list.dart';
 import '../../../providers/selection_provider.dart';
@@ -33,6 +34,7 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
   double? _slackThresholdPressing;
   double? _slackThresholdFocus;
   double? _slackThresholdSafe;
+  DateTime? _simulatedTime;
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
     _slackThresholdPressing = list.slackThresholdPressing;
     _slackThresholdFocus = list.slackThresholdFocus;
     _slackThresholdSafe = list.slackThresholdSafe;
+    _simulatedTime = list.simulatedTime;
   }
 
   @override
@@ -188,6 +191,12 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
             onSafeChanged: (v) => setState(() => _slackThresholdSafe = v),
           ),
         ),
+        _SimulatedTimeToggle(
+          value: _simulatedTime,
+          onChanged: (v) =>
+              setState(() => _simulatedTime = v ? DateTime.now() : null),
+          onPick: (v) => setState(() => _simulatedTime = v),
+        ),
         const SizedBox(height: AppTheme.spacingLg),
         Row(
           children: [
@@ -234,6 +243,8 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
             slackThresholdFocus: _slackThresholdFocus,
             slackThresholdSafe: _slackThresholdSafe,
             clearSlackThresholds: _slackThresholdDire == null,
+            simulatedTime: _simulatedTime,
+            clearSimulatedTime: _simulatedTime == null,
           ),
         );
   }
@@ -245,6 +256,115 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
     }
     ref.read(selectedInspectorProvider.notifier).state =
         const InspectorTarget.none();
+  }
+}
+
+/// Toggle + frozen date/time picker for a list's simulated-time override
+/// (mirrors the CLI's `list time`); only affects Authenticated sessions,
+/// since scheduling is online-exclusive and Guests never compute a schedule.
+class _SimulatedTimeToggle extends StatelessWidget {
+  const _SimulatedTimeToggle({
+    required this.value,
+    required this.onChanged,
+    required this.onPick,
+  });
+
+  final DateTime? value;
+  final ValueChanged<bool> onChanged;
+  final ValueChanged<DateTime> onPick;
+
+  static final _format = DateFormat('EEE, MMM d • h:mm a');
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isOverridden = value != null;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingSm),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingSm),
+      decoration: BoxDecoration(
+        color: isOverridden
+            ? colorScheme.primaryContainer.withValues(alpha: 0.25)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CheckboxListTile(
+            value: isOverridden,
+            onChanged: (v) => onChanged(v ?? false),
+            title: Text(
+              'Simulated time (frozen)',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: isOverridden ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            secondary: isOverridden
+                ? null
+                : Text(
+                    'Real time',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          if (isOverridden)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppTheme.spacingMd,
+                bottom: AppTheme.spacingSm,
+              ),
+              child: InkWell(
+                onTap: () => _pick(context),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      size: 18,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AppTheme.spacingSm),
+                    Expanded(
+                      child: Text(
+                        _format.format(value!.toLocal()),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    Icon(
+                      Icons.edit_calendar_outlined,
+                      size: 18,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    final initial = value ?? DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null) return;
+    onPick(DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 }
 
