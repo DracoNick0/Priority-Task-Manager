@@ -34,6 +34,7 @@ class _PaneResizeState {
   _PaneResizeState({
     required this.initialWidth,
     required this.growsWithPositiveOffset,
+    this.collapsed = false,
   }) : width = initialWidth;
 
   // The pane's default width, restored whenever it collapses so reopening
@@ -43,7 +44,7 @@ class _PaneResizeState {
   double width;
   // Manually collapsed via drag, independent of the window-size-driven
   // isWide/isMedium/isNarrow breakpoints.
-  bool collapsed = false;
+  bool collapsed;
   // Whether the divider handle is currently being held, so it stays visible
   // through a drag that collapses the pane but disappears once released
   // while collapsed.
@@ -110,6 +111,9 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   final _right = _PaneResizeState(
     initialWidth: 340,
     growsWithPositiveOffset: false,
+    // Inspector starts collapsed on app launch; opened on demand via
+    // selection or the docking button.
+    collapsed: true,
   );
   double _devLogHeight = 260;
   double? _devLogHeightAtDragStart;
