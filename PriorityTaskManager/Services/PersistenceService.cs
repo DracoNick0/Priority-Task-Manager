@@ -336,5 +336,34 @@ namespace PriorityTaskManager.Services
             var updatedData = JsonSerializer.Serialize(archivedTasks);
             WriteAtomic(_archiveFilePath, updatedData);
         }
+
+        /// <summary>
+        /// Retrieves all tasks currently held in the persisted archive record.
+        /// </summary>
+        public List<TaskItem> GetArchivedTasks()
+        {
+            if (!File.Exists(_archiveFilePath))
+            {
+                return new List<TaskItem>();
+            }
+            var existingData = File.ReadAllText(_archiveFilePath);
+            return JsonSerializer.Deserialize<List<TaskItem>>(existingData) ?? new List<TaskItem>();
+        }
+
+        /// <summary>
+        /// Removes a task from the persisted archive record.
+        /// </summary>
+        /// <param name="taskId">The ID of the archived task to remove.</param>
+        /// <returns>True if a matching archived task was found and removed; otherwise false.</returns>
+        public bool RemoveArchivedTask(Guid taskId)
+        {
+            var archivedTasks = GetArchivedTasks();
+            var removed = archivedTasks.RemoveAll(t => t.Id == taskId) > 0;
+            if (removed)
+            {
+                WriteAtomic(_archiveFilePath, JsonSerializer.Serialize(archivedTasks));
+            }
+            return removed;
+        }
     }
 }

@@ -70,6 +70,9 @@ namespace PriorityTaskManager.API.Tasks
 
 			group.MapPost("/{id:guid}/uncomplete", (Guid id, TaskManagerService taskManagerService) =>
 				taskManagerService.MarkTaskAsIncomplete(id) ? Results.Ok(taskManagerService.GetTaskById(id)!.ToResponse()) : Results.NotFound());
+
+			group.MapPost("/{id:guid}/archive", (Guid id, TaskManagerService taskManagerService) =>
+				taskManagerService.ArchiveTask(id) ? Results.NoContent() : Results.NotFound());
 		}
 	}
 }

@@ -252,6 +252,23 @@ namespace PriorityTaskManager.Services
         }
 
         /// <summary>
+        /// Archives a single task by its unique ID: appends it to the persisted archive record, then
+        /// removes it from the active task list.
+        /// </summary>
+        /// <param name="id">The unique ID of the task to archive.</param>
+        /// <returns>True if the task was found and archived; otherwise, false.</returns>
+        public bool ArchiveTask(Guid id)
+        {
+            var task = _data.Tasks.Find(t => t.Id == id);
+            if (task == null)
+                return false;
+            _persistenceService.ArchiveTasks(new[] { task });
+            _data.Tasks.Remove(task);
+            SaveData();
+            return true;
+        }
+
+        /// <summary>
         /// Retrieves the total count of tasks.
         /// </summary>
         /// <returns>The total number of tasks.</returns>
@@ -498,6 +515,68 @@ namespace PriorityTaskManager.Services
         public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
         {
             _persistenceService.ArchiveTasks(tasksToArchive);
+        }
+
+        /// <summary>
+        /// Retrieves all tasks currently held in the archive.
+        /// </summary>
+        public List<TaskItem> GetArchivedTasks()
+        {
+            return _persistenceService.GetArchivedTasks();
+        }
+
+        /// <summary>
+        /// Restores an archived task back to the active task list, defaulting to the task's original
+        /// list if it still exists, or an explicit <paramref name="targetListId"/> otherwise.
+        /// </summary>
+        /// <param name="taskId">The ID of the archived task to restore.</param>
+        /// <param name="targetListId">
+        /// The list to restore the task into. Required when the task's original list no longer exists;
+        /// otherwise optional (overrides the original list when supplied).
+        /// </param>
+        public RestoreArchivedTaskResult RestoreArchivedTask(Guid taskId, Guid? targetListId = null)
+        {
+            var archivedTask = _persistenceService.GetArchivedTasks().FirstOrDefault(t => t.Id == taskId);
+            if (archivedTask == null)
+            {
+                return RestoreArchivedTaskResult.NotFound;
+            }
+
+            TaskList? targetList;
+            if (targetListId.HasValue)
+            {
+                targetList = GetListById(targetListId.Value);
+                if (targetList == null)
+                {
+                    return RestoreArchivedTaskResult.TargetListNotFound;
+                }
+            }
+            else
+            {
+                targetList = GetListById(archivedTask.ListId);
+                if (targetList == null)
+                {
+                    return RestoreArchivedTaskResult.ListRequired;
+                }
+            }
+
+            _persistenceService.RemoveArchivedTask(taskId);
+            archivedTask.ListId = targetList.Id;
+            archivedTask.ListName = targetList.Name;
+            archivedTask.DisplayId = _data.NextDisplayId++;
+            _data.Tasks.Add(archivedTask);
+            SaveData();
+            return RestoreArchivedTaskResult.Restored;
+        }
+
+        /// <summary>
+        /// Permanently deletes an archived task from the persisted archive record.
+        /// </summary>
+        /// <param name="taskId">The ID of the archived task to delete.</param>
+        /// <returns>True if a matching archived task was found and deleted; otherwise false.</returns>
+        public bool DeleteArchivedTask(Guid taskId)
+        {
+            return _persistenceService.RemoveArchivedTask(taskId);
         }
 
         /// <summary>

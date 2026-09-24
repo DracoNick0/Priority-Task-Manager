@@ -679,5 +679,81 @@ namespace PriorityTaskManager.Tests.Integration
                 Assert.Equal(newStartTime, updatedProfile.WorkStartTime);
             }
         }
+
+        public class ArchiveManagementTests : TaskManagerServiceTestBase
+        {
+            /*
+             * === Test Coverage for Archive Restore ===
+             * [✓] RestoreArchivedTask: Not found returns NotFound.
+             * [✓] RestoreArchivedTask: Original list still exists -> restores into it.
+             * [✓] RestoreArchivedTask: Original list gone, no target given -> ListRequired.
+             * [✓] RestoreArchivedTask: Original list gone, explicit target given -> restores into target.
+             * [✓] RestoreArchivedTask: Explicit target that doesn't exist -> TargetListNotFound.
+            */
+
+            [Fact]
+            public void RestoreArchivedTask_WhenNotArchived_ReturnsNotFound()
+            {
+                var result = _TMS.RestoreArchivedTask(Guid.NewGuid());
+
+                Assert.Equal(RestoreArchivedTaskResult.NotFound, result);
+            }
+
+            [Fact]
+            public void RestoreArchivedTask_WhenOriginalListStillExists_RestoresIntoOriginalList()
+            {
+                var listId = _TMS.GetActiveListId();
+                var archivedTask = new TaskItem { Id = Guid.NewGuid(), Title = "Archived Task", ListId = listId };
+                _persistenceService.ArchiveTasks(new[] { archivedTask });
+
+                var result = _TMS.RestoreArchivedTask(archivedTask.Id);
+
+                Assert.Equal(RestoreArchivedTaskResult.Restored, result);
+                var restored = _TMS.GetTaskById(archivedTask.Id);
+                Assert.NotNull(restored);
+                Assert.Equal(listId, restored!.ListId);
+                Assert.Empty(_TMS.GetArchivedTasks());
+            }
+
+            [Fact]
+            public void RestoreArchivedTask_WhenOriginalListGoneAndNoTargetGiven_ReturnsListRequired()
+            {
+                var archivedTask = new TaskItem { Id = Guid.NewGuid(), Title = "Archived Task", ListId = Guid.NewGuid() };
+                _persistenceService.ArchiveTasks(new[] { archivedTask });
+
+                var result = _TMS.RestoreArchivedTask(archivedTask.Id);
+
+                Assert.Equal(RestoreArchivedTaskResult.ListRequired, result);
+                Assert.Single(_TMS.GetArchivedTasks());
+            }
+
+            [Fact]
+            public void RestoreArchivedTask_WhenOriginalListGoneAndTargetGiven_RestoresIntoTargetList()
+            {
+                var newList = new TaskList { Name = "New Home" };
+                _TMS.AddList(newList);
+                var archivedTask = new TaskItem { Id = Guid.NewGuid(), Title = "Archived Task", ListId = Guid.NewGuid() };
+                _persistenceService.ArchiveTasks(new[] { archivedTask });
+
+                var result = _TMS.RestoreArchivedTask(archivedTask.Id, newList.Id);
+
+                Assert.Equal(RestoreArchivedTaskResult.Restored, result);
+                var restored = _TMS.GetTaskById(archivedTask.Id);
+                Assert.NotNull(restored);
+                Assert.Equal(newList.Id, restored!.ListId);
+            }
+
+            [Fact]
+            public void RestoreArchivedTask_WhenTargetListDoesNotExist_ReturnsTargetListNotFound()
+            {
+                var archivedTask = new TaskItem { Id = Guid.NewGuid(), Title = "Archived Task", ListId = _TMS.GetActiveListId() };
+                _persistenceService.ArchiveTasks(new[] { archivedTask });
+
+                var result = _TMS.RestoreArchivedTask(archivedTask.Id, Guid.NewGuid());
+
+                Assert.Equal(RestoreArchivedTaskResult.TargetListNotFound, result);
+                Assert.Single(_TMS.GetArchivedTasks());
+            }
+        }
     }
 }

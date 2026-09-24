@@ -167,6 +167,82 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void GetArchivedTasks_WhenArchiveFileDoesNotExist_ReturnsEmptyList()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+
+                Assert.Empty(service.GetArchivedTasks());
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void GetArchivedTasks_ReturnsPreviouslyArchivedTasks()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+                var task = new TaskItem { Id = Guid.NewGuid(), DisplayId = 1, Title = "Archived Task", ListId = Guid.NewGuid() };
+                service.ArchiveTasks(new List<TaskItem> { task });
+
+                var archived = service.GetArchivedTasks();
+
+                Assert.Single(archived);
+                Assert.Equal(task.Id, archived[0].Id);
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void RemoveArchivedTask_WhenTaskExists_RemovesItAndReturnsTrue()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+                var task = new TaskItem { Id = Guid.NewGuid(), DisplayId = 1, Title = "Archived Task", ListId = Guid.NewGuid() };
+                service.ArchiveTasks(new List<TaskItem> { task });
+
+                var removed = service.RemoveArchivedTask(task.Id);
+
+                Assert.True(removed);
+                Assert.Empty(service.GetArchivedTasks());
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
+        public void RemoveArchivedTask_WhenTaskDoesNotExist_ReturnsFalse()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+
+                var removed = service.RemoveArchivedTask(Guid.NewGuid());
+
+                Assert.False(removed);
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
         public void LoadData_WhenOnlyOneFileIsCorrupt_ShouldResetOnlyThatFileAndKeepOthersValid()
         {
             var tempDir = CreateTempDirectory();

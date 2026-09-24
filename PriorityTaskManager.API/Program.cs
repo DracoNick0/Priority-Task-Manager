@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using PriorityTaskManager.API.Auth;
+using PriorityTaskManager.API.Archive;
 using PriorityTaskManager.API.Dev;
 using PriorityTaskManager.API.Events;
 using PriorityTaskManager.API.Local;
@@ -155,6 +156,7 @@ if (cloudModeEnabled)
 	app.MapListEndpoints();
 	app.MapEventEndpoints();
 	app.MapProfileEndpoints();
+	app.MapArchiveEndpoints();
 	app.MapScheduleEndpoints();
 }
 

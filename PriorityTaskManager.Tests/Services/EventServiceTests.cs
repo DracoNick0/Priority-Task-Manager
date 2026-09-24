@@ -122,6 +122,10 @@ namespace PriorityTaskManager.Tests.Services
             public void SaveData(DataContainer data) => SaveCount++;
 
             public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive) { }
+
+            public List<TaskItem> GetArchivedTasks() => new List<TaskItem>();
+
+            public bool RemoveArchivedTask(Guid taskId) => false;
         }
     }
 }

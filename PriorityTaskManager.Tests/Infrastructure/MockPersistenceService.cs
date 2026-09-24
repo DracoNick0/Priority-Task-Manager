@@ -64,6 +64,16 @@ namespace PriorityTaskManager.Tests.Infrastructure
             ArchivedTasks.AddRange(tasksToArchive.Select(t => t.Clone()));
         }
 
+        public List<TaskItem> GetArchivedTasks()
+        {
+            return new List<TaskItem>(ArchivedTasks.Select(t => t.Clone()));
+        }
+
+        public bool RemoveArchivedTask(Guid taskId)
+        {
+            return ArchivedTasks.RemoveAll(t => t.Id == taskId) > 0;
+        }
+
         private TaskList CloneList(TaskList l) => new TaskList
         {
             Id = l.Id,

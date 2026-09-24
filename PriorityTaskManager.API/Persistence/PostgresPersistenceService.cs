@@ -178,6 +178,31 @@ namespace PriorityTaskManager.API.Persistence
 			WriteDocument(connection, _accountId, ArchiveDocumentId, JsonSerializer.Serialize(archivedTasks));
 		}
 
+		public List<TaskItem> GetArchivedTasks()
+		{
+			using var connection = OpenConnection();
+			var archiveDocument = ReadDocument(connection, _accountId, ArchiveDocumentId);
+			return archiveDocument != null
+				? JsonSerializer.Deserialize<List<TaskItem>>(archiveDocument) ?? new List<TaskItem>()
+				: new List<TaskItem>();
+		}
+
+		public bool RemoveArchivedTask(Guid taskId)
+		{
+			using var connection = OpenConnection();
+			var archiveDocument = ReadDocument(connection, _accountId, ArchiveDocumentId);
+			var archivedTasks = archiveDocument != null
+				? JsonSerializer.Deserialize<List<TaskItem>>(archiveDocument) ?? new List<TaskItem>()
+				: new List<TaskItem>();
+
+			var removed = archivedTasks.RemoveAll(t => t.Id == taskId) > 0;
+			if (removed)
+			{
+				WriteDocument(connection, _accountId, ArchiveDocumentId, JsonSerializer.Serialize(archivedTasks));
+			}
+			return removed;
+		}
+
 		private static string? ReadDocument(NpgsqlConnection connection, Guid accountId, string documentId)
 		{
 			using var command = connection.CreateCommand();
