@@ -81,6 +81,13 @@ namespace PriorityTaskManager.Models
         public DateTime? SimulatedTime { get; set; }
 
         /// <summary>
+        /// Gets or sets the most recent simulated time set for this list, retained after
+        /// simulation is turned off so it can be offered as the default the next time
+        /// simulated time is re-enabled.
+        /// </summary>
+        public DateTime? LastSimulatedTime { get; set; }
+
+        /// <summary>
         /// Copies missing settings from the supplied profile.
         /// </summary>
         /// <param name="profile">The source profile for defaults.</param>

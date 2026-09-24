@@ -19,6 +19,7 @@ class TaskList extends HiveObject {
     this.slackThresholdFocus,
     this.slackThresholdSafe,
     this.simulatedTime,
+    this.lastSimulatedTime,
   });
 
   @HiveField(0)
@@ -70,6 +71,12 @@ class TaskList extends HiveObject {
   @HiveField(12)
   DateTime? simulatedTime;
 
+  /// Most recent non-null [simulatedTime] value, retained after simulation
+  /// is turned off so it can be offered as the default the next time
+  /// simulated time is re-enabled.
+  @HiveField(13)
+  DateTime? lastSimulatedTime;
+
   TaskList copyWith({
     String? name,
     String? description,
@@ -91,6 +98,9 @@ class TaskList extends HiveObject {
     DateTime? simulatedTime,
     bool clearSimulatedTime = false,
   }) {
+    final resolvedSimulatedTime = clearSimulatedTime
+        ? null
+        : (simulatedTime ?? this.simulatedTime);
     return TaskList(
       id: id,
       name: name ?? this.name,
@@ -118,9 +128,8 @@ class TaskList extends HiveObject {
       slackThresholdSafe: clearSlackThresholds
           ? null
           : (slackThresholdSafe ?? this.slackThresholdSafe),
-      simulatedTime: clearSimulatedTime
-          ? null
-          : (simulatedTime ?? this.simulatedTime),
+      simulatedTime: resolvedSimulatedTime,
+      lastSimulatedTime: resolvedSimulatedTime ?? lastSimulatedTime,
     );
   }
 }

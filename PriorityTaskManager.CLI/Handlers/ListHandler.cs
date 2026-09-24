@@ -576,11 +576,12 @@ namespace PriorityTaskManager.CLI.Handlers
                         _console.ClearAndRenderDashboard(_scheduleSnapshotProvider, _taskMetricsService);
 
                         _console.CursorVisible = true;
-                        var defaultSimulatedTime = workingList.SimulatedTime ?? _timeService.GetCurrentTime();
+                        var defaultSimulatedTime = workingList.SimulatedTime ?? workingList.LastSimulatedTime ?? _timeService.GetCurrentTime();
                         var simulatedTime = ConsoleInputHelper.GetDateTimeFromUser("Enter the list's simulated date and time", defaultSimulatedTime);
                         if (simulatedTime.HasValue)
                         {
                             workingList.SimulatedTime = simulatedTime;
+                            workingList.LastSimulatedTime = simulatedTime;
                         }
 
                         return;
@@ -607,7 +608,8 @@ namespace PriorityTaskManager.CLI.Handlers
                 SlackThresholdPressing = list.SlackThresholdPressing,
                 SlackThresholdFocus = list.SlackThresholdFocus,
                 SlackThresholdSafe = list.SlackThresholdSafe,
-                SimulatedTime = list.SimulatedTime
+                SimulatedTime = list.SimulatedTime,
+                LastSimulatedTime = list.LastSimulatedTime
             };
         }
 

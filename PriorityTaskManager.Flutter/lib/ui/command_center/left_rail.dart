@@ -396,36 +396,23 @@ class _EngineStatus extends ConsumerWidget {
     String activeListId,
     DateTime? currentTime,
   ) async {
-    final initial = currentTime ?? DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (date == null || !context.mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(initial),
-    );
-    if (time == null) return;
-
-    final picked = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    );
     final lists = ref.read(taskListsProvider).asData?.value ?? const [];
     final list = lists.where((l) => l.id == activeListId).firstOrNull;
     if (list == null) return;
+    final initial =
+        list.simulatedTime ??
+        list.lastSimulatedTime ??
+        currentTime ??
+        DateTime.now();
+    final picked = await showCombinedDateTimePicker(
+      context,
+      initialDateTime: initial,
+      subtitle: 'Set simulated time',
+    );
+    if (picked == null || !context.mounted) return;
+
     await ref
         .read(taskListsProvider.notifier)
         .updateList(list.copyWith(simulatedTime: picked));
   }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

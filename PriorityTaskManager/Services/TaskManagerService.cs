@@ -417,6 +417,10 @@ namespace PriorityTaskManager.Services
                 existingList.SlackThresholdFocus = updatedList.SlackThresholdFocus;
                 existingList.SlackThresholdSafe = updatedList.SlackThresholdSafe;
                 existingList.SimulatedTime = updatedList.SimulatedTime;
+                if (updatedList.SimulatedTime.HasValue)
+                {
+                    existingList.LastSimulatedTime = updatedList.SimulatedTime;
+                }
                 SaveData();
             }
         }

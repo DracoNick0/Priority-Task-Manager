@@ -188,6 +188,7 @@ class ApiTaskRepository implements TaskRepository {
         slackThresholdFocus: list.slackThresholdFocus,
         slackThresholdSafe: list.slackThresholdSafe,
         simulatedTime: list.simulatedTime,
+        lastSimulatedTime: list.lastSimulatedTime,
       ),
     );
   }
@@ -210,6 +211,7 @@ class ApiTaskRepository implements TaskRepository {
     double? slackThresholdFocus,
     double? slackThresholdSafe,
     DateTime? simulatedTime,
+    DateTime? lastSimulatedTime,
   }) => {
     'name': name,
     'description': description,
@@ -229,6 +231,7 @@ class ApiTaskRepository implements TaskRepository {
     'slackThresholdFocus': slackThresholdFocus,
     'slackThresholdSafe': slackThresholdSafe,
     'simulatedTime': simulatedTime?.toIso8601String(),
+    'lastSimulatedTime': lastSimulatedTime?.toIso8601String(),
   };
 
   TaskList _listFromJson(Map<String, dynamic> json) => TaskList(
@@ -258,6 +261,9 @@ class ApiTaskRepository implements TaskRepository {
     simulatedTime: json['simulatedTime'] == null
         ? null
         : DateTime.parse(json['simulatedTime'] as String),
+    lastSimulatedTime: json['lastSimulatedTime'] == null
+        ? null
+        : DateTime.parse(json['lastSimulatedTime'] as String),
   );
 
   // ---- Tasks ----

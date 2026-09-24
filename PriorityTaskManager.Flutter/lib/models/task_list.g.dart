@@ -30,13 +30,14 @@ class TaskListAdapter extends TypeAdapter<TaskList> {
       slackThresholdFocus: (fields[10] as num?)?.toDouble(),
       slackThresholdSafe: (fields[11] as num?)?.toDouble(),
       simulatedTime: fields[12] as DateTime?,
+      lastSimulatedTime: fields[13] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskList obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class TaskListAdapter extends TypeAdapter<TaskList> {
       ..writeByte(11)
       ..write(obj.slackThresholdSafe)
       ..writeByte(12)
-      ..write(obj.simulatedTime);
+      ..write(obj.simulatedTime)
+      ..writeByte(13)
+      ..write(obj.lastSimulatedTime);
   }
 
   @override

@@ -15,7 +15,8 @@ namespace PriorityTaskManager.API.Lists
 		double? SlackThresholdPressing,
 		double? SlackThresholdFocus,
 		double? SlackThresholdSafe,
-		DateTime? SimulatedTime);
+		DateTime? SimulatedTime,
+		DateTime? LastSimulatedTime);
 
 	/// <summary>Response body representing a persisted task list.</summary>
 	public record ListResponse(
@@ -31,7 +32,8 @@ namespace PriorityTaskManager.API.Lists
 		double? SlackThresholdPressing,
 		double? SlackThresholdFocus,
 		double? SlackThresholdSafe,
-		DateTime? SimulatedTime);
+		DateTime? SimulatedTime,
+		DateTime? LastSimulatedTime);
 
 	public static class ListDtoExtensions
 	{
@@ -48,7 +50,8 @@ namespace PriorityTaskManager.API.Lists
 			list.SlackThresholdPressing,
 			list.SlackThresholdFocus,
 			list.SlackThresholdSafe,
-			list.SimulatedTime);
+			list.SimulatedTime,
+			list.LastSimulatedTime);
 
 		/// <summary>Maps a request onto a new <see cref="TaskList"/>; <c>Id</c> is assigned by core on add.</summary>
 		public static TaskList ToNewTaskList(this ListRequest request) => new()
@@ -64,7 +67,8 @@ namespace PriorityTaskManager.API.Lists
 			SlackThresholdPressing = request.SlackThresholdPressing,
 			SlackThresholdFocus = request.SlackThresholdFocus,
 			SlackThresholdSafe = request.SlackThresholdSafe,
-			SimulatedTime = request.SimulatedTime
+			SimulatedTime = request.SimulatedTime,
+			LastSimulatedTime = request.LastSimulatedTime
 		};
 
 		/// <summary>Applies a request's editable fields onto <paramref name="id"/> for <c>TaskManagerService.UpdateList</c>.</summary>
