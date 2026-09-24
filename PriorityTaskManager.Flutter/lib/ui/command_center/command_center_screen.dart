@@ -43,10 +43,25 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   double _leftWidth = 260;
   double _rightWidth = 340;
   double _devLogHeight = 260;
+  // Sizes captured at the start of a drag, used as the anchor for computing
+  // the new size directly from the total cursor offset since drag start
+  // rather than accumulating per-frame deltas (which drift once a min/max
+  // clamp is hit and the drag reverses direction).
+  double? _leftWidthAtDragStart;
+  double? _rightWidthAtDragStart;
+  double? _devLogHeightAtDragStart;
   // Manually collapsed via drag, independent of the window-size-driven
   // isWide/isMedium/isNarrow breakpoints.
   bool _leftCollapsed = false;
   bool _rightCollapsed = false;
+  // Whether the left divider's handle is currently being held, so it stays
+  // visible through a drag that collapses the rail but disappears once
+  // released while collapsed.
+  bool _leftDividerHeld = false;
+  // Whether the right divider's handle is currently being held, so it stays
+  // visible through a drag that collapses the inspector but disappears once
+  // released while collapsed.
+  bool _rightDividerHeld = false;
 
   // Selects the first list whenever nothing is selected yet, or whenever the
   // currently selected id no longer exists in the loaded lists (e.g. it was
@@ -221,29 +236,30 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                   children: [
                     if (leftDocked)
                       SizedBox(width: leftWidth, child: const LeftRail()),
-                    // Kept mounted even while collapsed (not gated on
-                    // leftDocked) so a single continuous drag can collapse
-                    // and then re-expand the pane without releasing the
-                    // mouse button.
-                    if (isWide || isMedium)
+                    // Only rendered while docked or mid-drag, so the handle
+                    // disappears once the rail is collapsed and released.
+                    if ((isWide || isMedium) &&
+                        (leftDocked || _leftDividerHeld))
                       ResizableDivider(
-                        onDrag: (delta) {
+                        onDragStart: () {
+                          _leftWidthAtDragStart = _leftWidth;
+                          setState(() => _leftDividerHeld = true);
+                        },
+                        onDragUpdate: (totalOffset) {
                           final maxLeft =
                               (width -
                                       rightWidth -
                                       _centerMinWidth -
                                       _dividerWidth * 2)
                                   .clamp(_leftMinWidth, _leftMaxWidth);
-                          final proposed = _leftWidth + delta;
+                          final proposed =
+                              (_leftWidthAtDragStart ?? _leftWidth) +
+                              totalOffset;
                           // Lower bound intentionally left unclamped (down to
                           // the collapse threshold) so consecutive small drag
-                          // deltas below the visual minimum still accumulate
+                          // offsets below the visual minimum still count
                           // toward collapsing, and dragging back the other
                           // way un-collapses.
-                          // TODO: the divider should stay glued to the cursor
-                          // 1:1 throughout the drag instead of
-                          // lagging/detaching once a clamp/collapse limit is
-                          // hit.
                           setState(() {
                             _leftCollapsed =
                                 proposed < _leftMinWidth - _collapseThreshold;
@@ -255,6 +271,8 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                                 .toDouble();
                           });
                         },
+                        onDragEnd: () =>
+                            setState(() => _leftDividerHeld = false),
                       ),
                     Expanded(
                       child: CenterStage(
@@ -266,25 +284,26 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                             _scaffoldKey.currentState?.openEndDrawer(),
                       ),
                     ),
-                    // Kept mounted even while collapsed (not gated on
-                    // rightDocked) so a single continuous drag can collapse
-                    // and then re-expand the pane without releasing the
-                    // mouse button.
-                    if (isWide)
+                    // Only rendered while docked or mid-drag, so the handle
+                    // disappears once the inspector is collapsed and released.
+                    if (isWide && (rightDocked || _rightDividerHeld))
                       ResizableDivider(
-                        onDrag: (delta) {
+                        onDragStart: () {
+                          _rightWidthAtDragStart = _rightWidth;
+                          setState(() => _rightDividerHeld = true);
+                        },
+                        onDragUpdate: (totalOffset) {
                           final maxRight =
                               (width -
                                       leftWidth -
                                       _centerMinWidth -
                                       _dividerWidth * 2)
                                   .clamp(_rightMinWidth, _rightMaxWidth);
-                          final proposed = _rightWidth - delta;
-                          // See the left divider's onDrag for why the lower
-                          // bound is intentionally left unclamped here.
-                          // TODO: same as the left divider — it should stay
-                          // glued to the cursor 1:1 instead of
-                          // lagging/detaching.
+                          final proposed =
+                              (_rightWidthAtDragStart ?? _rightWidth) -
+                              totalOffset;
+                          // See the left divider's onDragUpdate for why the
+                          // lower bound is intentionally left unclamped here.
                           setState(() {
                             _rightCollapsed =
                                 proposed < _rightMinWidth - _collapseThreshold;
@@ -296,6 +315,8 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                                 .toDouble();
                           });
                         },
+                        onDragEnd: () =>
+                            setState(() => _rightDividerHeld = false),
                       ),
                     if (rightDocked)
                       SizedBox(
@@ -310,8 +331,11 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
               if (devLogOpen) ...[
                 ResizableDivider(
                   axis: Axis.vertical,
-                  onDrag: (delta) {
-                    final proposed = _devLogHeight - delta;
+                  onDragStart: () => _devLogHeightAtDragStart = _devLogHeight,
+                  onDragUpdate: (totalOffset) {
+                    final proposed =
+                        (_devLogHeightAtDragStart ?? _devLogHeight) -
+                        totalOffset;
                     setState(() {
                       _devLogHeight = proposed
                           .clamp(_devLogMinHeight, devLogMaxHeight)
