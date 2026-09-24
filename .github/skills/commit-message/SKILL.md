@@ -51,8 +51,7 @@ If there are no staged changes, inspect unstaged content.
 7. If the intent is still ambiguous after reviewing the inspected diff, ask one focused clarifying question before finalizing the message.
 
 ## Output Format
-Return one primary Conventional Commits message.
-If helpful, include up to two alternatives.
+Return one Conventional Commits message.
 
 Example:
 

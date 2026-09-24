@@ -55,6 +55,7 @@ applyTo: '**'
 - Follow `docs/TESTING_STRATEGY.md` for test scope and quality expectations.
 
 ## Code Quality
+- Follow good coding practice; review the full file being changed and its existing conventions, and flag or apply revisions (e.g. deduplication, abstraction) where the code falls short.
 - Prefer existing project patterns and small, focused changes.
 - Use descriptive names.
 - Add XML comments (`///`) to public members; use inline comments only for non-obvious reasoning.
