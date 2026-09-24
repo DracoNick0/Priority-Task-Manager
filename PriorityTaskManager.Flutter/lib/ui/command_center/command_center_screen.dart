@@ -181,6 +181,18 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                   ),
                 )
               : null,
+          // Swiping/tapping the scrim to dismiss the end drawer doesn't go
+          // through _closeInspector, so the selection would otherwise stay
+          // stuck (e.g. re-opening "Add Task" sets an equal InspectorTarget,
+          // which Riverpod treats as a no-op and never reopens the drawer).
+          onEndDrawerChanged: (isOpened) {
+            if (!isOpened &&
+                ref.read(selectedInspectorProvider).kind !=
+                    InspectorKind.none) {
+              ref.read(selectedInspectorProvider.notifier).state =
+                  const InspectorTarget.none();
+            }
+          },
           endDrawer: !rightDocked
               ? Drawer(
                   width: rightWidth.clamp(_rightMinWidth, 400).toDouble(),
