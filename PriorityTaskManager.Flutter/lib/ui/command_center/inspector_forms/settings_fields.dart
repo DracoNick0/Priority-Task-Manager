@@ -139,12 +139,8 @@ class WorkHoursField extends StatelessWidget {
     }
   }
 
-  String _format(int minutes) {
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    final period = h >= 12 ? 'PM' : 'AM';
-    final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '$h12:${m.toString().padLeft(2, '0')} $period';
+  String _format(BuildContext context, int minutes) {
+    return TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60).format(context);
   }
 
   @override
@@ -154,14 +150,14 @@ class WorkHoursField extends StatelessWidget {
         Expanded(
           child: OutlinedButton(
             onPressed: () => _pick(context, startMinutes, onStartChanged),
-            child: Text('Start: ${_format(startMinutes)}'),
+            child: Text('Start: ${_format(context, startMinutes)}'),
           ),
         ),
         const SizedBox(width: AppTheme.spacingSm),
         Expanded(
           child: OutlinedButton(
             onPressed: () => _pick(context, endMinutes, onEndChanged),
-            child: Text('End: ${_format(endMinutes)}'),
+            child: Text('End: ${_format(context, endMinutes)}'),
           ),
         ),
       ],

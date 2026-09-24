@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../models/task_list.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
+import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
 import '../resizable_text_field.dart';
+import 'date_time_field.dart';
 import 'settings_fields.dart';
 
 /// Inline CRUD form for renaming/deleting a task list and editing its
@@ -193,8 +194,11 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
         ),
         _SimulatedTimeToggle(
           value: _simulatedTime,
-          onChanged: (v) =>
-              setState(() => _simulatedTime = v ? DateTime.now() : null),
+          onChanged: (v) => setState(
+            () => _simulatedTime = v
+                ? (list.lastSimulatedTime ?? DateTime.now())
+                : null,
+          ),
           onPick: (v) => setState(() => _simulatedTime = v),
         ),
         const SizedBox(height: AppTheme.spacingLg),
@@ -273,8 +277,6 @@ class _SimulatedTimeToggle extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final ValueChanged<DateTime> onPick;
 
-  static final _format = DateFormat('EEE, MMM d • h:mm a');
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -319,30 +321,11 @@ class _SimulatedTimeToggle extends StatelessWidget {
                 left: AppTheme.spacingMd,
                 bottom: AppTheme.spacingSm,
               ),
-              child: InkWell(
-                onTap: () => _pick(context),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 18,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: AppTheme.spacingSm),
-                    Expanded(
-                      child: Text(
-                        _format.format(value!.toLocal()),
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    Icon(
-                      Icons.edit_calendar_outlined,
-                      size: 18,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ),
+              child: DateTimeCompactRow(
+                icon: Icons.schedule,
+                value: value!,
+                onPick: () => _pick(context),
+                editIconColor: colorScheme.onSurfaceVariant,
               ),
             ),
         ],
@@ -352,22 +335,7 @@ class _SimulatedTimeToggle extends StatelessWidget {
 
   Future<void> _pick(BuildContext context) async {
     final initial = value ?? DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (date == null || !context.mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(initial),
-    );
-    if (time == null) return;
-    onPick(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    final picked = await pickDateAndTime(context, initialDate: initial);
+    if (picked != null) onPick(picked);
   }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

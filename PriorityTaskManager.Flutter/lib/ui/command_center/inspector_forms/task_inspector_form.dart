@@ -5,8 +5,10 @@ import '../../../models/task_item.dart';
 import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
+import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
 import '../resizable_text_field.dart';
+import 'date_time_field.dart';
 
 /// Inline CRUD form for a single task, shown in the Right Inspector.
 ///
@@ -102,7 +104,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           label: 'Description',
         ),
         const SizedBox(height: AppTheme.spacingMd),
-        _DatePickerRow(
+        DateTimeFieldBox(
           icon: Icons.event_outlined,
           label: 'Due date',
           value: _dueDate,
@@ -153,7 +155,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             children: [
-              _DatePickerRow(
+              DateTimeFieldBox(
                 icon: Icons.hourglass_empty,
                 label: 'Not before',
                 value: _notBefore,
@@ -261,31 +263,13 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   static const TimeOfDay _defaultEndOfWorkday = TimeOfDay(hour: 17, minute: 0);
 
   Future<void> _pickDate(ValueChanged<DateTime> onPicked) async {
-    final pickedDate = await showDatePicker(
-      context: context,
+    final picked = await pickDateAndTime(
+      context,
       initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (pickedDate == null) return;
-    if (!mounted) return;
-
-    final pickedTime = await showTimePicker(
-      context: context,
       initialTime: _defaultEndOfWorkday,
-      helpText: 'Due time (defaults to end of workday)',
+      timeHelpText: 'Due time (defaults to end of workday)',
     );
-    final time = pickedTime ?? _defaultEndOfWorkday;
-
-    onPicked(
-      DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        time.hour,
-        time.minute,
-      ),
-    );
+    if (picked != null) onPicked(picked);
   }
 
   Future<void> _save(TaskItem? existing) async {
@@ -354,70 +338,6 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   }
 }
 
-class _DatePickerRow extends StatelessWidget {
-  const _DatePickerRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onPick,
-    required this.onClear,
-  });
-
-  final IconData icon;
-  final String label;
-  final DateTime? value;
-  final VoidCallback onPick;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingMd,
-          vertical: AppTheme.spacingSm,
-        ),
-        decoration: BoxDecoration(
-          border: Border.all(color: colorScheme.outline),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
-            const SizedBox(width: AppTheme.spacingSm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: Theme.of(context).textTheme.labelSmall),
-                  Text(
-                    value == null
-                        ? 'Not set'
-                        : '${value!.toLocal().toString().split(' ').first} '
-                              '${TimeOfDay.fromDateTime(value!.toLocal()).format(context)}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (value != null)
-              IconButton(
-                icon: const Icon(Icons.clear, size: 18),
-                tooltip: 'Clear $label',
-                onPressed: onClear,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Labeled slider with a leading icon and a value badge, used for the
 /// Importance and Complexity fields.
 class _SliderField extends StatelessWidget {
@@ -483,8 +403,4 @@ class _SliderField extends StatelessWidget {
       ],
     );
   }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

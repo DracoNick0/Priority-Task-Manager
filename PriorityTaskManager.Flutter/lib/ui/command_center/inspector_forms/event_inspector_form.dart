@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../providers/event_providers.dart';
 import '../../../providers/selection_provider.dart';
+import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
+import 'date_time_field.dart';
 
 /// Inline CRUD form for a fixed event, shown in the Right Inspector.
 ///
@@ -98,7 +99,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
             padding: const EdgeInsets.all(AppTheme.spacingSm),
             child: Column(
               children: [
-                _DateTimeRow(
+                DateTimeCompactRow(
                   icon: Icons.play_circle_outline,
                   label: 'Start',
                   value: _start,
@@ -106,7 +107,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
                       _pickDateTime((d) => setState(() => _start = d)),
                 ),
                 const Divider(height: AppTheme.spacingMd),
-                _DateTimeRow(
+                DateTimeCompactRow(
                   icon: Icons.stop_circle_outlined,
                   label: 'End',
                   value: _end,
@@ -141,19 +142,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   }
 
   Future<void> _pickDateTime(ValueChanged<DateTime> onPicked) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (time == null) return;
-    onPicked(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    final picked = await pickDateAndTime(context, initialDate: DateTime.now());
+    if (picked != null) onPicked(picked);
   }
 
   Future<void> _save(FixedEvent? existing) async {
@@ -187,57 +177,4 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
     ref.read(selectedInspectorProvider.notifier).state =
         const InspectorTarget.none();
   }
-}
-
-class _DateTimeRow extends StatelessWidget {
-  const _DateTimeRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onPick,
-  });
-
-  final IconData icon;
-  final String label;
-  final DateTime value;
-  final VoidCallback onPick;
-
-  static final _format = DateFormat('EEE, MMM d • h:mm a');
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingXs),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
-            const SizedBox(width: AppTheme.spacingSm),
-            SizedBox(
-              width: 40,
-              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-            ),
-            Expanded(
-              child: Text(
-                _format.format(value.toLocal()),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            Icon(
-              Icons.edit_calendar_outlined,
-              size: 18,
-              color: colorScheme.primary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }
