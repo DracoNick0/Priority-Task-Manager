@@ -395,7 +395,15 @@ class _Pipeline extends ConsumerWidget {
       );
       (futureByDay[day] ??= []).add(scheduled);
     }
-    final futureDays = futureByDay.keys.toList()..sort();
+    // Include days that only have an event and no scheduled task, otherwise
+    // that day's column never gets created and the event is silently
+    // dropped from the pipeline (it's never a "day with nothing to show").
+    final eventDays = events
+        .map(
+          (e) => DateTime(e.startTime.year, e.startTime.month, e.startTime.day),
+        )
+        .where((day) => day.isAfter(today));
+    final futureDays = {...futureByDay.keys, ...eventDays}.toList()..sort();
 
     final unscheduledTasks = schedule.unscheduledTaskIds
         .map((id) => tasksById[id])
@@ -411,7 +419,7 @@ class _Pipeline extends ConsumerWidget {
           cards: todayCards,
         ),
       for (final day in futureDays)
-        if (futureByDay[day]!.isNotEmpty ||
+        if ((futureByDay[day]?.isNotEmpty ?? false) ||
             events.any((event) => isSameDay(event.startTime, day)))
           DayColumn(
             title: isSameDay(day, today.add(const Duration(days: 1)))
@@ -420,11 +428,11 @@ class _Pipeline extends ConsumerWidget {
             subtitle: _formatDate(day),
             freeTimeLabel: freeTimeLabel(
               day,
-              futureByDay[day]!,
+              futureByDay[day] ?? const [],
               events.where((event) => isSameDay(event.startTime, day)).toList(),
             ),
             cards: [
-              ...futureByDay[day]!.map(buildTaskCard),
+              ...(futureByDay[day] ?? const []).map(buildTaskCard),
               ...events
                   .where((event) => isSameDay(event.startTime, day))
                   .map(buildEventCard),

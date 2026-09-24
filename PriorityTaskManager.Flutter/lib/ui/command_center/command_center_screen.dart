@@ -6,6 +6,7 @@ import '../../providers/app_notifications_provider.dart';
 import '../../providers/dev_log_provider.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
+import '../../models/task_list.dart';
 import '../dev/dev_log_panel.dart';
 import '../theme/app_theme.dart';
 import 'center_stage.dart';
@@ -47,33 +48,37 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   bool _leftCollapsed = false;
   bool _rightCollapsed = false;
 
+  // Selects the first list whenever nothing is selected yet, or whenever the
+  // currently selected id no longer exists in the loaded lists (e.g. it was
+  // left over from a different session/account) — otherwise a stale id
+  // lingers un-highlighted in the Left Rail while still being queried for
+  // tasks/events, making it look like "no list" is selected.
+  void _ensureValidSelection(AsyncValue<List<TaskList>> listsAsync) {
+    final lists = listsAsync.asData?.value;
+    if (lists == null || lists.isEmpty) return;
+    final currentId = ref.read(activeListIdProvider);
+    final stillValid = currentId != null && lists.any((l) => l.id == currentId);
+    if (!stillValid) {
+      ref.read(activeListIdProvider.notifier).state = lists.first.id;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     // Ensure a list is selected once lists finish loading, so the pipeline
     // and inspector have something to show by default.
-    Future.microtask(() {
-      final lists = ref.read(taskListsProvider).asData?.value;
-      if (lists != null &&
-          lists.isNotEmpty &&
-          ref.read(activeListIdProvider) == null) {
-        ref.read(activeListIdProvider.notifier).state = lists.first.id;
-      }
-    });
+    Future.microtask(() => _ensureValidSelection(ref.read(taskListsProvider)));
   }
 
   @override
   Widget build(BuildContext context) {
-    // Keep a freshly-loaded list selected by default without fighting user
-    // navigation once something is already selected.
-    ref.listen(taskListsProvider, (previous, next) {
-      final lists = next.asData?.value;
-      if (lists != null &&
-          lists.isNotEmpty &&
-          ref.read(activeListIdProvider) == null) {
-        ref.read(activeListIdProvider.notifier).state = lists.first.id;
-      }
-    });
+    // Keep a valid list selected by default without fighting user
+    // navigation once something is already (still validly) selected.
+    ref.listen(
+      taskListsProvider,
+      (previous, next) => _ensureValidSelection(next),
+    );
 
     // ref.listen must run directly in build(), not inside a nested builder
     // closure, so the right-docked check is mirrored here off MediaQuery
