@@ -113,6 +113,10 @@ class LoggingTaskRepository implements TaskRepository {
       _logged('deleteTask($taskId)', () => _inner.deleteTask(taskId));
 
   @override
+  Future<void> archiveTask(String taskId) =>
+      _logged('archiveTask($taskId)', () => _inner.archiveTask(taskId));
+
+  @override
   Future<void> setCompleted(String taskId, bool isCompleted) => _logged(
     'setCompleted($taskId, $isCompleted)',
     () => _inner.setCompleted(taskId, isCompleted),
@@ -166,4 +170,21 @@ class LoggingTaskRepository implements TaskRepository {
   @override
   Future<void> deleteEvent(String eventId) =>
       _logged('deleteEvent($eventId)', () => _inner.deleteEvent(eventId));
+
+  @override
+  Future<List<TaskItem>> getArchivedTasks() =>
+      _logged('getArchivedTasks()', _inner.getArchivedTasks);
+
+  @override
+  Future<TaskItem> restoreArchivedTask(String taskId, {String? targetListId}) =>
+      _logged(
+        'restoreArchivedTask($taskId, targetListId: $targetListId)',
+        () => _inner.restoreArchivedTask(taskId, targetListId: targetListId),
+      );
+
+  @override
+  Future<void> deleteArchivedTask(String taskId) => _logged(
+    'deleteArchivedTask($taskId)',
+    () => _inner.deleteArchivedTask(taskId),
+  );
 }

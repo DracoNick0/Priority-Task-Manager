@@ -43,7 +43,12 @@ class CenterStage extends ConsumerWidget {
 
     return Column(
       children: [
-        _buildHeader(context, ref, activeListId),
+        _buildHeader(
+          context,
+          ref,
+          activeListId,
+          isAuthenticated: isAuthenticated,
+        ),
         const Divider(height: 1),
         Expanded(
           child: activeListId == null
@@ -64,8 +69,9 @@ class CenterStage extends ConsumerWidget {
   Widget _buildHeader(
     BuildContext context,
     WidgetRef ref,
-    String? activeListId,
-  ) {
+    String? activeListId, {
+    required bool isAuthenticated,
+  }) {
     final lists = ref.watch(taskListsProvider).asData?.value ?? const [];
     final activeList = lists
         .where((list) => list.id == activeListId)
@@ -88,7 +94,13 @@ class CenterStage extends ConsumerWidget {
           const <TaskItem>[];
       final notifier = ref.read(tasksProvider(activeListId).notifier);
       for (final task in tasks.where((task) => task.isCompleted)) {
-        notifier.deleteTask(task.id);
+        // Guests have no archive (it's an online-exclusive feature; see
+        // docs/VISION.md), so completed tasks are just deleted for them.
+        if (isAuthenticated) {
+          notifier.archiveTask(task.id);
+        } else {
+          notifier.deleteTask(task.id);
+        }
       }
     }
 

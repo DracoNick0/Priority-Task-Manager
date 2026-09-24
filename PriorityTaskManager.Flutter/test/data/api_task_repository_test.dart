@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:priority_task_manager/data/api_task_repository.dart';
+import 'package:priority_task_manager/data/task_repository.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
 
 void main() {
@@ -239,5 +240,94 @@ void main() {
         );
       },
     );
+
+    test('getArchivedTasks parses the archived task list', () async {
+      final client = MockClient((request) async {
+        expect(request.url.path, '/api/archive/');
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'task-1',
+              'listId': 'list-1',
+              'title': 'Old task',
+              'description': '',
+              'isCompleted': true,
+              'dueDate': null,
+              'estimatedDuration': '01:00:00',
+              'dependencies': <String>[],
+              'importance': 5,
+              'complexity': 1,
+              'notBefore': null,
+              'isPinned': false,
+              'isDivisible': true,
+            },
+          ]),
+          200,
+        );
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final archivedTasks = await repository.getArchivedTasks();
+
+      expect(archivedTasks, hasLength(1));
+      expect(archivedTasks.single.title, 'Old task');
+    });
+
+    test(
+      'restoreArchivedTask throws RestoreTargetListRequiredException on a 409',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.url.path, '/api/archive/task-1/restore');
+          return http.Response(jsonEncode({'error': 'list required'}), 409);
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+
+        await expectLater(
+          () => repository.restoreArchivedTask('task-1'),
+          throwsA(isA<RestoreTargetListRequiredException>()),
+        );
+      },
+    );
+
+    test('restoreArchivedTask returns the restored task on success', () async {
+      final client = MockClient((request) async {
+        expect(jsonDecode(request.body), {'targetListId': 'list-2'});
+        return http.Response(
+          jsonEncode({
+            'id': 'task-1',
+            'listId': 'list-2',
+            'title': 'Old task',
+            'description': '',
+            'isCompleted': false,
+            'dueDate': null,
+            'estimatedDuration': '01:00:00',
+            'dependencies': <String>[],
+            'importance': 5,
+            'complexity': 1,
+            'notBefore': null,
+            'isPinned': false,
+            'isDivisible': true,
+          }),
+          200,
+        );
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final restored = await repository.restoreArchivedTask(
+        'task-1',
+        targetListId: 'list-2',
+      );
+
+      expect(restored.listId, 'list-2');
+    });
   });
 }

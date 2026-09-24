@@ -9,6 +9,7 @@ import '../dev/logging_http_client.dart';
 import '../dev/logging_task_repository.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
+import 'archive_providers.dart';
 import 'session_provider.dart';
 
 /// Provides the active [TaskRepository] implementation: [LocalTaskRepository]
@@ -130,6 +131,14 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.deleteTask(taskId);
     ref.invalidateSelf();
     await future;
+  }
+
+  Future<void> archiveTask(String taskId) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.archiveTask(taskId);
+    ref.invalidateSelf();
+    await future;
+    ref.invalidate(archivedTasksProvider);
   }
 
   Future<void> setCompleted(String taskId, bool isCompleted) async {

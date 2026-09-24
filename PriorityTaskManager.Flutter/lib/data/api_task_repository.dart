@@ -333,6 +333,11 @@ class ApiTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<void> archiveTask(String taskId) async {
+    await _send('POST', '/api/tasks/$taskId/archive');
+  }
+
+  @override
   Future<void> setCompleted(String taskId, bool isCompleted) async {
     await _send(
       'POST',
@@ -531,4 +536,57 @@ class ApiTaskRepository implements TaskRepository {
         startTime: DateTime.parse(json['startTime'] as String),
         endTime: DateTime.parse(json['endTime'] as String),
       );
+
+  // ---- Archive ----
+
+  @override
+  Future<List<TaskItem>> getArchivedTasks() async {
+    final response = await _send('GET', '/api/archive/');
+    final json = jsonDecode(response.body) as List<dynamic>;
+    return json.map((e) => _taskFromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<TaskItem> restoreArchivedTask(
+    String taskId, {
+    String? targetListId,
+  }) async {
+    final uri = baseUri.resolve('/api/archive/$taskId/restore');
+    http.Response response;
+    try {
+      response = await _httpClient.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'targetListId': targetListId}),
+      );
+    } catch (error) {
+      throw StateError(
+        'Could not reach the API at $baseUri. Make sure PriorityTaskManager.API '
+        'is running (see docs/WORKFLOW.md). Underlying error: $error',
+      );
+    }
+
+    if (response.statusCode == 409) {
+      throw RestoreTargetListRequiredException();
+    }
+    if (response.statusCode >= 400) {
+      String message =
+          'Request to restore archived task failed (${response.statusCode}).';
+      try {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        if (json['error'] is String) {
+          message = json['error'] as String;
+        }
+      } catch (_) {
+        // Non-JSON error body; fall back to the generic message above.
+      }
+      throw StateError(message);
+    }
+    return _taskFromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> deleteArchivedTask(String taskId) async {
+    await _send('DELETE', '/api/archive/$taskId');
+  }
 }

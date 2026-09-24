@@ -10,6 +10,7 @@ import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
 import '../auth/login_screen.dart';
 import '../theme/app_theme.dart';
+import 'archive_dialog.dart';
 
 /// The Left Rail: list switcher, global nav (Settings/Archive), and the
 /// Engine Status indicator (time simulation clock + algorithm mode).
@@ -109,9 +110,7 @@ class LeftRail extends ConsumerWidget {
               icon: Icons.archive_outlined,
               label: 'Archive',
               isSelected: false,
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Archive is not wired yet.')),
-              ),
+              onTap: () => _openArchive(context, ref),
             ),
             _RailItem(
               icon: Icons.settings_outlined,
@@ -135,6 +134,23 @@ class LeftRail extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openArchive(BuildContext context, WidgetRef ref) async {
+    final isAuthenticated =
+        ref.read(sessionControllerProvider).asData?.value.status ==
+        SessionStatus.authenticated;
+    if (!isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Archive is an online-exclusive feature. Log in to use it.',
+          ),
+        ),
+      );
+      return;
+    }
+    await showArchiveDialog(context);
   }
 
   Future<void> _createList(BuildContext context, WidgetRef ref) async {

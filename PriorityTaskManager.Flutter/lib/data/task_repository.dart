@@ -3,6 +3,11 @@ import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
 
+/// Thrown by [TaskRepository.restoreArchivedTask] when the archived task's
+/// original list no longer exists and no [targetListId] argument was
+/// supplied, so the caller must prompt the user to choose a list and retry.
+class RestoreTargetListRequiredException implements Exception {}
+
 /// Client-side abstraction over task/list/event/profile persistence and
 /// mutation.
 ///
@@ -38,6 +43,12 @@ abstract class TaskRepository {
 
   Future<void> deleteTask(String taskId);
 
+  /// Archives a completed task: moves it out of the active list into the
+  /// archive (see [getArchivedTasks]). Archive is an online-exclusive
+  /// feature (Guests have no access to it, consistent with other
+  /// online-only features; see docs/VISION.md).
+  Future<void> archiveTask(String taskId);
+
   Future<void> setCompleted(String taskId, bool isCompleted);
 
   Future<void> addDependency(String taskId, String dependsOnTaskId);
@@ -60,4 +71,16 @@ abstract class TaskRepository {
   Future<void> updateEvent(FixedEvent event);
 
   Future<void> deleteEvent(String eventId);
+
+  /// Archive is an online-exclusive feature (Guests have no access to it,
+  /// consistent with other online-only features; see docs/VISION.md).
+  Future<List<TaskItem>> getArchivedTasks();
+
+  /// Restores an archived task back to its original list, or to
+  /// [targetListId] if supplied (required when the original list no longer
+  /// exists; see [RestoreTargetListRequiredException]).
+  Future<TaskItem> restoreArchivedTask(String taskId, {String? targetListId});
+
+  /// Permanently deletes an archived task.
+  Future<void> deleteArchivedTask(String taskId);
 }

@@ -140,6 +140,13 @@ class LocalTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<void> archiveTask(String taskId) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
   Future<void> setCompleted(String taskId, bool isCompleted) async {
     final task = _tasksBox.get(taskId);
     if (task == null) return;
@@ -206,5 +213,32 @@ class LocalTaskRepository implements TaskRepository {
   @override
   Future<void> deleteEvent(String eventId) async {
     await _eventsBox.delete(eventId);
+  }
+
+  // ---- Archive ----
+  //
+  // Archive is an online-exclusive feature (Guests have no access to it,
+  // consistent with other online-only features; see docs/VISION.md). The UI
+  // never calls these for a Guest session, so they fail fast if reached.
+
+  @override
+  Future<List<TaskItem>> getArchivedTasks() {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<TaskItem> restoreArchivedTask(String taskId, {String? targetListId}) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> deleteArchivedTask(String taskId) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
   }
 }

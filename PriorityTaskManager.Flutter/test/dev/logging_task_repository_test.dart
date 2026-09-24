@@ -58,6 +58,9 @@ class _FakeTaskRepository implements TaskRepository {
   Future<void> deleteTask(String taskId) async {}
 
   @override
+  Future<void> archiveTask(String taskId) async {}
+
+  @override
   Future<void> setCompleted(String taskId, bool isCompleted) async {}
 
   @override
@@ -88,6 +91,16 @@ class _FakeTaskRepository implements TaskRepository {
 
   @override
   Future<void> deleteEvent(String eventId) async {}
+
+  @override
+  Future<List<TaskItem>> getArchivedTasks() async => [];
+
+  @override
+  Future<TaskItem> restoreArchivedTask(String taskId, {String? targetListId}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteArchivedTask(String taskId) async {}
 }
 
 void main() {
