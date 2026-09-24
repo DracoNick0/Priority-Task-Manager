@@ -32,10 +32,14 @@ const double _devLogMaxHeight = 480;
 /// pane grows relative to the drag offset.
 class _PaneResizeState {
   _PaneResizeState({
-    required double initialWidth,
+    required this.initialWidth,
     required this.growsWithPositiveOffset,
   }) : width = initialWidth;
 
+  // The pane's default width, restored whenever it collapses so reopening
+  // (whether by dragging back out or re-docking) always starts here rather
+  // than at whatever width it happened to be dragged to before collapsing.
+  final double initialWidth;
   double width;
   // Manually collapsed via drag, independent of the window-size-driven
   // isWide/isMedium/isNarrow breakpoints.
@@ -68,12 +72,20 @@ class _PaneResizeState {
     // collapse threshold so consecutive small drag offsets below the visual
     // minimum still count toward collapsing, and dragging back the other
     // way un-collapses.
+    final justCollapsed = !collapsed && proposed < min - _collapseThreshold;
     collapsed = proposed < min - _collapseThreshold;
-    width = proposed.clamp(min - _collapseThreshold, max).toDouble();
+    width = justCollapsed
+        ? initialWidth
+        : proposed.clamp(min - _collapseThreshold, max).toDouble();
   }
 
   void dragEnd() {
     dividerHeld = false;
+  }
+
+  void collapse() {
+    collapsed = true;
+    width = initialWidth;
   }
 }
 
@@ -92,7 +104,7 @@ class CommandCenterScreen extends ConsumerStatefulWidget {
 class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _left = _PaneResizeState(
-    initialWidth: 260,
+    initialWidth: 205,
     growsWithPositiveOffset: true,
   );
   final _right = _PaneResizeState(
@@ -131,7 +143,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
     if (next.kind != InspectorKind.none && !rightDocked) {
       _scaffoldKey.currentState?.openEndDrawer();
     } else if (next.kind == InspectorKind.none && rightDocked) {
-      setState(() => _right.collapsed = true);
+      setState(_right.collapse);
     }
   }
 
@@ -176,7 +188,16 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   // the inspector's own close handler, so the selection would otherwise stay
   // stuck (e.g. re-opening "Add Task" sets an equal InspectorTarget, which
   // Riverpod treats as a no-op and never reopens the drawer).
+  //
+  // Docking the inspector also closes this drawer, but that pop should keep
+  // the current selection since it's just moving the same inspector inline;
+  // _dockingRight suppresses the clear for that one programmatic close.
+  bool _dockingRight = false;
   void _onEndDrawerChanged(bool isOpened) {
+    if (!isOpened && _dockingRight) {
+      _dockingRight = false;
+      return;
+    }
     if (!isOpened &&
         ref.read(selectedInspectorProvider).kind != InspectorKind.none) {
       ref.read(selectedInspectorProvider.notifier).state =
@@ -290,7 +311,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                   SizedBox(
                     width: rightWidth,
                     child: RightInspector(
-                      onClose: () => setState(() => _right.collapsed = true),
+                      onClose: () => setState(_right.collapse),
                     ),
                   ),
               ],
@@ -304,7 +325,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
 
   Widget _buildLeftDrawer(BuildContext context, bool isNarrow) {
     return Drawer(
-      width: 280,
+      width: _left.initialWidth,
       child: LeftRail(
         dockAction: isNarrow
             ? null
@@ -315,7 +336,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                   Navigator.of(context).pop();
                   setState(() {
                     _left.collapsed = false;
-                    _left.width = _leftMinWidth;
+                    _left.width = _left.initialWidth;
                   });
                 },
               ),
@@ -336,10 +357,11 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                 icon: const Icon(Icons.dock),
                 tooltip: 'Dock panel',
                 onPressed: () {
+                  _dockingRight = true;
                   Navigator.of(context).pop();
                   setState(() {
                     _right.collapsed = false;
-                    _right.width = _rightMinWidth;
+                    _right.width = _right.initialWidth;
                   });
                 },
               )
