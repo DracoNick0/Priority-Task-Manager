@@ -62,6 +62,8 @@ Scheduling (`GoldPanningStrategy`/`ConstraintOptimizationStrategy`) is an online
 
 Deployment is manual, not CI/CD-triggered: the hosted instance only reflects a change under `PriorityTaskManager.API/` or `PriorityTaskManager/` once someone runs `flyctl deploy` after merging it. A merged API change (new endpoint, contract change, etc.) can silently 404 or behave stale against `https://tpm-api.fly.dev` until redeployed.
 
+The Flutter web client is statically hosted via Cloudflare (configured via `PriorityTaskManager.Flutter/wrangler.jsonc`), completely decoupled from the API container. The API supports config-driven CORS (`Cors:AllowedOrigins` in `appsettings.json` / environment variables) alongside localhost development origins.
+
 The Flutter client's API base URL is compile-time configurable (`ApiScheduleRepository.defaultBaseUri`), defaulting to a local API for development and switchable to the hosted production URL for testing against the real instance.
 
 For container build steps, local Docker Compose usage, and deployment/secret-configuration commands, see [WORKFLOW.md](WORKFLOW.md).
