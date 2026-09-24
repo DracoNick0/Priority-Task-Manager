@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../utils/iterable_extensions.dart';
 import 'session_provider.dart';
 import 'task_providers.dart';
 import 'user_profile_provider.dart';
@@ -52,7 +53,3 @@ final algorithmModeProvider = Provider<String>((ref) {
       : (list.schedulingMode ?? profile.schedulingMode);
   return mode == 0 ? 'Gold Panning' : 'Constraint Optimization';
 });
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}

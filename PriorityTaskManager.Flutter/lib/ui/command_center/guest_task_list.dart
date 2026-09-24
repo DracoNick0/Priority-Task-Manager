@@ -6,6 +6,7 @@ import '../../providers/app_notifications_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
+import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'event_card.dart';
 import 'task_card.dart';
@@ -164,8 +165,4 @@ class GuestTaskList extends ConsumerWidget {
         return (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase());
     }
   }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

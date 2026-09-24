@@ -10,6 +10,7 @@ import '../../providers/selection_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/view_provider.dart';
+import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'day_column.dart';
 import 'event_card.dart';
@@ -151,10 +152,6 @@ class CenterStage extends ConsumerWidget {
       ),
     );
   }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }
 
 /// The authenticated Center Stage body: the least-slack summary bar (once a

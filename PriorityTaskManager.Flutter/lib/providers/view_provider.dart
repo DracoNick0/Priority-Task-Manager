@@ -7,6 +7,7 @@ import '../data/schedule_repository.dart';
 import '../dev/logging_http_client.dart';
 import '../models/effective_settings.dart';
 import '../models/schedule_models.dart';
+import '../utils/iterable_extensions.dart';
 import 'auth_provider.dart';
 import 'event_providers.dart';
 import 'task_providers.dart';
@@ -69,7 +70,3 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
     now: list?.simulatedTime,
   );
 });
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}
