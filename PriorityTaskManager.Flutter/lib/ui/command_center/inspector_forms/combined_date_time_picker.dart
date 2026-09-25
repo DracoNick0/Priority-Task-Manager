@@ -7,17 +7,37 @@ const int _minutesPerSlot = 30;
 const double _timeSlotHeight = 40;
 const double _paneHeight = 300;
 
+/// Result of [showCombinedDateTimePicker] when the enabled toggle is shown:
+/// whether the override should be applied, and the picked date/time.
+class CombinedDateTimePickerResult {
+  const CombinedDateTimePickerResult({
+    required this.enabled,
+    required this.dateTime,
+  });
+
+  final bool enabled;
+  final DateTime dateTime;
+}
+
 /// Opens an Outlook-style combined date + time picker: one dialog with a
 /// calendar on one side and a scrollable list of time slots on the other,
 /// so a day and a time are chosen together instead of across two dialogs.
-Future<DateTime?> showCombinedDateTimePicker(
+///
+/// When [showEnabledToggle] is true, a switch appears in the bottom-left of
+/// the dialog letting the picked time be turned off/on (used for the
+/// simulated-time override), and the result is returned as a
+/// [CombinedDateTimePickerResult] instead of a bare [DateTime].
+Future<T?> showCombinedDateTimePicker<T extends Object>(
   BuildContext context, {
   required DateTime initialDateTime,
   DateTime? firstDate,
   DateTime? lastDate,
   String? subtitle,
+  bool showEnabledToggle = false,
+  bool initialEnabled = true,
+  String enabledToggleLabel = 'Enabled',
 }) {
-  return showDialog<DateTime>(
+  return showDialog<T>(
     context: context,
     builder: (context) => _CombinedDateTimePickerDialog(
       initialDateTime: initialDateTime,
@@ -25,6 +45,9 @@ Future<DateTime?> showCombinedDateTimePicker(
           firstDate ?? DateTime.now().subtract(const Duration(days: 365)),
       lastDate: lastDate ?? DateTime.now().add(const Duration(days: 365 * 5)),
       subtitle: subtitle,
+      showEnabledToggle: showEnabledToggle,
+      initialEnabled: initialEnabled,
+      enabledToggleLabel: enabledToggleLabel,
     ),
   );
 }
@@ -35,12 +58,18 @@ class _CombinedDateTimePickerDialog extends StatefulWidget {
     required this.firstDate,
     required this.lastDate,
     this.subtitle,
+    this.showEnabledToggle = false,
+    this.initialEnabled = true,
+    this.enabledToggleLabel = 'Enabled',
   });
 
   final DateTime initialDateTime;
   final DateTime firstDate;
   final DateTime lastDate;
   final String? subtitle;
+  final bool showEnabledToggle;
+  final bool initialEnabled;
+  final String enabledToggleLabel;
 
   @override
   State<_CombinedDateTimePickerDialog> createState() =>
@@ -51,6 +80,7 @@ class _CombinedDateTimePickerDialogState
     extends State<_CombinedDateTimePickerDialog> {
   late DateTime _date;
   late TimeOfDay _time;
+  late bool _enabled;
   late final TextEditingController _timeController;
   late final ScrollController _timeListController;
   String? _timeError;
@@ -64,6 +94,7 @@ class _CombinedDateTimePickerDialogState
       widget.initialDateTime.day,
     );
     _time = TimeOfDay.fromDateTime(widget.initialDateTime);
+    _enabled = widget.initialEnabled;
     _timeController = TextEditingController(text: _formatTypedTime(_time));
 
     // Centers the initially-selected slot in the list rather than leaving it
@@ -188,15 +219,29 @@ class _CombinedDateTimePickerDialogState
                 ),
               const SizedBox(height: AppTheme.spacingMd),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (widget.showEnabledToggle) ...[
+                    Switch(
+                      value: _enabled,
+                      onChanged: (v) => setState(() => _enabled = v),
+                    ),
+                    Text(widget.enabledToggleLabel),
+                  ],
+                  const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: AppTheme.spacingSm),
                   FilledButton(
-                    onPressed: () => Navigator.of(context).pop(_combined),
+                    onPressed: () => Navigator.of(context).pop(
+                      widget.showEnabledToggle
+                          ? CombinedDateTimePickerResult(
+                              enabled: _enabled,
+                              dateTime: _combined,
+                            )
+                          : _combined,
+                    ),
                     child: const Text('Done'),
                   ),
                 ],

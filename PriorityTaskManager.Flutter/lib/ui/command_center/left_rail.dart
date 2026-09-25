@@ -406,15 +406,26 @@ class _EngineStatus extends ConsumerWidget {
         list.lastSimulatedTime ??
         currentTime ??
         DateTime.now();
-    final picked = await showCombinedDateTimePicker(
-      context,
-      initialDateTime: initial,
-      subtitle: 'Set simulated time',
-    );
-    if (picked == null || !context.mounted) return;
+    final result =
+        await showCombinedDateTimePicker<CombinedDateTimePickerResult>(
+          context,
+          initialDateTime: initial,
+          subtitle: 'Set simulated time',
+          showEnabledToggle: true,
+          initialEnabled: list.simulatedTime != null,
+          enabledToggleLabel: 'Simulated time',
+        );
+    if (result == null || !context.mounted) return;
+
+    if (!result.enabled) {
+      await ref
+          .read(taskListsProvider.notifier)
+          .updateList(list.copyWith(clearSimulatedTime: true));
+      return;
+    }
 
     await ref
         .read(taskListsProvider.notifier)
-        .updateList(list.copyWith(simulatedTime: picked));
+        .updateList(list.copyWith(simulatedTime: result.dateTime));
   }
 }
