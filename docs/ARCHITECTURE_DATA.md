@@ -40,9 +40,15 @@ Front ends with their own local store (the CLI's JSON files today; a future Flut
 | `TaskList` | Named task container with copied list-specific scheduling and display settings |
 | `UserProfile` | Global defaults and scheduling preferences |
 | `Event` | Blocked time interval used by scheduling |
+| `RecurrenceRule` | Shared recurrence pattern/end-condition foundation for recurring tasks and recurring events, modeled as a polymorphic hierarchy (see below); not yet embedded on `TaskItem`/`Event` |
+| `RecurrenceException` | A single cancelled occurrence of a `RecurrenceRule` series, keyed by original occurrence date |
 | `ScheduleWindow` / `TimeSlot` | Available work time after applying work hours and events |
 | `ScheduledChunk` | Scheduled portion of a task |
 | `PrioritizationResult` | Scheduler output: tasks, unscheduled tasks, and history |
+
+### RecurrenceRule Polymorphic Shape
+
+`RecurrenceRule` and `RecurrenceEndCondition` are each modeled as an abstract base plus sealed derived classes (one per pattern/end-condition kind: `DailyIntervalRecurrenceRule`, `WeeklyRecurrenceRule`, `MonthlyOnDaysRecurrenceRule`, `MonthlyRelativeRecurrenceRule`, `YearlyRecurrenceRule`, `ExplicitDatesRecurrenceRule`; `NeverEndCondition`, `AfterOccurrencesEndCondition`, `UntilDateEndCondition`), serialized with `System.Text.Json`'s `[JsonPolymorphic]`/`[JsonDerivedType]` attributes and a short string type discriminator. This was chosen over one flat class with nullable fields per pattern so each persisted instance only serializes the fields its own pattern actually uses (lower storage cost) and new pattern/end-condition kinds are additive (a new derived class, no changes to existing stored rows). `IRecurrenceExpansionService`/`RecurrenceExpansionService` expands a rule on demand into concrete occurrence dates for a caller-supplied range; occurrences are never persisted ahead of time. This decision applies only to `RecurrenceRule`/`RecurrenceEndCondition` — `TaskItem` and `Event` remain flat classes and are expected to gain a simple additive `RecurrenceRule?` property once a consumer issue wires recurrence in, not a hierarchy of their own.
 
 ## List-Scoped Settings
 

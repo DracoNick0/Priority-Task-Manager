@@ -21,6 +21,8 @@ The core library must not depend on CLI handlers, console helpers, rendering, or
 | `TaskManagerService` | Coordinates task/list/profile operations, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
 | `TaskMetricsService` | Computes schedule-related metrics used by presentation and status indicators |
 | `EventService` | Owns CRUD operations for calendar events (self-contained; extracted from `TaskManagerService` per the growth criteria below) |
+| `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands a `RecurrenceRule` into concrete occurrence dates on demand for a caller-supplied range (expansion-on-read; nothing is persisted ahead of time). Self-contained, shared by recurring tasks and recurring events; not yet consumed by `TaskManagerService`/`EventService` (see the repository's GitHub Issues for consumer wiring) |
+| `RecurrenceSplitHelper` (`Services/Helpers`) | Implements the shared "this and following" split semantics for a recurring series (closes the prior series, starts a new one, partitions exceptions) |
 | `TimeService` / `ITimeService` | Provides current or simulated time for deterministic behavior |
 | `PersistenceService` / `IPersistenceService` | Reads and writes persisted state, including task archiving |
 | `DependencyGraphHelper` (`Services/Helpers`) | Computes dependency chains and detects circular dependencies for task updates |

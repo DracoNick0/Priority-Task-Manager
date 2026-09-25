@@ -39,6 +39,7 @@ Each milestone assumes everything in the milestones before it is retained and co
 - Beta grace period: every new account defaults to Subscription-tier entitlement during MVP (no real payment processor built yet), with a visible in-app notice that this is a temporary free preview. Existing accounts are downgraded to Free — with a clear notice of what they lose access to — once V1 ships with real payment integration.
 - Offline local storage for task/list/event data so the tool's CRUD works without a network connection; scheduling itself requires connectivity.
 - LLM-assisted intake for external planning sources, with user review before anything is persisted.
+- Basic recurring/repeating tasks and events, so periodic work and commitments don't require manual re-entry.
 - The application is packaged, deployed, and downloadable by a real user outside the development environment.
 
 ### V1 — Online Daily Planner
@@ -49,7 +50,6 @@ Each milestone assumes everything in the milestones before it is retained and co
 - Email + password authentication extended to the CLI, reaching parity with the MVP-delivered Flutter login (web and desktop).
 - Stronger account security: two-factor authentication and OAuth/social login.
 - Real payment/subscription processing, replacing the MVP-era beta default: existing beta accounts are downgraded from Subscription to Free, with a clear notice of what they lose access to, unless they subscribe for real.
-- Basic recurring/repeating tasks, so periodic work doesn't require manual re-entry.
 - Scheduled-block reminders/notifications across devices, keeping the plan visible without requiring the user to keep checking the app.
 - Expanded scheduling support: load warnings when a day's scheduled complexity exceeds configured thresholds, and deadline risk indicators that surface how much realistic slack remains before an at-risk task's due date.
 - Cross-device sync is subscription-gated, enforced server-side against the authenticated account, consistent with scheduling's existing MVP-era gating.
