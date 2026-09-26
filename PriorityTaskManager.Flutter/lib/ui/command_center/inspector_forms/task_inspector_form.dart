@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../models/effective_settings.dart';
 import '../../../models/task_item.dart';
 import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
+import '../../../providers/user_profile_provider.dart';
 import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
 import '../resizable_text_field.dart';
+import 'combined_date_time_picker.dart';
 import 'date_time_field.dart';
 
 /// Inline CRUD form for a single task, shown in the Right Inspector.
@@ -35,6 +38,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   bool _isPinned = false;
   bool _isDivisible = true;
   TaskItem? _loadedFrom;
+  bool _appliedDefaultDueDate = false;
 
   bool get _isEditing => widget.taskId != null;
 
@@ -84,6 +88,24 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         .where((task) => task.id != widget.taskId)
         .toList();
 
+    if (!_isEditing && !_appliedDefaultDueDate) {
+      final lists = ref.watch(taskListsProvider).asData?.value;
+      final profile = ref.watch(userProfileProvider).asData?.value;
+      if (profile != null) {
+        final list = lists?.where((l) => l.id == widget.listId).firstOrNull;
+        final settings = list == null
+            ? EffectiveListSettings.fromProfile(profile)
+            : EffectiveListSettings.resolve(list, profile);
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        _dueDate = DateTime(
+          tomorrow.year,
+          tomorrow.month,
+          tomorrow.day,
+        ).add(Duration(minutes: settings.workEndMinutes));
+        _appliedDefaultDueDate = true;
+      }
+    }
+
     return ListView(
       padding: const EdgeInsets.all(AppTheme.spacingMd),
       children: [
@@ -108,7 +130,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           icon: Icons.event_outlined,
           label: 'Due date',
           value: _dueDate,
-          onPick: () => _pickDate((d) => setState(() => _dueDate = d)),
+          onPick: _pickDueDate,
           onClear: () => setState(() => _dueDate = null),
         ),
         const SizedBox(height: AppTheme.spacingMd),
@@ -270,6 +292,31 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
       timeHelpText: 'Due time (defaults to end of workday)',
     );
     if (picked != null) onPicked(picked);
+  }
+
+  // A bottom-left toggle in the picker lets the due date be cleared, mirroring
+  // the simulated-time picker in the Left Rail.
+  Future<void> _pickDueDate() async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final initial =
+        _dueDate ??
+        DateTime(
+          tomorrow.year,
+          tomorrow.month,
+          tomorrow.day,
+          _defaultEndOfWorkday.hour,
+          _defaultEndOfWorkday.minute,
+        );
+    final result =
+        await showCombinedDateTimePicker<CombinedDateTimePickerResult>(
+          context,
+          initialDateTime: initial,
+          subtitle: 'Due time (defaults to end of workday)',
+          showDisableButton: true,
+          disableButtonLabel: 'No due date',
+        );
+    if (result == null) return;
+    setState(() => _dueDate = result.enabled ? result.dateTime : null);
   }
 
   Future<void> _save(TaskItem? existing) async {

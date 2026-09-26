@@ -411,9 +411,8 @@ class _EngineStatus extends ConsumerWidget {
           context,
           initialDateTime: initial,
           subtitle: 'Set simulated time',
-          showEnabledToggle: true,
-          initialEnabled: list.simulatedTime != null,
-          enabledToggleLabel: 'Simulated time',
+          showDisableButton: true,
+          disableButtonLabel: 'No simulated time',
         );
     if (result == null || !context.mounted) return;
 
