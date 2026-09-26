@@ -2,6 +2,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/fixed_event.dart';
+import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -193,7 +194,11 @@ class LocalTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
   }) async {
+    // Guests have no server-side series concept; the UI never passes a
+    // non-null recurrenceRule here (recurrence is Authenticated-only), so
+    // this is ignored rather than persisted.
     final event = FixedEvent(
       id: _uuid.v4(),
       listId: listId,

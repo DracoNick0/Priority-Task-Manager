@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/event_providers.dart';
 import '../../../providers/selection_provider.dart';
+import '../../../providers/session_provider.dart';
 import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
 import 'date_time_field.dart';
+import 'recurrence_picker.dart';
 
 /// Inline CRUD form for a fixed event, shown in the Right Inspector.
 ///
@@ -25,6 +27,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   DateTime _start = DateTime.now();
   DateTime _end = DateTime.now().add(const Duration(hours: 1));
   FixedEvent? _loadedFrom;
+  RecurrenceRule? _recurrenceRule;
 
   bool get _isEditing => widget.eventId != null;
 
@@ -117,6 +120,13 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
             ),
           ),
         ),
+        if (!_isEditing && _isAuthenticated) ...[
+          const SizedBox(height: AppTheme.spacingMd),
+          RecurrencePicker(
+            seriesStartDate: () => _start,
+            onChanged: (rule) => setState(() => _recurrenceRule = rule),
+          ),
+        ],
         const SizedBox(height: AppTheme.spacingLg),
         Row(
           children: [
@@ -141,6 +151,10 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
     );
   }
 
+  bool get _isAuthenticated =>
+      ref.watch(sessionControllerProvider).asData?.value.status ==
+      SessionStatus.authenticated;
+
   Future<void> _pickDateTime(ValueChanged<DateTime> onPicked) async {
     final picked = await pickDateAndTime(context, initialDate: DateTime.now());
     if (picked != null) onPicked(picked);
@@ -156,6 +170,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
         title: title,
         startTime: _start,
         endTime: _end,
+        recurrenceRule: _recurrenceRule,
       );
       if (!mounted) return;
       ref.read(selectedInspectorProvider.notifier).state = InspectorTarget(

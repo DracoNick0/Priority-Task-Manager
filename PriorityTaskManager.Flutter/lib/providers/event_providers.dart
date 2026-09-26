@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fixed_event.dart';
+import '../models/recurrence_rule.dart';
 import 'task_providers.dart';
 
 export '../models/fixed_event.dart' show FixedEvent;
+export '../models/recurrence_rule.dart';
 
 /// Fixed events for a given list id, backed by the active [TaskRepository]
 /// (Hive-persisted; see docs/ARCHITECTURE_INTEGRATIONS.md).
@@ -23,6 +25,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
   }) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     final created = await repository.addEvent(
@@ -30,6 +33,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
       title: title,
       startTime: startTime,
       endTime: endTime,
+      recurrenceRule: recurrenceRule,
     );
     ref.invalidateSelf();
     await future;

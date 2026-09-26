@@ -8,6 +8,7 @@ import 'package:priority_task_manager/dev/dev_log_entry.dart';
 import 'package:priority_task_manager/dev/dev_log_sink.dart';
 import 'package:priority_task_manager/dev/logging_task_repository.dart';
 import 'package:priority_task_manager/models/fixed_event.dart';
+import 'package:priority_task_manager/models/recurrence_rule.dart';
 import 'package:priority_task_manager/models/task_item.dart';
 import 'package:priority_task_manager/models/task_list.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
@@ -84,6 +85,7 @@ class _FakeTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
   }) => throw UnimplementedError();
 
   @override

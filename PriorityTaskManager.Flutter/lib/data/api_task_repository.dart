@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/fixed_event.dart';
+import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -500,6 +501,7 @@ class ApiTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
   }) async {
     final response = await _send(
       'POST',
@@ -508,6 +510,7 @@ class ApiTaskRepository implements TaskRepository {
         'name': title,
         'startTime': startTime.toIso8601String(),
         'endTime': endTime.toIso8601String(),
+        if (recurrenceRule != null) 'recurrenceRule': recurrenceRule.toJson(),
       },
     );
     return _eventFromJson(

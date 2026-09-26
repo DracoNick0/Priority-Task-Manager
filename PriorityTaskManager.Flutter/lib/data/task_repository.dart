@@ -1,4 +1,5 @@
 import '../models/fixed_event.dart';
+import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -61,11 +62,14 @@ abstract class TaskRepository {
 
   Future<List<FixedEvent>> getEvents(String listId);
 
+  /// [recurrenceRule] is only supported by API-backed (Authenticated)
+  /// sessions (issue #70); it is ignored by [LocalTaskRepository] (Guests).
   Future<FixedEvent> addEvent({
     required String listId,
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
   });
 
   Future<void> updateEvent(FixedEvent event);

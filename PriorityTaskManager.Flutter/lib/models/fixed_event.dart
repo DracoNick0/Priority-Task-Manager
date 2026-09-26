@@ -1,15 +1,17 @@
 import 'package:hive_ce/hive.dart';
 
+import 'recurrence_rule.dart';
+
 part 'fixed_event.g.dart';
 
 /// A fixed, immovable calendar event shown alongside scheduled tasks, stored
 /// locally via Hive. Mirrors `PriorityTaskManager.Models.Event`.
 ///
 /// [recurrenceRule]/[seriesId] carry the server's `RecurrenceRule`/`SeriesId`
-/// (issue #70) through opaquely, as a raw JSON map, since there is no Flutter
-/// recurrence-pattern picker UI yet (tracked separately); this only prevents
-/// [ApiTaskRepository] edits from silently dropping a server-created series'
-/// recurrence data, it does not let the app create or interpret one.
+/// (issue #70) as a raw JSON map for Hive storage compatibility; use
+/// [recurrenceRuleTyped] to read it as a [RecurrenceRule] at the UI boundary
+/// (issue #71). Only `Authenticated` sessions (`ApiTaskRepository`) can
+/// create or interpret one; Guests round-trip it opaquely.
 @HiveType(typeId: 3)
 class FixedEvent extends HiveObject {
   FixedEvent({
@@ -42,6 +44,11 @@ class FixedEvent extends HiveObject {
 
   @HiveField(6)
   String? seriesId;
+
+  /// Parses [recurrenceRule] into a typed [RecurrenceRule], or null if this
+  /// event isn't part of a series or the map doesn't match a known pattern.
+  RecurrenceRule? get recurrenceRuleTyped =>
+      RecurrenceRule.fromJson(recurrenceRule);
 
   FixedEvent copyWith({String? title, DateTime? startTime, DateTime? endTime}) {
     return FixedEvent(

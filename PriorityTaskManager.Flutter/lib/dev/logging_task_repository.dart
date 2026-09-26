@@ -1,4 +1,5 @@
 import '../models/fixed_event.dart';
+import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -153,6 +154,7 @@ class LoggingTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
   }) => _logged(
     'addEvent(listId: $listId, title: $title)',
     () => _inner.addEvent(
@@ -160,6 +162,7 @@ class LoggingTaskRepository implements TaskRepository {
       title: title,
       startTime: startTime,
       endTime: endTime,
+      recurrenceRule: recurrenceRule,
     ),
   );
 
