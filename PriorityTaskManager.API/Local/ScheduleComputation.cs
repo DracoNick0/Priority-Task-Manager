@@ -33,7 +33,7 @@ namespace PriorityTaskManager.API.Local
 
 			IUrgencyStrategy strategy = profile.SchedulingMode == SchedulingMode.ConstraintOptimization
 				? new ConstraintOptimizationStrategy(profile, events, timeService)
-				: new GoldPanningStrategy(profile, events, timeService);
+				: new GoldPanningStrategy(profile, events, timeService, new RecurrenceExpansionService());
 
 			var result = strategy.CalculateUrgency(tasks);
 			var metrics = new TaskMetricsService();

@@ -14,7 +14,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
     {
         protected override IUrgencyStrategy CreateStrategy(UserProfile profile, List<Event> events, ITimeService timeService)
         {
-            return new GoldPanningStrategy(profile, events, timeService);
+            return new GoldPanningStrategy(profile, events, timeService, new RecurrenceExpansionService());
         }
     }
 }

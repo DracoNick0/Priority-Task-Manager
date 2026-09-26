@@ -41,9 +41,24 @@ namespace PriorityTaskManager.API.Local
 	}
 
 	/// <summary>Fixed time block (e.g. a calendar event) sent by the local client, unavailable for scheduling.</summary>
-	public record LocalEventRequest(Guid Id, string Name, DateTime StartTime, DateTime EndTime)
+	public record LocalEventRequest(
+		Guid Id,
+		string Name,
+		DateTime StartTime,
+		DateTime EndTime,
+		RecurrenceRule? RecurrenceRule = null,
+		List<RecurrenceException>? Exceptions = null)
 	{
-		public Event ToEvent() => new() { Id = Id, Name = Name, StartTime = StartTime, EndTime = EndTime };
+		public Event ToEvent() => new()
+		{
+			Id = Id,
+			Name = Name,
+			StartTime = StartTime,
+			EndTime = EndTime,
+			RecurrenceRule = RecurrenceRule,
+			SeriesId = RecurrenceRule != null ? Id : null,
+			Exceptions = Exceptions is null ? new List<RecurrenceException>() : new List<RecurrenceException>(Exceptions)
+		};
 	}
 
 	/// <summary>The subset of <see cref="UserProfile"/> that affects scheduling, sent by the local client.</summary>

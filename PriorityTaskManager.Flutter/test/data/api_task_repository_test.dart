@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:priority_task_manager/data/api_task_repository.dart';
 import 'package:priority_task_manager/data/task_repository.dart';
+import 'package:priority_task_manager/models/fixed_event.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
 
 void main() {
@@ -211,6 +212,73 @@ void main() {
 
         expect(events, hasLength(1));
         expect(events.single.listId, 'any-list-id');
+      },
+    );
+
+    test(
+      'getEvents parses a recurring event\'s recurrenceRule/seriesId',
+      () async {
+        final client = MockClient((request) async {
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 'event-1',
+                'name': 'Standup',
+                'startTime': '2026-09-14T09:00:00.000',
+                'endTime': '2026-09-14T09:15:00.000',
+                'recurrenceRule': {
+                  'type': 'weekly',
+                  'seriesStartDate': '2026-09-14T00:00:00.000',
+                  'daysOfWeek': ['Monday'],
+                  'intervalWeeks': 1,
+                },
+                'seriesId': 'event-1',
+              },
+            ]),
+            200,
+          );
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+
+        final events = await repository.getEvents('any-list-id');
+
+        expect(events.single.recurrenceRule, isNotNull);
+        expect(events.single.recurrenceRule!['type'], 'weekly');
+        expect(events.single.seriesId, 'event-1');
+      },
+    );
+
+    test(
+      'updateEvent round-trips recurrenceRule instead of dropping it',
+      () async {
+        Map<String, dynamic>? putBody;
+        final client = MockClient((request) async {
+          if (request.method == 'PUT') {
+            putBody = jsonDecode(request.body) as Map<String, dynamic>;
+            return http.Response('', 204);
+          }
+          return http.Response('', 404);
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+        final recurringEvent = FixedEvent(
+          id: 'event-1',
+          listId: 'list-1',
+          title: 'Standup',
+          startTime: DateTime(2026, 9, 14, 9),
+          endTime: DateTime(2026, 9, 14, 9, 15),
+          recurrenceRule: {'type': 'weekly'},
+          seriesId: 'event-1',
+        );
+
+        await repository.updateEvent(recurringEvent);
+
+        expect(putBody!['recurrenceRule'], {'type': 'weekly'});
       },
     );
 

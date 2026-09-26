@@ -25,6 +25,11 @@ namespace PriorityTaskManager.Services
         public void AddEvent(Event newEvent)
         {
             newEvent.Id = Guid.NewGuid();
+            // A recurrence rule marks this event as the base occurrence defining a new series.
+            if (newEvent.RecurrenceRule != null)
+            {
+                newEvent.SeriesId = newEvent.Id;
+            }
             _data.Events.Add(newEvent);
             _persistenceService.SaveData(_data);
         }

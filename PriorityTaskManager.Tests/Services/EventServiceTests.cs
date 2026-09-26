@@ -26,6 +26,38 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void AddEvent_WithRecurrenceRule_AssignsSeriesIdMatchingId()
+        {
+            var (service, _) = CreateService();
+            var newEvent = new Event
+            {
+                Name = "Standup",
+                StartTime = new DateTime(2026, 7, 10, 9, 0, 0),
+                EndTime = new DateTime(2026, 7, 10, 9, 15, 0),
+                RecurrenceRule = new WeeklyRecurrenceRule
+                {
+                    SeriesStartDate = new DateTime(2026, 7, 10),
+                    DaysOfWeek = new List<DayOfWeek> { DayOfWeek.Friday }
+                }
+            };
+
+            service.AddEvent(newEvent);
+
+            Assert.Equal(newEvent.Id, newEvent.SeriesId);
+        }
+
+        [Fact]
+        public void AddEvent_WithoutRecurrenceRule_LeavesSeriesIdNull()
+        {
+            var (service, _) = CreateService();
+            var newEvent = new Event { Name = "Doctor" };
+
+            service.AddEvent(newEvent);
+
+            Assert.Null(newEvent.SeriesId);
+        }
+
+        [Fact]
         public void GetEvent_ReturnsMatchingEvent_WhenPresent()
         {
             var (service, _) = CreateService();

@@ -25,7 +25,7 @@ namespace PriorityTaskManager.Services
             }
             else
             {
-                strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(effectiveProfile, _data.Events, timeService);
+                strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(effectiveProfile, _data.Events, timeService, new RecurrenceExpansionService());
             }
             
             var rawTasks = GetAllTasks(listId).ToList();

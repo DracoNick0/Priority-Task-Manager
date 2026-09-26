@@ -4,6 +4,12 @@ part 'fixed_event.g.dart';
 
 /// A fixed, immovable calendar event shown alongside scheduled tasks, stored
 /// locally via Hive. Mirrors `PriorityTaskManager.Models.Event`.
+///
+/// [recurrenceRule]/[seriesId] carry the server's `RecurrenceRule`/`SeriesId`
+/// (issue #70) through opaquely, as a raw JSON map, since there is no Flutter
+/// recurrence-pattern picker UI yet (tracked separately); this only prevents
+/// [ApiTaskRepository] edits from silently dropping a server-created series'
+/// recurrence data, it does not let the app create or interpret one.
 @HiveType(typeId: 3)
 class FixedEvent extends HiveObject {
   FixedEvent({
@@ -12,6 +18,8 @@ class FixedEvent extends HiveObject {
     required this.title,
     required this.startTime,
     required this.endTime,
+    this.recurrenceRule,
+    this.seriesId,
   });
 
   @HiveField(0)
@@ -29,6 +37,12 @@ class FixedEvent extends HiveObject {
   @HiveField(4)
   DateTime endTime;
 
+  @HiveField(5)
+  Map<dynamic, dynamic>? recurrenceRule;
+
+  @HiveField(6)
+  String? seriesId;
+
   FixedEvent copyWith({String? title, DateTime? startTime, DateTime? endTime}) {
     return FixedEvent(
       id: id,
@@ -36,6 +50,8 @@ class FixedEvent extends HiveObject {
       title: title ?? this.title,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
+      recurrenceRule: recurrenceRule,
+      seriesId: seriesId,
     );
   }
 }

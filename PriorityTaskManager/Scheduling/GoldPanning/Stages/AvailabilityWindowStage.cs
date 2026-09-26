@@ -15,10 +15,12 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
     public class AvailabilityWindowStage : ISchedulingStage
     {
         private readonly ITimeService _timeService;
+        private readonly IRecurrenceExpansionService _recurrenceExpansionService;
 
-        public AvailabilityWindowStage(ITimeService timeService)
+        public AvailabilityWindowStage(ITimeService timeService, IRecurrenceExpansionService recurrenceExpansionService)
         {
             _timeService = timeService;
+            _recurrenceExpansionService = recurrenceExpansionService;
         }
 
         /// <inheritdoc />
@@ -106,7 +108,8 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
         {
             var slots = new List<TimeSlot>();
             var events = (context.SharedState.TryGetValue("Events", out var eventsObj) && eventsObj is List<Event> ev) ? ev : new List<Event>();
-            var sortedEvents = events.OrderBy(e => e.StartTime).ToList();
+            var expandedEvents = ExpandRecurringEvents(events, now.Date, coreHorizonEndDate);
+            var sortedEvents = expandedEvents.OrderBy(e => e.StartTime).ToList();
 
             for (var day = now.Date; day <= coreHorizonEndDate; day = day.AddDays(1))
             {
@@ -148,6 +151,39 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 }
             }
             return slots;
+        }
+
+        /// <summary>
+        /// Expands each event with a <see cref="Event.RecurrenceRule"/> into one ephemeral occurrence
+        /// per date it produces within [<paramref name="rangeStart"/>, <paramref name="rangeEnd"/>], preserving
+        /// each occurrence's original time-of-day and duration. Never persisted; non-recurring events pass through unchanged.
+        /// </summary>
+        private List<Event> ExpandRecurringEvents(List<Event> events, DateTime rangeStart, DateTime rangeEnd)
+        {
+            var result = new List<Event>();
+            foreach (var evt in events)
+            {
+                if (evt.RecurrenceRule == null)
+                {
+                    result.Add(evt);
+                    continue;
+                }
+
+                var occurrences = _recurrenceExpansionService.GetOccurrences(evt.RecurrenceRule, evt.Exceptions, rangeStart, rangeEnd);
+                var duration = evt.EndTime - evt.StartTime;
+                foreach (var occurrenceDate in occurrences)
+                {
+                    var offset = occurrenceDate.Date - evt.StartTime.Date;
+                    result.Add(new Event
+                    {
+                        Id = evt.Id,
+                        Name = evt.Name,
+                        StartTime = evt.StartTime + offset,
+                        EndTime = evt.StartTime + offset + duration
+                    });
+                }
+            }
+            return result;
         }
 
         private List<Event> MergeOverlappingEvents(List<Event> events)

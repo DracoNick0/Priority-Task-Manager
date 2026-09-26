@@ -525,6 +525,10 @@ class ApiTaskRepository implements TaskRepository {
         'name': event.title,
         'startTime': event.startTime.toIso8601String(),
         'endTime': event.endTime.toIso8601String(),
+        // Round-tripped rather than dropped: there is no picker UI to set this
+        // from Flutter yet, but a plain edit must not erase a series created
+        // elsewhere (e.g. via the CLI or a future intake flow).
+        'recurrenceRule': event.recurrenceRule,
       },
     );
   }
@@ -541,6 +545,8 @@ class ApiTaskRepository implements TaskRepository {
         title: json['name'] as String? ?? '',
         startTime: DateTime.parse(json['startTime'] as String),
         endTime: DateTime.parse(json['endTime'] as String),
+        recurrenceRule: json['recurrenceRule'] as Map<String, dynamic>?,
+        seriesId: json['seriesId'] as String?,
       );
 
   // ---- Archive ----

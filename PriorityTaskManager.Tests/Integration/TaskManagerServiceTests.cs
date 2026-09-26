@@ -20,7 +20,7 @@ namespace PriorityTaskManager.Tests.Integration
                 _persistenceService = new MockPersistenceService();
                 _timeService = new MockTimeService();
                 var initialData = _persistenceService.LoadData();
-                var urgencyStrategy = new GoldPanningStrategy(initialData.UserProfile, initialData.Events, _timeService);
+                var urgencyStrategy = new GoldPanningStrategy(initialData.UserProfile, initialData.Events, _timeService, new RecurrenceExpansionService());
                 _TMS = new TaskManagerService(urgencyStrategy, _persistenceService, initialData);
             }
         }
@@ -41,7 +41,7 @@ namespace PriorityTaskManager.Tests.Integration
                 var persistenceService = new MockPersistenceService();
                 persistenceService.Data.Lists.Clear(); // Ensure no lists exist
                 var timeService = new MockTimeService();
-                var urgencyStrategy = new GoldPanningStrategy(persistenceService.Data.UserProfile, persistenceService.Data.Events, timeService);
+                var urgencyStrategy = new GoldPanningStrategy(persistenceService.Data.UserProfile, persistenceService.Data.Events, timeService, new RecurrenceExpansionService());
 
                 // Act
                 var tms = new TaskManagerService(urgencyStrategy, persistenceService, persistenceService.Data);

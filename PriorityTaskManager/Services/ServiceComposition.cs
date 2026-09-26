@@ -51,7 +51,7 @@ namespace PriorityTaskManager.Services
 			var dataContainer = persistenceService.LoadData();
 			var timeService = new TimeService();
 
-			var urgencyStrategy = new GoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService);
+			var urgencyStrategy = new GoldPanningStrategy(dataContainer.UserProfile, dataContainer.Events, timeService, new RecurrenceExpansionService());
 			var taskManagerService = new TaskManagerService(urgencyStrategy, persistenceService, dataContainer);
 			var taskMetricsService = new TaskMetricsService();
 			taskManagerService.ApplyListTimePreference(taskManagerService.GetActiveListId(), timeService);

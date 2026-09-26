@@ -74,7 +74,7 @@ namespace PriorityTaskManager.Tests.CLI
             var persistence = new MockPersistenceService();
             var timeService = DeterministicTestFixtures.CreateMockTimeService(new DateTime(2026, 7, 8, 9, 0, 0));
             var data = persistence.LoadData();
-            var strategy = new GoldPanningStrategy(data.UserProfile, data.Events, timeService);
+            var strategy = new GoldPanningStrategy(data.UserProfile, data.Events, timeService, new RecurrenceExpansionService());
             var service = new TaskManagerService(strategy, persistence, data);
             var metrics = new TaskMetricsService();
             var snapshotProvider = new ScheduleSnapshotProvider(service, metrics, timeService);

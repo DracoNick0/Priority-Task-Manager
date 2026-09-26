@@ -60,7 +60,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         public void Act_WhenUserProfileIsMissing_ShouldReturnContextUnchanged()
         {
             // Arrange
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var context = new SchedulingContext();
             context.SharedState["Tasks"] = new List<TaskItem>();
 
@@ -75,7 +75,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         public void Act_WhenTasksAreMissing_ShouldReturnContextUnchanged()
         {
             // Arrange
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var context = new SchedulingContext();
             context.SharedState["UserProfile"] = _userProfile;
 
@@ -90,7 +90,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         public void Act_WithNoTasks_ShouldProduceNoSlots()
         {
             // Arrange
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var context = CreateInitialContext(new List<TaskItem>());
 
             // Act
@@ -108,7 +108,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             // Monday, Jan 1, 2024, at 8:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(4) } };
             var context = CreateInitialContext(tasks);
 
@@ -131,7 +131,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             // Monday, Jan 1, 2024, at 12:00 PM
             var now = new DateTime(2024, 1, 1, 12, 0, 0);
             _timeService.SetCurrentTime(now);
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
             var context = CreateInitialContext(tasks);
 
@@ -153,7 +153,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             // Thursday, Jan 4, 2024, at 10:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 4, 10, 0, 0));
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             // 12 hours = 7 on Thursday, 5 on Friday. Horizon should end on Friday.
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(12) } };
             var context = CreateInitialContext(tasks);
@@ -180,7 +180,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             // Monday, Jan 1, 2024, at 8:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
             var events = new List<Event>
             {
@@ -209,7 +209,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             // Monday, Jan 1, 2024, at 8:00 AM
             _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
             var events = new List<Event>
             {
@@ -238,7 +238,7 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         {
             var now = new DateTime(2024, 1, 1, 8, 0, 0);
             _timeService.SetCurrentTime(now);
-            var agent = new AvailabilityWindowStage(_timeService);
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
             // 260 workdays/year * 8 hours/day * 6 years = 12480 hours
             var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(12480) } };
             var context = CreateInitialContext(tasks);
@@ -253,6 +253,80 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             Assert.NotNull(lastSlot);
             // The end date of the last slot should be around 5 years from now.
             Assert.True(lastSlot.EndTime.Date <= now.Date.AddYears(5).AddDays(1)); // Add a day for tolerance
+        }
+
+        [Fact]
+        public void Act_WithRecurringEvent_ShouldBlockAvailabilityOnEveryOccurrence()
+        {
+            // Monday, Jan 1, 2024, at 8:00 AM
+            _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
+            var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
+            var events = new List<Event>
+            {
+                new Event
+                {
+                    StartTime = new DateTime(2024, 1, 1, 12, 0, 0),
+                    EndTime = new DateTime(2024, 1, 1, 13, 0, 0),
+                    RecurrenceRule = new DailyIntervalRecurrenceRule
+                    {
+                        SeriesStartDate = new DateTime(2024, 1, 1),
+                        IntervalDays = 1
+                    }
+                }
+            };
+            var context = CreateInitialContext(tasks, events);
+
+            // Act
+            var resultContext = agent.Act(context);
+            var scheduleWindow = resultContext.SharedState["AvailableScheduleWindow"] as ScheduleWindow;
+            var slots = scheduleWindow?.AvailableSlots;
+
+            // Assert: every workday in the horizon (Jan 1-5, 8) is split around its own 12:00-13:00 occurrence.
+            Assert.NotNull(slots);
+            Assert.Equal(12, slots.Count);
+            foreach (var day in new[] { 1, 2, 3, 4, 5, 8 })
+            {
+                Assert.Contains(slots, s => s.StartTime == new DateTime(2024, 1, day, 9, 0, 0) && s.EndTime == new DateTime(2024, 1, day, 12, 0, 0));
+                Assert.Contains(slots, s => s.StartTime == new DateTime(2024, 1, day, 13, 0, 0) && s.EndTime == new DateTime(2024, 1, day, 17, 0, 0));
+            }
+        }
+
+        [Fact]
+        public void Act_WithRecurringEvent_ShouldSkipCancelledOccurrence()
+        {
+            // Monday, Jan 1, 2024, at 8:00 AM
+            _timeService.SetCurrentTime(new DateTime(2024, 1, 1, 8, 0, 0));
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
+            var tasks = new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } };
+            var events = new List<Event>
+            {
+                new Event
+                {
+                    StartTime = new DateTime(2024, 1, 1, 12, 0, 0),
+                    EndTime = new DateTime(2024, 1, 1, 13, 0, 0),
+                    RecurrenceRule = new DailyIntervalRecurrenceRule
+                    {
+                        SeriesStartDate = new DateTime(2024, 1, 1),
+                        IntervalDays = 1
+                    },
+                    Exceptions = new List<RecurrenceException>
+                    {
+                        new RecurrenceException { OriginalOccurrenceDate = new DateTime(2024, 1, 2), IsCancelled = true }
+                    }
+                }
+            };
+            var context = CreateInitialContext(tasks, events);
+
+            // Act
+            var resultContext = agent.Act(context);
+            var scheduleWindow = resultContext.SharedState["AvailableScheduleWindow"] as ScheduleWindow;
+            var slots = scheduleWindow?.AvailableSlots;
+
+            // Assert: Jan 2's occurrence is cancelled, so that day gets one unsplit full-day slot.
+            Assert.NotNull(slots);
+            Assert.Contains(slots, s => s.StartTime == new DateTime(2024, 1, 2, 9, 0, 0) && s.EndTime == new DateTime(2024, 1, 2, 17, 0, 0));
+            Assert.Contains(slots, s => s.StartTime == new DateTime(2024, 1, 3, 9, 0, 0) && s.EndTime == new DateTime(2024, 1, 3, 12, 0, 0));
         }
     }
 }

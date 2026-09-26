@@ -24,5 +24,23 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the date and time the event ends.
         /// </summary>
         public DateTime EndTime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the recurrence pattern for this event, if it is the base occurrence of a recurring series.
+        /// Null for a plain, non-recurring event.
+        /// </summary>
+        public RecurrenceRule? RecurrenceRule { get; set; }
+
+        /// <summary>
+        /// Gets or sets the series identifier shared by every occurrence expanded from <see cref="RecurrenceRule"/>.
+        /// Set to this event's own <see cref="Id"/> when it defines a recurring series; null otherwise.
+        /// </summary>
+        public Guid? SeriesId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the recorded per-occurrence exceptions (e.g. cancellations) for this series.
+        /// Empty for a non-recurring event.
+        /// </summary>
+        public List<RecurrenceException> Exceptions { get; set; } = new();
     }
 }

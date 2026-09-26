@@ -21,7 +21,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning
         // The sequence of stages that defines the Gold Panning pipeline.
         private readonly List<ISchedulingStage> _stageChain;
 
-        public GoldPanningStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService)
+        public GoldPanningStrategy(UserProfile userProfile, List<Event> events, ITimeService timeService, IRecurrenceExpansionService recurrenceExpansionService)
         {
             _userProfile = userProfile;
             _events = events;
@@ -32,7 +32,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning
             _stageChain = new List<ISchedulingStage>
             {
                 new TaskNormalizationStage(),          // 1. Cleans up task data (applies defaults).
-                new AvailabilityWindowStage(timeService), // 2. Calculates available time slots.
+                new AvailabilityWindowStage(timeService, recurrenceExpansionService), // 2. Calculates available time slots.
                 new TaskRankingStage(),        // 3. "Weighs" tasks based on urgency and importance.
                 new TaskDistributionStage(),      // 4. Distributes tasks into daily buckets.
                 new DailySequencingStage()          // 5. Arranges tasks within each day.
