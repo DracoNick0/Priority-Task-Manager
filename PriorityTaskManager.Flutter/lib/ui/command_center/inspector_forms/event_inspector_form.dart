@@ -24,8 +24,8 @@ class EventInspectorForm extends ConsumerStatefulWidget {
 
 class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   late final TextEditingController _titleController;
-  DateTime _start = DateTime.now();
-  DateTime _end = DateTime.now().add(const Duration(hours: 1));
+  late DateTime _start;
+  late DateTime _end;
   FixedEvent? _loadedFrom;
   RecurrenceRule? _recurrenceRule;
 
@@ -35,6 +35,15 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   void initState() {
     super.initState();
     _titleController = TextEditingController();
+    _start = _roundUpToHour(DateTime.now());
+    _end = _start.add(const Duration(hours: 1));
+  }
+
+  static DateTime _roundUpToHour(DateTime time) {
+    final flooredToHour = DateTime(time.year, time.month, time.day, time.hour);
+    return flooredToHour == time
+        ? time
+        : flooredToHour.add(const Duration(hours: 1));
   }
 
   void _loadFrom(FixedEvent event) {
@@ -106,8 +115,13 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
                   icon: Icons.play_circle_outline,
                   label: 'Start',
                   value: _start,
-                  onPick: () =>
-                      _pickDateTime((d) => setState(() => _start = d)),
+                  onPick: () => _pickDateTime((d) {
+                    final shift = d.difference(_start);
+                    setState(() {
+                      _start = d;
+                      _end = _end.add(shift);
+                    });
+                  }),
                 ),
                 const Divider(height: AppTheme.spacingMd),
                 DateTimeCompactRow(
