@@ -44,5 +44,28 @@ namespace PriorityTaskManager.Services
         /// Removes all events.
         /// </summary>
         void ClearEvents();
+
+        /// <summary>
+        /// Edits a single occurrence, this-and-following occurrences, or the whole series of the recurring
+        /// event whose base row has <see cref="Event.Id"/> equal to <paramref name="seriesId"/>.
+        /// </summary>
+        /// <param name="seriesId">The recurring event series' base event ID (equals <see cref="Event.SeriesId"/>).</param>
+        /// <param name="occurrenceDate">The original (unmodified) date of the targeted occurrence.</param>
+        /// <param name="name">The new name to apply.</param>
+        /// <param name="startTime">The new start time to apply.</param>
+        /// <param name="endTime">The new end time to apply.</param>
+        /// <param name="target">Which occurrences of the series the edit applies to.</param>
+        /// <returns>True if the series was found and edited; otherwise, false.</returns>
+        bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target);
+
+        /// <summary>
+        /// Deletes a single occurrence, this-and-following occurrences, or the whole series of the recurring
+        /// event whose base row has <see cref="Event.Id"/> equal to <paramref name="seriesId"/>.
+        /// </summary>
+        /// <param name="seriesId">The recurring event series' base event ID (equals <see cref="Event.SeriesId"/>).</param>
+        /// <param name="occurrenceDate">The original (unmodified) date of the targeted occurrence.</param>
+        /// <param name="target">Which occurrences of the series the delete applies to.</param>
+        /// <returns>True if the series was found and the delete applied; otherwise, false.</returns>
+        bool DeleteOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target);
     }
 }

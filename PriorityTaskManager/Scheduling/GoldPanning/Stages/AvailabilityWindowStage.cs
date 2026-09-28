@@ -173,6 +173,19 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 var duration = evt.EndTime - evt.StartTime;
                 foreach (var occurrenceDate in occurrences)
                 {
+                    var occurrenceOverride = evt.OccurrenceOverrides.FirstOrDefault(o => o.OriginalOccurrenceDate.Date == occurrenceDate.Date);
+                    if (occurrenceOverride != null)
+                    {
+                        result.Add(new Event
+                        {
+                            Id = evt.Id,
+                            Name = occurrenceOverride.Name,
+                            StartTime = occurrenceOverride.StartTime,
+                            EndTime = occurrenceOverride.EndTime
+                        });
+                        continue;
+                    }
+
                     var offset = occurrenceDate.Date - evt.StartTime.Date;
                     result.Add(new Event
                     {

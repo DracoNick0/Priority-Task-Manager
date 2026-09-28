@@ -1,4 +1,5 @@
 using PriorityTaskManager.Models;
+using PriorityTaskManager.Services.Helpers;
 
 namespace PriorityTaskManager.Services
 {
@@ -79,6 +80,103 @@ namespace PriorityTaskManager.Services
         {
             _data.Events.Clear();
             _persistenceService.SaveData(_data);
+        }
+
+        /// <inheritdoc />
+        public bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target)
+        {
+            var seriesEvent = _data.Events.Find(e => e.Id == seriesId);
+            if (seriesEvent?.RecurrenceRule == null)
+                return false;
+
+            var occurrenceDateOnly = occurrenceDate.Date;
+
+            switch (target)
+            {
+                case RecurrenceEditTarget.ThisOccurrence:
+                    seriesEvent.OccurrenceOverrides.RemoveAll(o => o.OriginalOccurrenceDate.Date == occurrenceDateOnly);
+                    seriesEvent.OccurrenceOverrides.Add(new EventOccurrenceOverride
+                    {
+                        OriginalOccurrenceDate = occurrenceDateOnly,
+                        Name = name,
+                        StartTime = startTime,
+                        EndTime = endTime
+                    });
+                    break;
+
+                case RecurrenceEditTarget.ThisAndFollowing:
+                    var split = RecurrenceSplitHelper.Split(seriesEvent.RecurrenceRule, seriesEvent.Exceptions, occurrenceDateOnly);
+                    var priorOverrides = seriesEvent.OccurrenceOverrides.Where(o => o.OriginalOccurrenceDate.Date < occurrenceDateOnly).ToList();
+                    var followingOverrides = seriesEvent.OccurrenceOverrides.Where(o => o.OriginalOccurrenceDate.Date >= occurrenceDateOnly).ToList();
+
+                    seriesEvent.RecurrenceRule = split.PriorRule;
+                    seriesEvent.Exceptions = split.PriorExceptions;
+                    seriesEvent.OccurrenceOverrides = priorOverrides;
+
+                    var newSeriesEvent = new Event
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = name,
+                        StartTime = startTime,
+                        EndTime = endTime,
+                        RecurrenceRule = split.NewRule,
+                        Exceptions = split.NewExceptions,
+                        OccurrenceOverrides = followingOverrides
+                    };
+                    newSeriesEvent.SeriesId = newSeriesEvent.Id;
+                    _data.Events.Add(newSeriesEvent);
+                    break;
+
+                case RecurrenceEditTarget.AllOccurrences:
+                    seriesEvent.Name = name;
+                    seriesEvent.StartTime = startTime;
+                    seriesEvent.EndTime = endTime;
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(target));
+            }
+
+            _persistenceService.SaveData(_data);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public bool DeleteOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target)
+        {
+            var seriesEvent = _data.Events.Find(e => e.Id == seriesId);
+            if (seriesEvent?.RecurrenceRule == null)
+                return false;
+
+            var occurrenceDateOnly = occurrenceDate.Date;
+
+            switch (target)
+            {
+                case RecurrenceEditTarget.ThisOccurrence:
+                    seriesEvent.Exceptions.RemoveAll(e => e.OriginalOccurrenceDate.Date == occurrenceDateOnly);
+                    seriesEvent.Exceptions.Add(new RecurrenceException { OriginalOccurrenceDate = occurrenceDateOnly, IsCancelled = true });
+                    seriesEvent.OccurrenceOverrides.RemoveAll(o => o.OriginalOccurrenceDate.Date == occurrenceDateOnly);
+                    break;
+
+                case RecurrenceEditTarget.ThisAndFollowing:
+                    var split = RecurrenceSplitHelper.Split(seriesEvent.RecurrenceRule, seriesEvent.Exceptions, occurrenceDateOnly);
+                    seriesEvent.RecurrenceRule = split.PriorRule;
+                    seriesEvent.Exceptions = split.PriorExceptions;
+                    seriesEvent.OccurrenceOverrides = seriesEvent.OccurrenceOverrides
+                        .Where(o => o.OriginalOccurrenceDate.Date < occurrenceDateOnly)
+                        .ToList();
+                    break;
+
+                case RecurrenceEditTarget.AllOccurrences:
+                    _data.Events.Remove(seriesEvent);
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(target));
+            }
+
+            _persistenceService.SaveData(_data);
+            return true;
         }
     }
 }

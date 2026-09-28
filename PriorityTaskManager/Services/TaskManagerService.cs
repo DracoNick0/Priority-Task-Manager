@@ -618,5 +618,11 @@ namespace PriorityTaskManager.Services
         public bool DeleteEvent(Guid id) => _eventService.DeleteEvent(id);
 
         public void ClearEvents() => _eventService.ClearEvents();
+
+        public bool EditEventOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target)
+            => _eventService.EditOccurrence(seriesId, occurrenceDate, name, startTime, endTime, target);
+
+        public bool DeleteEventOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target)
+            => _eventService.DeleteOccurrence(seriesId, occurrenceDate, target);
     }
 }

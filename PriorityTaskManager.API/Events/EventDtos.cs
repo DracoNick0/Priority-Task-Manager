@@ -5,6 +5,9 @@ namespace PriorityTaskManager.API.Events
 	/// <summary>Request body for creating/updating an event.</summary>
 	public record EventRequest(string Name, DateTime StartTime, DateTime EndTime, RecurrenceRule? RecurrenceRule = null);
 
+	/// <summary>Request body for editing a single occurrence, this-and-following occurrences, or the whole series.</summary>
+	public record EventOccurrenceEditRequest(string Name, DateTime StartTime, DateTime EndTime);
+
 	/// <summary>Response body representing a persisted event.</summary>
 	public record EventResponse(Guid Id, string Name, DateTime StartTime, DateTime EndTime, RecurrenceRule? RecurrenceRule, Guid? SeriesId);
 

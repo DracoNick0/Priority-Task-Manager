@@ -42,5 +42,11 @@ namespace PriorityTaskManager.Models
         /// Empty for a non-recurring event.
         /// </summary>
         public List<RecurrenceException> Exceptions { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the recorded per-occurrence edits ("this occurrence only") for this series.
+        /// Empty for a non-recurring event.
+        /// </summary>
+        public List<EventOccurrenceOverride> OccurrenceOverrides { get; set; } = new();
     }
 }
