@@ -16,6 +16,13 @@ namespace PriorityTaskManager.API.Events
 			group.MapGet("/", (TaskManagerService taskManagerService) =>
 				Results.Ok(taskManagerService.GetAllEvents().Select(e => e.ToResponse())));
 
+			group.MapGet("/occurrences", (DateTime from, DateTime to, TaskManagerService taskManagerService) =>
+			{
+				if (to.Date < from.Date || (to.Date - from.Date).TotalDays > 31)
+					return Results.BadRequest(new { error = "Occurrence window must span 0 to 31 days." });
+				return Results.Ok(taskManagerService.GetEventOccurrences(from, to).Select(e => e.ToResponse()));
+			});
+
 			group.MapGet("/{id:guid}", (Guid id, TaskManagerService taskManagerService) =>
 			{
 				var evt = taskManagerService.GetEvent(id);
@@ -66,8 +73,15 @@ namespace PriorityTaskManager.API.Events
 					return Results.BadRequest(new { error = "Event end time must be after its start time." });
 				}
 
-				var edited = taskManagerService.EditEventOccurrence(seriesId, date, request.Name, request.StartTime, request.EndTime, editTarget);
-				return edited ? Results.Ok(taskManagerService.GetEvent(seriesId)!.ToResponse()) : Results.NotFound();
+				try
+				{
+					var edited = taskManagerService.EditEventOccurrence(seriesId, date, request.Name, request.StartTime, request.EndTime, editTarget, request.RecurrenceRule);
+					return edited ? Results.Ok(taskManagerService.GetEvent(seriesId)!.ToResponse()) : Results.NotFound();
+				}
+				catch (ArgumentException error)
+				{
+					return Results.BadRequest(new { error = error.Message });
+				}
 			});
 
 			group.MapDelete("/{seriesId:guid}/occurrences/{date}", (Guid seriesId, DateTime date, string target, TaskManagerService taskManagerService) =>
