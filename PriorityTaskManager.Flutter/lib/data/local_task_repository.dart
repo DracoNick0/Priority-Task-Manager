@@ -189,6 +189,22 @@ class LocalTaskRepository implements TaskRepository {
       _eventsBox.values.where((event) => event.listId == listId).toList();
 
   @override
+  Future<List<FixedEvent>> getEventOccurrences(
+    String listId,
+    DateTime from,
+    DateTime to,
+  ) async => _eventsBox.values
+      .where(
+        (event) =>
+            event.listId == listId &&
+            event.endTime.isAfter(DateTime(from.year, from.month, from.day)) &&
+            event.startTime.isBefore(
+              DateTime(to.year, to.month, to.day).add(const Duration(days: 1)),
+            ),
+      )
+      .toList();
+
+  @override
   Future<FixedEvent> addEvent({
     required String listId,
     required String title,
@@ -218,6 +234,36 @@ class LocalTaskRepository implements TaskRepository {
   @override
   Future<void> deleteEvent(String eventId) async {
     await _eventsBox.delete(eventId);
+  }
+
+  // Guests never have a recurring FixedEvent (no server-side series
+  // concept; see addEvent above), so the UI never calls these for a Guest
+  // session — same fail-fast pattern as the archive methods below.
+
+  @override
+  Future<void> editOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String name,
+    required DateTime startTime,
+    required DateTime endTime,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+  }) {
+    throw UnsupportedError(
+      'Recurring events are an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> deleteOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) {
+    throw UnsupportedError(
+      'Recurring events are an online-exclusive feature; Guests do not have access to it.',
+    );
   }
 
   // ---- Archive ----

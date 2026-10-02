@@ -22,6 +22,7 @@ class FixedEvent extends HiveObject {
     required this.endTime,
     this.recurrenceRule,
     this.seriesId,
+    this.originalOccurrenceDate,
   });
 
   @HiveField(0)
@@ -45,6 +46,9 @@ class FixedEvent extends HiveObject {
   @HiveField(6)
   String? seriesId;
 
+  /// Date of the generated occurrence before any per-occurrence move.
+  final DateTime? originalOccurrenceDate;
+
   /// Parses [recurrenceRule] into a typed [RecurrenceRule], or null if this
   /// event isn't part of a series or the map doesn't match a known pattern.
   RecurrenceRule? get recurrenceRuleTyped =>
@@ -59,6 +63,7 @@ class FixedEvent extends HiveObject {
       endTime: endTime ?? this.endTime,
       recurrenceRule: recurrenceRule,
       seriesId: seriesId,
+      originalOccurrenceDate: originalOccurrenceDate,
     );
   }
 }

@@ -10,6 +10,7 @@ import 'package:http/testing.dart';
 import 'package:priority_task_manager/data/api_task_repository.dart';
 import 'package:priority_task_manager/data/task_repository.dart';
 import 'package:priority_task_manager/models/fixed_event.dart';
+import 'package:priority_task_manager/models/recurrence_rule.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
 
 void main() {
@@ -279,6 +280,128 @@ void main() {
         await repository.updateEvent(recurringEvent);
 
         expect(putBody!['recurrenceRule'], {'type': 'weekly'});
+      },
+    );
+
+    test(
+      'editOccurrence PUTs to the occurrence endpoint with the target query param',
+      () async {
+        Uri? requestUri;
+        Map<String, dynamic>? putBody;
+        final client = MockClient((request) async {
+          requestUri = request.url;
+          putBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response('', 204);
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+
+        await repository.editOccurrence(
+          seriesId: 'series-1',
+          occurrenceDate: DateTime(2026, 9, 14),
+          name: 'Standup (moved)',
+          startTime: DateTime(2026, 9, 14, 10),
+          endTime: DateTime(2026, 9, 14, 10, 15),
+          target: RecurrenceEditTarget.thisOccurrence,
+        );
+
+        expect(requestUri!.path, '/api/events/series-1/occurrences/2026-09-14');
+        expect(requestUri!.queryParameters['target'], 'ThisOccurrence');
+        expect(putBody!['name'], 'Standup (moved)');
+      },
+    );
+
+    test('getEventOccurrences preserves original date after a move', () async {
+      Uri? requestUri;
+      final client = MockClient((request) async {
+        requestUri = request.url;
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'series-1',
+              'seriesId': 'series-1',
+              'name': 'Moved',
+              'startTime': '2026-09-15T10:00:00',
+              'endTime': '2026-09-15T10:15:00',
+              'originalOccurrenceDate': '2026-09-14T00:00:00',
+            },
+          ]),
+          200,
+        );
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final events = await repository.getEventOccurrences(
+        'list-1',
+        DateTime(2026, 9, 15),
+        DateTime(2026, 9, 29),
+      );
+
+      expect(requestUri!.path, '/api/events/occurrences');
+      expect(requestUri!.queryParameters['from'], '2026-09-15');
+      expect(requestUri!.queryParameters['to'], '2026-09-29');
+      expect(events.single.id, 'series-1_2026-09-14');
+      expect(events.single.originalOccurrenceDate, DateTime(2026, 9, 14));
+      expect(events.single.startTime, DateTime(2026, 9, 15, 10));
+    });
+
+    test('editOccurrence sends a changed future recurrence rule', () async {
+      Map<String, dynamic>? body;
+      final client = MockClient((request) async {
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response('', 204);
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      await repository.editOccurrence(
+        seriesId: 'series-1',
+        occurrenceDate: DateTime(2026, 9, 14),
+        name: 'Changed',
+        startTime: DateTime(2026, 9, 14, 10),
+        endTime: DateTime(2026, 9, 14, 11),
+        target: RecurrenceEditTarget.thisAndFollowing,
+        recurrenceRule: WeeklyRecurrenceRule(
+          seriesStartDate: DateTime(2026, 9, 14),
+          endCondition: NeverEndCondition(),
+          daysOfWeek: [1, 3],
+        ),
+      );
+
+      expect((body!['recurrenceRule'] as Map<String, dynamic>)['daysOfWeek'], [
+        1,
+        3,
+      ]);
+    });
+
+    test(
+      'deleteOccurrence DELETEs to the occurrence endpoint with the target query param',
+      () async {
+        Uri? requestUri;
+        final client = MockClient((request) async {
+          requestUri = request.url;
+          return http.Response('', 204);
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+
+        await repository.deleteOccurrence(
+          seriesId: 'series-1',
+          occurrenceDate: DateTime(2026, 9, 14),
+          target: RecurrenceEditTarget.thisAndFollowing,
+        );
+
+        expect(requestUri!.path, '/api/events/series-1/occurrences/2026-09-14');
+        expect(requestUri!.queryParameters['target'], 'ThisAndFollowing');
       },
     );
 

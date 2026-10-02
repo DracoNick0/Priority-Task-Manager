@@ -75,7 +75,7 @@ class RecurrencePicker extends StatefulWidget {
 class _RecurrencePickerState extends State<RecurrencePicker> {
   bool _enabled = false;
   RecurrencePatternType _pattern = RecurrencePatternType.weekly;
-  _EndType _endType = _EndType.never;
+  _EndType _endType = _EndType.after;
 
   final _intervalDaysController = TextEditingController(text: '1');
   final Set<int> _daysOfWeek = {};
@@ -88,7 +88,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   int _month = 1;
   final _yearlyDayController = TextEditingController(text: '1');
   final List<DateTime> _explicitDates = [];
-  final _afterCountController = TextEditingController(text: '5');
+  final _afterCountController = TextEditingController(text: '7');
   DateTime? _untilDate;
 
   @override
@@ -206,7 +206,12 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
               contentPadding: EdgeInsets.zero,
               title: const Text('Recurring event'),
               value: _enabled,
-              onChanged: (v) => _update(() => _enabled = v),
+              onChanged: (v) => _update(() {
+                _enabled = v;
+                if (v && _daysOfWeek.isEmpty) {
+                  _daysOfWeek.add(widget.seriesStartDate().weekday % 7);
+                }
+              }),
             ),
             if (_enabled) ...[
               const SizedBox(height: AppTheme.spacingSm),

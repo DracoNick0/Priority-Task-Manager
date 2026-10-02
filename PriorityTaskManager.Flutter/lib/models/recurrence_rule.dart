@@ -240,6 +240,20 @@ class AfterOccurrencesEndCondition extends RecurrenceEndCondition {
   };
 }
 
+/// Mirrors `PriorityTaskManager.Models.RecurrenceEditTarget` — which
+/// occurrences of a recurring series an edit/delete applies to (issue #71).
+enum RecurrenceEditTarget { thisOccurrence, thisAndFollowing, allOccurrences }
+
+extension RecurrenceEditTargetApi on RecurrenceEditTarget {
+  /// The string sent as the API's `target` query parameter; parsed
+  /// case-insensitively server-side but matches the C# enum names.
+  String get apiValue => switch (this) {
+    RecurrenceEditTarget.thisOccurrence => 'ThisOccurrence',
+    RecurrenceEditTarget.thisAndFollowing => 'ThisAndFollowing',
+    RecurrenceEditTarget.allOccurrences => 'AllOccurrences',
+  };
+}
+
 /// The series ends after [untilDate] (inclusive).
 class UntilDateEndCondition extends RecurrenceEndCondition {
   UntilDateEndCondition(this.untilDate);

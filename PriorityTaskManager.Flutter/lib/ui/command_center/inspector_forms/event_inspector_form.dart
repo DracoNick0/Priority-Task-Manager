@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/event_providers.dart';
+import '../../../providers/engine_status_provider.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/session_provider.dart';
 import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
 import 'date_time_field.dart';
+import 'recurrence_edit_target_dialog.dart';
 import 'recurrence_picker.dart';
 
 /// Inline CRUD form for a fixed event, shown in the Right Inspector.
@@ -64,12 +66,21 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   Widget build(BuildContext context) {
     final events =
         ref.watch(eventsProvider(widget.listId)).asData?.value ?? const [];
+    final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final occurrences =
+        ref
+            .watch(eventOccurrencesProvider((widget.listId, today)))
+            .asData
+            ?.value ??
+        const <FixedEvent>[];
 
     FixedEvent? existing;
     if (_isEditing) {
-      existing = events
-          .where((event) => event.id == widget.eventId)
-          .firstOrNull;
+      existing = [
+        ...occurrences,
+        ...events,
+      ].where((event) => event.id == widget.eventId).firstOrNull;
       if (existing == null) {
         return const Center(child: Text('Event not found.'));
       }
@@ -134,7 +145,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
             ),
           ),
         ),
-        if (!_isEditing && _isAuthenticated) ...[
+        if (_isAuthenticated &&
+            (!_isEditing || existing?.seriesId != null)) ...[
           const SizedBox(height: AppTheme.spacingMd),
           RecurrencePicker(
             seriesStartDate: () => _start,
@@ -191,6 +203,27 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
         kind: InspectorKind.event,
         id: created.id,
       );
+    } else if (existing.seriesId != null) {
+      final target = await showRecurrenceEditTargetDialog(
+        context,
+        isDelete: false,
+      );
+      if (target == null) return;
+      await notifier.editOccurrence(
+        seriesId: existing.seriesId!,
+        occurrenceDate: existing.originalOccurrenceDate ?? existing.startTime,
+        name: title,
+        startTime: _start,
+        endTime: _end,
+        target: target,
+        recurrenceRule: target == RecurrenceEditTarget.thisOccurrence
+            ? null
+            : _recurrenceRule,
+      );
+      if (target == RecurrenceEditTarget.thisAndFollowing && mounted) {
+        ref.read(selectedInspectorProvider.notifier).state =
+            const InspectorTarget.none();
+      }
     } else {
       await notifier.updateEvent(
         existing.copyWith(title: title, startTime: _start, endTime: _end),
@@ -199,9 +232,21 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   }
 
   Future<void> _delete(FixedEvent event) async {
-    await ref
-        .read(eventsProvider(widget.listId).notifier)
-        .deleteEvent(event.id);
+    final notifier = ref.read(eventsProvider(widget.listId).notifier);
+    if (event.seriesId != null) {
+      final target = await showRecurrenceEditTargetDialog(
+        context,
+        isDelete: true,
+      );
+      if (target == null) return;
+      await notifier.deleteOccurrence(
+        seriesId: event.seriesId!,
+        occurrenceDate: event.originalOccurrenceDate ?? event.startTime,
+        target: target,
+      );
+    } else {
+      await notifier.deleteEvent(event.id);
+    }
     if (!mounted) return;
     ref.read(selectedInspectorProvider.notifier).state =
         const InspectorTarget.none();

@@ -496,6 +496,36 @@ class ApiTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<List<FixedEvent>> getEventOccurrences(
+    String listId,
+    DateTime from,
+    DateTime to,
+  ) async {
+    final response = await _send(
+      'GET',
+      '/api/events/occurrences?from=${_dateOnly(from)}&to=${_dateOnly(to)}',
+    );
+    final json = jsonDecode(response.body) as List<dynamic>;
+    return json.map((entry) {
+      final event = entry as Map<String, dynamic>;
+      final original = event['originalOccurrenceDate'] as String?;
+      return FixedEvent(
+        id: original == null
+            ? event['id'] as String
+            : '${event['id']}_${_dateOnly(DateTime.parse(original))}',
+        listId: listId,
+        title: event['name'] as String,
+        startTime: DateTime.parse(event['startTime'] as String),
+        endTime: DateTime.parse(event['endTime'] as String),
+        seriesId: event['seriesId'] as String?,
+        originalOccurrenceDate: original == null
+            ? null
+            : DateTime.parse(original),
+      );
+    }).toList();
+  }
+
+  @override
   Future<FixedEvent> addEvent({
     required String listId,
     required String title,
@@ -539,6 +569,49 @@ class ApiTaskRepository implements TaskRepository {
   @override
   Future<void> deleteEvent(String eventId) async {
     await _send('DELETE', '/api/events/$eventId');
+  }
+
+  /// Formats [date] as `yyyy-MM-dd`, matching the server's per-occurrence
+  /// date-only identity (`EventOccurrenceOverride.OriginalOccurrenceDate.Date`).
+  String _dateOnly(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  @override
+  Future<void> editOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String name,
+    required DateTime startTime,
+    required DateTime endTime,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+  }) async {
+    await _send(
+      'PUT',
+      '/api/events/$seriesId/occurrences/${_dateOnly(occurrenceDate)}'
+          '?target=${target.apiValue}',
+      body: {
+        'name': name,
+        'startTime': startTime.toIso8601String(),
+        'endTime': endTime.toIso8601String(),
+        if (recurrenceRule != null) 'recurrenceRule': recurrenceRule.toJson(),
+      },
+    );
+  }
+
+  @override
+  Future<void> deleteOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {
+    await _send(
+      'DELETE',
+      '/api/events/$seriesId/occurrences/${_dateOnly(occurrenceDate)}'
+          '?target=${target.apiValue}',
+    );
   }
 
   FixedEvent _eventFromJson(Map<String, dynamic> json, String listId) =>

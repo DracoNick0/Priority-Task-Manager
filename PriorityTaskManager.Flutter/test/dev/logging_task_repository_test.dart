@@ -80,6 +80,13 @@ class _FakeTaskRepository implements TaskRepository {
   Future<List<FixedEvent>> getEvents(String listId) async => [];
 
   @override
+  Future<List<FixedEvent>> getEventOccurrences(
+    String listId,
+    DateTime from,
+    DateTime to,
+  ) async => [];
+
+  @override
   Future<FixedEvent> addEvent({
     required String listId,
     required String title,
@@ -93,6 +100,24 @@ class _FakeTaskRepository implements TaskRepository {
 
   @override
   Future<void> deleteEvent(String eventId) async {}
+
+  @override
+  Future<void> editOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String name,
+    required DateTime startTime,
+    required DateTime endTime,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+  }) async {}
+
+  @override
+  Future<void> deleteOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {}
 
   @override
   Future<List<TaskItem>> getArchivedTasks() async => [];

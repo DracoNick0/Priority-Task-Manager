@@ -236,7 +236,11 @@ class _Pipeline extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(tasksProvider(listId));
     final scheduleAsync = ref.watch(scheduleProvider);
-    final events = ref.watch(eventsProvider(listId)).asData?.value ?? const [];
+    final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final events =
+        ref.watch(eventOccurrencesProvider((listId, today))).asData?.value ??
+        const <FixedEvent>[];
 
     if (tasksAsync.isLoading || scheduleAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -331,8 +335,6 @@ class _Pipeline extends ConsumerWidget {
     // engineClockProvider) instead of always using real wall-clock time, so
     // "Today"/"Free Time" rendering stays consistent with the schedule
     // computed against that same instant.
-    final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
     final todayWorkEnd = DateTime(
       today.year,
       today.month,

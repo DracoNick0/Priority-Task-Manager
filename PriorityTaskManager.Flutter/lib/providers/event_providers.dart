@@ -14,6 +14,21 @@ final eventsProvider =
       EventsNotifier.new,
     );
 
+/// Expanded cards for the visible window; watches series data for mutation refreshes.
+final eventOccurrencesProvider =
+    FutureProvider.family<List<FixedEvent>, (String, DateTime)>((
+      ref,
+      key,
+    ) async {
+      await ref.watch(eventsProvider(key.$1).future);
+      final repository = await ref.watch(taskRepositoryProvider.future);
+      return repository.getEventOccurrences(
+        key.$1,
+        key.$2,
+        DateTime(key.$2.year, key.$2.month, key.$2.day + 13),
+      );
+    });
+
 class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
   @override
   Future<List<FixedEvent>> build(String arg) async {
@@ -50,6 +65,48 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
   Future<void> deleteEvent(String eventId) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     await repository.deleteEvent(eventId);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  /// Edits one or more occurrences of a recurring series (issue #71). The
+  /// PUT response only reflects the prior/original series row for a
+  /// `thisAndFollowing` edit, so this always refetches the full event list
+  /// afterward rather than relying on any returned event.
+  Future<void> editOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String name,
+    required DateTime startTime,
+    required DateTime endTime,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.editOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      name: name,
+      startTime: startTime,
+      endTime: endTime,
+      target: target,
+      recurrenceRule: recurrenceRule,
+    );
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> deleteOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.deleteOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      target: target,
+    );
     ref.invalidateSelf();
     await future;
   }

@@ -149,6 +149,16 @@ class LoggingTaskRepository implements TaskRepository {
       _logged('getEvents($listId)', () => _inner.getEvents(listId));
 
   @override
+  Future<List<FixedEvent>> getEventOccurrences(
+    String listId,
+    DateTime from,
+    DateTime to,
+  ) => _logged(
+    'getEventOccurrences($listId)',
+    () => _inner.getEventOccurrences(listId, from, to),
+  );
+
+  @override
   Future<FixedEvent> addEvent({
     required String listId,
     required String title,
@@ -173,6 +183,42 @@ class LoggingTaskRepository implements TaskRepository {
   @override
   Future<void> deleteEvent(String eventId) =>
       _logged('deleteEvent($eventId)', () => _inner.deleteEvent(eventId));
+
+  @override
+  Future<void> editOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String name,
+    required DateTime startTime,
+    required DateTime endTime,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+  }) => _logged(
+    'editOccurrence(seriesId: $seriesId, target: ${target.apiValue})',
+    () => _inner.editOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      name: name,
+      startTime: startTime,
+      endTime: endTime,
+      target: target,
+      recurrenceRule: recurrenceRule,
+    ),
+  );
+
+  @override
+  Future<void> deleteOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) => _logged(
+    'deleteOccurrence(seriesId: $seriesId, target: ${target.apiValue})',
+    () => _inner.deleteOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      target: target,
+    ),
+  );
 
   @override
   Future<List<TaskItem>> getArchivedTasks() =>

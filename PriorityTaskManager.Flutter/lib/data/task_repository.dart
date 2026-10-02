@@ -62,6 +62,13 @@ abstract class TaskRepository {
 
   Future<List<FixedEvent>> getEvents(String listId);
 
+  /// Concrete events for a visible date window; guests have only plain events.
+  Future<List<FixedEvent>> getEventOccurrences(
+    String listId,
+    DateTime from,
+    DateTime to,
+  );
+
   /// [recurrenceRule] is only supported by API-backed (Authenticated)
   /// sessions (issue #70); it is ignored by [LocalTaskRepository] (Guests).
   Future<FixedEvent> addEvent({
@@ -75,6 +82,28 @@ abstract class TaskRepository {
   Future<void> updateEvent(FixedEvent event);
 
   Future<void> deleteEvent(String eventId);
+
+  /// Edits a single occurrence of a recurring series (issue #71). Only
+  /// supported by API-backed (Authenticated) sessions; [LocalTaskRepository]
+  /// (Guests) never has a [FixedEvent] with a non-null `seriesId` to call
+  /// this on, so it fails fast instead.
+  Future<void> editOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String name,
+    required DateTime startTime,
+    required DateTime endTime,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+  });
+
+  /// Deletes one or more occurrences of a recurring series (issue #71). Same
+  /// Authenticated-only support as [editOccurrence].
+  Future<void> deleteOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  });
 
   /// Archive is an online-exclusive feature (Guests have no access to it,
   /// consistent with other online-only features; see docs/VISION.md).
