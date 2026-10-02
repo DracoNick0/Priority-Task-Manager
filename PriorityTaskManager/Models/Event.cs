@@ -49,4 +49,7 @@ namespace PriorityTaskManager.Models
         /// </summary>
         public List<EventOccurrenceOverride> OccurrenceOverrides { get; set; } = new();
     }
+
+    /// <summary>A displayed event and the original recurrence date used to address its series.</summary>
+    public record EventOccurrence(Event Event, DateTime? OriginalOccurrenceDate);
 }

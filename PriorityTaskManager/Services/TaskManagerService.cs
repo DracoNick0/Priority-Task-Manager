@@ -611,6 +611,10 @@ namespace PriorityTaskManager.Services
 
         public IEnumerable<Event> GetAllEvents() => _eventService.GetAllEvents();
 
+        /// <summary>Retrieves concrete event occurrences within an inclusive date window.</summary>
+        public IEnumerable<EventOccurrence> GetEventOccurrences(DateTime rangeStart, DateTime rangeEnd)
+            => _eventService.GetEventOccurrences(rangeStart, rangeEnd);
+
         public Event? GetEvent(Guid id) => _eventService.GetEvent(id);
 
         public bool UpdateEvent(Event updatedEvent) => _eventService.UpdateEvent(updatedEvent);
@@ -619,8 +623,8 @@ namespace PriorityTaskManager.Services
 
         public void ClearEvents() => _eventService.ClearEvents();
 
-        public bool EditEventOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target)
-            => _eventService.EditOccurrence(seriesId, occurrenceDate, name, startTime, endTime, target);
+        public bool EditEventOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null)
+            => _eventService.EditOccurrence(seriesId, occurrenceDate, name, startTime, endTime, target, recurrenceRule);
 
         public bool DeleteEventOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target)
             => _eventService.DeleteOccurrence(seriesId, occurrenceDate, target);

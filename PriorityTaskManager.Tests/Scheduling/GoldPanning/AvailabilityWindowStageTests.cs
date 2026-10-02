@@ -371,5 +371,69 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             Assert.Contains(slots, s => s.StartTime == new DateTime(2024, 1, 2, 9, 0, 0) && s.EndTime == new DateTime(2024, 1, 2, 15, 0, 0));
             Assert.Contains(slots, s => s.StartTime == new DateTime(2024, 1, 2, 16, 0, 0) && s.EndTime == new DateTime(2024, 1, 2, 17, 0, 0));
         }
+
+        [Fact]
+        public void Act_MovedOccurrenceFromBeforeHorizon_BlocksItsNewDay()
+        {
+            _timeService.SetCurrentTime(new DateTime(2024, 1, 2, 8, 0, 0));
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
+            var events = new List<Event>
+            {
+                new Event
+                {
+                    StartTime = new DateTime(2024, 1, 1, 12, 0, 0),
+                    EndTime = new DateTime(2024, 1, 1, 13, 0, 0),
+                    RecurrenceRule = new DailyIntervalRecurrenceRule
+                    {
+                        SeriesStartDate = new DateTime(2024, 1, 1),
+                        EndCondition = new AfterOccurrencesEndCondition { OccurrenceCount = 1 }
+                    },
+                    OccurrenceOverrides = new List<EventOccurrenceOverride>
+                    {
+                        new EventOccurrenceOverride
+                        {
+                            OriginalOccurrenceDate = new DateTime(2024, 1, 1),
+                            Name = "Moved",
+                            StartTime = new DateTime(2024, 1, 2, 15, 0, 0),
+                            EndTime = new DateTime(2024, 1, 2, 16, 0, 0)
+                        }
+                    }
+                }
+            };
+
+            var result = agent.Act(CreateInitialContext(
+                new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } }, events));
+            var slots = ((ScheduleWindow)result.SharedState["AvailableScheduleWindow"]).AvailableSlots;
+
+            Assert.Contains(slots, slot => slot.StartTime == new DateTime(2024, 1, 2, 9, 0, 0) && slot.EndTime == new DateTime(2024, 1, 2, 15, 0, 0));
+            Assert.Contains(slots, slot => slot.StartTime == new DateTime(2024, 1, 2, 16, 0, 0) && slot.EndTime == new DateTime(2024, 1, 2, 17, 0, 0));
+        }
+
+        [Fact]
+        public void Act_OvernightOccurrenceFromBeforeHorizon_BlocksNextMorning()
+        {
+            _timeService.SetCurrentTime(new DateTime(2024, 1, 2, 8, 0, 0));
+            var agent = new AvailabilityWindowStage(_timeService, new RecurrenceExpansionService());
+            var events = new List<Event>
+            {
+                new Event
+                {
+                    StartTime = new DateTime(2024, 1, 1, 23, 0, 0),
+                    EndTime = new DateTime(2024, 1, 2, 10, 0, 0),
+                    RecurrenceRule = new DailyIntervalRecurrenceRule
+                    {
+                        SeriesStartDate = new DateTime(2024, 1, 1),
+                        EndCondition = new AfterOccurrencesEndCondition { OccurrenceCount = 1 }
+                    }
+                }
+            };
+
+            var result = agent.Act(CreateInitialContext(
+                new List<TaskItem> { new TaskItem { EstimatedDuration = TimeSpan.FromHours(1) } }, events));
+            var slots = ((ScheduleWindow)result.SharedState["AvailableScheduleWindow"]).AvailableSlots;
+
+            Assert.Contains(slots, slot => slot.StartTime == new DateTime(2024, 1, 2, 10, 0, 0) && slot.EndTime == new DateTime(2024, 1, 2, 17, 0, 0));
+            Assert.DoesNotContain(slots, slot => slot.StartTime == new DateTime(2024, 1, 2, 9, 0, 0));
+        }
     }
 }

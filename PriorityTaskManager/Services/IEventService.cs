@@ -19,6 +19,9 @@ namespace PriorityTaskManager.Services
         /// <returns>An enumerable collection of events.</returns>
         IEnumerable<Event> GetAllEvents();
 
+        /// <summary>Retrieves concrete event occurrences within an inclusive date window.</summary>
+        IEnumerable<EventOccurrence> GetEventOccurrences(DateTime rangeStart, DateTime rangeEnd);
+
         /// <summary>
         /// Retrieves an event by its unique ID.
         /// </summary>
@@ -55,8 +58,13 @@ namespace PriorityTaskManager.Services
         /// <param name="startTime">The new start time to apply.</param>
         /// <param name="endTime">The new end time to apply.</param>
         /// <param name="target">Which occurrences of the series the edit applies to.</param>
+        /// <param name="recurrenceRule">
+        /// An updated recurrence pattern to apply, or null to leave the existing pattern unchanged.
+        /// Ignored for <see cref="RecurrenceEditTarget.ThisOccurrence"/>, which only ever overrides a
+        /// single occurrence and has no series pattern to change.
+        /// </param>
         /// <returns>True if the series was found and edited; otherwise, false.</returns>
-        bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target);
+        bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null);
 
         /// <summary>
         /// Deletes a single occurrence, this-and-following occurrences, or the whole series of the recurring

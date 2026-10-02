@@ -169,13 +169,24 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                     continue;
                 }
 
-                var occurrences = _recurrenceExpansionService.GetOccurrences(evt.RecurrenceRule, evt.Exceptions, rangeStart, rangeEnd);
+                var overnightDays = Math.Max(0, (evt.EndTime.Date - evt.StartTime.Date).Days);
+                var occurrences = _recurrenceExpansionService.GetOccurrences(evt.RecurrenceRule, evt.Exceptions,
+                    rangeStart.Date.AddDays(-overnightDays), rangeEnd).ToList();
+                foreach (var moved in evt.OccurrenceOverrides.Where(o => o.StartTime.Date <= rangeEnd.Date && o.EndTime > rangeStart.Date))
+                {
+                    if (!occurrences.Contains(moved.OriginalOccurrenceDate.Date) &&
+                        _recurrenceExpansionService.GetOccurrences(evt.RecurrenceRule, evt.Exceptions,
+                            moved.OriginalOccurrenceDate, moved.OriginalOccurrenceDate).Count != 0)
+                        occurrences.Add(moved.OriginalOccurrenceDate.Date);
+                }
                 var duration = evt.EndTime - evt.StartTime;
                 foreach (var occurrenceDate in occurrences)
                 {
                     var occurrenceOverride = evt.OccurrenceOverrides.FirstOrDefault(o => o.OriginalOccurrenceDate.Date == occurrenceDate.Date);
                     if (occurrenceOverride != null)
                     {
+                        if (occurrenceOverride.EndTime <= rangeStart.Date || occurrenceOverride.StartTime >= rangeEnd.Date.AddDays(1))
+                            continue;
                         result.Add(new Event
                         {
                             Id = evt.Id,

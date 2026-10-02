@@ -31,7 +31,8 @@ namespace PriorityTaskManager.Services.Helpers
         /// <summary>
         /// Splits <paramref name="rule"/> at <paramref name="occurrenceDate"/>. The prior series' end
         /// condition is replaced with an <see cref="UntilDateEndCondition"/> ending the day before the
-        /// split; the new series keeps the original pattern and end condition but starts on the split date.
+        /// split; the new series keeps the original pattern and starts on the split date, with any
+        /// occurrence-count limit reduced by the number of dates generated before the split.
         /// </summary>
         /// <param name="rule">The series being split.</param>
         /// <param name="exceptions">The series' existing exceptions, partitioned by date into the two results.</param>
@@ -48,6 +49,15 @@ namespace PriorityTaskManager.Services.Helpers
 
             var newRule = rule.Clone();
             newRule.SeriesStartDate = splitDate;
+            if (rule.EndCondition is AfterOccurrencesEndCondition countedEnd)
+            {
+                var priorCount = new RecurrenceExpansionService().GetOccurrences(
+                    rule, Array.Empty<RecurrenceException>(), rule.SeriesStartDate, splitDate.AddDays(-1)).Count;
+                newRule.EndCondition = new AfterOccurrencesEndCondition
+                {
+                    OccurrenceCount = countedEnd.OccurrenceCount - priorCount
+                };
+            }
 
             var priorExceptions = new List<RecurrenceException>();
             var newExceptions = new List<RecurrenceException>();

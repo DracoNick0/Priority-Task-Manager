@@ -199,6 +199,228 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void EditOccurrence_ThisAndFollowing_PreservesFiniteOccurrenceCount()
+        {
+            var (service, data) = CreateService();
+            var seriesEvent = AddRecurringWeeklyEvent(service);
+            var rule = (WeeklyRecurrenceRule)seriesEvent.RecurrenceRule!;
+            rule.DaysOfWeek.Add(DayOfWeek.Wednesday);
+            rule.EndCondition = new AfterOccurrencesEndCondition { OccurrenceCount = 5 };
+
+            Assert.True(service.EditOccurrence(seriesEvent.Id, new DateTime(2026, 7, 13), "Later",
+                new DateTime(2026, 7, 13, 10, 0, 0), new DateTime(2026, 7, 13, 10, 15, 0), RecurrenceEditTarget.ThisAndFollowing));
+
+            var expansion = new RecurrenceExpansionService();
+            var newSeries = data.Events.Single(e => e.Id != seriesEvent.Id);
+            Assert.Equal(new[] { new DateTime(2026, 7, 6), new DateTime(2026, 7, 8) },
+                expansion.GetOccurrences(seriesEvent.RecurrenceRule!, seriesEvent.Exceptions, new DateTime(2026, 7, 6), new DateTime(2026, 8, 1)));
+            Assert.Equal(new[] { new DateTime(2026, 7, 13), new DateTime(2026, 7, 15), new DateTime(2026, 7, 20) },
+                expansion.GetOccurrences(newSeries.RecurrenceRule!, newSeries.Exceptions, new DateTime(2026, 7, 6), new DateTime(2026, 8, 1)));
+        }
+
+        [Fact]
+        public void EditOccurrence_ThisOccurrence_ReplacesCancellationWithoutChangingOtherDates()
+        {
+            var (service, _) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var date = new DateTime(2026, 7, 13);
+            Assert.True(service.DeleteOccurrence(series.Id, date, RecurrenceEditTarget.ThisOccurrence));
+
+            Assert.True(service.EditOccurrence(series.Id, date, "Restored", date.AddHours(11), date.AddHours(12), RecurrenceEditTarget.ThisOccurrence));
+
+            Assert.Empty(series.Exceptions);
+            Assert.Equal("Restored", Assert.Single(series.OccurrenceOverrides).Name);
+            Assert.Equal(new[] { new DateTime(2026, 7, 6), date, new DateTime(2026, 7, 20) },
+                new RecurrenceExpansionService().GetOccurrences(series.RecurrenceRule!, series.Exceptions, new DateTime(2026, 7, 6), new DateTime(2026, 7, 20)));
+        }
+
+        [Fact]
+        public void GetEventOccurrences_MovedDateOutsideOriginalWindow_IsAddressableOnce()
+        {
+            var (service, _) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var original = new DateTime(2026, 7, 13);
+            var moved = new DateTime(2026, 7, 14, 10, 0, 0);
+            service.EditOccurrence(series.Id, original, "Moved", moved, moved.AddMinutes(15), RecurrenceEditTarget.ThisOccurrence);
+
+            var occurrence = Assert.Single(service.GetEventOccurrences(moved.Date, moved.Date));
+            Assert.Equal(original, occurrence.OriginalOccurrenceDate);
+            Assert.Equal(series.Id, occurrence.Event.SeriesId);
+            Assert.Equal(moved, occurrence.Event.StartTime);
+            Assert.DoesNotContain(service.GetEventOccurrences(original, original), o => o.Event.Name == "Moved");
+        }
+
+        [Fact]
+        public void GetEventOccurrences_OvernightStartBeforeWindow_IncludesNextDayOverlap()
+        {
+            var (service, _) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            series.StartTime = new DateTime(2026, 7, 6, 23, 0, 0);
+            series.EndTime = new DateTime(2026, 7, 7, 1, 0, 0);
+
+            var occurrence = Assert.Single(service.GetEventOccurrences(new DateTime(2026, 7, 7), new DateTime(2026, 7, 7)));
+            Assert.Equal(new DateTime(2026, 7, 6), occurrence.OriginalOccurrenceDate);
+            Assert.Equal(new DateTime(2026, 7, 7, 1, 0, 0), occurrence.Event.EndTime);
+        }
+
+        [Fact]
+        public void EditOccurrence_MiddleSplitMovedDate_KeepsLaterRecurrencesOnOriginalDates()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var moved = new DateTime(2026, 7, 14, 10, 0, 0);
+
+            service.EditOccurrence(series.Id, new DateTime(2026, 7, 13), "Later", moved, moved.AddMinutes(15), RecurrenceEditTarget.ThisAndFollowing);
+
+            var next = data.Events.Single(e => e.Id != series.Id);
+            Assert.Equal(new DateTime(2026, 7, 13), next.RecurrenceRule!.SeriesStartDate.Date);
+            Assert.Equal(new DateTime(2026, 7, 13), Assert.Single(next.OccurrenceOverrides).OriginalOccurrenceDate);
+            Assert.Equal(new[] { new DateTime(2026, 7, 14), new DateTime(2026, 7, 20) },
+                service.GetEventOccurrences(new DateTime(2026, 7, 14), new DateTime(2026, 7, 20))
+                    .Select(o => o.Event.StartTime.Date).ToArray());
+        }
+
+        [Fact]
+        public void EditOccurrence_ThisAndFollowing_ReplacesSelectedOverrideAndKeepsEarlierExceptions()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var selected = new DateTime(2026, 7, 20);
+            service.DeleteOccurrence(series.Id, new DateTime(2026, 7, 6), RecurrenceEditTarget.ThisOccurrence);
+            service.EditOccurrence(series.Id, selected, "Old edit", selected.AddHours(12), selected.AddHours(13), RecurrenceEditTarget.ThisOccurrence);
+            service.EditOccurrence(series.Id, new DateTime(2026, 7, 27), "Later edit",
+                new DateTime(2026, 7, 27, 12, 0, 0), new DateTime(2026, 7, 27, 13, 0, 0), RecurrenceEditTarget.ThisOccurrence);
+
+            Assert.True(service.EditOccurrence(series.Id, selected, "New edit", selected.AddHours(10), selected.AddHours(11), RecurrenceEditTarget.ThisAndFollowing));
+
+            var next = data.Events.Single(e => e.Id != series.Id);
+            Assert.Single(series.Exceptions);
+            Assert.Empty(series.OccurrenceOverrides);
+            Assert.Equal("Later edit", Assert.Single(next.OccurrenceOverrides).Name);
+            Assert.Equal(selected.AddHours(10), next.StartTime);
+            Assert.Equal(new DateTime(2026, 7, 13), Assert.Single(new RecurrenceExpansionService().GetOccurrences(
+                series.RecurrenceRule!, series.Exceptions, new DateTime(2026, 7, 6), selected)));
+        }
+
+        [Fact]
+        public void EditOccurrence_FirstActualOccurrence_DoesNotLeaveEmptyPriorSeries()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            series.RecurrenceRule!.SeriesStartDate = new DateTime(2026, 7, 5);
+
+            Assert.True(service.EditOccurrence(series.Id, new DateTime(2026, 7, 6), "New", new DateTime(2026, 7, 6, 10, 0, 0),
+                new DateTime(2026, 7, 6, 11, 0, 0), RecurrenceEditTarget.ThisAndFollowing));
+
+            Assert.Single(data.Events);
+            Assert.Equal(series.Id, series.SeriesId);
+            Assert.Equal("New", series.Name);
+        }
+
+        [Fact]
+        public void DeleteOccurrence_FirstActualOccurrence_RemovesSeries()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            series.RecurrenceRule!.SeriesStartDate = new DateTime(2026, 7, 5);
+
+            Assert.True(service.DeleteOccurrence(series.Id, new DateTime(2026, 7, 6), RecurrenceEditTarget.ThisAndFollowing));
+            Assert.Empty(data.Events);
+        }
+
+        [Fact]
+        public void DeleteOccurrence_LastFiniteOccurrence_PreservesOnlyEarlierDates()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            series.RecurrenceRule!.EndCondition = new AfterOccurrencesEndCondition { OccurrenceCount = 3 };
+
+            Assert.True(service.DeleteOccurrence(series.Id, new DateTime(2026, 7, 20), RecurrenceEditTarget.ThisAndFollowing));
+            Assert.Single(data.Events);
+            Assert.Equal(new[] { new DateTime(2026, 7, 6), new DateTime(2026, 7, 13) },
+                new RecurrenceExpansionService().GetOccurrences(series.RecurrenceRule!, series.Exceptions, new DateTime(2026, 7, 6), new DateTime(2026, 8, 10)));
+        }
+
+        [Fact]
+        public void DeleteOccurrence_AfterExistingExceptions_KeepsEarlierEditsAndCancellations()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var first = new DateTime(2026, 7, 6);
+            var second = new DateTime(2026, 7, 13);
+            service.DeleteOccurrence(series.Id, first, RecurrenceEditTarget.ThisOccurrence);
+            service.EditOccurrence(series.Id, second, "Earlier edit", second.AddHours(10), second.AddHours(11), RecurrenceEditTarget.ThisOccurrence);
+            service.EditOccurrence(series.Id, new DateTime(2026, 7, 20), "Later edit",
+                new DateTime(2026, 7, 20, 10, 0, 0), new DateTime(2026, 7, 20, 11, 0, 0), RecurrenceEditTarget.ThisOccurrence);
+
+            Assert.True(service.DeleteOccurrence(series.Id, new DateTime(2026, 7, 20), RecurrenceEditTarget.ThisAndFollowing));
+
+            Assert.Single(data.Events);
+            Assert.Equal(first, Assert.Single(series.Exceptions).OriginalOccurrenceDate);
+            Assert.Equal(second, Assert.Single(series.OccurrenceOverrides).OriginalOccurrenceDate);
+            Assert.Equal(second, Assert.Single(new RecurrenceExpansionService().GetOccurrences(series.RecurrenceRule!, series.Exceptions, first, new DateTime(2026, 8, 1))));
+        }
+
+        [Fact]
+        public void EditOccurrence_SplitSeries_RoundTripsRuleAndOriginalDateThroughJson()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            series.RecurrenceRule!.EndCondition = new AfterOccurrencesEndCondition { OccurrenceCount = 3 };
+            var selected = new DateTime(2026, 7, 13);
+            service.EditOccurrence(series.Id, selected, "Moved", new DateTime(2026, 7, 14, 10, 0, 0),
+                new DateTime(2026, 7, 14, 11, 0, 0), RecurrenceEditTarget.ThisAndFollowing);
+
+            var json = System.Text.Json.JsonSerializer.Serialize(data.Events);
+            var restored = System.Text.Json.JsonSerializer.Deserialize<List<Event>>(json)!;
+            var next = restored.Single(e => e.Id != series.Id);
+
+            Assert.Equal(next.Id, next.SeriesId);
+            Assert.Equal(2, Assert.IsType<AfterOccurrencesEndCondition>(next.RecurrenceRule!.EndCondition).OccurrenceCount);
+            Assert.Equal(selected, Assert.Single(next.OccurrenceOverrides).OriginalOccurrenceDate);
+            Assert.Equal(new DateTime(2026, 7, 14, 10, 0, 0), Assert.Single(next.OccurrenceOverrides).StartTime);
+        }
+
+        [Fact]
+        public void EditOccurrence_ChangedFutureRule_DoesNotChangeEarlierPattern()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var replacement = new WeeklyRecurrenceRule
+            {
+                SeriesStartDate = new DateTime(2026, 7, 6),
+                DaysOfWeek = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Wednesday },
+                EndCondition = new UntilDateEndCondition { UntilDate = new DateTime(2026, 7, 22) }
+            };
+
+            Assert.True(service.EditOccurrence(series.Id, new DateTime(2026, 7, 13), "New",
+                new DateTime(2026, 7, 13, 10, 0, 0), new DateTime(2026, 7, 13, 11, 0, 0),
+                RecurrenceEditTarget.ThisAndFollowing, replacement));
+
+            var next = data.Events.Single(e => e.Id != series.Id);
+            Assert.Equal(new DateTime(2026, 7, 6), replacement.SeriesStartDate);
+            Assert.Equal(new DateTime(2026, 7, 13), next.RecurrenceRule!.SeriesStartDate);
+            Assert.Equal(new[] { new DateTime(2026, 7, 6) },
+                new RecurrenceExpansionService().GetOccurrences(series.RecurrenceRule!, series.Exceptions, new DateTime(2026, 7, 6), new DateTime(2026, 7, 22)));
+            Assert.Equal(new[] { new DateTime(2026, 7, 13), new DateTime(2026, 7, 15), new DateTime(2026, 7, 20), new DateTime(2026, 7, 22) },
+                new RecurrenceExpansionService().GetOccurrences(next.RecurrenceRule!, next.Exceptions, new DateTime(2026, 7, 6), new DateTime(2026, 7, 22)));
+        }
+
+        [Fact]
+        public void DeleteOccurrence_RejectsNonOccurrenceDateWithoutPersisting()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            series.RecurrenceRule!.EndCondition = new AfterOccurrencesEndCondition { OccurrenceCount = 2 };
+
+            Assert.False(service.DeleteOccurrence(series.Id, new DateTime(2026, 7, 14), RecurrenceEditTarget.ThisOccurrence));
+            Assert.False(service.EditOccurrence(series.Id, new DateTime(2026, 7, 20), "Extra", new DateTime(2026, 7, 20, 10, 0, 0),
+                new DateTime(2026, 7, 20, 11, 0, 0), RecurrenceEditTarget.ThisAndFollowing));
+            Assert.Single(data.Events);
+            Assert.Empty(series.Exceptions);
+        }
+
+        [Fact]
         public void EditOccurrence_AllOccurrences_UpdatesBaseFields()
         {
             var (service, _) = CreateService();
