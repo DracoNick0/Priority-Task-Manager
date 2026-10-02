@@ -8,6 +8,7 @@ import '../../../providers/selection_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../../providers/user_profile_provider.dart';
 import '../../../utils/iterable_extensions.dart';
+import '../../../utils/task_date_constraints.dart';
 import '../../theme/app_theme.dart';
 import '../resizable_text_field.dart';
 import 'combined_date_time_picker.dart';
@@ -141,6 +142,10 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
             labelText: 'Estimated minutes',
             prefixIcon: Icon(Icons.timer_outlined),
           ),
+          onEditingComplete: () {
+            FocusScope.of(context).unfocus();
+            _clearInvalidNotBefore(durationMinutes: _estimatedDurationMinutes);
+          },
         ),
         const SizedBox(height: AppTheme.spacingMd),
         _SliderField(
@@ -181,7 +186,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
                 icon: Icons.hourglass_empty,
                 label: 'Not before',
                 value: _notBefore,
-                onPick: () => _pickDate((d) => setState(() => _notBefore = d)),
+                onPick: () => _pickDate(_setNotBefore),
                 onClear: () => setState(() => _notBefore = null),
               ),
               const SizedBox(height: AppTheme.spacingSm),
@@ -284,6 +289,50 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   // editable from the Flutter UI.
   static const TimeOfDay _defaultEndOfWorkday = TimeOfDay(hour: 17, minute: 0);
 
+  static const String _notBeforeWarning =
+      'Not before cleared: it must leave enough time for the task before its due date.';
+
+  int get _estimatedDurationMinutes =>
+      int.tryParse(_durationController.text.trim()) ?? 60;
+
+  bool _clearInvalidNotBefore({
+    required int durationMinutes,
+    bool showWarning = true,
+  }) {
+    final notBefore = _notBefore;
+    if (isNotBeforeWithinDueWindow(
+      notBefore: notBefore,
+      dueDate: _dueDate,
+      estimatedDurationMinutes: durationMinutes,
+    )) {
+      return false;
+    }
+
+    setState(() => _notBefore = null);
+    if (showWarning) _showNotBeforeWarning();
+    return true;
+  }
+
+  void _setNotBefore(DateTime value) {
+    if (!isNotBeforeWithinDueWindow(
+      notBefore: value,
+      dueDate: _dueDate,
+      estimatedDurationMinutes: _estimatedDurationMinutes,
+    )) {
+      setState(() => _notBefore = null);
+      _showNotBeforeWarning();
+      return;
+    }
+    setState(() => _notBefore = value);
+  }
+
+  void _showNotBeforeWarning() {
+    ref.read(appNotificationProvider.notifier).state = AppNotification(
+      _notBeforeWarning,
+      icon: Icons.warning_amber_rounded,
+    );
+  }
+
   Future<void> _pickDate(ValueChanged<DateTime> onPicked) async {
     final picked = await pickDateAndTime(
       context,
@@ -317,12 +366,17 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         );
     if (result == null) return;
     setState(() => _dueDate = result.enabled ? result.dateTime : null);
+    _clearInvalidNotBefore(durationMinutes: _estimatedDurationMinutes);
   }
 
   Future<void> _save(TaskItem? existing) async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
-    final duration = int.tryParse(_durationController.text.trim()) ?? 60;
+    final duration = _estimatedDurationMinutes;
+    final notBeforeWasCleared = _clearInvalidNotBefore(
+      durationMinutes: duration,
+      showWarning: false,
+    );
     final notifier = ref.read(tasksProvider(widget.listId).notifier);
 
     if (existing == null) {
@@ -359,8 +413,16 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
 
     if (!mounted) return;
     ref.read(appNotificationProvider.notifier).state = AppNotification(
-      existing == null ? 'Task created' : 'Task saved',
-      icon: existing == null ? Icons.add_task : Icons.check_circle,
+      notBeforeWasCleared
+          ? _notBeforeWarning
+          : existing == null
+          ? 'Task created'
+          : 'Task saved',
+      icon: notBeforeWasCleared
+          ? Icons.warning_amber_rounded
+          : existing == null
+          ? Icons.add_task
+          : Icons.check_circle,
     );
     _closeInspector();
   }

@@ -52,7 +52,7 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 
 | Feature Area | Status | Notes |
 | --- | --- | --- |
-| Task management | 🟢 Integrated | Add, edit, complete, and delete are supported against the Hive-backed local repository. |
+| Task management | 🟢 Integrated | Add, edit, complete, and delete are supported against the Hive-backed local repository. A `Not before` time after `due date - estimated duration` is cleared with a warning. |
 | List management | 🟢 Integrated | List switching, create, delete, and a settings form (name/description plus per-list scheduling overrides) are all supported through the Left Rail and Right Inspector. |
 | Data persistence | 🟢 Integrated | Local persistence is Hive-backed, independent of the .NET JSON persistence. |
 | Settings and defaults | 🟢 Integrated | A global defaults form (Left Rail Settings) and per-list overrides (sort option, scheduling mode, work hours/days, urgency thresholds) are Hive-backed; unset list fields inherit the global defaults, mirroring `TaskList.ApplyDefaultsFrom`. A per-list frozen simulated-time override (mirroring the CLI's `list time`) is also editable here and is threaded into `/api/schedule` calls for Authenticated sessions; it has no effect for Guests, since they never compute a schedule. |
