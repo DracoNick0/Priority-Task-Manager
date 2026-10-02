@@ -20,7 +20,7 @@ namespace PriorityTaskManager.Services
 
         public PersistenceService(string dataDirectory)
         {
-            _tasksFilePath = Path.Combine(dataDirectory, "tasks.json");
+            _tasksFilePath = Path.Combine(dataDirectory, "taskitems.json");
             _listsFilePath = Path.Combine(dataDirectory, "lists.json");
             _userProfileFilePath = Path.Combine(dataDirectory, "user_profile.json");
             _eventsFilePath = Path.Combine(dataDirectory, "events.json");

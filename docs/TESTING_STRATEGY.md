@@ -83,7 +83,7 @@ This is the most complex area of the application. We avoid brittle unit tests th
 
 1.  **Reliable Core**: Enforce TDD on the `TaskManagerService` and `PersistenceService` to guarantee safe data manipulation.
 2.  **Define Pipeline Invariants**: Write the rule-based property tests for scheduling (e.g., dependency ordering, timeframe limits).
-3.  **Create Benchmark Datasets**: Assemble complex `tasks.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
+3.  **Create Benchmark Datasets**: Assemble complex `taskitems.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
 4.  **Implement Snapshot Testing**: Generate baseline schedule expectations for the benchmark datasets using both the V1 Solver and Gold Panning.
 5.  **Refactor CLI Handlers**: Incrementally migrate non-interactive handlers to `CommandResult` and add unit coverage around `ExecuteWithResult(...)` before tackling deep interactive flows.
 6.  **Consolidate CLI Command Contract**: Remove transitional dual-contract dispatch and compatibility methods after migration completion, then re-baseline command orchestration tests against the final single-contract model.

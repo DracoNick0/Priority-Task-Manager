@@ -6,7 +6,7 @@ obj/
 .env
 
 # Ignore user task data file
-tasks.json
+taskitems.json
 lists.json
 events.json
 archive.json

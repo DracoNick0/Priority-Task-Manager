@@ -103,7 +103,7 @@ namespace PriorityTaskManager.Tests.Services
             var tempDir = CreateTempDirectory();
             try
             {
-                File.WriteAllText(Path.Combine(tempDir, "tasks.json"), "{ malformed");
+                File.WriteAllText(Path.Combine(tempDir, "taskitems.json"), "{ malformed");
                 File.WriteAllText(Path.Combine(tempDir, "lists.json"), "{ malformed");
                 File.WriteAllText(Path.Combine(tempDir, "events.json"), "{ malformed");
                 File.WriteAllText(Path.Combine(tempDir, "user_profile.json"), "{ malformed");
@@ -118,7 +118,7 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Empty(data.Events);
                 Assert.NotNull(data.UserProfile);
                 Assert.Equal(4, data.LoadWarnings.Count);
-                Assert.Contains(data.LoadWarnings, w => w.Contains("tasks.json"));
+                Assert.Contains(data.LoadWarnings, w => w.Contains("taskitems.json"));
                 Assert.Contains(data.LoadWarnings, w => w.Contains("lists.json"));
                 Assert.Contains(data.LoadWarnings, w => w.Contains("events.json"));
                 Assert.Contains(data.LoadWarnings, w => w.Contains("user_profile.json"));
@@ -273,13 +273,13 @@ namespace PriorityTaskManager.Tests.Services
                 service.SaveData(container);
 
                 // Corrupt only the tasks file; lists/events/profile remain valid on disk.
-                File.WriteAllText(Path.Combine(tempDir, "tasks.json"), "{ not valid json");
+                File.WriteAllText(Path.Combine(tempDir, "taskitems.json"), "{ not valid json");
 
                 var data = service.LoadData();
 
                 Assert.Empty(data.Tasks);
                 Assert.Single(data.LoadWarnings);
-                Assert.Contains("tasks.json", data.LoadWarnings[0]);
+                Assert.Contains("taskitems.json", data.LoadWarnings[0]);
                 Assert.Single(data.Lists);
                 Assert.Equal("Home", data.Lists[0].Name);
                 Assert.Single(data.Events);
@@ -311,7 +311,7 @@ namespace PriorityTaskManager.Tests.Services
 
                 // Simulate a save that was interrupted after the temp file was written but
                 // before it was swapped into place: leave a stale/incomplete .tmp file behind.
-                var tasksTempPath = Path.Combine(tempDir, "tasks.json.tmp");
+                var tasksTempPath = Path.Combine(tempDir, "taskitems.json.tmp");
                 File.WriteAllText(tasksTempPath, "{ incomplete");
 
                 var data = service.LoadData();
@@ -361,7 +361,7 @@ namespace PriorityTaskManager.Tests.Services
                     "{\"Lists\":[{\"Id\":1,\"Name\":\"Home\",\"SortOption\":0}],\"NextListId\":2}");
 
                 // Legacy tasks: Task 2 depends on Task 1, and both belong to legacy list Id 1.
-                File.WriteAllText(Path.Combine(tempDir, "tasks.json"),
+                File.WriteAllText(Path.Combine(tempDir, "taskitems.json"),
                     "{\"Tasks\":[" +
                     "{\"Id\":1,\"DisplayId\":1,\"Title\":\"Prerequisite\",\"ListId\":1,\"Dependencies\":[]}," +
                     "{\"Id\":2,\"DisplayId\":2,\"Title\":\"Dependent\",\"ListId\":1,\"Dependencies\":[1]}" +
@@ -388,7 +388,7 @@ namespace PriorityTaskManager.Tests.Services
                 Assert.Single(dependent.Dependencies);
                 Assert.Equal(prerequisite.Id, dependent.Dependencies[0]);
 
-                Assert.Contains(data.LoadWarnings, w => w.Contains("tasks.json") && w.Contains("legacy"));
+                Assert.Contains(data.LoadWarnings, w => w.Contains("taskitems.json") && w.Contains("legacy"));
             }
             finally
             {

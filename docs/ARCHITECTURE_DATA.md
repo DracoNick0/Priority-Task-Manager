@@ -22,7 +22,7 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 
 | File | Data |
 | --- | --- |
-| `tasks.json` | Tasks plus the `NextDisplayId` counter |
+| `taskitems.json` | Tasks plus the `NextDisplayId` counter |
 | `lists.json` | Task lists |
 | `events.json` | Events |
 | `user_profile.json` | Global user profile defaults |

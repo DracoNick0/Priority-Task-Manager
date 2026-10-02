@@ -26,7 +26,7 @@ The `cleanup` command is implemented as a sequential pipeline of five distinct a
 
 1.  **`FindCompletedTasksAgent`**: Identifies all tasks marked as "completed" and adds them to the `MCPContext`.
 2.  **`ArchiveTasksAgent`**: Takes the completed tasks from the context and archives them to a separate `archive.json` file for historical record-keeping.
-3.  **`DeleteTasksAgent`**: Deletes the archived tasks from the active `tasks.json` database.
+3.  **`DeleteTasksAgent`**: Deletes the archived tasks from the active `taskitems.json` database.
 4.  **`ReIndexTasksAgent`**: Sorts the remaining tasks by urgency and assigns them new, sequential `DisplayId`s (1, 2, 3...). It crucially creates an "ID Map" of the old IDs to the new IDs and stores it in the context.
 5.  **`UpdateDependenciesAgent`**: Reads the "ID Map" from the context and iterates through all tasks, updating their dependency lists to use the new IDs. This step is critical for maintaining data integrity.
 
