@@ -27,6 +27,7 @@ Large/Important items are more likely to get caught in the riffles.
 *   **Selection**: The Pressure pushes the "Lightest" items (Lowest Importance/Urgency) downstream first, preserving the "Gold" (High Priority) in the current day.
 *   **Constructive Fill**: Unlike a real river, we don't just let things wash away randomly. We actively pack the day. If a day has a 30-minute gap, and the next "Gold Nugget" is 2 hours long, we **Hammer** (Split) that nugget. We put 30 minutes of it in the gap, and the remaining 1.5 hours washes to the next day.
 *   **Dependency Gate**: A task is only allowed to sink into a day once every prerequisite it depends on has fully settled (no unplaced fragments left). A dependent task with an unresolved prerequisite is left floating in the current until its prerequisite clears, even if it would otherwise fit today.
+*   **Earliest Start**: On the day a task becomes available, only capacity after its `NotBefore` time can hold that task. Other ready work can use earlier slots; any remainder that cannot fit in the horizon is reported as unscheduled.
 
 ## 3. The Execution Flow (The Stage Pipeline)
 

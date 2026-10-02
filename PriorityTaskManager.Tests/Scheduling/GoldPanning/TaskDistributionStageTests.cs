@@ -137,12 +137,9 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
         }
 
         [Fact]
-        public void Act_MassiveOverflow_ShouldDropOrWarn()
+        public void Act_MassiveOverflow_ShouldReportRemainderUnscheduled()
         {
-            // Window: 1 Day. Cap 8h.
-            // Task: 10h.
-            // Expect: Task splits. 8h fills Day 1. 2h remainder overflows.
-            // Since window ends, remainder is pushed back to Day 1 (Overfill).
+            // A one-day horizon can hold only 8h of this 10h task.
             
             var task = new TaskItem { Id = Guid.NewGuid(), Title = "Too Big", EstimatedDuration = TimeSpan.FromHours(10), Importance = 5 };
             var context = CreateContext(new List<TaskItem> { task }, days: 1); // Only 1 day window
@@ -152,14 +149,13 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             
             var day1 = _timeService.GetCurrentTime().Date;
             
-            // Expect 2 parts of "Too Big" on Day 1 (8h + 2h overflow)
             Assert.NotNull(buckets);
-            Assert.Equal(2, buckets[day1].Count);
-            Assert.All(buckets[day1], t => Assert.Equal("Too Big", t.Title));
+            Assert.Single(buckets[day1]);
+            Assert.Equal(8, buckets[day1][0].EstimatedDuration.TotalHours, 1);
 
-            // Verify total duration is preserved (8 + 2 = 10)
-            var totalDuration = buckets[day1].Sum(t => t.EstimatedDuration.TotalHours);
-            Assert.Equal(10, totalDuration, 1);
+            var unschedulable = Assert.IsType<List<TaskItem>>(result.SharedState["UnschedulableTasks"]);
+            Assert.Single(unschedulable);
+            Assert.Equal(2, unschedulable[0].EstimatedDuration.TotalHours, 1);
         }
 
         [Fact]

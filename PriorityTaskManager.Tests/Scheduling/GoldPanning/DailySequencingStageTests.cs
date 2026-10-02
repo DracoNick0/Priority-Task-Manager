@@ -205,6 +205,57 @@ namespace PriorityTaskManager.Tests.Scheduling.GoldPanning
             }, fillerStartTimes);
         }
 
+        [Fact]
+        public void Act_WhenReleaseLeavesTooLittleTime_ReportsUnplacedRemainder()
+        {
+            var today = _timeService.GetCurrentTime().Date;
+            var task = new TaskItem
+            {
+                Id = Guid.NewGuid(), Title = "Late release", EstimatedDuration = TimeSpan.FromHours(2),
+                NotBefore = today.AddHours(16)
+            };
+            var context = CreateContext(new Dictionary<DateTime, List<TaskItem>>
+            {
+                { today, new List<TaskItem> { task } }
+            });
+
+            var result = _agent.Act(context);
+
+            Assert.Equal(TimeSpan.FromHours(1), Assert.Single(task.ScheduledParts).Duration);
+            var remainder = Assert.Single(Assert.IsType<List<TaskItem>>(result.SharedState["UnschedulableTasks"]));
+            Assert.Equal(task.Id, remainder.Id);
+            Assert.Equal(TimeSpan.FromHours(1), remainder.EstimatedDuration);
+        }
+
+        [Fact]
+        public void Act_IncompletePrerequisite_PreventsNextDayDependentPlacement()
+        {
+            var today = _timeService.GetCurrentTime().Date;
+            var prerequisite = new TaskItem
+            {
+                Id = Guid.NewGuid(), Title = "Prerequisite", EstimatedDuration = TimeSpan.FromHours(2),
+                NotBefore = today.AddHours(16)
+            };
+            var dependent = new TaskItem
+            {
+                Id = Guid.NewGuid(), Title = "Dependent", EstimatedDuration = TimeSpan.FromHours(1),
+                Dependencies = new List<Guid> { prerequisite.Id }
+            };
+            var context = CreateContext(new Dictionary<DateTime, List<TaskItem>>
+            {
+                { today, new List<TaskItem> { prerequisite } },
+                { today.AddDays(1), new List<TaskItem> { dependent } }
+            });
+
+            var result = _agent.Act(context);
+
+            Assert.Equal(TimeSpan.FromHours(1), Assert.Single(prerequisite.ScheduledParts).Duration);
+            Assert.Empty(dependent.ScheduledParts);
+            var unschedulable = Assert.IsType<List<TaskItem>>(result.SharedState["UnschedulableTasks"]);
+            Assert.Contains(unschedulable, task => task.Id == prerequisite.Id);
+            Assert.Contains(unschedulable, task => task.Id == dependent.Id);
+        }
+
         [Fact(Skip = "FAILING: Legacy 'Eat the Frog' logic prioritizes Complexity over Importance. Un-skip during V1 migration to implement 'Prioritized Frogs'.")]
         public void Act_PreferImportanceOverComplexity()
         {

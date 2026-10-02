@@ -285,6 +285,113 @@ namespace PriorityTaskManager.Tests.Scheduling
         }
 
         [Fact]
+        public void CalculateUrgency_NotBeforeAtEndOfWorkday_DoesNotDisappearFromSchedule()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var restricted = CreateTask(53, "Released after work", 2.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 8, complexity: 8);
+            restricted.NotBefore = now.Date.AddHours(17);
+
+            var result = CreateStrategy(CreateProfile(), new List<Event>(), DeterministicTestFixtures.CreateMockTimeService(now))
+                .CalculateUrgency(new List<TaskItem> { restricted });
+
+            var scheduled = result.Tasks.Single(t => t.Id == restricted.Id);
+            Assert.Equal(restricted.EstimatedDuration, TimeSpan.FromTicks(scheduled.ScheduledParts.Sum(c => c.Duration.Ticks)));
+            Assert.All(scheduled.ScheduledParts, chunk => Assert.True(chunk.StartTime >= restricted.NotBefore));
+            Assert.Empty(result.UnscheduledTasks);
+        }
+
+        [Fact]
+        public void CalculateUrgency_NotBeforeLateToday_SplitsAcrossDaysWithoutLosingDuration()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var restricted = CreateTask(54, "Late start", 2.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 9, complexity: 9);
+            restricted.NotBefore = now.Date.AddHours(16);
+            var ready = CreateTask(55, "Ready", 2.0, null, importance: 2, complexity: 1);
+
+            var result = CreateStrategy(CreateProfile(), new List<Event>(), DeterministicTestFixtures.CreateMockTimeService(now))
+                .CalculateUrgency(new List<TaskItem> { restricted, ready });
+
+            var chunks = result.Tasks.Single(t => t.Id == restricted.Id).ScheduledParts;
+            Assert.Equal(2, chunks.Count);
+            Assert.Equal(restricted.EstimatedDuration, TimeSpan.FromTicks(chunks.Sum(c => c.Duration.Ticks)));
+            Assert.All(chunks, chunk => Assert.True(chunk.StartTime >= restricted.NotBefore));
+            Assert.Equal(ready.EstimatedDuration, TimeSpan.FromTicks(ready.ScheduledParts.Sum(c => c.Duration.Ticks)));
+            Assert.Empty(result.UnscheduledTasks);
+            Assert.Equal(now.Date.AddHours(16), restricted.NotBefore);
+        }
+
+        [Fact]
+        public void CalculateUrgency_ReadyMorningWork_DoesNotDisplaceSameDayReleasedTask()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var ready = CreateTask(62, "Morning work", 4.0, null, importance: 10, complexity: 10);
+            var restricted = CreateTask(63, "Afternoon work", 4.0, now.Date.AddHours(17), importance: 4, complexity: 2);
+            restricted.NotBefore = now.Date.AddHours(13);
+
+            var result = CreateStrategy(CreateProfile(), new List<Event>(), DeterministicTestFixtures.CreateMockTimeService(now))
+                .CalculateUrgency(new List<TaskItem> { ready, restricted });
+
+            Assert.Equal(ready.EstimatedDuration, TimeSpan.FromTicks(ready.ScheduledParts.Sum(c => c.Duration.Ticks)));
+            Assert.Equal(restricted.EstimatedDuration, TimeSpan.FromTicks(restricted.ScheduledParts.Sum(c => c.Duration.Ticks)));
+            Assert.True(ready.ScheduledParts.Max(c => c.EndTime) <= restricted.ScheduledParts.Min(c => c.StartTime));
+            Assert.Empty(result.UnscheduledTasks);
+        }
+
+        [Fact]
+        public void CalculateUrgency_NotBeforeBeyondHorizon_IsReportedUnscheduled()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var restricted = CreateTask(56, "Future release", 1.0, null, importance: 5, complexity: 3);
+            restricted.NotBefore = now.AddMonths(1);
+
+            var result = CreateStrategy(CreateProfile(), new List<Event>(), DeterministicTestFixtures.CreateMockTimeService(now))
+                .CalculateUrgency(new List<TaskItem> { restricted });
+
+            Assert.Empty(result.Tasks.Single(t => t.Id == restricted.Id).ScheduledParts);
+            Assert.Contains(result.UnscheduledTasks, t => t.Id == restricted.Id && t.EstimatedDuration == restricted.EstimatedDuration);
+        }
+
+        [Fact]
+        public void CalculateUrgency_NotBeforeWithBlockedRemainingSlot_UsesNextAvailableDay()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var restricted = CreateTask(57, "Released at event", 1.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 7, complexity: 4);
+            restricted.NotBefore = now.Date.AddHours(16);
+            var events = new List<Event>
+            {
+                new Event { Id = GuidFromInt(58), Name = "Afternoon event", StartTime = now.Date.AddHours(16), EndTime = now.Date.AddHours(17) }
+            };
+
+            var result = CreateStrategy(CreateProfile(), events, DeterministicTestFixtures.CreateMockTimeService(now))
+                .CalculateUrgency(new List<TaskItem> { restricted });
+
+            var scheduled = result.Tasks.Single(t => t.Id == restricted.Id);
+            Assert.Equal(restricted.EstimatedDuration, TimeSpan.FromTicks(scheduled.ScheduledParts.Sum(c => c.Duration.Ticks)));
+            Assert.All(scheduled.ScheduledParts, chunk => Assert.True(chunk.StartTime >= now.Date.AddDays(1).AddHours(9)));
+            Assert.Empty(result.UnscheduledTasks);
+        }
+
+        [Fact]
+        public void CalculateUrgency_SplitNotBeforePrerequisite_CompletesBeforeDependent()
+        {
+            var now = new DateTime(2026, 7, 6, 9, 0, 0);
+            var prerequisite = CreateTask(59, "Late prerequisite", 2.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 5, complexity: 3);
+            prerequisite.NotBefore = now.Date.AddHours(16);
+            var dependent = CreateTask(60, "Dependent", 1.0, new DateTime(2026, 7, 8, 17, 0, 0), importance: 9, complexity: 8);
+            dependent.Dependencies.Add(prerequisite.Id);
+
+            var result = CreateStrategy(CreateProfile(), new List<Event>(), DeterministicTestFixtures.CreateMockTimeService(now))
+                .CalculateUrgency(new List<TaskItem> { dependent, prerequisite });
+
+            var prerequisiteChunks = result.Tasks.Single(t => t.Id == prerequisite.Id).ScheduledParts;
+            var dependentChunks = result.Tasks.Single(t => t.Id == dependent.Id).ScheduledParts;
+            Assert.Equal(prerequisite.EstimatedDuration, TimeSpan.FromTicks(prerequisiteChunks.Sum(c => c.Duration.Ticks)));
+            Assert.NotEmpty(dependentChunks);
+            Assert.True(dependentChunks.Min(c => c.StartTime) >= prerequisiteChunks.Max(c => c.EndTime));
+            Assert.Empty(result.UnscheduledTasks);
+        }
+
+        [Fact]
         public void CalculateUrgency_DependentTask_IsNeverScheduledBeforeItsPrerequisiteCompletes()
         {
             var now = new DateTime(2026, 7, 6, 9, 0, 0);

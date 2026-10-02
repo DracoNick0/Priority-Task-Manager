@@ -34,6 +34,8 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 return context;
             }
 
+            var incompleteTaskIds = new HashSet<Guid>();
+
             // Iterate through each day that has tasks assigned to it.
             foreach (var date in dailyBuckets.Keys.OrderBy(d => d))
             {
@@ -58,7 +60,6 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 if (slotsForDay.Count == 0)
                 {
                     context.History.Add($"  -> Warning: Work assigned to {date.ToShortDateString()} but no slots available.");
-                    continue;
                 }
 
                 // This sequencer fills the available time slots linearly with the prioritized tasks.
@@ -84,6 +85,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                     var currentCursorTime = slotsForDay[currentSlotIndex].StartTime + currentSlotUsed;
 
                     var candidate = remainingForDay.FirstOrDefault(t =>
+                        (t.Dependencies == null || !t.Dependencies.Any(incompleteTaskIds.Contains)) &&
                         IsDependencyReadyForToday(t, idsToday, placedIdsToday) &&
                         (!t.NotBefore.HasValue || t.NotBefore.Value.Date != date || t.NotBefore.Value <= currentCursorTime));
 
@@ -93,7 +95,8 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                         // task is only blocked by a future NotBefore time today, jump the cursor forward
                         // to the earliest such time instead of stalling.
                         var readyButNotYetDue = remainingForDay
-                            .Where(t => IsDependencyReadyForToday(t, idsToday, placedIdsToday) &&
+                            .Where(t => (t.Dependencies == null || !t.Dependencies.Any(incompleteTaskIds.Contains)) &&
+                                        IsDependencyReadyForToday(t, idsToday, placedIdsToday) &&
                                         t.NotBefore.HasValue && t.NotBefore.Value.Date == date)
                             .Select(t => t.NotBefore!.Value)
                             .ToList();
@@ -104,26 +107,35 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                             continue;
                         }
 
-                        // Defensive fallback: nothing is dependency-ready at all (e.g. an undetected
-                        // same-day dependency cycle). Fall back to the highest-priority remaining task
-                        // rather than stalling forever.
-                        candidate = remainingForDay.First();
+                        break;
                     }
 
                     PlaceTaskChunks(candidate, slotsForDay, ref currentSlotIndex, ref currentSlotUsed);
 
                     remainingForDay.Remove(candidate);
-                    placedIdsToday.Add(candidate.Id);
+                    if (TimeSpan.FromTicks(candidate.ScheduledParts.Sum(c => c.Duration.Ticks)) >= candidate.EstimatedDuration)
+                    {
+                        placedIdsToday.Add(candidate.Id);
+                    }
                 }
 
-                // Any tasks left unplaced ran out of daily capacity before a valid slot for them arrived.
-                // This can happen due to floating-point inaccuracies or if the distribution stage's
-                // capacity calculation didn't perfectly align with the available slots.
-                foreach (var unplaced in remainingForDay)
+                // Distribution budgets by day, but a release time or slot boundary can leave
+                // less usable capacity at sequencing time. Preserve every unplaced remainder.
+                foreach (var unplaced in tasksForDay)
                 {
                     var scheduledDuration = TimeSpan.FromTicks(unplaced.ScheduledParts.Sum(c => c.Duration.Ticks));
-                    if (unplaced.EstimatedDuration - scheduledDuration > TimeSpan.FromMinutes(1))
+                    var remainder = unplaced.EstimatedDuration - scheduledDuration;
+                    if (remainder > TimeSpan.Zero)
                     {
+                        incompleteTaskIds.Add(unplaced.Id);
+                        var unschedulable = context.SharedState.TryGetValue("UnschedulableTasks", out var existing)
+                            ? (List<TaskItem>)existing
+                            : new List<TaskItem>();
+                        var fragment = unplaced.Clone();
+                        fragment.EstimatedDuration = remainder;
+                        fragment.ScheduledParts.Clear();
+                        unschedulable.Add(fragment);
+                        context.SharedState["UnschedulableTasks"] = unschedulable;
                         context.History.Add($"  -> Warning: Task '{unplaced.Title}' could not fully fit on {date.ToShortDateString()} during sequencing.");
                     }
                 }

@@ -63,7 +63,7 @@ Inputs:
 Output:
 
 - `PrioritizationResult.Tasks` with scheduled parts attached to tasks.
-- `PrioritizationResult.UnscheduledTasks` for tasks that could not be scheduled.
+- `PrioritizationResult.UnscheduledTasks` for tasks or remaining fragments that could not be scheduled within the horizon.
 - `PrioritizationResult.History` for diagnostics and explanation.
 
 ## Invariants And Test Policy
@@ -75,7 +75,7 @@ Treat documented scheduling invariants as correctness requirements:
 - Scheduled chunks must avoid event blocks.
 - Scheduled duration should preserve task duration when capacity is sufficient.
 - A dependent task must never be scheduled before its prerequisite(s) complete. `TaskDistributionStage` defers a task until every id in its `Dependencies` has no remaining unplaced fragments (treating a prerequisite id outside the active scheduling pass, e.g. an already-completed task, as satisfied), and `DailySequencingStage` orders same-day tasks with a priority-guided topological sort so a same-day prerequisite always precedes its dependent. A task whose prerequisite never clears within the horizon (e.g. a dependency cycle) is reported via `PrioritizationResult.UnscheduledTasks` rather than force-placed.
-- A task must never be scheduled before its `TaskItem.NotBefore` date. `TaskDistributionStage` gates placement so a task cannot be placed on any day earlier than `NotBefore.Date`; a task whose `NotBefore` falls after the last day in the scheduling horizon is reported via `PrioritizationResult.UnscheduledTasks` rather than force-placed on the last day. Within a day, `DailySequencingStage` picks the highest-priority task that is both dependency-ready and NotBefore-ready for the current slot cursor time; a lower-priority but ready task fills the gap ahead of a task blocked by a future `NotBefore` instead of that gap going unused or every later task being pushed back. `TaskNormalizationStage` clamps `NotBefore` back to `DueDate` when `NotBefore` is later than `DueDate`, to avoid an unschedulable inverted range.
+- A task must never be scheduled before its `TaskItem.NotBefore` date and time. `TaskDistributionStage` gates eligible days and budgets only usable post-release capacity on the release day; a task whose `NotBefore` falls beyond the horizon is reported via `PrioritizationResult.UnscheduledTasks`. Within a day, `DailySequencingStage` picks the highest-priority task that is both dependency-ready and NotBefore-ready for the current slot cursor time; ready tasks can fill the gap ahead of a blocked task. Any duration that cannot fit within the horizon remains unscheduled, including fragments left after sequencing; it must not be forced into an unavailable slot or silently omitted. `TaskNormalizationStage` clamps `NotBefore` back to `DueDate` when `NotBefore` is later than `DueDate`, to avoid an unschedulable inverted range.
 
 When tests expose scheduler defects, keep correct invariant tests as focused red tests while fixing the implementation. Separate implementation defects from incorrect or outdated test expectations before changing tests.
 
