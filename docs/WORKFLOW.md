@@ -8,9 +8,6 @@ This document outlines the standard workflow for contributing to the Priority Ta
 -   **Architecture First.** Before implementing a new feature, refer to `docs/ARCHITECTURE.md` to understand the existing design patterns and ensure your changes are consistent with the project's structure.
 -   **Check the Status.** For a high-level overview of the project's current capabilities and state, refer to `docs/STATUS.md`.
 -   **Small, iterative changes.** Prefer small, well-defined commits over large, monolithic ones.
--   **Interactive CLI Rendering.** For keyboard-driven menus, avoid calling full-screen clear/redraw on every keypress. Prefer anchored line updates via cursor positioning and preserve existing input semantics.
--   **Menu vs Input Helpers.** Put selectable menu rendering and shared selector widgets in `ConsoleMenuHelper`; keep `ConsoleInputHelper` for date/time and field-style input only.
--   **Time Mode and Refresh.** Keep the background snapshot refresher active only for real-time mode; when simulated time is applied, pause periodic refresh and resume it when returning to real-time.
 
 ## Working with AI Assistants
 
@@ -19,7 +16,7 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 1.  **Reference Definitions**: Use the terms defined in `ARCHITECTURE.md` (e.g., "Ask the TaskRankingStage to...", not "Ask the thing that puts tasks on the calendar").
 2.  **Consult Documentation First**: As per `copilot.instructions.md`, always ask the AI to verify its plan against `ARCHITECTURE.md` and `STATUS.md`.
 3.  **Update Documentation**: If you or the AI refactor code, you **must** update the corresponding documentation. The AI is instructed to help with this.
-4.  **Hybrid Testing**: Instruct the AI to use strict TDD for deterministic code (Core services, CLI), but use exploratory spiking and property-based invariant testing for scheduling algorithms (see `TESTING_STRATEGY.md`).
+4.  **Hybrid Testing**: Instruct the AI to use strict TDD for deterministic core services, but use exploratory spiking and property-based invariant testing for scheduling algorithms (see `TESTING_STRATEGY.md`).
 
 ## Standard Workflow
 
@@ -39,12 +36,6 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 **Build the solution:**
 ```bash
 dotnet build
-```
-
-**Run the CLI application:**
-```bash
-cd PriorityTaskManager.CLI
-dotnet run
 ```
 
 **Run the API (required before running the Flutter client):**
@@ -106,6 +97,7 @@ To point a local Flutter build at the hosted production API instead of a local o
 ## Testing
 
 The project `PriorityTaskManager.Tests/` contains the unit tests for the core library.
+The archived CLI test sources are preserved but excluded from this active test project.
 
 To run the tests:
 ```bash

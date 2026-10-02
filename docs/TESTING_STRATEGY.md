@@ -6,7 +6,7 @@ This document outlines the strategy for testing the Priority Task Manager applic
 
 Because this application blends deterministic CRUD operations with complex, evolving optimization algorithms, we use a hybrid testing strategy:
 
--   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`), data models, and CLI handlers have highly predictable inputs and outputs.
+-   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`) and data models have highly predictable inputs and outputs.
 -   **Exploratory Spiking for Algorithms**: Development of scheduling algorithms (`ConstraintOptimizationStrategy`, `GoldPanningStrategy`) is done via exploratory programming first. We rely on sample datasets and human verification to tune the heuristics before locking them down.
 -   **Property-Based & Invariant Testing**: Instead of writing brittle assertions for precise algorithm outputs (e.g., "Task A must be at 9:00 AM"), we write invariant tests that check if the algorithm violated core rules (e.g., "No task is scheduled before its dependency", "Must-schedule tasks are never dropped").
 -   **Use the `TimeService`**: All time-sensitive logic must use a mocked `ITimeService` to guarantee deterministic boundaries.
@@ -51,33 +51,9 @@ This is the most complex area of the application. We avoid brittle unit tests th
     -   Any new `IUrgencyStrategy` implementation (e.g., the Constraint Solver) must add a corresponding thin subclass of `SchedulingInvariantTestsBase` instead of duplicating the invariant suite.
     -   Algorithm-internal pipeline stage tests (e.g., under `Scheduling/GoldPanning`) must only assert behavior specific to that stage/algorithm's own mechanics; they must not re-derive invariants already owned by `SchedulingInvariantTestsBase`.
 
-### 3. CLI Handlers
+### Archived CLI Tests
 
--   For each non-interactive handler (`delete`, `complete`, etc.) on the result-based path:
-    -   Unit test `ExecuteWithResult(...)` as pure command orchestration logic.
-    -   Verify `CommandResult.Status`, `CommandResult.Message`, and `CommandResult.ShouldRefreshDashboard`.
-    -   Verify service-side mutations separately from console rendering.
-    -   Add focused tests for shared helper behavior (`NonInteractiveCommandResultHelper`) to cover mixed valid/invalid/not-found ID parsing and usage-message construction once and reuse across handlers.
--   For legacy handlers not yet migrated:
-    -   Continue command-surface tests through `Execute(...)` to protect behavior during migration.
--   For interactive handlers with an input/output seam (for example, `HelpHandler`, `EditHandler`, interactive `list settings` flow, and `event edit`/`event clear` paths):
-    -   Drive key input through the seam abstraction instead of real console buffers.
-    -   Assert navigation behavior, exit behavior, and emitted help content without relying on `Console.Clear` or cursor APIs.
-    -   Do not call real console-clearing/dashboard-rendering code (for example, `ConsoleHelper.ClearAndRenderDashboard`) directly from unit tests; headless/CI test hosts can have no attached console handle, and real `Console.Clear` calls can throw `IOException` there. Use `IInteractiveConsoleFacade`/`FakeInteractiveConsoleFacade` to assert rendering intent instead of invoking the real console.
-
-### 4. CLI Orchestration and Rendering Policy
-
--   Add focused tests for `Program.cs` orchestration behavior:
-    -   Result-based handlers trigger dashboard refresh only when `ShouldRefreshDashboard` is true.
-    -   Result messages are printed by `Program.cs` for result-based handlers.
-    -   Legacy handlers continue to execute unchanged.
--   Keep dashboard rendering tests separate from handler business assertions so console buffer requirements do not block core command tests.
-
-### 5. Migration Completion and Consolidation Tests
-
--   When handler migration is complete, add/adjust tests that assert the final single-contract dispatch path in `Program.cs`.
--   Remove tests that exist only to preserve temporary dual-contract compatibility behavior.
--   Add regression tests ensuring each command still returns clear user feedback categories after compatibility layer removal.
+The CLI project and its test sources are preserved for possible future restoration, but are excluded from the active solution and test suite. Do not add to or run these tests as part of routine work; restore them only when the user explicitly requests bringing the CLI back.
 
 ## Test Overhaul Plan
 
@@ -85,5 +61,3 @@ This is the most complex area of the application. We avoid brittle unit tests th
 2.  **Define Pipeline Invariants**: Write the rule-based property tests for scheduling (e.g., dependency ordering, timeframe limits).
 3.  **Create Benchmark Datasets**: Assemble complex `taskitems.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
 4.  **Implement Snapshot Testing**: Generate baseline schedule expectations for the benchmark datasets using both the V1 Solver and Gold Panning.
-5.  **Refactor CLI Handlers**: Incrementally migrate non-interactive handlers to `CommandResult` and add unit coverage around `ExecuteWithResult(...)` before tackling deep interactive flows.
-6.  **Consolidate CLI Command Contract**: Remove transitional dual-contract dispatch and compatibility methods after migration completion, then re-baseline command orchestration tests against the final single-contract model.

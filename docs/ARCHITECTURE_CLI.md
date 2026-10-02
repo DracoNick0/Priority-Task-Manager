@@ -1,5 +1,7 @@
 # CLI Architecture
 
+> **Archived subsystem:** This document describes preserved CLI source only. The CLI is unsupported and excluded from the active solution build and test suite. Do not extend it or maintain compatibility unless the user explicitly requests its restoration.
+
 This document defines the architecture for command-line interaction, command handlers, console input/output, and dashboard rendering.
 
 ## Responsibilities

@@ -21,7 +21,7 @@ This is reinforced by three supporting differentiators:
 - **Honest workload visibility**: flexibility about *when* work happens should never come at the cost of an accurate picture of *how much room is left*. For users without fixed hours, realistic default reserved time (rest, personal life) keeps slack and deadline-risk signals honest instead of assuming a naively wide-open calendar — this is what lets the app double as a life-balance tool, not just a scheduler.
 
 ## Desired End State
-- **Product form**: A single scheduling core reachable from multiple clients — command-line, web, and desktop today, extending to native mobile — backed by a shared account and sync layer so a user's schedule is consistent everywhere they work.
+- **Product form**: A single scheduling core reachable from web and desktop clients today, extending to native mobile — backed by a shared account and sync layer so a user's schedule is consistent everywhere they work.
 - **Local-first data ownership for tasks, not scheduling**: task/list/event data should remain exportable and usable offline by default — a deliberate contrast to cloud-only competitors, not just a technical fallback. Scheduling is the deliberate exception to this: computing a schedule is an online-exclusive, subscription-gated capability served by the API, not something any client reproduces offline.
 - **Protected, subscription-gated scheduling**: scheduling always runs server-side, behind an authenticated, subscribed account, rather than splitting into offline-bundled vs. online-exclusive algorithms. This protects the app's core value and gives the subscription a clear, load-bearing feature to sell, at the cost of scheduling requiring connectivity.
 - **Monetization**: the product has exactly two account tiers, Free and Subscription. Scheduling and cross-device sync are Subscription-only. Task/list/event CRUD is free for both tiers. LLM-assisted intake is available on both tiers but with a lower usage quota on Free (not a hard paywall) versus a materially higher or unlimited quota on Subscription; both tiers are additionally protected by an abuse-prevention traffic/rate limiter independent of the quota.
@@ -33,8 +33,8 @@ Each milestone assumes everything in the milestones before it is retained and co
 
 ### MVP — Minimum Viable Product
 - A prototype scheduling algorithm that prioritizes and places tasks using importance, complexity, due dates, dependencies, fixed events, and simple day boundaries (a single configured start and end time per day).
-- Usable interfaces across three surfaces: a CLI supporting both interactive menus and direct commands, and a Flutter-based web and desktop client. The Flutter client defaults to Guest mode: task/list/event CRUD works fully offline against locally stored data with no login required; scheduling is a subscription-gated, online-only call to the API rather than a client-side capability, so it is unavailable to a guest until they create or log into an account. Command and API contracts are designed so both the transition to online storage/sync (V1) and a future native mobile client can reuse them without rework, even though mobile isn't built until V1.
-- Real email + password login, usable end-to-end on the Flutter client (web and desktop) — this is the only interface with login in MVP; CLI login is deferred to V1. Login/registration is only ever reached through a deliberate, optional action from Guest mode, never a forced gate.
+- Usable Flutter-based web and desktop interfaces. The Flutter client defaults to Guest mode: task/list/event CRUD works fully offline against locally stored data with no login required; scheduling is a subscription-gated, online-only call to the API rather than a client-side capability, so it is unavailable to a guest until they create or log into an account.
+- Real email + password login, usable end-to-end on the Flutter client (web and desktop). Login/registration is only ever reached through a deliberate, optional action from Guest mode, never a forced gate.
 - A single, real, always-on hosted API instance (not a per-client local process) that the Flutter client authenticates against, so scheduling is actually reachable outside the development environment rather than only next to a developer's machine.
 - Beta grace period: every new account defaults to Subscription-tier entitlement during MVP (no real payment processor built yet), with a visible in-app notice that this is a temporary free preview. Existing accounts are downgraded to Free — with a clear notice of what they lose access to — once V1 ships with real payment integration.
 - Offline local storage for task/list/event data so the tool's CRUD works without a network connection; scheduling itself requires connectivity.
@@ -44,10 +44,9 @@ Each milestone assumes everything in the milestones before it is retained and co
 
 ### V1 — Online Daily Planner
 - A scheduling algorithm the owner is confident in as a dependable day-to-day planner, validated against representative real-world scenarios rather than judged as just a working prototype.
-- Fleshed-out, polished interfaces for CLI, web, and desktop (beyond MVP-level usability).
+- Fleshed-out, polished web and desktop interfaces (beyond MVP-level usability).
 - Native mobile apps published on the Android and iOS app stores.
 - Cross-device data sync, with online storage as the backing mechanism.
-- Email + password authentication extended to the CLI, reaching parity with the MVP-delivered Flutter login (web and desktop).
 - Stronger account security: two-factor authentication and OAuth/social login.
 - Real payment/subscription processing, replacing the MVP-era beta default: existing beta accounts are downgraded from Subscription to Free, with a clear notice of what they lose access to, unless they subscribe for real.
 - Scheduled-block reminders/notifications across devices, keeping the plan visible without requiring the user to keep checking the app.
@@ -70,7 +69,7 @@ A single, self-contained picture of the fully realized product:
 - **Scheduling**: multiple interchangeable scheduling algorithms, including an optional scheduling AI trained on data contributed by consenting users; handles fixed working hours, flexible/open-ended days with honest capacity and deadline-risk visibility, dependencies, complexity, load thresholds, energy level, and user-initiated postponement; explains its placements in plain language and re-plans gracefully around overrides or missed days. All scheduling runs server-side, gated behind an authenticated, subscribed account, protecting the app's core value and funding the product.
 - **Intake**: LLM-assisted intake for external planning sources, plus an optional personally-trained AI-assisted intake path — offered as an addition, not a replacement, unless it considerably outperforms the LLM path — and a feedback loop that learns from estimated vs. actual time.
 - **Capture and connectivity**: two-way calendar sync (writing scheduled blocks back to external calendars, not just importing events), building on the quick-capture surfaces (browser extension, email-to-task, voice input) introduced in V2 so getting a task into the system is never the bottleneck.
-- **Interfaces**: professional-grade, accessible, best-in-class UI/UX across CLI, web, desktop, iOS, and Android.
+- **Interfaces**: professional-grade, accessible, best-in-class UI/UX across web, desktop, iOS, and Android.
 - **Accounts and data**: email+password, 2FA, and OAuth/social login; seamless cross-device sync (subscription-gated, alongside scheduling); local-first data ownership for task/list/event data preserved even at full maturity (offline-capable, exportable).
 - **Trust**: every AI feature is strictly consent-based, scheduling decisions are transparent, and the system never requires the user to fight it to keep a plan useful.
 - **Optional engagement**: opt-in, non-manipulative motivational features (for example, gentle progress reflection or streaks) explored only after the core trust and stress-reduction goals are met, and never at their expense.

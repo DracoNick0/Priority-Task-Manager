@@ -12,7 +12,7 @@ The core library owns:
 - Scheduling strategy selection and delegation through `IUrgencyStrategy`.
 - Time-sensitive logic through `ITimeService` seams.
 
-The core library must not depend on CLI handlers, console helpers, rendering, or user-prompt behavior.
+The core library must not depend on front-end handlers, console helpers, rendering, or user-prompt behavior.
 
 ## Key Services
 
@@ -45,7 +45,7 @@ Prefer existing service methods before adding duplicates. Important reusable res
 
 - Add a method to `TaskManagerService` when the operation coordinates across two or more of tasks, lists, events, or profiles, or when it must share the same persistence/transaction boundary as existing operations.
 - Prefer a dedicated service (following the existing `TaskMetricsService` pattern) when new behavior is self-contained, has its own cohesive data/computation (for example, metrics, reporting, or a future notification or import service), and does not need to mutate core domain state directly.
-- Do not grow `TaskManagerService` by adding formatting, console-facing, or presentation-shaping logic; that belongs in the CLI layer per `docs/ARCHITECTURE_CLI.md`.
+- Do not grow `TaskManagerService` by adding formatting, console-facing, or presentation-shaping logic; that belongs in a front-end layer.
 - A new unrelated domain concern (not tasks, lists, events, profiles, or their direct coordination) is a signal to introduce a new service rather than extend `TaskManagerService`.
 
 For current backlog status on extracting existing responsibilities, see the repository's GitHub Issues.
@@ -53,7 +53,7 @@ For current backlog status on extracting existing responsibilities, see the repo
 ## Business Rule Placement
 
 - Put rules that must hold across all interfaces in core services or models.
-- Put CLI-only usage guidance, prompt behavior, and output formatting in CLI handlers or CLI utilities.
+- Put client-specific usage guidance, prompt behavior, and output formatting in the corresponding front-end layer.
 - Put algorithmic placement, ranking, and scheduling decisions under `PriorityTaskManager/Scheduling/**`.
 - Put data shape and serialization behavior in models and persistence services.
 
@@ -68,14 +68,14 @@ Core services may depend on:
 
 Core services must not depend on:
 
-- `PriorityTaskManager.CLI`.
+- Archived `PriorityTaskManager.CLI` code.
 - `Console` or console helpers.
-- CLI command result types.
+- Client-specific command result types.
 
 ## Invariants
 
 - Core operations should leave persisted IDs, display IDs, active-list state, and list-scoped settings consistent.
-- Core validation should throw specific exceptions or return explicit success/failure values that the CLI can translate into user feedback.
+- Core validation should throw specific exceptions or return explicit success/failure values that the calling client can translate into user feedback.
 - Time-sensitive behavior should use `ITimeService` rather than `DateTime.Now` when deterministic behavior matters.
-- Scheduling mode selection should route through `TaskManagerService` and `IUrgencyStrategy`, not through CLI conditionals.
+- Scheduling mode selection should route through `TaskManagerService` and `IUrgencyStrategy`, not through client-side conditionals.
 - New unrelated domain concerns should be added as a new focused service rather than expanding `TaskManagerService` indefinitely; see "Avoiding Unbounded Service Growth" above.

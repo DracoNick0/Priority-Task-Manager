@@ -21,7 +21,7 @@ Current behavior:
 - `GoldPanningStrategy` is the active implementation.
 - Constraint optimization mode is routed but not implemented in the current runtime path.
 
-Do not select scheduling strategies in CLI handlers. CLI code may change settings, but core services own strategy routing.
+Do not select scheduling strategies in client handlers. Clients may change settings, but core services own strategy routing.
 
 ## Gold Panning Pipeline
 
@@ -49,7 +49,7 @@ See [GOLD_PANNING.md](GOLD_PANNING.md) for the algorithm concept and behavior de
 
 The constraint solver is specified separately in [CONSTRAINT_SOLVER.md](CONSTRAINT_SOLVER.md). Keep MVP and full solver work aligned with that specification.
 
-Constraint solver code should live under `PriorityTaskManager/Scheduling/Optimization/**` and remain behind `IUrgencyStrategy` so the CLI and core service boundary does not change.
+Constraint solver code should live under `PriorityTaskManager/Scheduling/Optimization/**` and remain behind `IUrgencyStrategy` so the core service boundary remains stable.
 
 ## Scheduler Inputs And Outputs
 
@@ -83,5 +83,5 @@ When tests expose scheduler defects, keep correct invariant tests as focused red
 
 - Use `ITimeService` in scheduler code and tests for deterministic time behavior.
 - Prefer transformations over mutating original task lists directly; `GoldPanningStrategy` clones active tasks before pipeline execution and maps scheduled parts back to originals.
-- Do not add scheduling logic to CLI handlers or rendering helpers.
+- Do not add scheduling logic to client handlers or rendering helpers.
 - Do not use characterization tests to bless behavior that violates hard invariants.

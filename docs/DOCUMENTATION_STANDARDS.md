@@ -23,7 +23,7 @@ This document defines documentation structure, ownership, style, verification, a
 | Project entry and navigation | README.md | High-level orientation only |
 | Long-term vision and desired outcome | docs/VISION.md | Direction and intent only; not current status |
 | Architecture map and shared boundaries | docs/ARCHITECTURE.md | Entry point for architecture reading paths |
-| CLI architecture | docs/ARCHITECTURE_CLI.md | Command handling, console interaction, and rendering boundaries |
+| Archived CLI reference | docs/ARCHITECTURE_CLI.md | Historical command handling and rendering boundaries; consult only when restoring the CLI |
 | Core business logic architecture | docs/ARCHITECTURE_CORE.md | Core services and business-rule placement |
 | Data and persistence architecture | docs/ARCHITECTURE_DATA.md | Models, JSON persistence, IDs, and list-scoped settings |
 | Scheduling architecture | docs/ARCHITECTURE_SCHEDULING.md | Strategy selection, scheduling stages, and scheduler invariants |
@@ -102,14 +102,13 @@ Must not include:
 ### Status
 Required sections:
 - Status Snapshot
-- Feature Matrix (subsections: Core (C# backend), CLI integration, Flutter client integration)
+- Feature Matrix (subsections: Core (C# backend), active client integrations)
 - Confirmed Capabilities
 - Known Limitations
 - Known Issues and Technical Debt
-- Command Surface Summary
 - Validation Notes
 
-The Feature Matrix separates what Core implements from what each client (CLI, Flutter) actually exposes; a feature can be Working in Core while Not yet integrated in a client.
+The Feature Matrix separates what Core implements from what active clients expose; archived code must not be presented as a supported integration.
 
 docs/STATUS.md is a user-facing document: describe what a user can observe or do (features, commands, behavior, limitations), not how it is implemented internally.
 
@@ -129,7 +128,7 @@ Must not include:
 
 ## Verification Requirements
 - High-risk claims must be verifiable from code or canonical documents.
-- Validate command surface against PriorityTaskManager.CLI/Program.cs.
+- Confirm archived CLI code is not represented as an active product surface or routine build/test target.
 - Validate strategy behavior claims against PriorityTaskManager/Services/TaskManagerService.cs and PriorityTaskManager/Scheduling/GoldPanning/GoldPanningStrategy.cs.
 - Validate links and cross-references in every documentation update.
 

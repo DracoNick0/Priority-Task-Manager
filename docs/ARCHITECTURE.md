@@ -6,17 +6,15 @@ For current feature reality, see [STATUS.md](STATUS.md). For planned work and ac
 
 ## Architecture Overview
 
-The solution is organized into three projects with clear separation of concerns:
+The active system is organized around the core library, API, and Flutter client:
 
 | Project | Responsibility |
 | --- | --- |
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
-| `PriorityTaskManager.CLI/` | Command parsing, user interaction, console output, and orchestration |
 | `PriorityTaskManager.API/` | Authenticated REST endpoints wrapping core services for networked clients |
 | `PriorityTaskManager.Flutter/` | Flutter web/desktop client; local-only (offline/guest) for the MVP shell, with its own `TaskRepository` abstraction (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) |
-| `PriorityTaskManager.Tests/` | Tests for core behavior, scheduling, and CLI handler behavior |
-
-The core library must remain independent of console presentation concerns. CLI code may call core services, but core services must not depend on CLI handlers, console helpers, or command output policy.
+| `PriorityTaskManager.Tests/` | Tests for core behavior, scheduling, and API behavior |
+| `PriorityTaskManager.CLI/` (archived) | Preserved source only; excluded from the active solution build and test suite |
 
 ## Focused Architecture Documents
 
@@ -24,7 +22,7 @@ Use the narrowest document that matches the task before reading the whole archit
 
 | Area | Document | Use When |
 | --- | --- | --- |
-| CLI and user interaction | [ARCHITECTURE_CLI.md](ARCHITECTURE_CLI.md) | Changing command handlers, console input/output, dashboard refresh, menus, or command result orchestration |
+| Archived CLI reference | [ARCHITECTURE_CLI.md](ARCHITECTURE_CLI.md) | Only when explicitly restoring the CLI |
 | Business logic | [ARCHITECTURE_CORE.md](ARCHITECTURE_CORE.md) | Changing task, list, profile, event, dependency, or service coordination behavior |
 | Data and persistence | [ARCHITECTURE_DATA.md](ARCHITECTURE_DATA.md) | Changing models, JSON storage, persisted defaults, IDs, list-scoped settings, or migration-sensitive data shape |
 | Scheduling and algorithms | [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md) | Changing prioritization, Gold Panning stages, scheduling invariants, or strategy selection |
@@ -35,26 +33,23 @@ The complete architecture should be understandable by reading this map plus all 
 ## System Boundaries
 
 - Core business logic lives in `PriorityTaskManager/`.
-- CLI orchestration and user interaction live in `PriorityTaskManager.CLI/`.
-- Persistence is handled by `PersistenceService` through JSON files loaded into a `DataContainer`.
+- The API owns authenticated network access and account-scoped Postgres persistence; the Flutter client owns user interaction and local Guest data.
+- The CLI source is archived and is not an active client or supported product surface.
 - Scheduling behavior is selected through `UserProfile.SchedulingMode` and executed through `IUrgencyStrategy`.
-- External integrations are planned but not currently implemented; integration design should preserve the same core/CLI separation.
+- External integrations are planned but not currently implemented; integration design should preserve the core/client separation.
 
 ## Runtime Data Flow
 
-1. `Program.cs` starts the CLI, loads persisted data, builds services, and maps command names to handlers.
-2. The CLI reads a command and resolves the handler.
-3. Every wired handler implements `ICommandResultHandler`; `Program.cs` calls `ExecuteWithResult(...)` and owns message rendering and dashboard refresh from the returned `CommandResult`.
-4. `TaskManagerService` reads or mutates the in-memory `DataContainer` and persists changes through `IPersistenceService`.
-5. Scheduling requests build an effective profile for the active list and call the selected `IUrgencyStrategy`.
-6. The active scheduler returns a `PrioritizationResult` with scheduled tasks, unscheduled tasks, and history.
-7. CLI rendering uses a refreshed `ScheduleSnapshot` rather than making rendering helpers own scheduling decisions.
+1. The Flutter client starts in Guest or authenticated mode and selects the corresponding task repository.
+2. Guest task/list/event changes use local Hive storage; authenticated account operations call the API.
+3. The API authenticates and scopes account operations, then calls core services backed by Postgres.
+4. Authenticated schedule requests call the selected `IUrgencyStrategy` through the API; the Flutter client renders returned schedules, while Guests see a plain task list.
 
 ## Architectural Invariants
 
-- Core must not reference CLI presentation concerns.
-- CLI handlers must not contain business scheduling logic.
-- Command feedback must remain explicit: success, warning, usage guidance, or actionable error.
+- Core must not reference client presentation concerns.
+- Client code must not duplicate business scheduling logic.
+- Active user flows must provide clear success, warning, or actionable error feedback.
 - Current behavior claims must match observable code paths and current status documentation.
 - Gold Panning stage order must match the active stage chain in code.
 - Scheduling invariants documented as correctness rules must not be weakened to match defective implementation behavior.
@@ -68,4 +63,4 @@ The complete architecture should be understandable by reading this map plus all 
 
 ## Terminology
 
-Use [TERMINOLOGY.md](TERMINOLOGY.md) for canonical vocabulary. In particular, use `strategy` for an overall scheduling approach, `stage` for a Gold Panning pipeline step, and `command surface` for the supported CLI commands.
+Use [TERMINOLOGY.md](TERMINOLOGY.md) for canonical vocabulary. In particular, use `strategy` for an overall scheduling approach and `stage` for a Gold Panning pipeline step.

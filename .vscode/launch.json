@@ -5,17 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (CLI)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/PriorityTaskManager.CLI/bin/Debug/net8.0/PriorityTaskManager.CLI.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/PriorityTaskManager.CLI",
-            "stopAtEntry": false,
-            "console": "integratedTerminal"
-        },
-        {
             "name": "API (Cloud, dev seed :5299)",
             "type": "coreclr",
             "request": "launch",
@@ -66,13 +55,6 @@
         }
     ],
     "compounds": [
-        {
-            "name": "API + CLI",
-            "configurations": [
-                "API (Cloud, dev seed :5299)",
-                ".NET Core Launch (CLI)"
-            ]
-        },
         {
             "name": "API + Flutter (Windows)",
             "configurations": [

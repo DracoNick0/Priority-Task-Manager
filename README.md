@@ -23,11 +23,6 @@ Priority Task Manager is built with a decoupled, clean architecture supporting b
 * **Core Engine (`PriorityTaskManager/`)**: Domain models, persistence interfaces, and the multi-stage scheduling pipeline implemented in .NET Core.
 * **Web API (`PriorityTaskManager.API/`)**: ASP.NET Core REST API backed by PostgreSQL and deployed to Fly.io, providing authentication, data sync, and server-side schedule computation.
 * **Cross-Platform Client (`PriorityTaskManager.Flutter/`)**: Desktop and Web application built with Flutter, featuring guest-first onboarding, local offline storage (Hive), and cloud synchronization.
-* **Command-Line Interface (`PriorityTaskManager.CLI/`)**: Standalone .NET console application supporting interactive menus and direct commands with local JSON persistence.
-
-![alt text](docs/images/defaults_image.png)
-
-![alt text](docs/images/edit_image.png)
 
 ## Quick Start
 
@@ -39,13 +34,6 @@ Build the solution:
 
 ```bash
 dotnet build
-```
-
-Run the CLI:
-
-```bash
-cd PriorityTaskManager.CLI
-dotnet run
 ```
 
 ### Flutter Client
@@ -69,7 +57,7 @@ The Flutter client requires a running `PriorityTaskManager.API` instance to comp
 | Path | Purpose |
 | --- | --- |
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
-| `PriorityTaskManager.CLI/` | Command-line entry point, handlers, and console rendering |
+| `PriorityTaskManager.CLI/` | Archived CLI source retained for possible future revival; unsupported and excluded from the active solution and test suite |
 | `PriorityTaskManager.API/` | ASP.NET Core Web API surface sharing the core service composition; hosted in production on Fly.io (`https://tpm-api.fly.dev`) |
 | `PriorityTaskManager.Flutter/` | Flutter web/desktop client with local-only Hive data plus networked accounts/login and API-backed scheduling |
 | `pt_prototyping/` | Standalone Flutter sandbox for UI/UX prototyping, not part of the shipped product |

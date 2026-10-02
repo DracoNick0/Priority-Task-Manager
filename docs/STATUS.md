@@ -1,13 +1,13 @@
 # Project Status
 
-**Framework**: .NET 8 (console CLI + ASP.NET Core API) and Flutter (web + Windows)
-**Storage**: Local JSON files (CLI), Postgres (API/hosted), Hive (Flutter local-only data)
+**Framework**: .NET 8 (ASP.NET Core API) and Flutter (web + Windows)
+**Storage**: Postgres (API/hosted), Hive (Flutter local data)
 
 This document is the current-state snapshot for Priority Task Manager. It records what is working now, what is partial, what is broken, and what is under active revision.
 
 ## Status Snapshot
 
-- The CLI runs standalone (offline, in-process core services, local JSON storage) and all documented commands work.
+- The CLI has been retired from the product and is no longer supported.
 - `PriorityTaskManager.API` is deployed to a real, publicly reachable hosted instance backed by Postgres, providing account/JWT auth and an authenticated, Subscription-tier-gated schedule-computation endpoint. This gives the app a genuine networked path to its core differentiator (computed scheduling), not just a per-developer local process. See [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md) for hosting/deployment details.
 - The Flutter client (web + Windows) has real login/register and a guest-first entry flow, and can be configured at build time to target either a local development API or the hosted production API.
 - Gold Panning is the active scheduling strategy; constraint optimization is not yet available as a selectable mode.
@@ -17,13 +17,13 @@ This document is the current-state snapshot for Priority Task Manager. It record
 
 ### Core (C# backend)
 
-`PriorityTaskManager` is the shared business-logic library used by the CLI and API.
+`PriorityTaskManager` is the shared business-logic library used by the API.
 
 | Feature Area | Status | Notes |
 | --- | --- | --- |
 | Task management | 🟢 Working | Add, edit, view, complete, uncomplete, and delete are implemented in core services. |
 | List management | 🟢 Working | Create, switch, delete, and settings flows work, and lists carry copied settings for scheduling and presentation. |
-| Data persistence | 🟢 Working | JSON-backed data loads and saves through the core persistence service. |
+| Data persistence | 🟢 Working | The API persists account data in Postgres; the Flutter Guest store uses Hive. JSON persistence remains only in the archived CLI source. |
 | Settings and defaults | 🟢 Working | Global defaults and per-list settings overrides are both supported. |
 | Scheduling logic | 🟡 Partially implemented | Gold Panning is active; the constraint-optimization mode is routed but not implemented in the current code path. |
 | Event system | 🟢 Working | Recurring events can be edited or deleted for one occurrence, this and following occurrences, or the whole series. Exceptions and moved occurrences retain their original series date; scheduling expands them on demand. |
@@ -54,8 +54,8 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 | --- | --- | --- |
 | Task management | 🟢 Integrated | Add, edit, complete, and delete are supported against the Hive-backed local repository. A `Not before` time after `due date - estimated duration` is cleared with a warning. |
 | List management | 🟢 Integrated | List switching, create, delete, and a settings form (name/description plus per-list scheduling overrides) are all supported through the Left Rail and Right Inspector. |
-| Data persistence | 🟢 Integrated | Local persistence is Hive-backed, independent of the .NET JSON persistence. |
-| Settings and defaults | 🟢 Integrated | A global defaults form (Left Rail Settings) and per-list overrides (sort option, scheduling mode, work hours/days, urgency thresholds) are Hive-backed; unset list fields inherit the global defaults, mirroring `TaskList.ApplyDefaultsFrom`. A per-list frozen simulated-time override (mirroring the CLI's `list time`) is also editable here and is threaded into `/api/schedule` calls for Authenticated sessions; it has no effect for Guests, since they never compute a schedule. |
+| Data persistence | 🟢 Integrated | Guest data is Hive-backed; authenticated account data is stored through the API rather than the archived CLI's JSON persistence. |
+| Settings and defaults | 🟢 Integrated | A global defaults form (Left Rail Settings) and per-list overrides (sort option, scheduling mode, work hours/days, urgency thresholds) are Hive-backed; unset list fields inherit the global defaults, mirroring `TaskList.ApplyDefaultsFrom`. A per-list frozen simulated-time override is also editable here and is threaded into `/api/schedule` calls for Authenticated sessions; it has no effect for Guests, since they never compute a schedule. |
 | Scheduling logic | 🟢 Integrated | The Command Center computes real schedules by sending Hive task/event data and the active list's effective settings to a separately-running `PriorityTaskManager.API` instance, not mock data (tracked by issue #47), via the authenticated, Subscription-gated `/api/schedule` route (issue #41; see [WORKFLOW.md](WORKFLOW.md)). Scheduling is online-exclusive: logged-in accounts see the computed Daily Column pipeline, while Guests (no account) see a plain, user-sortable task list (`GuestTaskList`: Importance/Due Date/Alphabetical) instead, since they have no access to online-only features (see [VISION.md](VISION.md)). The client no longer spawns the API process itself; it must already be running. |
 | Event system | 🟢 Integrated | Guests use Hive-backed plain events. Authenticated sessions can create recurring series, view upcoming occurrences, and edit or delete one occurrence, this and following, or the whole series. Edited occurrences can move to another date without losing their original series identity. The inspector also offers a replacement recurrence pattern for future or whole-series edits. Enabling recurrence defaults to weekly on the event's start weekday, ending after seven occurrences. |
 | Task dependencies | 🟢 Integrated | Dependency management is supported in the inline task inspector form. |
@@ -63,11 +63,8 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 
 ## Confirmed Capabilities
 
-- The CLI starts up and loads existing data automatically.
 - Gold Panning is the currently active scheduling strategy.
-- Data is stored in local JSON files and persists between runs.
 - Lists can carry their own settings snapshot instead of always inheriting only global defaults.
-- Every command produces clear feedback: a success message, a warning, usage guidance, or an actionable error.
 - `PriorityTaskManager.API` exposes authenticated REST endpoints (`/api/tasks`, `/api/lists`, `/api/events`, `/api/profile`) for CRUD, and an authenticated, Subscription-tier-gated `/api/schedule` endpoint that computes a real Gold Panning (or constraint-optimization) schedule from posted task data for callers with a `Subscription`-tier JWT claim, without persisting anything server-side. Scheduling has no unauthenticated route; every request requires Postgres. It also exposes authenticated `/api/archive` (list) and `/api/archive/{id}/restore` (restore) endpoints (issue #62) wrapping `TaskManagerService.GetArchivedTasks`/`RestoreArchivedTask`; restore defaults to the task's original list and requires an explicit `targetListId` (returning `409 Conflict` otherwise) if that list no longer exists.
 - `PriorityTaskManager.Flutter/` is a web + Windows desktop client with its own task/list/event/settings CRUD, supporting add/edit/complete/delete, dependency management, per-list scheduling overrides, and global defaults. Its single-screen "Three-Pane Command Center" (Left Rail, Center Stage, Right Inspector) computes real schedules for logged-in accounts — including fixed events and the active list's effective settings — by calling a separately-running local `PriorityTaskManager.API` instance's authenticated `/api/schedule` route rather than using mock data (tracked by issue #47); Guests see a plain, user-sortable task list instead, since scheduling is online-exclusive. The client does not start or manage this API process itself (see [WORKFLOW.md](WORKFLOW.md) for how to run it during development). Real login/register screens and Guest-vs-Authenticated session state exist (issue #44 core); authenticated sessions now persist tasks/lists/events/profile through an API-backed repository instead of local Hive storage, and guest-to-account data migration is tracked separately by issue #46.
 - The Flutter Command Center layout: a persistent Left Rail (list switcher, Archive/Settings nav, Engine Status clock/mode indicator), a horizontally scrolling Center Stage (daily columns — Today, Tomorrow, ..., Unscheduled — with scheduled task cards and fixed event cards), and a Right Inspector with an inline CRUD form for the selected task, event, list (including its scheduling-settings overrides), or the global defaults. At narrow/medium window widths the Left Rail and/or Right Inspector collapse into drawer overlays; each docked pane can be resized or dragged into a drawer, with a button to restore it. Selecting an item while the inspector isn't docked auto-opens the drawer. Multi-line inputs (e.g. task descriptions) have a drag handle to resize their height.
@@ -76,7 +73,6 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 
 ## Known Limitations
 
-- The application is designed for a single local user.
 - There is no undo/redo system.
 - Recurring tasks are not supported.
 - The constraint-optimization scheduling mode is not implemented yet.
@@ -87,45 +83,10 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 - The scheduling system still needs future refinement around slack handling, intra-day focus heuristics, and backlog fairness.
 - The event workflow is functional but still under UX refinement.
 - The test suite overhaul is in progress; see the repository's GitHub Issues for current scope and remaining work.
-- Task, list, and event `Id` values are globally unique `Guid`s; `TaskItem.DisplayId` remains the short, user-facing sequential identifier for task commands. Events have no `DisplayId` equivalent, so `event`/`e` edit and remove flows currently require typing full GUID strings — a known UX gap, not yet scoped for a fix.
-
-## Command Surface Summary
-
-### Top-level commands
-
-| Command | Purpose |
-| --- | --- |
-| `add` | Add a new task |
-| `list` | Show tasks for the active list |
-| `edit` | Edit an existing task |
-| `delete` | Delete tasks |
-| `complete` | Mark tasks complete |
-| `uncomplete` | Mark tasks incomplete |
-| `depend` | Manage task dependencies |
-| `view` | Show task details |
-| `cleanup` | Archive completed tasks and refresh list state |
-| `help` | Show command help |
-| `defaults` | Edit global default settings |
-| `event` | Manage events |
-| `e` | Shortcut for `event` |
-| `time` | View or change simulated time |
-| `mode` | View or change scheduling mode |
-| `exit` | Quit the CLI |
-
-### Common subcommand groups
-
-| Group | Examples |
-| --- | --- |
-| `list` | `list all`, `list create`, `list switch`, `list delete`, `list settings` |
-| `event` | `event add`, `event list`, `event edit`, `event delete` |
-| `time` | `time now`, `time custom` |
-| `defaults` | Interactive menu for global defaults |
-
 ## Validation Notes
 
-- Build check: `dotnet build .\PriorityTaskManager.CLI\PriorityTaskManager.CLI.csproj` succeeds.
-- Build check: `dotnet build .\PriorityTaskManager.API\PriorityTaskManager.API.csproj` succeeds.
-- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` passes (146 passed, 1 skipped).
+- Build check: `dotnet build .\Priority-Task-Manager.sln` succeeds; the archived CLI is excluded.
+- Test check: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj` excludes archived CLI tests; the current run reports 176 passed, 1 skipped, and 1 unrelated failure in `PersistenceServiceTests.ArchiveTasks_AppendsArchivedTasksToArchiveFile`.
 - Build check: `flutter build web` and `flutter build windows` succeed in `PriorityTaskManager.Flutter/`; `flutter analyze` and `flutter test` pass.
 - Live check: register, login, and an authenticated schedule computation have been verified end to end against the hosted production API, including a Flutter Windows client build pointed at the hosted instance.
 - Use the repository's GitHub Issues for the current active-work sequence, blockers, and next steps.

@@ -11,7 +11,7 @@ applyTo: '**'
 
 ## Architecture Reading
 - Use `docs/ARCHITECTURE.md` as the architecture map and shared-boundaries reference.
-- Read `docs/ARCHITECTURE_CLI.md` before changing command handlers, console input/output, menus, dashboard rendering, or command result orchestration.
+- Read `docs/ARCHITECTURE_CLI.md` only when the user explicitly requests restoring the archived CLI.
 - Read `docs/ARCHITECTURE_CORE.md` before changing task, list, profile, event, dependency, or service coordination behavior.
 - Read `docs/ARCHITECTURE_DATA.md` before changing models, JSON persistence, IDs, list-scoped settings, or persisted data shape.
 - Read `docs/ARCHITECTURE_SCHEDULING.md` before changing prioritization, Gold Panning stages, scheduling invariants, strategy selection, or scheduler tests.
@@ -32,8 +32,8 @@ applyTo: '**'
 - When splitting or resolving overlapping scope between issues, prefer asking before closing or substantially rescoping an issue if the intended resolution is ambiguous.
 
 ## Architecture Boundaries
-- `PriorityTaskManager` contains core business logic, models, services, persistence, and scheduling. It must not depend on CLI/UI behavior.
-- `PriorityTaskManager.CLI` owns command parsing, user interaction, output, and orchestration. It should catch core exceptions and show actionable user feedback.
+- `PriorityTaskManager` contains core business logic, models, services, persistence, and scheduling. It must not depend on user-interface behavior.
+- `PriorityTaskManager.CLI/` is preserved archived source, not an active product or maintenance target. Do not modify, build, test, or update CLI-specific documentation unless the user explicitly asks to restore it.
 - `TaskManagerService` coordinates task/list/profile operations and delegates prioritization through `IUrgencyStrategy`.
 - Scheduling and prioritization logic belongs under `PriorityTaskManager/Scheduling/**`.
 
@@ -43,10 +43,9 @@ applyTo: '**'
 - If the Flutter client reports unexpected 404s/errors against `https://tpm-api.fly.dev`, check `flyctl releases -a tpm-api` against the commit history of the affected endpoint before assuming a code defect — the hosted build may simply be stale.
 - See `docs/WORKFLOW.md` ("Deploying the API (Fly.io)") for deploy commands and secrets handling.
 
-## CLI And Command Handling
-- Keep command handlers focused on parsing, orchestration, and user feedback; do not add business scheduling logic to CLI handlers.
-- Every command path must produce clear feedback: success, warning, usage guidance, or actionable error.
-- Follow the current command orchestration migration state in `docs/ARCHITECTURE_CLI.md` and `docs/STATUS.md`, and the relevant GitHub Issues, before changing handler contracts.
+## Archived CLI
+- Keep `PriorityTaskManager.CLI/` and its test sources available, but outside routine development, solution builds, and test runs.
+- Only restore the CLI after an explicit user request; then reconcile its project/test wiring and documentation with the current architecture before changing its code.
 
 ## Scheduling And Tests
 - Treat documented scheduling invariants as correctness requirements, not as behavior to weaken when tests expose defects.

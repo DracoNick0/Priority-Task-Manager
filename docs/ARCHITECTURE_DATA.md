@@ -27,9 +27,9 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 | `events.json` | Events |
 | `user_profile.json` | Global user profile defaults |
 
-The CLI's JSON files hold a single local user's data and have no account concept. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead.
+The archived CLI's JSON files hold a single local user's data and have no account concept; this persistence path is not part of the active product. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead. Do not preserve or extend CLI JSON compatibility for new work unless the CLI is explicitly restored.
 
-Front ends with their own local store (the CLI's JSON files today; a future Flutter client's local Hive database) are expected to keep that local store as their permanent, offline-capable source of truth rather than treating it as a disposable cache of the API. Once a front end gains account/sync capability (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)), the API-backed Postgres store becomes an additional sync target that the local store is reconciled against, not a replacement for the local store. This keeps the "local-first data ownership" desired end state in [docs/VISION.md](VISION.md) true even after sync exists.
+The Flutter client's Hive store is the local source of truth for Guest task/list/event CRUD, while authenticated account data is served through the API and persisted in Postgres. Any future sync design must explicitly define reconciliation between local and server data instead of treating local data as a disposable cache. This keeps the "local-first data ownership" desired end state in [docs/VISION.md](VISION.md) true as the product evolves.
 
 ## Model Boundaries
 
@@ -64,17 +64,17 @@ The intended behavior is:
 3. `TaskManagerService.BuildEffectiveUserProfile(...)` resolves list settings into the effective profile for scheduling and dashboard logic.
 4. `TaskManagerService.ApplyListTimePreference(...)` applies list-specific simulated time when switching lists.
 
-When adding settings, update the model, copy/default behavior, effective profile resolution, persistence expectations, CLI editing flow, and focused tests together.
+When adding settings, update the model, copy/default behavior, effective profile resolution, persistence expectations, active client editing flows, and focused tests together.
 
 ## Persistence Principles
 
 - Use `IPersistenceService` for persistence boundaries rather than reading or writing JSON from handlers or scheduling stages.
 - Keep serialization shape changes intentional and covered by tests when existing data compatibility matters.
-- Preserve the `NextDisplayId` counter when adding or deleting items; do not infer new IDs in CLI code. Real `Id` values (tasks, lists, events) are always generated via `Guid.NewGuid()` at creation time in `TaskManagerService`/`EventService`, never assigned by CLI code.
+- Preserve the `NextDisplayId` counter when adding or deleting items; do not infer new IDs in client code. Real `Id` values (tasks, lists, events) are always generated via `Guid.NewGuid()` at creation time in `TaskManagerService`/`EventService`, never assigned by a client.
 - Keep persistence ignorant of console/UI behavior.
 - `PersistenceService.LoadData()` fails soft per file: if a single JSON file (tasks/lists/events/user profile) is missing, empty, or unreadable, that file's data resets to its default and a descriptive message is recorded in `DataContainer.LoadWarnings` instead of being silently discarded. Other files still load normally.
 - `PersistenceService.LoadData()` also transparently migrates JSON files still using the legacy `int`-based `Id` shape (from before the Guid identity migration) to the current `Guid` shape: lists are migrated first (building an old-int-Id → new-Guid map), then tasks (remapping `ListId` and `Dependencies` via that map plus a task-specific map), then events (self-contained, no cross-references). Each migrated file adds a `DataContainer.LoadWarnings` entry noting the migration. See `PersistenceService.IsLegacyIntIdShape`/`MigrateLegacyLists`/`MigrateLegacyTasks`/`MigrateLegacyEvents`.
-- `DataContainer.LoadWarnings` is populated only by `LoadData()` and is not itself persisted to disk; the CLI (`Program.cs`) prints any warnings once at startup.
+- `DataContainer.LoadWarnings` is populated only by `LoadData()` and is not itself persisted to disk; the archived CLI (`Program.cs`) prints any warnings once at startup.
 - `PersistenceService.SaveData()` writes each of the 4 files atomically (write to a `.tmp` file in the same directory, then `File.Replace`/`File.Move` into place) so a crash or interruption mid-save cannot leave a destination file partially written.
 
 ## Schema Evolution Guidance

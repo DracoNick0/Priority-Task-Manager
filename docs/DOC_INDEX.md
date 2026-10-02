@@ -14,7 +14,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 ## Supporting Documents
 | Document | Purpose |
 | --- | --- |
-| docs/ARCHITECTURE_CLI.md | CLI command handling, console interaction, and rendering boundaries |
+| docs/ARCHITECTURE_CLI.md | Reference architecture for the archived CLI; consult only when explicitly restoring it |
 | docs/ARCHITECTURE_CORE.md | Core business logic and service coordination boundaries |
 | docs/ARCHITECTURE_DATA.md | Data models, persistence, IDs, and list-scoped settings |
 | docs/ARCHITECTURE_SCHEDULING.md | Scheduling strategy selection, stages, invariants, and algorithm boundaries |
@@ -38,13 +38,12 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | Onboarding and project overview | README.md |
 | Long-term vision, desired outcome, and core differentiator | docs/VISION.md |
 | Architecture overview and reading paths | docs/ARCHITECTURE.md |
-| CLI and user interaction architecture | docs/ARCHITECTURE_CLI.md |
+| Archived CLI reference | docs/ARCHITECTURE_CLI.md |
 | Business logic architecture | docs/ARCHITECTURE_CORE.md |
 | Data and persistence architecture | docs/ARCHITECTURE_DATA.md |
 | Scheduling architecture | docs/ARCHITECTURE_SCHEDULING.md |
 | Integration architecture | docs/ARCHITECTURE_INTEGRATIONS.md |
 | Current feature reality | docs/STATUS.md |
-| Command reference | docs/STATUS.md |
 | Planned work, roadmap, and active-work handoff | Repository GitHub Issues |
 | LLM-assisted intake planning | docs/LLM_ASSISTED_INTAKE.md |
 | Scheduling algorithm details | docs/GOLD_PANNING.md, docs/CONSTRAINT_SOLVER.md |
