@@ -23,7 +23,11 @@ If there are no staged changes, inspect unstaged content.
    - Use `git diff --cached` when you need detail.
    - If there are no staged changes, inspect unstaged changes with `git diff --stat`, `git diff --name-only`, and `git diff`.
    - If staged changes exist, ignore unstaged changes unless the user says otherwise.
-2. Identify the primary purpose of the change.
+2. Decide whether the inspected changes belong in one commit or should be split.
+   - Keep a cohesive change together, including its implementation, tests, and documentation.
+   - Recommend separate commits for independent changes with distinct purposes; do not split only because files or project areas differ.
+   - For each proposed commit, map the changed files to that commit. If changes in one file belong to different commits, identify the relevant changed line ranges or hunks.
+3. Identify the primary purpose and Conventional Commit type for each proposed commit.
    - `feat` for a new capability
    - `fix` for a bug fix
    - `refactor` for code changes that do not alter behavior
@@ -34,38 +38,50 @@ If there are no staged changes, inspect unstaged content.
    - `build` for build or dependency changes
    - `ci` for CI configuration changes
    - `revert` for a revert
-3. Choose a scope only when it is obvious and useful.
+4. Choose a scope only when it is obvious and useful.
    - Prefer a stable subsystem, package, or folder name
    - Omit the scope when the change spans multiple areas or the scope is unclear
-4. Write the subject line in imperative mood.
+5. Write each subject line in imperative mood.
    - The subject line must always start with `type:` or `type(scope):` (per Conventional Commits) — never omit the type prefix, even in a quick draft or a follow-up revision
    - Keep it lowercase after the type and scope
    - Keep it concise and specific
    - Avoid trailing punctuation
    - Aim for 50 characters or fewer when possible, and keep it under 72 characters unless the change truly needs more
-5. Add a body only when it clarifies intent.
+6. Add a short body only when it clarifies intent.
    - Explain why the change exists, not a line-by-line recap
    - Mention user-visible behavior, tradeoffs, or migration notes
    - Keep it short and factual
-6. If the inspected changes are mixed or unrelated, say so and recommend splitting them into separate commits.
-7. If the intent is still ambiguous after reviewing the inspected diff, ask one focused clarifying question before finalizing the message.
+7. If the intent or commit boundaries are still ambiguous after reviewing the inspected diff, ask one focused clarifying question before finalizing the recommendations.
 
 ## Output Format
-Return one Conventional Commits message.
+Return a concise commit plan that recommends one commit or a split. For every proposed commit, include a complete Conventional Commit message and the files it affects. Include changed line ranges only when they are needed to distinguish partial-file changes or clarify the mapping.
 
 Example:
 
 ```text
-fix(cli): preserve schedule redraw after cleanup
+Recommendation: Split into 2 commits
 
-Keep the active snapshot in sync after cleanup so the dashboard
-redraw uses the refreshed schedule state.
+Commit 1
+fix(scheduler): preserve the active snapshot after cleanup
+
+Keep the dashboard redraw in sync with the refreshed schedule.
+
+Files affected:
+- PriorityTaskManager/Scheduling/ScheduleCleanup.cs
+- PriorityTaskManager.Tests/Scheduling/ScheduleCleanupTests.cs
+
+Commit 2
+chore(api): update development account seeding
+
+Files affected:
+- PriorityTaskManager.API/Dev/DevAccountSeeder.cs
 ```
 
 ## Quality Check
 Before finishing, verify that the message:
-- Matches Conventional Commits syntax
-- Describes the dominant inspected change
-- Uses a correct type and a sensible scope
-- Is concise, imperative, and specific
+- Recommends one commit for a cohesive change, or explains a useful split for independent changes
+- Includes a Conventional Commits message and affected-file list for every proposed commit
+- Includes line ranges only where needed to identify the affected part of a file
+- Gives each message a correct type and sensible scope
+- Keeps each subject concise, imperative, and specific
 - Uses staged changes when present, otherwise unstaged changes
