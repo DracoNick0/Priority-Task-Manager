@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../models/effective_settings.dart';
 import '../../../providers/event_providers.dart';
 import '../../../providers/engine_status_provider.dart';
 import '../../../providers/selection_provider.dart';
 import '../../../providers/session_provider.dart';
+import '../../../providers/task_providers.dart';
+import '../../../providers/user_profile_provider.dart';
 import '../../../utils/iterable_extensions.dart';
+import '../../../utils/working_day_defaults.dart';
 import '../../theme/app_theme.dart';
 import 'date_time_field.dart';
 import 'recurrence_edit_target_dialog.dart';
@@ -30,6 +34,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   late DateTime _end;
   FixedEvent? _loadedFrom;
   RecurrenceRule? _recurrenceRule;
+  bool _appliedDefaultStart = false;
 
   bool get _isEditing => widget.eventId != null;
 
@@ -48,6 +53,19 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
         : flooredToHour.add(const Duration(hours: 1));
   }
 
+  static DateTime _nextNineAm(DateTime time) {
+    final localTime = time.toLocal();
+    final todayAtNine = DateTime(
+      localTime.year,
+      localTime.month,
+      localTime.day,
+      9,
+    );
+    return localTime.isAfter(todayAtNine)
+        ? DateTime(localTime.year, localTime.month, localTime.day + 1, 9)
+        : todayAtNine;
+  }
+
   void _loadFrom(FixedEvent event) {
     if (identical(_loadedFrom, event)) return;
     _loadedFrom = event;
@@ -64,6 +82,32 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isEditing && !_appliedDefaultStart) {
+      final lists = ref.watch(taskListsProvider).asData?.value;
+      final profile = ref.watch(userProfileProvider).asData?.value;
+      final session = ref.watch(sessionControllerProvider).asData?.value;
+      if (lists != null && profile != null && session != null) {
+        final list = lists.where((l) => l.id == widget.listId).firstOrNull;
+        final settings = list == null
+            ? EffectiveListSettings.fromProfile(profile)
+            : EffectiveListSettings.resolve(list, profile);
+        final simulatedTime = session.status == SessionStatus.authenticated
+            ? list?.simulatedTime
+            : null;
+        final currentTime = simulatedTime ?? DateTime.now();
+        final start =
+            nextWorkingHour(
+              currentTime: currentTime,
+              workDays: settings.workDays,
+              workStartMinutes: settings.workStartMinutes,
+              workEndMinutes: settings.workEndMinutes,
+            ) ??
+            _nextNineAm(currentTime);
+        _start = start;
+        _end = start.add(const Duration(hours: 1));
+        _appliedDefaultStart = true;
+      }
+    }
     final events =
         ref.watch(eventsProvider(widget.listId)).asData?.value ?? const [];
     final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
@@ -126,9 +170,10 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
                   icon: Icons.play_circle_outline,
                   label: 'Start',
                   value: _start,
-                  onPick: () => _pickDateTime((d) {
+                  onPick: () => _pickDateTime(_start, (d) {
                     final shift = d.difference(_start);
                     setState(() {
+                      _appliedDefaultStart = true;
                       _start = d;
                       _end = _end.add(shift);
                     });
@@ -139,7 +184,13 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
                   icon: Icons.stop_circle_outlined,
                   label: 'End',
                   value: _end,
-                  onPick: () => _pickDateTime((d) => setState(() => _end = d)),
+                  onPick: () => _pickDateTime(
+                    _end,
+                    (d) => setState(() {
+                      _appliedDefaultStart = true;
+                      _end = d;
+                    }),
+                  ),
                 ),
               ],
             ),
@@ -158,7 +209,9 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
           children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: () => _save(existing),
+                onPressed: !_isEditing && !_appliedDefaultStart
+                    ? null
+                    : () => _save(existing),
                 icon: Icon(_isEditing ? Icons.save_outlined : Icons.add),
                 label: Text(_isEditing ? 'Save' : 'Create'),
               ),
@@ -181,8 +234,11 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
       ref.watch(sessionControllerProvider).asData?.value.status ==
       SessionStatus.authenticated;
 
-  Future<void> _pickDateTime(ValueChanged<DateTime> onPicked) async {
-    final picked = await pickDateAndTime(context, initialDate: DateTime.now());
+  Future<void> _pickDateTime(
+    DateTime initialDate,
+    ValueChanged<DateTime> onPicked,
+  ) async {
+    final picked = await pickDateAndTime(context, initialDate: initialDate);
     if (picked != null) onPicked(picked);
   }
 

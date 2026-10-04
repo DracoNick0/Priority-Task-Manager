@@ -5,10 +5,12 @@ import '../../../models/effective_settings.dart';
 import '../../../models/task_item.dart';
 import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/selection_provider.dart';
+import '../../../providers/session_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../../providers/user_profile_provider.dart';
 import '../../../utils/iterable_extensions.dart';
 import '../../../utils/task_date_constraints.dart';
+import '../../../utils/working_day_defaults.dart';
 import '../../theme/app_theme.dart';
 import '../resizable_text_field.dart';
 import 'combined_date_time_picker.dart';
@@ -40,6 +42,8 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   bool _isDivisible = true;
   TaskItem? _loadedFrom;
   bool _appliedDefaultDueDate = false;
+  DateTime? _defaultDueDate;
+  bool _hasNoWorkingDayDefault = false;
 
   bool get _isEditing => widget.taskId != null;
 
@@ -92,17 +96,22 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     if (!_isEditing && !_appliedDefaultDueDate) {
       final lists = ref.watch(taskListsProvider).asData?.value;
       final profile = ref.watch(userProfileProvider).asData?.value;
-      if (profile != null) {
-        final list = lists?.where((l) => l.id == widget.listId).firstOrNull;
+      final session = ref.watch(sessionControllerProvider).asData?.value;
+      if (profile != null && lists != null && session != null) {
+        final list = lists.where((l) => l.id == widget.listId).firstOrNull;
         final settings = list == null
             ? EffectiveListSettings.fromProfile(profile)
             : EffectiveListSettings.resolve(list, profile);
-        final tomorrow = DateTime.now().add(const Duration(days: 1));
-        _dueDate = DateTime(
-          tomorrow.year,
-          tomorrow.month,
-          tomorrow.day,
-        ).add(Duration(minutes: settings.workEndMinutes));
+        final simulatedTime = session.status == SessionStatus.authenticated
+            ? list?.simulatedTime
+            : null;
+        _defaultDueDate = nextWorkingDayAtTime(
+          currentTime: simulatedTime ?? DateTime.now(),
+          workDays: settings.workDays,
+          minutesSinceMidnight: settings.workEndMinutes,
+        );
+        _dueDate = _defaultDueDate;
+        _hasNoWorkingDayDefault = _defaultDueDate == null;
         _appliedDefaultDueDate = true;
       }
     }
@@ -132,8 +141,21 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           label: 'Due date',
           value: _dueDate,
           onPick: _pickDueDate,
-          onClear: () => setState(() => _dueDate = null),
+          onClear: () => setState(() {
+            _appliedDefaultDueDate = true;
+            _dueDate = null;
+          }),
         ),
+        if (_hasNoWorkingDayDefault && _dueDate == null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppTheme.spacingXs),
+            child: Text(
+              'No valid workdays are configured. Choose a due date manually.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
         const SizedBox(height: AppTheme.spacingMd),
         TextField(
           controller: _durationController,
@@ -267,7 +289,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           children: [
             Expanded(
               child: FilledButton(
-                onPressed: () => _save(existing),
+                onPressed: !_isEditing && !_appliedDefaultDueDate
+                    ? null
+                    : () => _save(existing),
                 child: Text(_isEditing ? 'Save' : 'Create'),
               ),
             ),
@@ -285,8 +309,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     );
   }
 
-  // Mirrors the default UserProfile.WorkEndTime until profile settings are
-  // editable from the Flutter UI.
+  // Used as the initial time for the Not before picker.
   static const TimeOfDay _defaultEndOfWorkday = TimeOfDay(hour: 17, minute: 0);
 
   static const String _notBeforeWarning =
@@ -346,16 +369,10 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   // A bottom-left toggle in the picker lets the due date be cleared, mirroring
   // the simulated-time picker in the Left Rail.
   Future<void> _pickDueDate() async {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
     final initial =
         _dueDate ??
-        DateTime(
-          tomorrow.year,
-          tomorrow.month,
-          tomorrow.day,
-          _defaultEndOfWorkday.hour,
-          _defaultEndOfWorkday.minute,
-        );
+        _defaultDueDate ??
+        DateTime.now().add(const Duration(days: 1));
     final result =
         await showCombinedDateTimePicker<CombinedDateTimePickerResult>(
           context,
@@ -365,7 +382,10 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           disableButtonLabel: 'No due date',
         );
     if (result == null) return;
-    setState(() => _dueDate = result.enabled ? result.dateTime : null);
+    setState(() {
+      _appliedDefaultDueDate = true;
+      _dueDate = result.enabled ? result.dateTime : null;
+    });
     _clearInvalidNotBefore(durationMinutes: _estimatedDurationMinutes);
   }
 
