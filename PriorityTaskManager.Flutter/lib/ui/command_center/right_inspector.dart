@@ -132,12 +132,26 @@ class _EmptyInspector extends ConsumerWidget {
             ),
             if (activeListId != null) ...[
               const SizedBox(height: AppTheme.spacingLg),
-              FilledButton.icon(
-                onPressed: () =>
-                    ref.read(selectedInspectorProvider.notifier).state =
-                        const InspectorTarget(kind: InspectorKind.task),
-                icon: const Icon(Icons.add),
-                label: const Text('New Task'),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: AppTheme.spacingSm,
+                runSpacing: AppTheme.spacingSm,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () =>
+                        ref.read(selectedInspectorProvider.notifier).state =
+                            const InspectorTarget(kind: InspectorKind.task),
+                    icon: const Icon(Icons.add),
+                    label: const Text('New Task'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () =>
+                        ref.read(selectedInspectorProvider.notifier).state =
+                            const InspectorTarget(kind: InspectorKind.event),
+                    icon: const Icon(Icons.event_available),
+                    label: const Text('New Event'),
+                  ),
+                ],
               ),
             ],
           ],
