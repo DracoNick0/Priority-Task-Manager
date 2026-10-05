@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:priority_task_manager/models/task_item.dart';
 import 'package:priority_task_manager/models/task_list.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
+import 'package:priority_task_manager/providers/app_notifications_provider.dart';
 import 'package:priority_task_manager/providers/engine_status_provider.dart';
 import 'package:priority_task_manager/providers/event_providers.dart';
 import 'package:priority_task_manager/providers/session_provider.dart';
@@ -34,13 +35,51 @@ class _Session extends SessionController {
 }
 
 class _Tasks extends TasksNotifier {
+  String? addedTitle;
+
   @override
   Future<List<TaskItem>> build(String arg) async => [];
+
+  @override
+  Future<TaskItem> addTask({
+    required String title,
+    String description = '',
+    DateTime? dueDate,
+    int estimatedDurationMinutes = 60,
+    List<String>? dependencies,
+    int importance = 5,
+    int complexity = 1,
+    DateTime? notBefore,
+    bool isPinned = false,
+    bool isDivisible = true,
+  }) async {
+    addedTitle = title;
+    return TaskItem(id: 'created-task', listId: arg, title: title);
+  }
 }
 
 class _Events extends EventsNotifier {
+  String? addedTitle;
+
   @override
   Future<List<FixedEvent>> build(String arg) async => [];
+
+  @override
+  Future<FixedEvent> addEvent({
+    required String title,
+    required DateTime startTime,
+    required DateTime endTime,
+    RecurrenceRule? recurrenceRule,
+  }) async {
+    addedTitle = title;
+    return FixedEvent(
+      id: 'created-event',
+      listId: arg,
+      title: title,
+      startTime: startTime,
+      endTime: endTime,
+    );
+  }
 }
 
 void main() {
@@ -51,15 +90,21 @@ void main() {
     required Widget form,
     required TaskList list,
     SessionStatus session = SessionStatus.authenticated,
+    _Tasks? tasksNotifier,
+    _Events? eventsNotifier,
   }) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           taskListsProvider.overrideWith(() => _Lists([list])),
           userProfileProvider.overrideWith(_Profile.new),
           sessionControllerProvider.overrideWith(() => _Session(session)),
-          tasksProvider.overrideWith(_Tasks.new),
-          eventsProvider.overrideWith(_Events.new),
+          tasksProvider.overrideWith(() => tasksNotifier ?? _Tasks()),
+          eventsProvider.overrideWith(() => eventsNotifier ?? _Events()),
           engineClockProvider.overrideWith((ref) => Stream.value(simulated)),
           eventOccurrencesProvider((
             'list',
@@ -72,6 +117,43 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  Future<void> submitName(WidgetTester tester, String title) async {
+    await tester.enterText(find.byType(TextField).first, title);
+    final createButton = find.widgetWithText(FilledButton, 'Create');
+    await tester.scrollUntilVisible(
+      createButton,
+      250,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(createButton);
+    await tester.pumpAndSettle();
+  }
+
+  void expectNameWarning(
+    WidgetTester tester, {
+    required Type formType,
+    required String message,
+  }) {
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(formType)),
+    );
+    final notification = container.read(appNotificationProvider);
+    expect(notification?.message, message);
+    expect(notification?.icon, Icons.warning_amber_rounded);
+    expect(
+      tester
+          .widget<TextField>(find.byType(TextField).first)
+          .decoration
+          ?.errorText,
+      message,
+    );
   }
 
   testWidgets('task uses simulated time and list workday/end override', (
@@ -91,6 +173,53 @@ void main() {
 
     expect(find.text('Tue, Oct 6 • 6:30 PM'), findsOneWidget);
   });
+
+  for (final invalidTitle in ['', ' \t ']) {
+    final nameKind = invalidTitle.isEmpty ? 'empty' : 'whitespace-only';
+
+    testWidgets('task form warns on $nameKind names without creating a task', (
+      tester,
+    ) async {
+      final tasks = _Tasks();
+      await pumpForm(
+        tester,
+        form: const TaskInspectorForm(listId: 'list'),
+        list: TaskList(id: 'list', name: 'Work'),
+        tasksNotifier: tasks,
+      );
+
+      await submitName(tester, invalidTitle);
+
+      expectNameWarning(
+        tester,
+        formType: TaskInspectorForm,
+        message: 'Enter a task name.',
+      );
+      expect(tasks.addedTitle, isNull);
+    });
+
+    testWidgets(
+      'event form warns on $nameKind names without creating an event',
+      (tester) async {
+        final events = _Events();
+        await pumpForm(
+          tester,
+          form: const EventInspectorForm(listId: 'list'),
+          list: TaskList(id: 'list', name: 'Work'),
+          eventsNotifier: events,
+        );
+
+        await submitName(tester, invalidTitle);
+
+        expectNameWarning(
+          tester,
+          formType: EventInspectorForm,
+          message: 'Enter an event name.',
+        );
+        expect(events.addedTitle, isNull);
+      },
+    );
+  }
 
   testWidgets('event uses next full working hour from simulated time', (
     tester,

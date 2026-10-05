@@ -44,6 +44,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   bool _appliedDefaultDueDate = false;
   DateTime? _defaultDueDate;
   bool _hasNoWorkingDayDefault = false;
+  String? _titleError;
 
   bool get _isEditing => widget.taskId != null;
 
@@ -76,6 +77,12 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _descriptionController.dispose();
     _durationController.dispose();
     super.dispose();
+  }
+
+  void _clearTitleError(String value) {
+    if (_titleError != null && value.trim().isNotEmpty) {
+      setState(() => _titleError = null);
+    }
   }
 
   @override
@@ -128,7 +135,11 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         const SizedBox(height: AppTheme.spacingMd),
         TextField(
           controller: _titleController,
-          decoration: const InputDecoration(labelText: 'Title'),
+          decoration: InputDecoration(
+            labelText: 'Title',
+            errorText: _titleError,
+          ),
+          onChanged: _clearTitleError,
         ),
         const SizedBox(height: AppTheme.spacingMd),
         ResizableTextField(
@@ -314,6 +325,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
 
   static const String _notBeforeWarning =
       'Not before cleared: it must leave enough time for the task before its due date.';
+  static const String _titleRequiredWarning = 'Enter a task name.';
 
   int get _estimatedDurationMinutes =>
       int.tryParse(_durationController.text.trim()) ?? 60;
@@ -391,7 +403,14 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
 
   Future<void> _save(TaskItem? existing) async {
     final title = _titleController.text.trim();
-    if (title.isEmpty) return;
+    if (title.isEmpty) {
+      setState(() => _titleError = _titleRequiredWarning);
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        _titleRequiredWarning,
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
     final duration = _estimatedDurationMinutes;
     final notBeforeWasCleared = _clearInvalidNotBefore(
       durationMinutes: duration,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/effective_settings.dart';
+import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/event_providers.dart';
 import '../../../providers/engine_status_provider.dart';
 import '../../../providers/selection_provider.dart';
@@ -35,6 +36,9 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   FixedEvent? _loadedFrom;
   RecurrenceRule? _recurrenceRule;
   bool _appliedDefaultStart = false;
+  String? _titleError;
+
+  static const String _titleRequiredWarning = 'Enter an event name.';
 
   bool get _isEditing => widget.eventId != null;
 
@@ -78,6 +82,12 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   void dispose() {
     _titleController.dispose();
     super.dispose();
+  }
+
+  void _clearTitleError(String value) {
+    if (_titleError != null && value.trim().isNotEmpty) {
+      setState(() => _titleError = null);
+    }
   }
 
   @override
@@ -153,10 +163,12 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
         const SizedBox(height: AppTheme.spacingMd),
         TextField(
           controller: _titleController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Title',
             prefixIcon: Icon(Icons.title),
+            errorText: _titleError,
           ),
+          onChanged: _clearTitleError,
         ),
         const SizedBox(height: AppTheme.spacingMd),
         Card(
@@ -244,7 +256,14 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
 
   Future<void> _save(FixedEvent? existing) async {
     final title = _titleController.text.trim();
-    if (title.isEmpty) return;
+    if (title.isEmpty) {
+      setState(() => _titleError = _titleRequiredWarning);
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        _titleRequiredWarning,
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
     final notifier = ref.read(eventsProvider(widget.listId).notifier);
 
     if (existing == null) {
