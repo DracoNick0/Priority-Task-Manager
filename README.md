@@ -28,7 +28,7 @@ Priority Task Manager is built with a decoupled, clean architecture supporting b
 
 Prerequisite:
 
-- .NET SDK 8.0 or later
+- .NET SDK 10.0 or later
 
 Build the solution:
 

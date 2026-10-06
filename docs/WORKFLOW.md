@@ -31,7 +31,7 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 ## Building and Running the Application
 
 **Prerequisites:**
-*   .NET SDK (8.0 or higher)
+*   .NET SDK (10.0 or higher)
 
 **Build the solution:**
 ```bash
