@@ -87,7 +87,7 @@ class LoggingTaskRepository implements TaskRepository {
     int complexity = 1,
     DateTime? notBefore,
     bool isPinned = false,
-    bool isDivisible = true,
+    bool isDivisible = false,
   }) => _logged(
     'addTask(listId: $listId, title: $title)',
     () => _inner.addTask(

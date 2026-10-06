@@ -39,7 +39,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   int _importance = 5;
   int _complexity = 5;
   bool _isPinned = false;
-  bool _isDivisible = true;
+  bool _isDivisible = false;
   TaskItem? _loadedFrom;
   bool _appliedDefaultDueDate = false;
   DateTime? _defaultDueDate;

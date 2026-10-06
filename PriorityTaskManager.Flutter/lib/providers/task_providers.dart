@@ -98,7 +98,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     int complexity = 1,
     DateTime? notBefore,
     bool isPinned = false,
-    bool isDivisible = true,
+    bool isDivisible = false,
   }) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     final created = await repository.addTask(

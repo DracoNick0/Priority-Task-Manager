@@ -18,7 +18,7 @@ class TaskItem extends HiveObject {
     this.complexity = 1,
     this.notBefore,
     this.isPinned = false,
-    this.isDivisible = true,
+    this.isDivisible = false,
   }) : dependencies = dependencies ?? <String>[];
 
   @HiveField(0)
@@ -48,27 +48,23 @@ class TaskItem extends HiveObject {
   List<String> dependencies;
 
   /// User-defined importance (1-10), mirroring `PriorityTaskManager.Models.TaskItem.Importance`.
-  /// Feeds the scheduling algorithm; not yet editable from the UI (defaults to 5).
+  /// Feeds the scheduling algorithm, defaults to 5.
   @HiveField(8)
   int importance;
 
   /// Cognitive load/effort, mirroring `PriorityTaskManager.Models.TaskItem.Complexity`.
-  /// Not yet editable from the UI (defaults to 1.0).
   @HiveField(9)
   int complexity;
 
   /// Earliest allowed start time, mirroring `PriorityTaskManager.Models.TaskItem.NotBefore`.
-  /// Not yet editable from the UI.
   @HiveField(10)
   DateTime? notBefore;
 
   /// Whether the scheduling algorithm should skip this task, mirroring
-  /// `PriorityTaskManager.Models.TaskItem.IsPinned`. Not yet editable from the UI.
   @HiveField(11)
   bool isPinned;
 
   /// Whether the task can be split across multiple scheduled chunks, mirroring
-  /// `PriorityTaskManager.Models.TaskItem.IsDivisible`. Not yet editable from the UI.
   @HiveField(12)
   bool isDivisible;
 

@@ -291,7 +291,7 @@ class ApiTaskRepository implements TaskRepository {
     int complexity = 1,
     DateTime? notBefore,
     bool isPinned = false,
-    bool isDivisible = true,
+    bool isDivisible = false,
   }) async {
     final response = await _send(
       'POST',
@@ -386,7 +386,7 @@ class ApiTaskRepository implements TaskRepository {
     int complexity = 1,
     DateTime? notBefore,
     bool isPinned = false,
-    bool isDivisible = true,
+    bool isDivisible = false,
   }) => {
     'title': title,
     'description': description,

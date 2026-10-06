@@ -102,7 +102,7 @@ class LocalTaskRepository implements TaskRepository {
     int complexity = 1,
     DateTime? notBefore,
     bool isPinned = false,
-    bool isDivisible = true,
+    bool isDivisible = false,
   }) async {
     final task = TaskItem(
       id: _uuid.v4(),

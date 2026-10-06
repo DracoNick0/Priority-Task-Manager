@@ -21,7 +21,7 @@ namespace PriorityTaskManager.API.Tasks
 		double Points,
 		TimeSpan? BeforePadding,
 		TimeSpan? AfterPadding,
-		bool IsDivisible);
+		bool IsDivisible = false);
 
 	/// <summary>Response body representing a persisted task, including scheduler-computed read-only fields.</summary>
 	public record TaskResponse(

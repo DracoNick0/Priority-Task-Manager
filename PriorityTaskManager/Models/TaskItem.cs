@@ -63,7 +63,7 @@ namespace PriorityTaskManager.Models
             Points = 0.0;
             BeforePadding = null;
             AfterPadding = null;
-            IsDivisible = true;
+            IsDivisible = false;
             ScheduledParts = new List<ScheduledChunk>();
         }
 
@@ -179,7 +179,7 @@ namespace PriorityTaskManager.Models
 
         /// <summary>
         /// Gets or sets a value indicating whether the task can be broken into smaller chunks during scheduling.
-        /// Defaults to true.
+        /// Defaults to false.
         /// </summary>
         public bool IsDivisible { get; set; }
 
