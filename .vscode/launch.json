@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build API",
-            "program": "${workspaceFolder}/PriorityTaskManager.API/bin/Debug/net8.0/PriorityTaskManager.API.dll",
+            "program": "${workspaceFolder}/PriorityTaskManager.API/bin/Debug/net10.0/PriorityTaskManager.API.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PriorityTaskManager.API",
             "stopAtEntry": false,

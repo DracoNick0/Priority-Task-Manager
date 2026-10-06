@@ -1,6 +1,6 @@
 # Project Status
 
-**Framework**: .NET 8 (ASP.NET Core API) and Flutter (web + Windows)
+**Framework**: .NET 10 (ASP.NET Core API) and Flutter (web + Windows)
 **Storage**: Postgres (API/hosted), Hive (Flutter local data)
 
 This document is the current-state snapshot for Priority Task Manager. It records what is working now, what is partial, what is broken, and what is under active revision.
