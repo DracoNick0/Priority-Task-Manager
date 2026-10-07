@@ -162,10 +162,17 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateTask_WhenTaskExists_ShouldUpdateDetails()
             {
                 // Arrange
-                var task = new TaskItem { Title = "Original Title", ListId = _TMS.GetActiveListId() };
+                var task = new TaskItem
+                {
+                    Title = "Original Title",
+                    Link = "https://example.com/original",
+                    ListId = _TMS.GetActiveListId()
+                };
                 _TMS.AddTask(task);
                 var updatedTask = task.Clone();
+                Assert.Equal(task.Link, updatedTask.Link);
                 updatedTask.Title = "Updated Title";
+                updatedTask.Link = "https://example.com/updated";
 
                 // Act
                 var result = _TMS.UpdateTask(updatedTask);
@@ -175,6 +182,7 @@ namespace PriorityTaskManager.Tests.Integration
                 Assert.True(result);
                 Assert.NotNull(retrievedTask);
                 Assert.Equal("Updated Title", retrievedTask.Title);
+                Assert.Equal("https://example.com/updated", retrievedTask.Link);
             }
 
             [Fact]

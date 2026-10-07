@@ -16,6 +16,7 @@ namespace PriorityTaskManager.Models
                 Id = this.Id,
                 Title = this.Title,
                 Description = this.Description,
+                Link = this.Link,
                 Importance = this.Importance,
                 EffectiveImportance = this.EffectiveImportance,
                 DueDate = this.DueDate,
@@ -88,6 +89,11 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the detailed description or notes for the task.
         /// </summary>
         public string Description { get; set; }
+
+        /// <summary>
+        /// Gets or sets an optional URL associated with the task.
+        /// </summary>
+        public string? Link { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the task has been marked as complete.

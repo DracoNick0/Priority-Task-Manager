@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/event_providers.dart';
+import '../../utils/external_link.dart';
 import '../theme/app_theme.dart';
 
 /// A card for a fixed, immovable [FixedEvent].
@@ -76,7 +76,8 @@ class EventCard extends StatelessWidget {
                           if (event.link.isNotEmpty) ...[
                             const SizedBox(height: AppTheme.spacingXs),
                             InkWell(
-                              onTap: () => _openLink(context, event.link),
+                              onTap: () =>
+                                  openExternalLink(context, event.link),
                               child: Row(
                                 children: [
                                   const Icon(
@@ -115,26 +116,6 @@ class EventCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _openLink(BuildContext context, String link) async {
-    final uri = Uri.tryParse(link);
-    if (uri == null ||
-        !uri.hasAuthority ||
-        !{'http', 'https'}.contains(uri.scheme.toLowerCase())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Event link must be a valid http or https URL.'),
-        ),
-      );
-      return;
-    }
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
-        context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open event link.')),
-      );
-    }
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/task_item.dart';
+import '../../utils/external_link.dart';
 import '../theme/app_theme.dart';
 
 /// A single scheduled-task card in a Daily Column.
@@ -106,6 +107,34 @@ class TaskCard extends StatelessWidget {
                           '${timeFormat.format(startTime!)} \u2013 ${timeFormat.format(endTime!)}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                      if (task.link.isNotEmpty) ...[
+                        const SizedBox(height: AppTheme.spacingXs),
+                        InkWell(
+                          onTap: () => openExternalLink(context, task.link),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.open_in_new,
+                                size: 14,
+                                color: colorScheme.primary,
+                              ),
+                              const SizedBox(width: AppTheme.spacingXs),
+                              Expanded(
+                                child: Text(
+                                  task.link,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: colorScheme.primary,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       if (_isFragmented) ...[

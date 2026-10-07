@@ -103,6 +103,7 @@ class LocalTaskRepository implements TaskRepository {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = false,
+    String link = '',
   }) async {
     final task = TaskItem(
       id: _uuid.v4(),
@@ -117,6 +118,7 @@ class LocalTaskRepository implements TaskRepository {
       notBefore: notBefore,
       isPinned: isPinned,
       isDivisible: isDivisible,
+      link: link,
     );
     await _tasksBox.put(task.id, task);
     return task;

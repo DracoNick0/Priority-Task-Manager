@@ -72,6 +72,7 @@ void main() {
               'listId': 'list-1',
               'title': 'Write report',
               'description': '',
+              'link': 'https://example.com/report',
               'isCompleted': false,
               'dueDate': null,
               'estimatedDuration': '01:30:00',
@@ -93,13 +94,16 @@ void main() {
         final task = await repository.addTask(
           listId: 'list-1',
           title: 'Write report',
+          link: 'https://example.com/report',
           estimatedDurationMinutes: 90,
         );
 
         final requestJson = jsonDecode(sentBody!) as Map<String, dynamic>;
         expect(requestJson['estimatedDuration'], '01:30:00');
+        expect(requestJson['link'], 'https://example.com/report');
         expect(task.estimatedDurationMinutes, 90);
         expect(task.title, 'Write report');
+        expect(task.link, 'https://example.com/report');
       },
     );
 
@@ -116,6 +120,7 @@ void main() {
                 'listId': 'list-1',
                 'title': 'A',
                 'description': '',
+                'link': 'https://example.com/task',
                 'isCompleted': false,
                 'dueDate': null,
                 'estimatedDuration': '01:00:00',
@@ -141,6 +146,7 @@ void main() {
         final putRequest = requests.firstWhere((r) => r.method == 'PUT');
         final body = jsonDecode(putRequest.body) as Map<String, dynamic>;
         expect(body['dependencies'], ['task-2']);
+        expect(body['link'], 'https://example.com/task');
       },
     );
 

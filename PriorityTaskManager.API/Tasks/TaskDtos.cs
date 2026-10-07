@@ -21,7 +21,8 @@ namespace PriorityTaskManager.API.Tasks
 		double Points,
 		TimeSpan? BeforePadding,
 		TimeSpan? AfterPadding,
-		bool IsDivisible = false);
+		bool IsDivisible = false,
+		string? Link = null);
 
 	/// <summary>Response body representing a persisted task, including scheduler-computed read-only fields.</summary>
 	public record TaskResponse(
@@ -46,7 +47,8 @@ namespace PriorityTaskManager.API.Tasks
 		double Points,
 		TimeSpan? BeforePadding,
 		TimeSpan? AfterPadding,
-		bool IsDivisible);
+		bool IsDivisible,
+		string? Link);
 
 	public static class TaskDtoExtensions
 	{
@@ -72,13 +74,15 @@ namespace PriorityTaskManager.API.Tasks
 			task.Points,
 			task.BeforePadding,
 			task.AfterPadding,
-			task.IsDivisible);
+			task.IsDivisible,
+			task.Link);
 
 		/// <summary>Maps a request onto a new <see cref="TaskItem"/>; identity/scheduler-computed fields are left for core to assign.</summary>
 		public static TaskItem ToNewTaskItem(this TaskRequest request) => new()
 		{
 			Title = request.Title,
 			Description = request.Description ?? string.Empty,
+			Link = request.Link,
 			ListId = request.ListId,
 			Importance = request.Importance,
 			DueDate = request.DueDate,

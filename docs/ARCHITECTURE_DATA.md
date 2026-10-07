@@ -36,7 +36,7 @@ The Flutter client's Hive store is the local source of truth for Guest task/list
 | Model | Architectural Role |
 | --- | --- |
 | `Account` | MVP email + password account (id, normalized email, hashed password, `SubscriptionTier`); the tenant boundary for API-hosted persisted data |
-| `TaskItem` | Unit of work with scheduling metadata, completion state, and dependencies |
+| `TaskItem` | Unit of work with scheduling metadata, completion state, dependencies, and an optional associated link |
 | `TaskList` | Named task container with copied list-specific scheduling and display settings |
 | `UserProfile` | Global defaults and scheduling preferences |
 | `Event` | Blocked time interval used by scheduling |

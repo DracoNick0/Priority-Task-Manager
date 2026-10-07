@@ -99,6 +99,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = false,
+    String link = '',
   }) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     final created = await repository.addTask(
@@ -113,6 +114,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
       notBefore: notBefore,
       isPinned: isPinned,
       isDivisible: isDivisible,
+      link: link,
     );
     ref.invalidateSelf();
     await future;

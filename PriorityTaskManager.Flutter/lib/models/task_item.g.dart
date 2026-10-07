@@ -32,13 +32,14 @@ class TaskItemAdapter extends TypeAdapter<TaskItem> {
       notBefore: fields[10] as DateTime?,
       isPinned: fields[11] == null ? false : fields[11] as bool,
       isDivisible: fields[12] == null ? false : fields[12] as bool,
+      link: fields[13] == null ? '' : fields[13] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskItem obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -64,7 +65,9 @@ class TaskItemAdapter extends TypeAdapter<TaskItem> {
       ..writeByte(11)
       ..write(obj.isPinned)
       ..writeByte(12)
-      ..write(obj.isDivisible);
+      ..write(obj.isDivisible)
+      ..writeByte(13)
+      ..write(obj.link);
   }
 
   @override

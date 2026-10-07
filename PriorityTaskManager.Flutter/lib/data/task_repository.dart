@@ -38,6 +38,7 @@ abstract class TaskRepository {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = false,
+    String link = '',
   });
 
   Future<void> updateTask(TaskItem task);

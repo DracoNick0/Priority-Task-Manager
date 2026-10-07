@@ -36,6 +36,7 @@ class _Session extends SessionController {
 
 class _Tasks extends TasksNotifier {
   String? addedTitle;
+  String? addedLink;
 
   @override
   Future<List<TaskItem>> build(String arg) async => [];
@@ -52,9 +53,11 @@ class _Tasks extends TasksNotifier {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = true,
+    String link = '',
   }) async {
     addedTitle = title;
-    return TaskItem(id: 'created-task', listId: arg, title: title);
+    addedLink = link;
+    return TaskItem(id: 'created-task', listId: arg, title: title, link: link);
   }
 }
 
@@ -222,6 +225,24 @@ void main() {
       },
     );
   }
+
+  testWidgets('task form saves a link when creating a task', (tester) async {
+    final tasks = _Tasks();
+    await pumpForm(
+      tester,
+      form: const TaskInspectorForm(listId: 'list'),
+      list: TaskList(id: 'list', name: 'Work'),
+      tasksNotifier: tasks,
+    );
+
+    final linkField = find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.decoration?.labelText == 'Link',
+    );
+    await tester.enterText(linkField, 'https://example.com/reference');
+    await submitName(tester, 'Review proposal');
+
+    expect(tasks.addedLink, 'https://example.com/reference');
+  });
 
   testWidgets('event uses next full working hour from simulated time', (
     tester,

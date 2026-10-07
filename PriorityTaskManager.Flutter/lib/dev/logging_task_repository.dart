@@ -88,6 +88,7 @@ class LoggingTaskRepository implements TaskRepository {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = false,
+    String link = '',
   }) => _logged(
     'addTask(listId: $listId, title: $title)',
     () => _inner.addTask(
@@ -102,6 +103,7 @@ class LoggingTaskRepository implements TaskRepository {
       notBefore: notBefore,
       isPinned: isPinned,
       isDivisible: isDivisible,
+      link: link,
     ),
   );
 

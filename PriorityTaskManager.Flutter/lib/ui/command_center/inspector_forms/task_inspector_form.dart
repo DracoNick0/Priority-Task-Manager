@@ -32,6 +32,7 @@ class TaskInspectorForm extends ConsumerStatefulWidget {
 class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _linkController;
   late final TextEditingController _durationController;
   Set<String> _selectedDependencyIds = {};
   DateTime? _dueDate;
@@ -53,6 +54,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     super.initState();
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
+    _linkController = TextEditingController();
     _durationController = TextEditingController(text: '60');
   }
 
@@ -61,6 +63,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _loadedFrom = task;
     _titleController.text = task.title;
     _descriptionController.text = task.description;
+    _linkController.text = task.link;
     _durationController.text = task.estimatedDurationMinutes.toString();
     _selectedDependencyIds = {...task.dependencies};
     _dueDate = task.dueDate;
@@ -75,6 +78,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _linkController.dispose();
     _durationController.dispose();
     super.dispose();
   }
@@ -145,6 +149,16 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         ResizableTextField(
           controller: _descriptionController,
           label: 'Description',
+        ),
+        const SizedBox(height: AppTheme.spacingMd),
+        TextField(
+          controller: _linkController,
+          decoration: const InputDecoration(
+            labelText: 'Link',
+            hintText: 'https://example.com',
+            prefixIcon: Icon(Icons.link),
+          ),
+          keyboardType: TextInputType.url,
         ),
         const SizedBox(height: AppTheme.spacingMd),
         DateTimeFieldBox(
@@ -422,6 +436,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
       await notifier.addTask(
         title: title,
         description: _descriptionController.text.trim(),
+        link: _linkController.text.trim(),
         dueDate: _dueDate,
         estimatedDurationMinutes: duration,
         notBefore: _notBefore,
@@ -436,6 +451,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         existing.copyWith(
           title: title,
           description: _descriptionController.text.trim(),
+          link: _linkController.text.trim(),
           dueDate: _dueDate,
           clearDueDate: _dueDate == null,
           estimatedDurationMinutes: duration,

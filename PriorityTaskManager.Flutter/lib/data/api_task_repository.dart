@@ -292,6 +292,7 @@ class ApiTaskRepository implements TaskRepository {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = false,
+    String link = '',
   }) async {
     final response = await _send(
       'POST',
@@ -308,6 +309,7 @@ class ApiTaskRepository implements TaskRepository {
         notBefore: notBefore,
         isPinned: isPinned,
         isDivisible: isDivisible,
+        link: link,
       ),
     );
     return _taskFromJson(jsonDecode(response.body) as Map<String, dynamic>);
@@ -330,6 +332,7 @@ class ApiTaskRepository implements TaskRepository {
         notBefore: task.notBefore,
         isPinned: task.isPinned,
         isDivisible: task.isDivisible,
+        link: task.link,
       ),
     );
   }
@@ -387,9 +390,11 @@ class ApiTaskRepository implements TaskRepository {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = false,
+    String link = '',
   }) => {
     'title': title,
     'description': description,
+    'link': link.isEmpty ? null : link,
     'listId': listId,
     'importance': importance,
     'dueDate': dueDate?.toIso8601String(),
@@ -409,6 +414,7 @@ class ApiTaskRepository implements TaskRepository {
     listId: json['listId'] as String,
     title: json['title'] as String? ?? '',
     description: json['description'] as String? ?? '',
+    link: json['link'] as String? ?? '',
     isCompleted: json['isCompleted'] as bool,
     dueDate: json['dueDate'] == null
         ? null

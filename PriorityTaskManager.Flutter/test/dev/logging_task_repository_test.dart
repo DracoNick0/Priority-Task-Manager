@@ -50,6 +50,7 @@ class _FakeTaskRepository implements TaskRepository {
     DateTime? notBefore,
     bool isPinned = false,
     bool isDivisible = true,
+    String link = '',
   }) => throw UnimplementedError();
 
   @override

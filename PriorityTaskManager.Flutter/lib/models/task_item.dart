@@ -19,6 +19,7 @@ class TaskItem extends HiveObject {
     this.notBefore,
     this.isPinned = false,
     this.isDivisible = false,
+    this.link = '',
   }) : dependencies = dependencies ?? <String>[];
 
   @HiveField(0)
@@ -68,6 +69,9 @@ class TaskItem extends HiveObject {
   @HiveField(12)
   bool isDivisible;
 
+  @HiveField(13)
+  String link;
+
   TaskItem copyWith({
     String? title,
     String? description,
@@ -82,6 +86,7 @@ class TaskItem extends HiveObject {
     bool clearNotBefore = false,
     bool? isPinned,
     bool? isDivisible,
+    String? link,
   }) {
     return TaskItem(
       id: id,
@@ -98,6 +103,7 @@ class TaskItem extends HiveObject {
       notBefore: clearNotBefore ? null : (notBefore ?? this.notBefore),
       isPinned: isPinned ?? this.isPinned,
       isDivisible: isDivisible ?? this.isDivisible,
+      link: link ?? this.link,
     );
   }
 }
