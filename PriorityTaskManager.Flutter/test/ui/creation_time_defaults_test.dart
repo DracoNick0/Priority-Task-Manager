@@ -69,6 +69,8 @@ class _Events extends EventsNotifier {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     RecurrenceRule? recurrenceRule,
   }) async {
     addedTitle = title;

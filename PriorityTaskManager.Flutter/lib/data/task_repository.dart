@@ -76,6 +76,8 @@ abstract class TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     RecurrenceRule? recurrenceRule,
   });
 
@@ -93,6 +95,8 @@ abstract class TaskRepository {
     required String name,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     required RecurrenceEditTarget target,
     RecurrenceRule? recurrenceRule,
   });

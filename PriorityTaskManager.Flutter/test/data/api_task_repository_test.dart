@@ -283,6 +283,51 @@ void main() {
       },
     );
 
+    test('event create and update round-trip description and link', () async {
+      final requests = <http.Request>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.method == 'POST') {
+          return http.Response(
+            jsonEncode({
+              'id': 'event-1',
+              'name': 'Appointment',
+              'description': 'Annual checkup',
+              'link': 'https://example.com',
+              'startTime': '2026-09-14T09:00:00',
+              'endTime': '2026-09-14T10:00:00',
+              'recurrenceRule': null,
+              'seriesId': null,
+            }),
+            201,
+          );
+        }
+        return http.Response('', 204);
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final event = await repository.addEvent(
+        listId: 'list-1',
+        title: 'Appointment',
+        description: 'Annual checkup',
+        link: 'https://example.com',
+        startTime: DateTime(2026, 9, 14, 9),
+        endTime: DateTime(2026, 9, 14, 10),
+      );
+      await repository.updateEvent(event);
+
+      expect(event.description, 'Annual checkup');
+      expect(event.link, 'https://example.com');
+      for (final request in requests) {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['description'], 'Annual checkup');
+        expect(body['link'], 'https://example.com');
+      }
+    });
+
     test(
       'editOccurrence PUTs to the occurrence endpoint with the target query param',
       () async {
@@ -304,12 +349,16 @@ void main() {
           name: 'Standup (moved)',
           startTime: DateTime(2026, 9, 14, 10),
           endTime: DateTime(2026, 9, 14, 10, 15),
+          description: 'Agenda',
+          link: 'https://example.com',
           target: RecurrenceEditTarget.thisOccurrence,
         );
 
         expect(requestUri!.path, '/api/events/series-1/occurrences/2026-09-14');
         expect(requestUri!.queryParameters['target'], 'ThisOccurrence');
         expect(putBody!['name'], 'Standup (moved)');
+        expect(putBody!['description'], 'Agenda');
+        expect(putBody!['link'], 'https://example.com');
       },
     );
 

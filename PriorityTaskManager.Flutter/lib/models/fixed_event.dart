@@ -20,6 +20,8 @@ class FixedEvent extends HiveObject {
     required this.title,
     required this.startTime,
     required this.endTime,
+    this.description = '',
+    this.link = '',
     this.recurrenceRule,
     this.seriesId,
     this.originalOccurrenceDate,
@@ -40,6 +42,12 @@ class FixedEvent extends HiveObject {
   @HiveField(4)
   DateTime endTime;
 
+  @HiveField(7)
+  String description;
+
+  @HiveField(8)
+  String link;
+
   @HiveField(5)
   Map<dynamic, dynamic>? recurrenceRule;
 
@@ -54,13 +62,21 @@ class FixedEvent extends HiveObject {
   RecurrenceRule? get recurrenceRuleTyped =>
       RecurrenceRule.fromJson(recurrenceRule);
 
-  FixedEvent copyWith({String? title, DateTime? startTime, DateTime? endTime}) {
+  FixedEvent copyWith({
+    String? title,
+    DateTime? startTime,
+    DateTime? endTime,
+    String? description,
+    String? link,
+  }) {
     return FixedEvent(
       id: id,
       listId: listId,
       title: title ?? this.title,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
+      description: description ?? this.description,
+      link: link ?? this.link,
       recurrenceRule: recurrenceRule,
       seriesId: seriesId,
       originalOccurrenceDate: originalOccurrenceDate,

@@ -40,6 +40,8 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     RecurrenceRule? recurrenceRule,
   }) async {
     final repository = await ref.read(taskRepositoryProvider.future);
@@ -48,6 +50,8 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
       title: title,
       startTime: startTime,
       endTime: endTime,
+      description: description,
+      link: link,
       recurrenceRule: recurrenceRule,
     );
     ref.invalidateSelf();
@@ -79,6 +83,8 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     required String name,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     required RecurrenceEditTarget target,
     RecurrenceRule? recurrenceRule,
   }) async {
@@ -89,6 +95,8 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
       name: name,
       startTime: startTime,
       endTime: endTime,
+      description: description,
+      link: link,
       target: target,
       recurrenceRule: recurrenceRule,
     );

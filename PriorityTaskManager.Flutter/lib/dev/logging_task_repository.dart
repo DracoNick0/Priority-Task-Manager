@@ -164,6 +164,8 @@ class LoggingTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     RecurrenceRule? recurrenceRule,
   }) => _logged(
     'addEvent(listId: $listId, title: $title)',
@@ -172,6 +174,8 @@ class LoggingTaskRepository implements TaskRepository {
       title: title,
       startTime: startTime,
       endTime: endTime,
+      description: description,
+      link: link,
       recurrenceRule: recurrenceRule,
     ),
   );
@@ -191,6 +195,8 @@ class LoggingTaskRepository implements TaskRepository {
     required String name,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     required RecurrenceEditTarget target,
     RecurrenceRule? recurrenceRule,
   }) => _logged(
@@ -201,6 +207,8 @@ class LoggingTaskRepository implements TaskRepository {
       name: name,
       startTime: startTime,
       endTime: endTime,
+      description: description,
+      link: link,
       target: target,
       recurrenceRule: recurrenceRule,
     ),

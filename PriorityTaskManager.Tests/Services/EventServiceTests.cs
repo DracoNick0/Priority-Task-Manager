@@ -33,6 +33,30 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void EventDescriptionAndLink_ArePersistedAndUpdated()
+        {
+            var (service, _) = CreateService();
+            var evt = CreateValidEvent("Appointment");
+            evt.Description = "Annual checkup";
+            evt.Link = "https://example.com";
+            service.AddEvent(evt);
+
+            var update = new Event
+            {
+                Id = evt.Id,
+                Name = evt.Name,
+                Description = "Bring insurance card",
+                Link = "https://example.org",
+                StartTime = evt.StartTime,
+                EndTime = evt.EndTime
+            };
+
+            Assert.True(service.UpdateEvent(update));
+            Assert.Equal("Bring insurance card", service.GetEvent(evt.Id)!.Description);
+            Assert.Equal("https://example.org", service.GetEvent(evt.Id)!.Link);
+        }
+
+        [Fact]
         public void AddEvent_RejectsEndTimeBeforeStartTime()
         {
             var (service, data) = CreateService();
@@ -218,7 +242,8 @@ namespace PriorityTaskManager.Tests.Services
             var occurrenceDate = new DateTime(2026, 7, 13);
 
             var result = service.EditOccurrence(seriesEvent.Id, occurrenceDate, "Standup (moved)",
-                new DateTime(2026, 7, 13, 10, 0, 0), new DateTime(2026, 7, 13, 10, 15, 0), RecurrenceEditTarget.ThisOccurrence);
+                new DateTime(2026, 7, 13, 10, 0, 0), new DateTime(2026, 7, 13, 10, 15, 0),
+                RecurrenceEditTarget.ThisOccurrence, description: "Updated agenda", link: "https://example.com");
 
             Assert.True(result);
             var updated = service.GetEvent(seriesEvent.Id)!;
@@ -226,6 +251,11 @@ namespace PriorityTaskManager.Tests.Services
             var over = Assert.Single(updated.OccurrenceOverrides);
             Assert.Equal(occurrenceDate, over.OriginalOccurrenceDate);
             Assert.Equal("Standup (moved)", over.Name);
+            Assert.Equal("Updated agenda", over.Description);
+            Assert.Equal("https://example.com", over.Link);
+            var occurrence = Assert.Single(service.GetEventOccurrences(occurrenceDate, occurrenceDate));
+            Assert.Equal("Updated agenda", occurrence.Event.Description);
+            Assert.Equal("https://example.com", occurrence.Event.Link);
         }
 
         [Fact]

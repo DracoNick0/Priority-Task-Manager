@@ -18,6 +18,16 @@ namespace PriorityTaskManager.Models
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets the overridden description for this occurrence.
+        /// </summary>
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Gets or sets the overridden link for this occurrence.
+        /// </summary>
+        public string? Link { get; set; }
+
+        /// <summary>
         /// Gets or sets the overridden start time for this occurrence.
         /// </summary>
         public DateTime StartTime { get; set; }
@@ -34,6 +44,8 @@ namespace PriorityTaskManager.Models
         {
             OriginalOccurrenceDate = OriginalOccurrenceDate,
             Name = Name,
+            Description = Description,
+            Link = Link,
             StartTime = StartTime,
             EndTime = EndTime
         };

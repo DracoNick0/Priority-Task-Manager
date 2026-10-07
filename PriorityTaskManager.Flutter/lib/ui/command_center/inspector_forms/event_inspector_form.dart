@@ -31,6 +31,8 @@ class EventInspectorForm extends ConsumerStatefulWidget {
 
 class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _linkController;
   late DateTime _start;
   late DateTime _end;
   FixedEvent? _loadedFrom;
@@ -49,6 +51,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   void initState() {
     super.initState();
     _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _linkController = TextEditingController();
     _start = _roundUpToHour(DateTime.now());
     _end = _start.add(const Duration(hours: 1));
   }
@@ -77,6 +81,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
     if (identical(_loadedFrom, event)) return;
     _loadedFrom = event;
     _titleController.text = event.title;
+    _descriptionController.text = event.description;
+    _linkController.text = event.link;
     _start = event.startTime;
     _end = event.endTime;
   }
@@ -84,6 +90,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   @override
   void dispose() {
     _titleController.dispose();
+    _descriptionController.dispose();
+    _linkController.dispose();
     super.dispose();
   }
 
@@ -172,6 +180,27 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
             errorText: _titleError,
           ),
           onChanged: _clearTitleError,
+        ),
+        const SizedBox(height: AppTheme.spacingMd),
+        TextField(
+          controller: _descriptionController,
+          decoration: const InputDecoration(
+            labelText: 'Description',
+            prefixIcon: Icon(Icons.notes),
+            alignLabelWithHint: true,
+          ),
+          minLines: 2,
+          maxLines: 4,
+        ),
+        const SizedBox(height: AppTheme.spacingMd),
+        TextField(
+          controller: _linkController,
+          decoration: const InputDecoration(
+            labelText: 'Link',
+            hintText: 'https://example.com',
+            prefixIcon: Icon(Icons.link),
+          ),
+          keyboardType: TextInputType.url,
         ),
         const SizedBox(height: AppTheme.spacingMd),
         Card(
@@ -306,6 +335,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
     if (existing == null) {
       final created = await notifier.addEvent(
         title: title,
+        description: _descriptionController.text.trim(),
+        link: _linkController.text.trim(),
         startTime: _start,
         endTime: _end,
         recurrenceRule: _recurrenceRule,
@@ -325,6 +356,8 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
         seriesId: existing.seriesId!,
         occurrenceDate: existing.originalOccurrenceDate ?? existing.startTime,
         name: title,
+        description: _descriptionController.text.trim(),
+        link: _linkController.text.trim(),
         startTime: _start,
         endTime: _end,
         target: target,
@@ -338,7 +371,13 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
       }
     } else {
       await notifier.updateEvent(
-        existing.copyWith(title: title, startTime: _start, endTime: _end),
+        existing.copyWith(
+          title: title,
+          description: _descriptionController.text.trim(),
+          link: _linkController.text.trim(),
+          startTime: _start,
+          endTime: _end,
+        ),
       );
     }
   }

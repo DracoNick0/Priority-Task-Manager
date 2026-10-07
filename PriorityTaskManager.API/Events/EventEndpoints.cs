@@ -75,7 +75,7 @@ namespace PriorityTaskManager.API.Events
 
 				try
 				{
-					var edited = taskManagerService.EditEventOccurrence(seriesId, date, request.Name, request.StartTime, request.EndTime, editTarget, request.RecurrenceRule);
+					var edited = taskManagerService.EditEventOccurrence(seriesId, date, request.Name, request.StartTime, request.EndTime, editTarget, request.RecurrenceRule, request.Description, request.Link);
 					return edited ? Results.Ok(taskManagerService.GetEvent(seriesId)!.ToResponse()) : Results.NotFound();
 				}
 				catch (ArgumentException error)

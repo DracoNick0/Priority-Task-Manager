@@ -87,6 +87,8 @@ namespace PriorityTaskManager.Services
                         Id = series.Id,
                         SeriesId = series.SeriesId,
                         Name = edited?.Name ?? series.Name,
+                        Description = edited?.Description ?? series.Description,
+                        Link = edited?.Link ?? series.Link,
                         StartTime = start,
                         EndTime = end,
                         RecurrenceRule = series.RecurrenceRule
@@ -104,6 +106,8 @@ namespace PriorityTaskManager.Services
 
             ValidateTimeRange(updatedEvent.StartTime, updatedEvent.EndTime);
             existingEvent.Name = updatedEvent.Name;
+            existingEvent.Description = updatedEvent.Description;
+            existingEvent.Link = updatedEvent.Link;
             existingEvent.StartTime = updatedEvent.StartTime;
             existingEvent.EndTime = updatedEvent.EndTime;
             _persistenceService.SaveData(_data);
@@ -132,7 +136,7 @@ namespace PriorityTaskManager.Services
         }
 
         /// <inheritdoc />
-        public bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null)
+        public bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null, string description = "", string? link = null)
         {
             ValidateTimeRange(startTime, endTime);
             var seriesEvent = _data.Events.Find(e => e.Id == seriesId);
@@ -164,6 +168,8 @@ namespace PriorityTaskManager.Services
                     {
                         OriginalOccurrenceDate = occurrenceDateOnly,
                         Name = name,
+                        Description = description,
+                        Link = link,
                         StartTime = startTime,
                         EndTime = endTime
                     });
@@ -174,13 +180,23 @@ namespace PriorityTaskManager.Services
                             Array.Empty<RecurrenceException>(), seriesEvent.RecurrenceRule.SeriesStartDate, occurrenceDateOnly.AddDays(-1)).Count == 0)
                     {
                         seriesEvent.Name = name;
+                        seriesEvent.Description = description;
+                        seriesEvent.Link = link;
                         seriesEvent.StartTime = occurrenceDateOnly.Add(startTime.TimeOfDay);
                         seriesEvent.EndTime = seriesEvent.StartTime.Add(endTime - startTime);
                         seriesEvent.RecurrenceRule = replacementRule ?? seriesEvent.RecurrenceRule;
                         seriesEvent.Exceptions.RemoveAll(e => e.OriginalOccurrenceDate.Date == occurrenceDateOnly);
                         seriesEvent.OccurrenceOverrides.RemoveAll(o => o.OriginalOccurrenceDate.Date == occurrenceDateOnly);
                         if (startTime.Date != occurrenceDateOnly)
-                            seriesEvent.OccurrenceOverrides.Add(new EventOccurrenceOverride { OriginalOccurrenceDate = occurrenceDateOnly, Name = name, StartTime = startTime, EndTime = endTime });
+                            seriesEvent.OccurrenceOverrides.Add(new EventOccurrenceOverride
+                            {
+                                OriginalOccurrenceDate = occurrenceDateOnly,
+                                Name = name,
+                                Description = description,
+                                Link = link,
+                                StartTime = startTime,
+                                EndTime = endTime
+                            });
                         break;
                     }
                     var split = RecurrenceSplitHelper.Split(seriesEvent.RecurrenceRule, seriesEvent.Exceptions, occurrenceDateOnly);
@@ -195,6 +211,8 @@ namespace PriorityTaskManager.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = name,
+                        Description = description,
+                        Link = link,
                         StartTime = occurrenceDateOnly.Add(startTime.TimeOfDay),
                         EndTime = occurrenceDateOnly.Add(startTime.TimeOfDay).Add(endTime - startTime),
                         RecurrenceRule = replacementRule ?? split.NewRule,
@@ -202,13 +220,15 @@ namespace PriorityTaskManager.Services
                         OccurrenceOverrides = followingOverrides
                     };
                     if (startTime.Date != occurrenceDateOnly)
-                        newSeriesEvent.OccurrenceOverrides.Add(new EventOccurrenceOverride { OriginalOccurrenceDate = occurrenceDateOnly, Name = name, StartTime = startTime, EndTime = endTime });
+                        newSeriesEvent.OccurrenceOverrides.Add(new EventOccurrenceOverride { OriginalOccurrenceDate = occurrenceDateOnly, Name = name, Description = description, Link = link, StartTime = startTime, EndTime = endTime });
                     newSeriesEvent.SeriesId = newSeriesEvent.Id;
                     _data.Events.Add(newSeriesEvent);
                     break;
 
                 case RecurrenceEditTarget.AllOccurrences:
                     seriesEvent.Name = name;
+                    seriesEvent.Description = description;
+                    seriesEvent.Link = link;
                     seriesEvent.StartTime = seriesEvent.StartTime.Date.Add(startTime.TimeOfDay);
                     seriesEvent.EndTime = seriesEvent.StartTime.Add(endTime - startTime);
                     if (replacementRule != null)

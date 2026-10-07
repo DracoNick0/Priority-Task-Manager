@@ -22,6 +22,8 @@ class FixedEventAdapter extends TypeAdapter<FixedEvent> {
       title: fields[2] as String,
       startTime: fields[3] as DateTime,
       endTime: fields[4] as DateTime,
+      description: fields[7] == null ? '' : fields[7] as String,
+      link: fields[8] == null ? '' : fields[8] as String,
       recurrenceRule: (fields[5] as Map?)?.cast<dynamic, dynamic>(),
       seriesId: fields[6] as String?,
     );
@@ -30,7 +32,7 @@ class FixedEventAdapter extends TypeAdapter<FixedEvent> {
   @override
   void write(BinaryWriter writer, FixedEvent obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class FixedEventAdapter extends TypeAdapter<FixedEvent> {
       ..writeByte(5)
       ..write(obj.recurrenceRule)
       ..writeByte(6)
-      ..write(obj.seriesId);
+      ..write(obj.seriesId)
+      ..writeByte(7)
+      ..write(obj.description)
+      ..writeByte(8)
+      ..write(obj.link);
   }
 
   @override

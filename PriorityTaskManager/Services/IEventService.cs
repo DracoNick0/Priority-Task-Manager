@@ -64,7 +64,7 @@ namespace PriorityTaskManager.Services
         /// single occurrence and has no series pattern to change.
         /// </param>
         /// <returns>True if the series was found and edited; otherwise, false.</returns>
-        bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null);
+        bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null, string description = "", string? link = null);
 
         /// <summary>
         /// Deletes a single occurrence, this-and-following occurrences, or the whole series of the recurring

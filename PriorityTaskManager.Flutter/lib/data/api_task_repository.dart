@@ -515,6 +515,8 @@ class ApiTaskRepository implements TaskRepository {
             : '${event['id']}_${_dateOnly(DateTime.parse(original))}',
         listId: listId,
         title: event['name'] as String,
+        description: event['description'] as String? ?? '',
+        link: event['link'] as String? ?? '',
         startTime: DateTime.parse(event['startTime'] as String),
         endTime: DateTime.parse(event['endTime'] as String),
         seriesId: event['seriesId'] as String?,
@@ -531,6 +533,8 @@ class ApiTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     RecurrenceRule? recurrenceRule,
   }) async {
     final response = await _send(
@@ -540,6 +544,8 @@ class ApiTaskRepository implements TaskRepository {
         'name': title,
         'startTime': startTime.toIso8601String(),
         'endTime': endTime.toIso8601String(),
+        'description': description,
+        'link': link,
         if (recurrenceRule != null) 'recurrenceRule': recurrenceRule.toJson(),
       },
     );
@@ -556,6 +562,8 @@ class ApiTaskRepository implements TaskRepository {
       '/api/events/${event.id}',
       body: {
         'name': event.title,
+        'description': event.description,
+        'link': event.link.isEmpty ? null : event.link,
         'startTime': event.startTime.toIso8601String(),
         'endTime': event.endTime.toIso8601String(),
         // Round-tripped rather than dropped: there is no picker UI to set this
@@ -585,6 +593,8 @@ class ApiTaskRepository implements TaskRepository {
     required String name,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     required RecurrenceEditTarget target,
     RecurrenceRule? recurrenceRule,
   }) async {
@@ -594,6 +604,8 @@ class ApiTaskRepository implements TaskRepository {
           '?target=${target.apiValue}',
       body: {
         'name': name,
+        'description': description,
+        'link': link,
         'startTime': startTime.toIso8601String(),
         'endTime': endTime.toIso8601String(),
         if (recurrenceRule != null) 'recurrenceRule': recurrenceRule.toJson(),
@@ -619,6 +631,8 @@ class ApiTaskRepository implements TaskRepository {
         id: json['id'] as String,
         listId: listId,
         title: json['name'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        link: json['link'] as String? ?? '',
         startTime: DateTime.parse(json['startTime'] as String),
         endTime: DateTime.parse(json['endTime'] as String),
         recurrenceRule: json['recurrenceRule'] as Map<String, dynamic>?,

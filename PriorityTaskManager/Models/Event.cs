@@ -16,6 +16,16 @@ namespace PriorityTaskManager.Models
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets additional details about the event.
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets an optional URL associated with the event.
+        /// </summary>
+        public string? Link { get; set; }
+
+        /// <summary>
         /// Gets or sets the date and time the event begins.
         /// </summary>
         public DateTime StartTime { get; set; }

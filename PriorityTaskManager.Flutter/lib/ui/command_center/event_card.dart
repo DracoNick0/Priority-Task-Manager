@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/event_providers.dart';
 import '../theme/app_theme.dart';
@@ -62,6 +63,47 @@ class EventCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: Colors.white70),
                           ),
+                          if (event.description.isNotEmpty) ...[
+                            const SizedBox(height: AppTheme.spacingXs),
+                            Text(
+                              event.description,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.white70),
+                            ),
+                          ],
+                          if (event.link.isNotEmpty) ...[
+                            const SizedBox(height: AppTheme.spacingXs),
+                            InkWell(
+                              onTap: () => _openLink(context, event.link),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.open_in_new,
+                                    size: 14,
+                                    color: Colors.lightBlueAccent,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingXs),
+                                  Expanded(
+                                    child: Text(
+                                      event.link,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Colors.lightBlueAccent,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -73,6 +115,26 @@ class EventCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openLink(BuildContext context, String link) async {
+    final uri = Uri.tryParse(link);
+    if (uri == null ||
+        !uri.hasAuthority ||
+        !{'http', 'https'}.contains(uri.scheme.toLowerCase())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Event link must be a valid http or https URL.'),
+        ),
+      );
+      return;
+    }
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open event link.')),
+      );
+    }
   }
 }
 

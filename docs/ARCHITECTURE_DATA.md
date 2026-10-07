@@ -42,7 +42,7 @@ The Flutter client's Hive store is the local source of truth for Guest task/list
 | `Event` | Blocked time interval used by scheduling |
 | `RecurrenceRule` | Shared recurrence pattern/end-condition foundation for recurring tasks and recurring events, modeled as a polymorphic hierarchy (see below); embedded on `Event` (`RecurrenceRule?`, `SeriesId`, `Exceptions`, `OccurrenceOverrides`), not yet on `TaskItem` |
 | `RecurrenceException` | A single cancelled occurrence of a `RecurrenceRule` series, keyed by original occurrence date |
-| `EventOccurrenceOverride` | A single edited (not cancelled) occurrence of a recurring `Event`, keyed by original occurrence date, carrying its own `Name`/`StartTime`/`EndTime`; distinct from `RecurrenceException`, which is cancellation-only |
+| `EventOccurrenceOverride` | A single edited (not cancelled) occurrence of a recurring `Event`, keyed by original occurrence date, carrying its own `Name`/`Description`/`Link`/`StartTime`/`EndTime`; distinct from `RecurrenceException`, which is cancellation-only |
 | `ScheduleWindow` / `TimeSlot` | Available work time after applying work hours and events |
 | `ScheduledChunk` | Scheduled portion of a task |
 | `PrioritizationResult` | Scheduler output: tasks, unscheduled tasks, and history |

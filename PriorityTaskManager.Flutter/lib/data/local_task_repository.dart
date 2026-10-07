@@ -210,6 +210,8 @@ class LocalTaskRepository implements TaskRepository {
     required String title,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     RecurrenceRule? recurrenceRule,
   }) async {
     // Guests have no server-side series concept; the UI never passes a
@@ -221,6 +223,8 @@ class LocalTaskRepository implements TaskRepository {
       title: title,
       startTime: startTime,
       endTime: endTime,
+      description: description,
+      link: link,
     );
     await _eventsBox.put(event.id, event);
     return event;
@@ -247,6 +251,8 @@ class LocalTaskRepository implements TaskRepository {
     required String name,
     required DateTime startTime,
     required DateTime endTime,
+    String description = '',
+    String link = '',
     required RecurrenceEditTarget target,
     RecurrenceRule? recurrenceRule,
   }) {
