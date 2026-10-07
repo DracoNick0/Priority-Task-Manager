@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/user_profile.dart';
+import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/user_profile_provider.dart';
 import '../../theme/app_theme.dart';
 import 'settings_fields.dart';
@@ -28,6 +29,7 @@ class _DefaultsInspectorFormState extends ConsumerState<DefaultsInspectorForm> {
   double? _slackThresholdFocus;
   double? _slackThresholdSafe;
   UserProfile? _loadedFrom;
+  bool _showWorkHoursError = false;
 
   void _loadFrom(UserProfile profile) {
     if (identical(_loadedFrom, profile)) return;
@@ -99,8 +101,9 @@ class _DefaultsInspectorFormState extends ConsumerState<DefaultsInspectorForm> {
           child: WorkHoursField(
             startMinutes: _workStartMinutes!,
             endMinutes: _workEndMinutes!,
-            onStartChanged: (v) => setState(() => _workStartMinutes = v),
-            onEndChanged: (v) => setState(() => _workEndMinutes = v),
+            hasError: _showWorkHoursError,
+            onStartChanged: (v) => _updateWorkHours(startMinutes: v),
+            onEndChanged: (v) => _updateWorkHours(endMinutes: v),
           ),
         ),
         const SizedBox(height: AppTheme.spacingMd),
@@ -138,7 +141,26 @@ class _DefaultsInspectorFormState extends ConsumerState<DefaultsInspectorForm> {
     );
   }
 
+  void _updateWorkHours({int? startMinutes, int? endMinutes}) {
+    setState(() {
+      if (startMinutes != null) _workStartMinutes = startMinutes;
+      if (endMinutes != null) _workEndMinutes = endMinutes;
+      if (_showWorkHoursError) {
+        _showWorkHoursError = _workEndMinutes! <= _workStartMinutes!;
+      }
+    });
+  }
+
   Future<void> _save(UserProfile profile) async {
+    if (_workEndMinutes! <= _workStartMinutes!) {
+      setState(() => _showWorkHoursError = true);
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'Work hours must end after they start.',
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
+    setState(() => _showWorkHoursError = false);
     final updated = profile.copyWith(
       defaultListSortOption: _sortOption,
       schedulingMode: _schedulingMode,

@@ -115,12 +115,14 @@ class WorkHoursField extends StatelessWidget {
     required this.endMinutes,
     required this.onStartChanged,
     required this.onEndChanged,
+    this.hasError = false,
   });
 
   final int startMinutes;
   final int endMinutes;
   final ValueChanged<int> onStartChanged;
   final ValueChanged<int> onEndChanged;
+  final bool hasError;
 
   Future<void> _pick(
     BuildContext context,
@@ -145,21 +147,47 @@ class WorkHoursField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final colorScheme = Theme.of(context).colorScheme;
+    final buttonStyle = hasError
+        ? OutlinedButton.styleFrom(
+            foregroundColor: colorScheme.error,
+            side: BorderSide(color: colorScheme.error),
+          )
+        : null;
+    return Column(
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => _pick(context, startMinutes, onStartChanged),
-            child: Text('Start: ${_format(context, startMinutes)}'),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                style: buttonStyle,
+                onPressed: () => _pick(context, startMinutes, onStartChanged),
+                child: Text('Start: ${_format(context, startMinutes)}'),
+              ),
+            ),
+            const SizedBox(width: AppTheme.spacingSm),
+            Expanded(
+              child: OutlinedButton(
+                style: buttonStyle,
+                onPressed: () => _pick(context, endMinutes, onEndChanged),
+                child: Text('End: ${_format(context, endMinutes)}'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppTheme.spacingSm),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => _pick(context, endMinutes, onEndChanged),
-            child: Text('End: ${_format(context, endMinutes)}'),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: AppTheme.spacingXs),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Work hours must end after they start.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
+              ),
+            ),
           ),
-        ),
       ],
     );
   }

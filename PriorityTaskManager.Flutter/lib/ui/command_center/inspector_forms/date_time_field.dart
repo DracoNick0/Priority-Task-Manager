@@ -116,6 +116,7 @@ class DateTimeCompactRow extends StatelessWidget {
     required this.onPick,
     this.label,
     this.editIconColor,
+    this.hasError = false,
   });
 
   final IconData icon;
@@ -127,6 +128,7 @@ class DateTimeCompactRow extends StatelessWidget {
 
   /// Defaults to the theme's primary color.
   final Color? editIconColor;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -134,30 +136,49 @@ class DateTimeCompactRow extends StatelessWidget {
     return InkWell(
       onTap: onPick,
       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingXs),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingXs,
+          vertical: AppTheme.spacingXs,
+        ),
+        decoration: hasError
+            ? BoxDecoration(
+                border: Border.all(color: colorScheme.error),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              )
+            : null,
         child: Row(
           children: [
-            Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+            Icon(
+              icon,
+              size: 18,
+              color: hasError ? colorScheme.error : colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: AppTheme.spacingSm),
             if (label != null)
               SizedBox(
                 width: 40,
                 child: Text(
                   label!,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: hasError ? colorScheme.error : null,
+                  ),
                 ),
               ),
             Expanded(
               child: Text(
                 dateTimeRowFormat.format(value.toLocal()),
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: hasError ? colorScheme.error : null,
+                ),
               ),
             ),
             Icon(
               Icons.edit_calendar_outlined,
               size: 18,
-              color: editIconColor ?? colorScheme.primary,
+              color: hasError
+                  ? colorScheme.error
+                  : editIconColor ?? colorScheme.primary,
             ),
           ],
         ),

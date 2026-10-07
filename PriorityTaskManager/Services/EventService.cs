@@ -25,6 +25,7 @@ namespace PriorityTaskManager.Services
         /// <inheritdoc />
         public void AddEvent(Event newEvent)
         {
+            ValidateTimeRange(newEvent.StartTime, newEvent.EndTime);
             newEvent.Id = Guid.NewGuid();
             // A recurrence rule marks this event as the base occurrence defining a new series.
             if (newEvent.RecurrenceRule != null)
@@ -101,6 +102,7 @@ namespace PriorityTaskManager.Services
             if (existingEvent == null)
                 return false;
 
+            ValidateTimeRange(updatedEvent.StartTime, updatedEvent.EndTime);
             existingEvent.Name = updatedEvent.Name;
             existingEvent.StartTime = updatedEvent.StartTime;
             existingEvent.EndTime = updatedEvent.EndTime;
@@ -132,6 +134,7 @@ namespace PriorityTaskManager.Services
         /// <inheritdoc />
         public bool EditOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null)
         {
+            ValidateTimeRange(startTime, endTime);
             var seriesEvent = _data.Events.Find(e => e.Id == seriesId);
             if (seriesEvent?.RecurrenceRule == null)
                 return false;
@@ -221,6 +224,14 @@ namespace PriorityTaskManager.Services
 
             _persistenceService.SaveData(_data);
             return true;
+        }
+
+        private static void ValidateTimeRange(DateTime startTime, DateTime endTime)
+        {
+            if (endTime <= startTime)
+            {
+                throw new ArgumentException("Event end time must be after its start time.", nameof(endTime));
+            }
         }
 
         /// <inheritdoc />

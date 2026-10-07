@@ -37,6 +37,10 @@ namespace PriorityTaskManager.API.Lists
 				{
 					return Results.Conflict(new { error = ex.Message });
 				}
+				catch (ArgumentException ex)
+				{
+					return Results.BadRequest(new { error = ex.Message });
+				}
 				return Results.Created($"/api/lists/{list.Id}", list.ToResponse());
 			});
 
@@ -53,6 +57,10 @@ namespace PriorityTaskManager.API.Lists
 				catch (InvalidOperationException ex)
 				{
 					return Results.Conflict(new { error = ex.Message });
+				}
+				catch (ArgumentException ex)
+				{
+					return Results.BadRequest(new { error = ex.Message });
 				}
 				return Results.Ok(taskManagerService.GetListById(id)!.ToResponse());
 			});

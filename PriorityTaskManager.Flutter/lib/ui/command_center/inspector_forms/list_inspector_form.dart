@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/task_list.dart';
+import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/selection_provider.dart';
+import '../../../providers/user_profile_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../../utils/iterable_extensions.dart';
 import '../../theme/app_theme.dart';
@@ -36,6 +38,7 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
   double? _slackThresholdFocus;
   double? _slackThresholdSafe;
   DateTime? _simulatedTime;
+  bool _showWorkHoursError = false;
 
   @override
   void initState() {
@@ -157,8 +160,9 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
           child: WorkHoursField(
             startMinutes: _workStartMinutes ?? 9 * 60,
             endMinutes: _workEndMinutes ?? 17 * 60,
-            onStartChanged: (v) => setState(() => _workStartMinutes = v),
-            onEndChanged: (v) => setState(() => _workEndMinutes = v),
+            hasError: _showWorkHoursError,
+            onStartChanged: (v) => _updateWorkHours(startMinutes: v),
+            onEndChanged: (v) => _updateWorkHours(endMinutes: v),
           ),
         ),
         OverrideToggle(
@@ -226,6 +230,22 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
   Future<void> _save(TaskList list) async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
+    final profile = ref.read(userProfileProvider).asData?.value;
+    final workStartMinutes =
+        _workStartMinutes ?? profile?.workStartMinutes ?? list.workStartMinutes;
+    final workEndMinutes =
+        _workEndMinutes ?? profile?.workEndMinutes ?? list.workEndMinutes;
+    if (workStartMinutes != null &&
+        workEndMinutes != null &&
+        workEndMinutes <= workStartMinutes) {
+      setState(() => _showWorkHoursError = true);
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'Work hours must end after they start.',
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
+    setState(() => _showWorkHoursError = false);
     await ref
         .read(taskListsProvider.notifier)
         .updateList(
@@ -251,6 +271,20 @@ class _ListInspectorFormState extends ConsumerState<ListInspectorForm> {
             clearSimulatedTime: _simulatedTime == null,
           ),
         );
+  }
+
+  void _updateWorkHours({int? startMinutes, int? endMinutes}) {
+    setState(() {
+      if (startMinutes != null) _workStartMinutes = startMinutes;
+      if (endMinutes != null) _workEndMinutes = endMinutes;
+      if (_showWorkHoursError) {
+        final profile = ref.read(userProfileProvider).asData?.value;
+        final start =
+            _workStartMinutes ?? profile?.workStartMinutes ?? 9 * 60;
+        final end = _workEndMinutes ?? profile?.workEndMinutes ?? 17 * 60;
+        _showWorkHoursError = end <= start;
+      }
+    });
   }
 
   Future<void> _delete(TaskList list) async {

@@ -37,8 +37,11 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
   RecurrenceRule? _recurrenceRule;
   bool _appliedDefaultStart = false;
   String? _titleError;
+  bool _showTimeRangeError = false;
 
   static const String _titleRequiredWarning = 'Enter an event name.';
+  static const String _timeRangeWarning =
+      'Event end time must be after its start time.';
 
   bool get _isEditing => widget.eventId != null;
 
@@ -182,12 +185,14 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
                   icon: Icons.play_circle_outline,
                   label: 'Start',
                   value: _start,
+                  hasError: _showTimeRangeError,
                   onPick: () => _pickDateTime(_start, (d) {
                     final shift = d.difference(_start);
                     setState(() {
                       _appliedDefaultStart = true;
                       _start = d;
                       _end = _end.add(shift);
+                      _refreshTimeRangeError();
                     });
                   }),
                 ),
@@ -196,14 +201,32 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
                   icon: Icons.stop_circle_outlined,
                   label: 'End',
                   value: _end,
+                  hasError: _showTimeRangeError,
                   onPick: () => _pickDateTime(
                     _end,
                     (d) => setState(() {
                       _appliedDefaultStart = true;
                       _end = d;
+                      _refreshTimeRangeError();
                     }),
                   ),
                 ),
+                if (_showTimeRangeError)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: AppTheme.spacingXs,
+                      left: AppTheme.spacingSm,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _timeRangeWarning,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -254,7 +277,21 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
     if (picked != null) onPicked(picked);
   }
 
+  void _refreshTimeRangeError() {
+    if (_showTimeRangeError) {
+      _showTimeRangeError = !_end.isAfter(_start);
+    }
+  }
+
   Future<void> _save(FixedEvent? existing) async {
+    if (!_end.isAfter(_start)) {
+      setState(() => _showTimeRangeError = true);
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        _timeRangeWarning,
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       setState(() => _titleError = _titleRequiredWarning);

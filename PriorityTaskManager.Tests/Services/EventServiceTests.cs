@@ -13,6 +13,13 @@ namespace PriorityTaskManager.Tests.Services
             return (service, data);
         }
 
+        private static Event CreateValidEvent(string name) => new()
+        {
+            Name = name,
+            StartTime = new DateTime(2026, 7, 10, 9, 0, 0),
+            EndTime = new DateTime(2026, 7, 10, 10, 0, 0)
+        };
+
         [Fact]
         public void AddEvent_AssignsIdAndPersists()
         {
@@ -23,6 +30,22 @@ namespace PriorityTaskManager.Tests.Services
 
             Assert.NotEqual(Guid.Empty, newEvent.Id);
             Assert.Single(data.Events);
+        }
+
+        [Fact]
+        public void AddEvent_RejectsEndTimeBeforeStartTime()
+        {
+            var (service, data) = CreateService();
+            var invalidEvent = new Event
+            {
+                Name = "Invalid",
+                StartTime = new DateTime(2026, 7, 10, 10, 0, 0),
+                EndTime = new DateTime(2026, 7, 10, 9, 0, 0)
+            };
+
+            Assert.Throws<ArgumentException>(() => service.AddEvent(invalidEvent));
+            Assert.Empty(data.Events);
+            Assert.Equal(Guid.Empty, invalidEvent.Id);
         }
 
         [Fact]
@@ -50,7 +73,7 @@ namespace PriorityTaskManager.Tests.Services
         public void AddEvent_WithoutRecurrenceRule_LeavesSeriesIdNull()
         {
             var (service, _) = CreateService();
-            var newEvent = new Event { Name = "Doctor" };
+            var newEvent = CreateValidEvent("Doctor");
 
             service.AddEvent(newEvent);
 
@@ -61,7 +84,7 @@ namespace PriorityTaskManager.Tests.Services
         public void GetEvent_ReturnsMatchingEvent_WhenPresent()
         {
             var (service, _) = CreateService();
-            var newEvent = new Event { Name = "Doctor" };
+            var newEvent = CreateValidEvent("Doctor");
             service.AddEvent(newEvent);
 
             var found = service.GetEvent(newEvent.Id);
@@ -103,10 +126,35 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void UpdateEvent_RejectsEndTimeBeforeStartTime_WithoutChangingEvent()
+        {
+            var (service, _) = CreateService();
+            var original = new Event
+            {
+                Name = "Doctor",
+                StartTime = new DateTime(2026, 7, 10, 9, 0, 0),
+                EndTime = new DateTime(2026, 7, 10, 10, 0, 0)
+            };
+            service.AddEvent(original);
+
+            var invalidUpdate = new Event
+            {
+                Id = original.Id,
+                Name = "Invalid",
+                StartTime = new DateTime(2026, 7, 11, 10, 0, 0),
+                EndTime = new DateTime(2026, 7, 11, 9, 0, 0)
+            };
+
+            Assert.Throws<ArgumentException>(() => service.UpdateEvent(invalidUpdate));
+            Assert.Equal("Doctor", service.GetEvent(original.Id)!.Name);
+            Assert.Equal(new DateTime(2026, 7, 10, 9, 0, 0), original.StartTime);
+        }
+
+        [Fact]
         public void DeleteEvent_RemovesEvent_AndReturnsTrue()
         {
             var (service, data) = CreateService();
-            var newEvent = new Event { Name = "Doctor" };
+            var newEvent = CreateValidEvent("Doctor");
             service.AddEvent(newEvent);
 
             var result = service.DeleteEvent(newEvent.Id);
@@ -127,8 +175,8 @@ namespace PriorityTaskManager.Tests.Services
         public void ClearEvents_RemovesAllEvents()
         {
             var (service, data) = CreateService();
-            service.AddEvent(new Event { Name = "A" });
-            service.AddEvent(new Event { Name = "B" });
+            service.AddEvent(CreateValidEvent("A"));
+            service.AddEvent(CreateValidEvent("B"));
 
             service.ClearEvents();
 
@@ -139,8 +187,8 @@ namespace PriorityTaskManager.Tests.Services
         public void GetAllEvents_ReturnsAllAddedEvents()
         {
             var (service, _) = CreateService();
-            service.AddEvent(new Event { Name = "A" });
-            service.AddEvent(new Event { Name = "B" });
+            service.AddEvent(CreateValidEvent("A"));
+            service.AddEvent(CreateValidEvent("B"));
 
             Assert.Equal(2, service.GetAllEvents().Count());
         }
@@ -178,6 +226,23 @@ namespace PriorityTaskManager.Tests.Services
             var over = Assert.Single(updated.OccurrenceOverrides);
             Assert.Equal(occurrenceDate, over.OriginalOccurrenceDate);
             Assert.Equal("Standup (moved)", over.Name);
+        }
+
+        [Fact]
+        public void EditOccurrence_RejectsEndTimeBeforeStartTime()
+        {
+            var (service, _) = CreateService();
+            var seriesEvent = AddRecurringWeeklyEvent(service);
+            var occurrenceDate = new DateTime(2026, 7, 13);
+
+            Assert.Throws<ArgumentException>(() => service.EditOccurrence(
+                seriesEvent.Id,
+                occurrenceDate,
+                "Invalid",
+                occurrenceDate.AddHours(10),
+                occurrenceDate.AddHours(9),
+                RecurrenceEditTarget.ThisOccurrence));
+            Assert.Empty(seriesEvent.OccurrenceOverrides);
         }
 
         [Fact]
@@ -439,7 +504,7 @@ namespace PriorityTaskManager.Tests.Services
         public void EditOccurrence_ReturnsFalse_WhenSeriesNotFoundOrNotRecurring()
         {
             var (service, _) = CreateService();
-            service.AddEvent(new Event { Name = "Plain" });
+            service.AddEvent(CreateValidEvent("Plain"));
 
             Assert.False(service.EditOccurrence(Guid.NewGuid(), DateTime.Today, "X", DateTime.Today, DateTime.Today.AddHours(1), RecurrenceEditTarget.ThisOccurrence));
         }
@@ -489,7 +554,7 @@ namespace PriorityTaskManager.Tests.Services
         public void DeleteOccurrence_ReturnsFalse_WhenSeriesNotFoundOrNotRecurring()
         {
             var (service, _) = CreateService();
-            service.AddEvent(new Event { Name = "Plain" });
+            service.AddEvent(CreateValidEvent("Plain"));
 
             Assert.False(service.DeleteOccurrence(Guid.NewGuid(), DateTime.Today, RecurrenceEditTarget.ThisOccurrence));
         }

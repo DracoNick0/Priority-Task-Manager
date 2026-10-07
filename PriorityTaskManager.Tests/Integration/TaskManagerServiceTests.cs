@@ -370,6 +370,20 @@ namespace PriorityTaskManager.Tests.Integration
             }
 
             [Fact]
+            public void AddList_WithEndTimeBeforeStartTime_ShouldThrowArgumentException()
+            {
+                var list = new TaskList
+                {
+                    Name = "Invalid Hours",
+                    WorkStartTime = new TimeOnly(17, 0),
+                    WorkEndTime = new TimeOnly(9, 0)
+                };
+
+                Assert.Throws<ArgumentException>(() => _TMS.AddList(list));
+                Assert.Null(_TMS.GetListByName("Invalid Hours"));
+            }
+
+            [Fact]
             public void DeleteList_WhenListExists_ShouldRemoveListAndAssociatedTasks()
             {
                 // Arrange
@@ -405,6 +419,24 @@ namespace PriorityTaskManager.Tests.Integration
                 // Assert
                 Assert.NotNull(updatedList);
                 Assert.Equal(SortOption.DueDate, updatedList.SortOption);
+            }
+
+            [Fact]
+            public void UpdateList_WithEndTimeBeforeStartTime_ShouldThrowArgumentExceptionWithoutChangingList()
+            {
+                var list = new TaskList { Name = "Valid Hours" };
+                _TMS.AddList(list);
+                var invalidUpdate = new TaskList
+                {
+                    Id = list.Id,
+                    Name = list.Name,
+                    WorkStartTime = new TimeOnly(17, 0),
+                    WorkEndTime = new TimeOnly(9, 0)
+                };
+
+                Assert.Throws<ArgumentException>(() => _TMS.UpdateList(invalidUpdate));
+                Assert.Equal(new TimeOnly(9, 0), list.WorkStartTime);
+                Assert.Equal(new TimeOnly(17, 0), list.WorkEndTime);
             }
 
             [Fact]
@@ -458,7 +490,12 @@ namespace PriorityTaskManager.Tests.Integration
             public void DeleteEvent_WhenEventExists_ShouldRemoveEvent()
             {
                 // Arrange
-                var newEvent = new Event { Name = "Event to delete" };
+                var newEvent = new Event
+                {
+                    Name = "Event to delete",
+                    StartTime = DateTime.Today.AddHours(9),
+                    EndTime = DateTime.Today.AddHours(10)
+                };
                 _TMS.AddEvent(newEvent);
                 var eventId = newEvent.Id;
                 Assert.Single(_TMS.GetAllEvents());
@@ -475,7 +512,12 @@ namespace PriorityTaskManager.Tests.Integration
             public void UpdateEvent_WhenEventExists_ShouldUpdateEventDetails()
             {
                 // Arrange
-                var newEvent = new Event { Name = "Old Name", StartTime = DateTime.Now };
+                var newEvent = new Event
+                {
+                    Name = "Old Name",
+                    StartTime = DateTime.Now,
+                    EndTime = DateTime.Now.AddHours(1)
+                };
                 _TMS.AddEvent(newEvent);
 
                 // Act
@@ -677,6 +719,20 @@ namespace PriorityTaskManager.Tests.Integration
 
                 // Assert
                 Assert.Equal(newStartTime, updatedProfile.WorkStartTime);
+            }
+
+            [Fact]
+            public void UpdateUserProfile_WithEndTimeBeforeStartTime_ShouldThrowArgumentExceptionWithoutChangingProfile()
+            {
+                var originalProfile = _TMS.GetUserProfile();
+                var invalidProfile = new UserProfile
+                {
+                    WorkStartTime = new TimeOnly(17, 0),
+                    WorkEndTime = new TimeOnly(9, 0)
+                };
+
+                Assert.Throws<ArgumentException>(() => _TMS.UpdateUserProfile(invalidProfile));
+                Assert.Same(originalProfile, _TMS.GetUserProfile());
             }
         }
 

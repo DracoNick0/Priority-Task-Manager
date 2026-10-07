@@ -17,8 +17,15 @@ namespace PriorityTaskManager.API.Profile
 
 			group.MapPut("/", (ProfileRequest request, TaskManagerService taskManagerService) =>
 			{
-				taskManagerService.UpdateUserProfile(request.ToUserProfile());
-				return Results.Ok(taskManagerService.GetUserProfile().ToResponse());
+				try
+				{
+					taskManagerService.UpdateUserProfile(request.ToUserProfile());
+					return Results.Ok(taskManagerService.GetUserProfile().ToResponse());
+				}
+				catch (ArgumentException ex)
+				{
+					return Results.BadRequest(new { error = ex.Message });
+				}
 			});
 		}
 	}

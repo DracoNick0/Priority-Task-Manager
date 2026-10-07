@@ -59,6 +59,7 @@ namespace PriorityTaskManager.Services
         /// <param name="updatedProfile">The new user profile to persist.</param>
         public void UpdateUserProfile(UserProfile updatedProfile)
         {
+            ValidateWorkHours(updatedProfile.WorkStartTime, updatedProfile.WorkEndTime);
             _data.UserProfile = updatedProfile;
             SaveData();
         }
@@ -317,6 +318,9 @@ namespace PriorityTaskManager.Services
             {
                 throw new InvalidOperationException($"A list with the name '{list.Name}' already exists.");
             }
+            ValidateWorkHours(
+                list.WorkStartTime ?? _data.UserProfile.WorkStartTime,
+                list.WorkEndTime ?? _data.UserProfile.WorkEndTime);
             list.ApplyDefaultsFrom(_data.UserProfile);
             list.Id = Guid.NewGuid();
             _data.Lists.Add(list);
@@ -400,6 +404,10 @@ namespace PriorityTaskManager.Services
                 : _data.Lists.FirstOrDefault(list => list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase));
             if (existingList != null)
             {
+                ValidateWorkHours(
+                    updatedList.WorkStartTime ?? _data.UserProfile.WorkStartTime,
+                    updatedList.WorkEndTime ?? _data.UserProfile.WorkEndTime);
+
                 if (_data.Lists.Any(list => list.Id != existingList.Id && list.Name.Equals(updatedList.Name, StringComparison.OrdinalIgnoreCase)))
                 {
                     throw new InvalidOperationException($"A list with the name '{updatedList.Name}' already exists.");
@@ -422,6 +430,14 @@ namespace PriorityTaskManager.Services
                     existingList.LastSimulatedTime = updatedList.SimulatedTime;
                 }
                 SaveData();
+            }
+        }
+
+        private static void ValidateWorkHours(TimeOnly startTime, TimeOnly endTime)
+        {
+            if (endTime <= startTime)
+            {
+                throw new ArgumentException("Work end time must be after its start time.", nameof(endTime));
             }
         }
 
