@@ -17,6 +17,7 @@ namespace PriorityTaskManager.Services
         private readonly string _userProfileFilePath;
         private readonly string _eventsFilePath;
         private readonly string _archiveFilePath;
+        private readonly string _archivedEventsFilePath;
 
         public PersistenceService(string dataDirectory)
         {
@@ -25,6 +26,7 @@ namespace PriorityTaskManager.Services
             _userProfileFilePath = Path.Combine(dataDirectory, "user_profile.json");
             _eventsFilePath = Path.Combine(dataDirectory, "events.json");
             _archiveFilePath = Path.Combine(dataDirectory, "archive.json");
+            _archivedEventsFilePath = Path.Combine(dataDirectory, "archive_events.json");
         }
 
         public DataContainer LoadData()
@@ -364,6 +366,40 @@ namespace PriorityTaskManager.Services
                 WriteAtomic(_archiveFilePath, JsonSerializer.Serialize(archivedTasks));
             }
             return removed;
+        }
+
+        public void ArchiveEvents(IEnumerable<Event> eventsToArchive)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_archivedEventsFilePath) ?? ".");
+
+            var archivedEvents = GetArchivedEvents();
+            archivedEvents.AddRange(eventsToArchive);
+            WriteAtomic(_archivedEventsFilePath, JsonSerializer.Serialize(archivedEvents));
+        }
+
+        public List<Event> GetArchivedEvents()
+        {
+            if (!File.Exists(_archivedEventsFilePath))
+                return new List<Event>();
+
+            var existingData = File.ReadAllText(_archivedEventsFilePath);
+            return JsonSerializer.Deserialize<List<Event>>(existingData) ?? new List<Event>();
+        }
+
+        public bool RemoveArchivedEvent(Guid eventId)
+        {
+            var archivedEvents = GetArchivedEvents();
+            var removed = archivedEvents.RemoveAll(e => e.Id == eventId) > 0;
+            if (removed)
+                WriteAtomic(_archivedEventsFilePath, JsonSerializer.Serialize(archivedEvents));
+            return removed;
+        }
+
+        public void ClearArchive()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_archiveFilePath) ?? ".");
+            WriteAtomic(_archiveFilePath, "[]");
+            WriteAtomic(_archivedEventsFilePath, "[]");
         }
     }
 }

@@ -24,6 +24,7 @@ namespace PriorityTaskManager.API.Persistence
 		private const string EventsDocumentId = "events";
 		private const string UserProfileDocumentId = "user_profile";
 		private const string ArchiveDocumentId = "archive";
+		private const string ArchivedEventsDocumentId = "archive_events";
 
 		private readonly string _connectionString;
 		private readonly Guid _accountId;
@@ -201,6 +202,46 @@ namespace PriorityTaskManager.API.Persistence
 				WriteDocument(connection, _accountId, ArchiveDocumentId, JsonSerializer.Serialize(archivedTasks));
 			}
 			return removed;
+		}
+
+		public void ArchiveEvents(IEnumerable<Event> eventsToArchive)
+		{
+			using var connection = OpenConnection();
+
+			var archivedEvents = GetArchivedEvents(connection);
+			archivedEvents.AddRange(eventsToArchive);
+			WriteDocument(connection, _accountId, ArchivedEventsDocumentId, JsonSerializer.Serialize(archivedEvents));
+		}
+
+		public List<Event> GetArchivedEvents()
+		{
+			using var connection = OpenConnection();
+			return GetArchivedEvents(connection);
+		}
+
+		private List<Event> GetArchivedEvents(NpgsqlConnection connection)
+		{
+			var archiveDocument = ReadDocument(connection, _accountId, ArchivedEventsDocumentId);
+			return archiveDocument != null
+				? JsonSerializer.Deserialize<List<Event>>(archiveDocument) ?? new List<Event>()
+				: new List<Event>();
+		}
+
+		public bool RemoveArchivedEvent(Guid eventId)
+		{
+			using var connection = OpenConnection();
+			var archivedEvents = GetArchivedEvents(connection);
+			var removed = archivedEvents.RemoveAll(e => e.Id == eventId) > 0;
+			if (removed)
+				WriteDocument(connection, _accountId, ArchivedEventsDocumentId, JsonSerializer.Serialize(archivedEvents));
+			return removed;
+		}
+
+		public void ClearArchive()
+		{
+			using var connection = OpenConnection();
+			WriteDocument(connection, _accountId, ArchiveDocumentId, "[]");
+			WriteDocument(connection, _accountId, ArchivedEventsDocumentId, "[]");
 		}
 
 		private static string? ReadDocument(NpgsqlConnection connection, Guid accountId, string documentId)

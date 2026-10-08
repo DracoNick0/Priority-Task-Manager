@@ -27,5 +27,28 @@ namespace PriorityTaskManager.Services
         /// <param name="taskId">The ID of the archived task to remove.</param>
         /// <returns>True if a matching archived task was found and removed; otherwise false.</returns>
         bool RemoveArchivedTask(Guid taskId);
+
+        /// <summary>
+        /// Appends the given events to the persisted archive record.
+        /// </summary>
+        /// <param name="eventsToArchive">The events to archive.</param>
+        void ArchiveEvents(IEnumerable<Event> eventsToArchive);
+
+        /// <summary>
+        /// Retrieves all events currently held in the persisted archive record.
+        /// </summary>
+        List<Event> GetArchivedEvents();
+
+        /// <summary>
+        /// Removes an event from the persisted archive record.
+        /// </summary>
+        /// <param name="eventId">The ID of the archived event to remove.</param>
+        /// <returns>True if a matching archived event was found and removed; otherwise false.</returns>
+        bool RemoveArchivedEvent(Guid eventId);
+
+        /// <summary>
+        /// Permanently removes every archived task and event.
+        /// </summary>
+        void ClearArchive();
     }
 }

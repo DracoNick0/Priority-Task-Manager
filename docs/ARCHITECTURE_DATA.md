@@ -26,6 +26,8 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 | `lists.json` | Task lists |
 | `events.json` | Events |
 | `user_profile.json` | Global user profile defaults |
+| `archive.json` | Archived tasks |
+| `archive_events.json` | Archived events and recurring-series segments |
 
 The archived CLI's JSON files hold a single local user's data and have no account concept; this persistence path is not part of the active product. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead. Do not preserve or extend CLI JSON compatibility for new work unless the CLI is explicitly restored.
 

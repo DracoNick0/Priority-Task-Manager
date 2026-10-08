@@ -284,7 +284,9 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
               const SizedBox(width: AppTheme.spacingSm),
               IconButton.outlined(
                 icon: const Icon(Icons.delete_outline),
-                tooltip: 'Delete event',
+                tooltip: _isAuthenticated
+                    ? 'Archive event'
+                    : 'Delete permanently',
                 onPressed: () => _delete(existing!),
               ),
             ],
@@ -388,6 +390,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
       final target = await showRecurrenceEditTargetDialog(
         context,
         isDelete: true,
+        isArchive: _isAuthenticated,
       );
       if (target == null) return;
       await notifier.deleteOccurrence(
@@ -399,6 +402,10 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
       await notifier.deleteEvent(event.id);
     }
     if (!mounted) return;
+    ref.read(appNotificationProvider.notifier).state = AppNotification(
+      _isAuthenticated ? 'Event archived' : 'Event deleted',
+      icon: _isAuthenticated ? Icons.archive_outlined : Icons.delete_outline,
+    );
     ref.read(selectedInspectorProvider.notifier).state =
         const InspectorTarget.none();
   }

@@ -300,4 +300,32 @@ class LocalTaskRepository implements TaskRepository {
       'Archive is an online-exclusive feature; Guests do not have access to it.',
     );
   }
+
+  @override
+  Future<List<FixedEvent>> getArchivedEvents() {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> restoreArchivedEvent(String eventId) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> deleteArchivedEvent(String eventId) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> clearArchive() {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
 }

@@ -133,6 +133,18 @@ class _FakeTaskRepository implements TaskRepository {
 
   @override
   Future<void> deleteArchivedTask(String taskId) async {}
+
+  @override
+  Future<List<FixedEvent>> getArchivedEvents() async => [];
+
+  @override
+  Future<void> restoreArchivedEvent(String eventId) async {}
+
+  @override
+  Future<void> deleteArchivedEvent(String eventId) async {}
+
+  @override
+  Future<void> clearArchive() async {}
 }
 
 void main() {

@@ -56,7 +56,7 @@ namespace PriorityTaskManager.API.Events
 			});
 
 			group.MapDelete("/{id:guid}", (Guid id, TaskManagerService taskManagerService) =>
-				taskManagerService.DeleteEvent(id) ? Results.NoContent() : Results.NotFound());
+				taskManagerService.ArchiveEvent(id) ? Results.NoContent() : Results.NotFound());
 
 			group.MapPut("/{seriesId:guid}/occurrences/{date}", (Guid seriesId, DateTime date, string target, EventOccurrenceEditRequest request, TaskManagerService taskManagerService) =>
 			{
@@ -91,8 +91,8 @@ namespace PriorityTaskManager.API.Events
 					return Results.BadRequest(new { error = $"Invalid target '{target}'. Expected ThisOccurrence, ThisAndFollowing, or AllOccurrences." });
 				}
 
-				var deleted = taskManagerService.DeleteEventOccurrence(seriesId, date, editTarget);
-				return deleted ? Results.NoContent() : Results.NotFound();
+				var archived = taskManagerService.ArchiveEventOccurrence(seriesId, date, editTarget);
+				return archived ? Results.NoContent() : Results.NotFound();
 			});
 		}
 	}

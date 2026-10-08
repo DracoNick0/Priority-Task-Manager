@@ -129,6 +129,127 @@ namespace PriorityTaskManager.Services
         }
 
         /// <inheritdoc />
+        public bool ArchiveEvent(Guid id)
+        {
+            var eventToArchive = _data.Events.FirstOrDefault(e => e.Id == id);
+            if (eventToArchive == null)
+                return false;
+
+            _persistenceService.ArchiveEvents(new[] { eventToArchive });
+            _data.Events.Remove(eventToArchive);
+            _persistenceService.SaveData(_data);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public bool ArchiveOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target)
+        {
+            var seriesEvent = _data.Events.Find(e => e.Id == seriesId);
+            if (seriesEvent?.RecurrenceRule == null)
+                return false;
+
+            var occurrenceDateOnly = occurrenceDate.Date;
+            var occurrence = GetEventOccurrences(occurrenceDateOnly, occurrenceDateOnly)
+                .FirstOrDefault(o => o.Event.Id == seriesId &&
+                    o.OriginalOccurrenceDate?.Date == occurrenceDateOnly);
+            if (occurrence == null)
+                return false;
+
+            if (target == RecurrenceEditTarget.AllOccurrences)
+                return ArchiveEvent(seriesId);
+
+            Event archivedEvent;
+            switch (target)
+            {
+                case RecurrenceEditTarget.ThisOccurrence:
+                    archivedEvent = new Event
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = occurrence.Event.Name,
+                        Description = occurrence.Event.Description,
+                        Link = occurrence.Event.Link,
+                        StartTime = occurrence.Event.StartTime,
+                        EndTime = occurrence.Event.EndTime
+                    };
+                    _persistenceService.ArchiveEvents(new[] { archivedEvent });
+                    seriesEvent.Exceptions.RemoveAll(e => e.OriginalOccurrenceDate.Date == occurrenceDateOnly);
+                    seriesEvent.Exceptions.Add(new RecurrenceException
+                    {
+                        OriginalOccurrenceDate = occurrenceDateOnly,
+                        IsCancelled = true
+                    });
+                    seriesEvent.OccurrenceOverrides.RemoveAll(o => o.OriginalOccurrenceDate.Date == occurrenceDateOnly);
+                    break;
+
+                case RecurrenceEditTarget.ThisAndFollowing:
+                    var split = RecurrenceSplitHelper.Split(
+                        seriesEvent.RecurrenceRule,
+                        seriesEvent.Exceptions,
+                        occurrenceDateOnly);
+                    var archivedId = Guid.NewGuid();
+                    archivedEvent = new Event
+                    {
+                        Id = archivedId,
+                        SeriesId = archivedId,
+                        Name = seriesEvent.Name,
+                        Description = seriesEvent.Description,
+                        Link = seriesEvent.Link,
+                        StartTime = occurrenceDateOnly.Add(seriesEvent.StartTime.TimeOfDay),
+                        EndTime = occurrenceDateOnly.Add(seriesEvent.StartTime.TimeOfDay)
+                            .Add(seriesEvent.EndTime - seriesEvent.StartTime),
+                        RecurrenceRule = split.NewRule,
+                        Exceptions = split.NewExceptions,
+                        OccurrenceOverrides = seriesEvent.OccurrenceOverrides
+                            .Where(o => o.OriginalOccurrenceDate.Date >= occurrenceDateOnly)
+                            .Select(o => o.Clone())
+                            .ToList()
+                    };
+                    _persistenceService.ArchiveEvents(new[] { archivedEvent });
+
+                    var priorOccurrences = new RecurrenceExpansionService().GetOccurrences(
+                        seriesEvent.RecurrenceRule,
+                        Array.Empty<RecurrenceException>(),
+                        seriesEvent.RecurrenceRule.SeriesStartDate,
+                        occurrenceDateOnly.AddDays(-1));
+                    if (priorOccurrences.Count == 0)
+                    {
+                        _data.Events.Remove(seriesEvent);
+                    }
+                    else
+                    {
+                        seriesEvent.RecurrenceRule = split.PriorRule;
+                        seriesEvent.Exceptions = split.PriorExceptions;
+                        seriesEvent.OccurrenceOverrides = seriesEvent.OccurrenceOverrides
+                            .Where(o => o.OriginalOccurrenceDate.Date < occurrenceDateOnly)
+                            .ToList();
+                    }
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(target));
+            }
+
+            _persistenceService.SaveData(_data);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public List<Event> GetArchivedEvents() => _persistenceService.GetArchivedEvents();
+
+        /// <inheritdoc />
+        public bool RestoreArchivedEvent(Guid eventId)
+        {
+            var archivedEvent = _persistenceService.GetArchivedEvents().FirstOrDefault(e => e.Id == eventId);
+            if (archivedEvent == null)
+                return false;
+
+            _persistenceService.RemoveArchivedEvent(eventId);
+            _data.Events.Add(archivedEvent);
+            _persistenceService.SaveData(_data);
+            return true;
+        }
+
+        /// <inheritdoc />
         public void ClearEvents()
         {
             _data.Events.Clear();

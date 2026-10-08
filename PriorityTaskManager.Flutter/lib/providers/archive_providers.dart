@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/fixed_event.dart';
 import '../models/task_item.dart';
 import 'task_providers.dart';
 
@@ -41,6 +42,43 @@ class ArchivedTasksNotifier extends AsyncNotifier<List<TaskItem>> {
   Future<void> deleteArchivedTask(String taskId) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     await repository.deleteArchivedTask(taskId);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  /// Permanently deletes every archived task and event.
+  Future<void> clearArchive() async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.clearArchive();
+    ref.invalidateSelf();
+    await future;
+    ref.invalidate(archivedEventsProvider);
+  }
+}
+
+/// Archived events and recurring-series segments for the active account.
+final archivedEventsProvider =
+    AsyncNotifierProvider<ArchivedEventsNotifier, List<FixedEvent>>(
+      ArchivedEventsNotifier.new,
+    );
+
+class ArchivedEventsNotifier extends AsyncNotifier<List<FixedEvent>> {
+  @override
+  Future<List<FixedEvent>> build() async {
+    final repository = await ref.watch(taskRepositoryProvider.future);
+    return repository.getArchivedEvents();
+  }
+
+  Future<void> restoreArchivedEvent(String eventId) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.restoreArchivedEvent(eventId);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> deleteArchivedEvent(String eventId) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.deleteArchivedEvent(eventId);
     ref.invalidateSelf();
     await future;
   }

@@ -24,7 +24,7 @@ The core library must not depend on front-end handlers, console helpers, renderi
 | `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands a `RecurrenceRule` into concrete occurrence dates on demand for a caller-supplied range (expansion-on-read; nothing is persisted ahead of time). Self-contained, shared by recurring tasks and recurring events; consumed by `AvailabilityWindowStage` to expand recurring events into ephemeral, in-memory occurrences that block scheduling availability. `EventService` assigns `SeriesId` on creation but does not itself call expansion; not yet consumed for recurring tasks (see the repository's GitHub Issues for that consumer wiring) |
 | `RecurrenceSplitHelper` (`Services/Helpers`) | Implements the shared "this and following" split semantics for a recurring series (closes the prior series, starts a new one, partitions exceptions) |
 | `TimeService` / `ITimeService` | Provides current or simulated time for deterministic behavior |
-| `PersistenceService` / `IPersistenceService` | Reads and writes persisted state, including task archiving |
+| `PersistenceService` / `IPersistenceService` | Reads and writes persisted state, including task and event archiving |
 | `DependencyGraphHelper` (`Services/Helpers`) | Computes dependency chains and detects circular dependencies for task updates |
 
 ## TaskManagerService Boundary

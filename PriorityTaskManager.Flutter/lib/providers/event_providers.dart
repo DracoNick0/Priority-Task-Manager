@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fixed_event.dart';
 import '../models/recurrence_rule.dart';
+import 'archive_providers.dart';
 import 'task_providers.dart';
 
 export '../models/fixed_event.dart' show FixedEvent;
@@ -71,6 +72,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     await repository.deleteEvent(eventId);
     ref.invalidateSelf();
     await future;
+    ref.invalidate(archivedEventsProvider);
   }
 
   /// Edits one or more occurrences of a recurring series (issue #71). The
@@ -117,5 +119,6 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     );
     ref.invalidateSelf();
     await future;
+    ref.invalidate(archivedEventsProvider);
   }
 }

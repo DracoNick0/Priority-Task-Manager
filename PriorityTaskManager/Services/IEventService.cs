@@ -44,6 +44,29 @@ namespace PriorityTaskManager.Services
         bool DeleteEvent(Guid id);
 
         /// <summary>
+        /// Archives an event or recurring series by its unique ID.
+        /// </summary>
+        /// <param name="id">The unique ID of the event to archive.</param>
+        /// <returns>True if the event was found and archived; otherwise, false.</returns>
+        bool ArchiveEvent(Guid id);
+
+        /// <summary>
+        /// Archives one occurrence, the selected occurrence and following series segment, or all
+        /// occurrences of a recurring event.
+        /// </summary>
+        /// <param name="seriesId">The recurring event series' base event ID.</param>
+        /// <param name="occurrenceDate">The original date of the selected occurrence.</param>
+        /// <param name="target">Which occurrences to archive.</param>
+        /// <returns>True if the series and occurrence were found and archived; otherwise, false.</returns>
+        bool ArchiveOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target);
+
+        /// <summary>Retrieves all archived events.</summary>
+        List<Event> GetArchivedEvents();
+
+        /// <summary>Restores an archived event or series.</summary>
+        bool RestoreArchivedEvent(Guid eventId);
+
+        /// <summary>
         /// Removes all events.
         /// </summary>
         void ClearEvents();

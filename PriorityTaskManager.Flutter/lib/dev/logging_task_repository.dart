@@ -246,4 +246,23 @@ class LoggingTaskRepository implements TaskRepository {
     'deleteArchivedTask($taskId)',
     () => _inner.deleteArchivedTask(taskId),
   );
+
+  @override
+  Future<List<FixedEvent>> getArchivedEvents() =>
+      _logged('getArchivedEvents()', _inner.getArchivedEvents);
+
+  @override
+  Future<void> restoreArchivedEvent(String eventId) => _logged(
+    'restoreArchivedEvent($eventId)',
+    () => _inner.restoreArchivedEvent(eventId),
+  );
+
+  @override
+  Future<void> deleteArchivedEvent(String eventId) => _logged(
+    'deleteArchivedEvent($eventId)',
+    () => _inner.deleteArchivedEvent(eventId),
+  );
+
+  @override
+  Future<void> clearArchive() => _logged('clearArchive()', _inner.clearArchive);
 }

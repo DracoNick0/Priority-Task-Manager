@@ -133,6 +133,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.deleteTask(taskId);
     ref.invalidateSelf();
     await future;
+    ref.invalidate(archivedTasksProvider);
   }
 
   Future<void> archiveTask(String taskId) async {

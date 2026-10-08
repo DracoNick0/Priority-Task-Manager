@@ -43,6 +43,7 @@ abstract class TaskRepository {
 
   Future<void> updateTask(TaskItem task);
 
+  /// Permanently deletes for Guests; API-backed sessions move the task to archive.
   Future<void> deleteTask(String taskId);
 
   /// Archives a completed task: moves it out of the active list into the
@@ -84,6 +85,7 @@ abstract class TaskRepository {
 
   Future<void> updateEvent(FixedEvent event);
 
+  /// Permanently deletes for Guests; API-backed sessions move the event to archive.
   Future<void> deleteEvent(String eventId);
 
   /// Edits a single occurrence of a recurring series (issue #71). Only
@@ -121,4 +123,16 @@ abstract class TaskRepository {
 
   /// Permanently deletes an archived task.
   Future<void> deleteArchivedTask(String taskId);
+
+  /// Archived events and recurring-series segments for the authenticated account.
+  Future<List<FixedEvent>> getArchivedEvents();
+
+  /// Restores an archived event or recurring-series segment.
+  Future<void> restoreArchivedEvent(String eventId);
+
+  /// Permanently deletes an event from the archive.
+  Future<void> deleteArchivedEvent(String eventId);
+
+  /// Permanently deletes every archived task and event.
+  Future<void> clearArchive();
 }

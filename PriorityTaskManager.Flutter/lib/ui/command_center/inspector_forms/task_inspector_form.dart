@@ -93,6 +93,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksProvider(widget.listId));
     final tasks = tasksAsync.asData?.value ?? const <TaskItem>[];
+    final isAuthenticated =
+        ref.watch(sessionControllerProvider).asData?.value.status ==
+        SessionStatus.authenticated;
 
     TaskItem? existing;
     if (_isEditing) {
@@ -324,7 +327,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
               const SizedBox(width: AppTheme.spacingSm),
               IconButton(
                 icon: const Icon(Icons.delete_outline),
-                tooltip: 'Delete task',
+                tooltip: isAuthenticated
+                    ? 'Archive task'
+                    : 'Delete permanently',
                 onPressed: () => _delete(existing!),
               ),
             ],
@@ -483,11 +488,14 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   }
 
   Future<void> _delete(TaskItem task) async {
+    final isAuthenticated =
+        ref.read(sessionControllerProvider).asData?.value.status ==
+        SessionStatus.authenticated;
     await ref.read(tasksProvider(widget.listId).notifier).deleteTask(task.id);
     if (!mounted) return;
-    ref.read(appNotificationProvider.notifier).state = const AppNotification(
-      'Task deleted',
-      icon: Icons.delete_outline,
+    ref.read(appNotificationProvider.notifier).state = AppNotification(
+      isAuthenticated ? 'Task archived' : 'Task deleted',
+      icon: isAuthenticated ? Icons.archive_outlined : Icons.delete_outline,
     );
     _closeInspector();
   }

@@ -8,8 +8,13 @@ import '../../../models/recurrence_rule.dart';
 Future<RecurrenceEditTarget?> showRecurrenceEditTargetDialog(
   BuildContext context, {
   required bool isDelete,
+  bool isArchive = false,
 }) {
-  final verb = isDelete ? 'Delete' : 'Save changes to';
+  final verb = isArchive
+      ? 'Archive'
+      : isDelete
+      ? 'Delete'
+      : 'Save changes to';
   return showDialog<RecurrenceEditTarget>(
     context: context,
     builder: (context) => SimpleDialog(

@@ -697,4 +697,28 @@ class ApiTaskRepository implements TaskRepository {
   Future<void> deleteArchivedTask(String taskId) async {
     await _send('DELETE', '/api/archive/$taskId');
   }
+
+  @override
+  Future<List<FixedEvent>> getArchivedEvents() async {
+    final response = await _send('GET', '/api/archive/events');
+    final json = jsonDecode(response.body) as List<dynamic>;
+    return json
+        .map((e) => _eventFromJson(e as Map<String, dynamic>, ''))
+        .toList();
+  }
+
+  @override
+  Future<void> restoreArchivedEvent(String eventId) async {
+    await _send('POST', '/api/archive/events/$eventId/restore');
+  }
+
+  @override
+  Future<void> deleteArchivedEvent(String eventId) async {
+    await _send('DELETE', '/api/archive/events/$eventId');
+  }
+
+  @override
+  Future<void> clearArchive() async {
+    await _send('DELETE', '/api/archive/');
+  }
 }

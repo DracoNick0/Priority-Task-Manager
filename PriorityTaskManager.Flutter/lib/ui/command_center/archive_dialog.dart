@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/task_repository.dart';
+import '../../models/task_item.dart';
 import '../../providers/archive_providers.dart';
+import '../../providers/event_providers.dart';
 import '../../providers/task_providers.dart';
 import '../theme/app_theme.dart';
 
-/// Shows the Archive dialog: a simple list of archived tasks with a restore
-/// action per task, opened from the Left Rail (Authenticated sessions only;
+/// Shows the archive dialog with restore and permanent-delete actions,
+/// opened from the Left Rail (Authenticated sessions only;
 /// see docs/VISION.md on Archive being an online-exclusive feature).
 Future<void> showArchiveDialog(BuildContext context) {
   return showDialog<void>(
@@ -23,6 +25,10 @@ class _ArchiveDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final archivedTasksAsync = ref.watch(archivedTasksProvider);
+    final archivedEventsAsync = ref.watch(archivedEventsProvider);
+    final canClear =
+        (archivedTasksAsync.asData?.value.isNotEmpty ?? false) ||
+        (archivedEventsAsync.asData?.value.isNotEmpty ?? false);
 
     return AlertDialog(
       title: const Text('Archive'),
@@ -34,45 +40,97 @@ class _ArchiveDialog extends ConsumerWidget {
           error: (error, _) =>
               Center(child: Text('Could not load archive: $error')),
           data: (archivedTasks) {
-            if (archivedTasks.isEmpty) {
-              return const Center(child: Text('No archived tasks.'));
-            }
-            return ListView.separated(
-              itemCount: archivedTasks.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final task = archivedTasks[index];
-                return ListTile(
-                  title: Text(task.title),
-                  subtitle: task.dueDate == null
-                      ? null
-                      : Text('Due ${DateFormat.yMMMd().format(task.dueDate!)}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      FilledButton.tonal(
-                        onPressed: () => _restore(context, ref, task.id),
-                        child: const Text('Restore'),
-                      ),
-                      const SizedBox(width: AppTheme.spacingXs),
-                      IconButton(
-                        tooltip: 'Delete permanently',
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(context, ref, task.id),
-                      ),
-                    ],
-                  ),
-                );
-              },
+            return archivedEventsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) =>
+                  Center(child: Text('Could not load archived events: $error')),
+              data: (archivedEvents) =>
+                  _archiveItems(context, ref, archivedTasks, archivedEvents),
             );
           },
         ),
       ),
       actions: [
         TextButton(
+          onPressed: canClear ? () => _clearArchive(context, ref) : null,
+          child: const Text('Clear archive'),
+        ),
+        TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),
         ),
+      ],
+    );
+  }
+
+  Widget _archiveItems(
+    BuildContext context,
+    WidgetRef ref,
+    List<TaskItem> tasks,
+    List<FixedEvent> events,
+  ) {
+    if (tasks.isEmpty && events.isEmpty) {
+      return const Center(child: Text('No archived items.'));
+    }
+
+    return ListView(
+      children: [
+        if (tasks.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
+            child: Text('Tasks'),
+          ),
+          for (final task in tasks)
+            ListTile(
+              title: Text(task.title),
+              subtitle: task.dueDate == null
+                  ? null
+                  : Text('Due ${DateFormat.yMMMd().format(task.dueDate!)}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.tonal(
+                    onPressed: () => _restore(context, ref, task.id),
+                    child: const Text('Restore'),
+                  ),
+                  const SizedBox(width: AppTheme.spacingXs),
+                  IconButton(
+                    tooltip: 'Delete permanently',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _delete(context, ref, task.id),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        if (events.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
+            child: Text('Events'),
+          ),
+          for (final event in events)
+            ListTile(
+              title: Text(event.title),
+              subtitle: Text(
+                DateFormat.yMMMd().add_jm().format(event.startTime),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.tonal(
+                    onPressed: () => _restoreEvent(context, ref, event.id),
+                    child: const Text('Restore'),
+                  ),
+                  const SizedBox(width: AppTheme.spacingXs),
+                  IconButton(
+                    tooltip: 'Delete permanently',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _deleteEvent(context, ref, event.id),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -146,6 +204,109 @@ class _ArchiveDialog extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Task permanently deleted.')));
+  }
+
+  Future<void> _restoreEvent(
+    BuildContext context,
+    WidgetRef ref,
+    String eventId,
+  ) async {
+    try {
+      await ref
+          .read(archivedEventsProvider.notifier)
+          .restoreArchivedEvent(eventId);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not restore event: $error')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    ref.invalidate(eventsProvider);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Event restored.')));
+  }
+
+  Future<void> _deleteEvent(
+    BuildContext context,
+    WidgetRef ref,
+    String eventId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete permanently?'),
+        content: const Text(
+          'This archived event will be permanently deleted and cannot be restored.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref
+          .read(archivedEventsProvider.notifier)
+          .deleteArchivedEvent(eventId);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not delete event: $error')));
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Event permanently deleted.')));
+  }
+
+  Future<void> _clearArchive(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear archive permanently?'),
+        content: const Text(
+          'All archived tasks and events will be permanently deleted and cannot be restored.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear archive'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(archivedTasksProvider.notifier).clearArchive();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not clear archive: $error')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Archive cleared.')));
   }
 
   Future<String?> _pickTargetList(BuildContext context, WidgetRef ref) async {

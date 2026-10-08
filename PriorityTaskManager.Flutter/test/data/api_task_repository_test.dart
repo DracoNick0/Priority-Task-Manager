@@ -575,5 +575,66 @@ void main() {
 
       expect(restored.listId, 'list-2');
     });
+
+    test('getArchivedEvents parses archived event entries', () async {
+      final client = MockClient((request) async {
+        expect(request.url.path, '/api/archive/events');
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'event-1',
+              'name': 'Archived meeting',
+              'startTime': '2026-10-01T09:00:00.000',
+              'endTime': '2026-10-01T10:00:00.000',
+              'recurrenceRule': null,
+              'seriesId': null,
+              'description': '',
+              'link': null,
+            },
+          ]),
+          200,
+        );
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final events = await repository.getArchivedEvents();
+
+      expect(events, hasLength(1));
+      expect(events.single.title, 'Archived meeting');
+      expect(events.single.listId, '');
+    });
+
+    test(
+      'archive event restore and permanent-delete use archive endpoints',
+      () async {
+        final requests = <http.Request>[];
+        final client = MockClient((request) async {
+          requests.add(request);
+          return http.Response('', 204);
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+
+        await repository.restoreArchivedEvent('event-1');
+        await repository.deleteArchivedEvent('event-1');
+        await repository.clearArchive();
+
+        expect(requests.map((request) => request.method), [
+          'POST',
+          'DELETE',
+          'DELETE',
+        ]);
+        expect(requests.map((request) => request.url.path), [
+          '/api/archive/events/event-1/restore',
+          '/api/archive/events/event-1',
+          '/api/archive/',
+        ]);
+      },
+    );
   });
 }

@@ -25,8 +25,14 @@ namespace PriorityTaskManager.Tests.Infrastructure
         {
             Id = e.Id,
             Name = e.Name,
+            Description = e.Description,
+            Link = e.Link,
             StartTime = e.StartTime,
-            EndTime = e.EndTime
+            EndTime = e.EndTime,
+            RecurrenceRule = e.RecurrenceRule?.Clone(),
+            SeriesId = e.SeriesId,
+            Exceptions = e.Exceptions.Select(exception => exception.Clone()).ToList(),
+            OccurrenceOverrides = e.OccurrenceOverrides.Select(occurrence => occurrence.Clone()).ToList()
         };
 
         public DataContainer LoadData()
@@ -58,6 +64,7 @@ namespace PriorityTaskManager.Tests.Infrastructure
         }
 
         public List<TaskItem> ArchivedTasks { get; } = new List<TaskItem>();
+        public List<Event> ArchivedEvents { get; } = new List<Event>();
 
         public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
         {
@@ -72,6 +79,27 @@ namespace PriorityTaskManager.Tests.Infrastructure
         public bool RemoveArchivedTask(Guid taskId)
         {
             return ArchivedTasks.RemoveAll(t => t.Id == taskId) > 0;
+        }
+
+        public void ArchiveEvents(IEnumerable<Event> eventsToArchive)
+        {
+            ArchivedEvents.AddRange(eventsToArchive.Select(CloneEvent));
+        }
+
+        public List<Event> GetArchivedEvents()
+        {
+            return ArchivedEvents.Select(CloneEvent).ToList();
+        }
+
+        public bool RemoveArchivedEvent(Guid eventId)
+        {
+            return ArchivedEvents.RemoveAll(e => e.Id == eventId) > 0;
+        }
+
+        public void ClearArchive()
+        {
+            ArchivedTasks.Clear();
+            ArchivedEvents.Clear();
         }
 
         private TaskList CloneList(TaskList l) => new TaskList

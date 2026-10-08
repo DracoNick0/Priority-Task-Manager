@@ -581,6 +581,77 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void ArchiveEvent_RemovesEventFromActiveDataAndCanRestoreIt()
+        {
+            var (service, data) = CreateService();
+            var evt = CreateValidEvent("Appointment");
+            service.AddEvent(evt);
+
+            Assert.True(service.ArchiveEvent(evt.Id));
+            Assert.Empty(data.Events);
+            Assert.Equal("Appointment", Assert.Single(service.GetArchivedEvents()).Name);
+
+            Assert.True(service.RestoreArchivedEvent(evt.Id));
+            Assert.Equal(evt.Id, Assert.Single(data.Events).Id);
+            Assert.Empty(service.GetArchivedEvents());
+        }
+
+        [Fact]
+        public void ArchiveOccurrence_ThisOccurrence_ArchivesOneTimeEventAndCancelsSeriesOccurrence()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var occurrenceDate = new DateTime(2026, 7, 13);
+
+            Assert.True(service.ArchiveOccurrence(
+                series.Id,
+                occurrenceDate,
+                RecurrenceEditTarget.ThisOccurrence));
+
+            var archived = Assert.Single(service.GetArchivedEvents());
+            Assert.Null(archived.RecurrenceRule);
+            Assert.Equal(occurrenceDate, archived.StartTime.Date);
+            Assert.Single(data.Events);
+            Assert.Contains(data.Events.Single().Exceptions, e =>
+                e.OriginalOccurrenceDate == occurrenceDate && e.IsCancelled);
+        }
+
+        [Fact]
+        public void ArchiveOccurrence_ThisAndFollowing_ArchivesSegmentAndKeepsPriorSeries()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+            var occurrenceDate = new DateTime(2026, 7, 13);
+
+            Assert.True(service.ArchiveOccurrence(
+                series.Id,
+                occurrenceDate,
+                RecurrenceEditTarget.ThisAndFollowing));
+
+            var archived = Assert.Single(service.GetArchivedEvents());
+            Assert.Equal(occurrenceDate, archived.RecurrenceRule!.SeriesStartDate);
+            Assert.Single(data.Events);
+            Assert.Single(service.GetArchivedEvents());
+            Assert.IsType<UntilDateEndCondition>(series.RecurrenceRule!.EndCondition);
+            Assert.Equal(occurrenceDate.AddDays(-1), ((UntilDateEndCondition)series.RecurrenceRule.EndCondition).UntilDate);
+        }
+
+        [Fact]
+        public void ArchiveOccurrence_AllOccurrences_ArchivesWholeSeries()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+
+            Assert.True(service.ArchiveOccurrence(
+                series.Id,
+                new DateTime(2026, 7, 13),
+                RecurrenceEditTarget.AllOccurrences));
+
+            Assert.Empty(data.Events);
+            Assert.Equal(series.Id, Assert.Single(service.GetArchivedEvents()).Id);
+        }
+
+        [Fact]
         public void DeleteOccurrence_ReturnsFalse_WhenSeriesNotFoundOrNotRecurring()
         {
             var (service, _) = CreateService();
@@ -591,6 +662,8 @@ namespace PriorityTaskManager.Tests.Services
 
         private class SpySaveCountPersistenceService : IPersistenceService
         {
+            private readonly List<Event> _archivedEvents = new();
+
             public int SaveCount { get; private set; }
 
             public DataContainer LoadData() => new DataContainer();
@@ -602,6 +675,14 @@ namespace PriorityTaskManager.Tests.Services
             public List<TaskItem> GetArchivedTasks() => new List<TaskItem>();
 
             public bool RemoveArchivedTask(Guid taskId) => false;
+
+            public void ArchiveEvents(IEnumerable<Event> eventsToArchive) => _archivedEvents.AddRange(eventsToArchive);
+
+            public List<Event> GetArchivedEvents() => _archivedEvents.ToList();
+
+            public bool RemoveArchivedEvent(Guid eventId) => _archivedEvents.RemoveAll(e => e.Id == eventId) > 0;
+
+            public void ClearArchive() { }
         }
     }
 }

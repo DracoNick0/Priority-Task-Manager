@@ -638,6 +638,25 @@ namespace PriorityTaskManager.Services
 
         public bool DeleteEvent(Guid id) => _eventService.DeleteEvent(id);
 
+        /// <summary>Archives an active event or recurring series.</summary>
+        public bool ArchiveEvent(Guid id) => _eventService.ArchiveEvent(id);
+
+        /// <summary>Archives the selected scope of a recurring event.</summary>
+        public bool ArchiveEventOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target)
+            => _eventService.ArchiveOccurrence(seriesId, occurrenceDate, target);
+
+        /// <summary>Retrieves all archived events.</summary>
+        public List<Event> GetArchivedEvents() => _eventService.GetArchivedEvents();
+
+        /// <summary>Restores an archived event or recurring series.</summary>
+        public bool RestoreArchivedEvent(Guid eventId) => _eventService.RestoreArchivedEvent(eventId);
+
+        /// <summary>Permanently deletes an archived event or recurring series.</summary>
+        public bool DeleteArchivedEvent(Guid eventId) => _persistenceService.RemoveArchivedEvent(eventId);
+
+        /// <summary>Permanently removes all archived tasks and events.</summary>
+        public void ClearArchive() => _persistenceService.ClearArchive();
+
         public void ClearEvents() => _eventService.ClearEvents();
 
         public bool EditEventOccurrence(Guid seriesId, DateTime occurrenceDate, string name, DateTime startTime, DateTime endTime, RecurrenceEditTarget target, RecurrenceRule? recurrenceRule = null, string description = "", string? link = null)

@@ -63,7 +63,7 @@ namespace PriorityTaskManager.API.Tasks
 			});
 
 			group.MapDelete("/{id:guid}", (Guid id, TaskManagerService taskManagerService) =>
-				taskManagerService.DeleteTask(id) ? Results.NoContent() : Results.NotFound());
+				taskManagerService.ArchiveTask(id) ? Results.NoContent() : Results.NotFound());
 
 			group.MapPost("/{id:guid}/complete", (Guid id, TaskManagerService taskManagerService) =>
 				taskManagerService.MarkTaskAsComplete(id) ? Results.Ok(taskManagerService.GetTaskById(id)!.ToResponse()) : Results.NotFound());

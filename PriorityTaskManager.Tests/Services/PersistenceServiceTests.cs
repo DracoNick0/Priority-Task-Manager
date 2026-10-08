@@ -204,6 +204,43 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void ArchiveEventsAndClearArchive_PersistAndRemoveBothItemTypes()
+        {
+            var tempDir = CreateTempDirectory();
+            try
+            {
+                var service = new PersistenceService(tempDir);
+                var archivedTask = new TaskItem
+                {
+                    Id = Guid.NewGuid(),
+                    DisplayId = 1,
+                    Title = "Archived task",
+                    ListId = Guid.NewGuid()
+                };
+                var archivedEvent = new Event
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Archived event",
+                    StartTime = new DateTime(2026, 10, 1, 9, 0, 0),
+                    EndTime = new DateTime(2026, 10, 1, 10, 0, 0)
+                };
+                service.ArchiveTasks(new[] { archivedTask });
+                service.ArchiveEvents(new[] { archivedEvent });
+
+                Assert.Equal(archivedEvent.Id, Assert.Single(service.GetArchivedEvents()).Id);
+
+                service.ClearArchive();
+
+                Assert.Empty(service.GetArchivedTasks());
+                Assert.Empty(service.GetArchivedEvents());
+            }
+            finally
+            {
+                DeleteDirectory(tempDir);
+            }
+        }
+
+        [Fact]
         public void RemoveArchivedTask_WhenTaskExists_RemovesItAndReturnsTrue()
         {
             var tempDir = CreateTempDirectory();
