@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/task_repository.dart';
+import '../../models/archive_group.dart';
 import '../../models/task_item.dart';
 import '../../providers/archive_providers.dart';
 import '../../providers/event_providers.dart';
@@ -24,30 +25,19 @@ class _ArchiveDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final archivedTasksAsync = ref.watch(archivedTasksProvider);
-    final archivedEventsAsync = ref.watch(archivedEventsProvider);
-    final canClear =
-        (archivedTasksAsync.asData?.value.isNotEmpty ?? false) ||
-        (archivedEventsAsync.asData?.value.isNotEmpty ?? false);
+    final archiveGroupsAsync = ref.watch(archiveGroupsProvider);
+    final canClear = archiveGroupsAsync.asData?.value.isNotEmpty ?? false;
 
     return AlertDialog(
       title: const Text('Archive'),
       content: SizedBox(
         width: 420,
         height: 420,
-        child: archivedTasksAsync.when(
+        child: archiveGroupsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) =>
               Center(child: Text('Could not load archive: $error')),
-          data: (archivedTasks) {
-            return archivedEventsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) =>
-                  Center(child: Text('Could not load archived events: $error')),
-              data: (archivedEvents) =>
-                  _archiveItems(context, ref, archivedTasks, archivedEvents),
-            );
-          },
+          data: (groups) => _archiveItems(context, ref, groups),
         ),
       ),
       actions: [
@@ -66,72 +56,124 @@ class _ArchiveDialog extends ConsumerWidget {
   Widget _archiveItems(
     BuildContext context,
     WidgetRef ref,
-    List<TaskItem> tasks,
-    List<FixedEvent> events,
+    List<ArchiveGroup> groups,
   ) {
-    if (tasks.isEmpty && events.isEmpty) {
+    if (groups.isEmpty) {
       return const Center(child: Text('No archived items.'));
     }
 
     return ListView(
       children: [
-        if (tasks.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
-            child: Text('Tasks'),
-          ),
-          for (final task in tasks)
-            ListTile(
-              title: Text(task.title),
-              subtitle: task.dueDate == null
-                  ? null
-                  : Text('Due ${DateFormat.yMMMd().format(task.dueDate!)}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+        for (final group in groups)
+          if (group.itemCount > 1)
+            Card(
+              margin: const EdgeInsets.only(bottom: AppTheme.spacingSm),
+              child: Column(
                 children: [
-                  FilledButton.tonal(
-                    onPressed: () => _restore(context, ref, task.id),
-                    child: const Text('Restore'),
+                  ListTile(
+                    title: Text(
+                      '${group.kind == ArchiveGroupKind.tasks ? 'Tasks' : 'Events'} '
+                      '(${group.itemCount})',
+                    ),
+                    trailing: FilledButton.tonal(
+                      onPressed: () => _restoreGroup(context, ref, group),
+                      child: const Text('Restore all'),
+                    ),
                   ),
-                  const SizedBox(width: AppTheme.spacingXs),
-                  IconButton(
-                    tooltip: 'Delete permanently',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _delete(context, ref, task.id),
+                  ...group.tasks.map((task) => _taskTile(context, ref, task)),
+                  ...group.events.map(
+                    (event) => _eventTile(context, ref, event),
                   ),
                 ],
               ),
-            ),
-        ],
-        if (events.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSm),
-            child: Text('Events'),
-          ),
-          for (final event in events)
-            ListTile(
-              title: Text(event.title),
-              subtitle: Text(
-                DateFormat.yMMMd().add_jm().format(event.startTime),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FilledButton.tonal(
-                    onPressed: () => _restoreEvent(context, ref, event.id),
-                    child: const Text('Restore'),
-                  ),
-                  const SizedBox(width: AppTheme.spacingXs),
-                  IconButton(
-                    tooltip: 'Delete permanently',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _deleteEvent(context, ref, event.id),
-                  ),
-                ],
-              ),
-            ),
-        ],
+            )
+          else ...[
+            ...group.tasks.map((task) => _taskTile(context, ref, task)),
+            ...group.events.map((event) => _eventTile(context, ref, event)),
+          ],
       ],
+    );
+  }
+
+  Widget _taskTile(BuildContext context, WidgetRef ref, TaskItem task) =>
+      ListTile(
+        title: Text(task.title),
+        subtitle: task.dueDate == null
+            ? null
+            : Text('Due ${DateFormat.yMMMd().format(task.dueDate!)}'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton.tonal(
+              onPressed: () => _restore(context, ref, task.id),
+              child: const Text('Restore'),
+            ),
+            const SizedBox(width: AppTheme.spacingXs),
+            IconButton(
+              tooltip: 'Delete permanently',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _delete(context, ref, task.id),
+            ),
+          ],
+        ),
+      );
+
+  Widget _eventTile(BuildContext context, WidgetRef ref, FixedEvent event) =>
+      ListTile(
+        title: Text(event.title),
+        subtitle: Text(DateFormat.yMMMd().add_jm().format(event.startTime)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton.tonal(
+              onPressed: () => _restoreEvent(context, ref, event.id),
+              child: const Text('Restore'),
+            ),
+            const SizedBox(width: AppTheme.spacingXs),
+            IconButton(
+              tooltip: 'Delete permanently',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _deleteEvent(context, ref, event.id),
+            ),
+          ],
+        ),
+      );
+
+  Future<void> _restoreGroup(
+    BuildContext context,
+    WidgetRef ref,
+    ArchiveGroup group, {
+    String? targetListId,
+  }) async {
+    try {
+      await ref
+          .read(archivedTasksProvider.notifier)
+          .restoreArchiveGroup(group, targetListId: targetListId);
+    } on RestoreTargetListRequiredException {
+      if (!context.mounted) return;
+      final chosenListId = await _pickTargetList(context, ref);
+      if (chosenListId == null || !context.mounted) return;
+      await _restoreGroup(context, ref, group, targetListId: chosenListId);
+      return;
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not restore group: $error')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    if (group.kind == ArchiveGroupKind.tasks) {
+      for (final task in group.tasks) {
+        ref.invalidate(tasksProvider(targetListId ?? task.listId));
+      }
+    } else {
+      ref.invalidate(eventsProvider);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${group.itemCount} ${group.kind.name} restored.'),
+      ),
     );
   }
 

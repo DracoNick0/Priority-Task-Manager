@@ -66,6 +66,9 @@ namespace PriorityTaskManager.Services
         /// <summary>Restores an archived event or series.</summary>
         bool RestoreArchivedEvent(Guid eventId);
 
+        /// <summary>Restores all archived events in a group.</summary>
+        bool RestoreArchivedEventGroup(Guid groupId);
+
         /// <summary>
         /// Removes all events.
         /// </summary>

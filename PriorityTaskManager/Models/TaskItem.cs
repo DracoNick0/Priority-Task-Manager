@@ -37,6 +37,7 @@ namespace PriorityTaskManager.Models
                 BeforePadding = this.BeforePadding,
                 AfterPadding = this.AfterPadding,
                 IsDivisible = this.IsDivisible,
+                ArchiveGroupId = this.ArchiveGroupId,
                 ScheduledParts = new List<ScheduledChunk>(this.ScheduledParts.Select(c => c.Clone()))
             };
         }
@@ -210,6 +211,12 @@ namespace PriorityTaskManager.Models
         /// Gets or sets a required time buffer that must be scheduled after this task ends (e.g., for cleanup or cooldown).
         /// </summary>
         public TimeSpan? AfterPadding { get; set; }
+
+        /// <summary>
+        /// Gets or sets the archive group identifier while this task is archived.
+        /// Null for active tasks and legacy archive entries.
+        /// </summary>
+        public Guid? ArchiveGroupId { get; set; }
 
         #endregion
     }

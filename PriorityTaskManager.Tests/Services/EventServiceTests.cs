@@ -652,6 +652,29 @@ namespace PriorityTaskManager.Tests.Services
         }
 
         [Fact]
+        public void ArchiveOccurrence_FromSameSeries_SharesRestorableGroup()
+        {
+            var (service, data) = CreateService();
+            var series = AddRecurringWeeklyEvent(service);
+
+            Assert.True(service.ArchiveOccurrence(
+                series.Id,
+                new DateTime(2026, 7, 13),
+                RecurrenceEditTarget.ThisOccurrence));
+            Assert.True(service.ArchiveOccurrence(
+                series.Id,
+                new DateTime(2026, 7, 20),
+                RecurrenceEditTarget.ThisOccurrence));
+
+            var archived = service.GetArchivedEvents();
+            Assert.Equal(2, archived.Count);
+            Assert.All(archived, evt => Assert.Equal(series.Id, evt.ArchiveGroupId));
+            Assert.True(service.RestoreArchivedEventGroup(series.Id));
+            Assert.Empty(service.GetArchivedEvents());
+            Assert.Equal(3, data.Events.Count);
+        }
+
+        [Fact]
         public void DeleteOccurrence_ReturnsFalse_WhenSeriesNotFoundOrNotRecurring()
         {
             var (service, _) = CreateService();
@@ -676,11 +699,19 @@ namespace PriorityTaskManager.Tests.Services
 
             public bool RemoveArchivedTask(Guid taskId) => false;
 
+            public int RemoveArchivedTasks(IEnumerable<Guid> taskIds) => 0;
+
             public void ArchiveEvents(IEnumerable<Event> eventsToArchive) => _archivedEvents.AddRange(eventsToArchive);
 
             public List<Event> GetArchivedEvents() => _archivedEvents.ToList();
 
             public bool RemoveArchivedEvent(Guid eventId) => _archivedEvents.RemoveAll(e => e.Id == eventId) > 0;
+
+            public int RemoveArchivedEvents(IEnumerable<Guid> eventIds)
+            {
+                var ids = eventIds.ToHashSet();
+                return _archivedEvents.RemoveAll(e => ids.Contains(e.Id));
+            }
 
             public void ClearArchive() { }
         }

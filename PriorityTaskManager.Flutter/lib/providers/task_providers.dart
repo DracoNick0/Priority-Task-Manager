@@ -134,6 +134,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     ref.invalidateSelf();
     await future;
     ref.invalidate(archivedTasksProvider);
+    ref.invalidate(archiveGroupsProvider);
   }
 
   Future<void> archiveTask(String taskId) async {
@@ -142,6 +143,16 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     ref.invalidateSelf();
     await future;
     ref.invalidate(archivedTasksProvider);
+    ref.invalidate(archiveGroupsProvider);
+  }
+
+  Future<void> archiveTaskGroup(List<String> taskIds) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.archiveTaskGroup(taskIds);
+    ref.invalidateSelf();
+    await future;
+    ref.invalidate(archivedTasksProvider);
+    ref.invalidate(archiveGroupsProvider);
   }
 
   Future<void> setCompleted(String taskId, bool isCompleted) async {

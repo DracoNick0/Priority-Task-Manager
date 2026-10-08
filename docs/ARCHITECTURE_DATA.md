@@ -29,6 +29,8 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 | `archive.json` | Archived tasks |
 | `archive_events.json` | Archived events and recurring-series segments |
 
+Archived tasks and events carry an optional `ArchiveGroupId`; items without one and single-item groups are displayed as individual archive entries. A task cleanup batch shares one ID, while recurring-event occurrences and split series segments use their source series ID. Active entities clear the archive-only ID when restored.
+
 The archived CLI's JSON files hold a single local user's data and have no account concept; this persistence path is not part of the active product. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead. Do not preserve or extend CLI JSON compatibility for new work unless the CLI is explicitly restored.
 
 The Flutter client's Hive store is the local source of truth for Guest task/list/event CRUD, while authenticated account data is served through the API and persisted in Postgres. Any future sync design must explicitly define reconciliation between local and server data instead of treating local data as a disposable cache. This keeps the "local-first data ownership" desired end state in [docs/VISION.md](VISION.md) true as the product evolves.

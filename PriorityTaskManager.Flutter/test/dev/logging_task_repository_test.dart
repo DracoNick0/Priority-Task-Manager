@@ -7,6 +7,7 @@ import 'package:priority_task_manager/data/task_repository.dart';
 import 'package:priority_task_manager/dev/dev_log_entry.dart';
 import 'package:priority_task_manager/dev/dev_log_sink.dart';
 import 'package:priority_task_manager/dev/logging_task_repository.dart';
+import 'package:priority_task_manager/models/archive_group.dart';
 import 'package:priority_task_manager/models/fixed_event.dart';
 import 'package:priority_task_manager/models/recurrence_rule.dart';
 import 'package:priority_task_manager/models/task_item.dart';
@@ -61,6 +62,9 @@ class _FakeTaskRepository implements TaskRepository {
 
   @override
   Future<void> archiveTask(String taskId) async {}
+
+  @override
+  Future<void> archiveTaskGroup(List<String> taskIds) async {}
 
   @override
   Future<void> setCompleted(String taskId, bool isCompleted) async {}
@@ -133,6 +137,15 @@ class _FakeTaskRepository implements TaskRepository {
 
   @override
   Future<void> deleteArchivedTask(String taskId) async {}
+
+  @override
+  Future<List<ArchiveGroup>> getArchiveGroups() async => [];
+
+  @override
+  Future<void> restoreArchiveGroup(
+    ArchiveGroup group, {
+    String? targetListId,
+  }) async {}
 
   @override
   Future<List<FixedEvent>> getArchivedEvents() async => [];

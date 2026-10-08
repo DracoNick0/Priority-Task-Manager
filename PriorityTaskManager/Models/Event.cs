@@ -58,6 +58,12 @@ namespace PriorityTaskManager.Models
         /// Empty for a non-recurring event.
         /// </summary>
         public List<EventOccurrenceOverride> OccurrenceOverrides { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the archive group identifier while this event or occurrence is archived.
+        /// Null for active events and legacy archive entries.
+        /// </summary>
+        public Guid? ArchiveGroupId { get; set; }
     }
 
     /// <summary>A displayed event and the original recurrence date used to address its series.</summary>

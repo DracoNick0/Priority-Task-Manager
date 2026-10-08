@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:priority_task_manager/data/api_task_repository.dart';
+import 'package:priority_task_manager/models/archive_group.dart';
 import 'package:priority_task_manager/data/task_repository.dart';
 import 'package:priority_task_manager/models/fixed_event.dart';
 import 'package:priority_task_manager/models/recurrence_rule.dart';
@@ -634,6 +635,97 @@ void main() {
           '/api/archive/events/event-1',
           '/api/archive/',
         ]);
+      },
+    );
+
+    test('archive groups parse their kind and item collections', () async {
+      final client = MockClient((request) async {
+        expect(request.url.path, '/api/archive/groups');
+        return http.Response(
+          jsonEncode([
+            {
+              'groupId': 'series-1',
+              'kind': 'events',
+              'tasks': <Object>[],
+              'events': [
+                {
+                  'id': 'event-1',
+                  'name': 'Recurring meeting',
+                  'startTime': '2026-10-01T09:00:00.000',
+                  'endTime': '2026-10-01T10:00:00.000',
+                  'recurrenceRule': null,
+                  'seriesId': null,
+                  'description': '',
+                  'link': null,
+                },
+                {
+                  'id': 'event-2',
+                  'name': 'Recurring meeting',
+                  'startTime': '2026-10-08T09:00:00.000',
+                  'endTime': '2026-10-08T10:00:00.000',
+                  'recurrenceRule': null,
+                  'seriesId': null,
+                  'description': '',
+                  'link': null,
+                },
+              ],
+            },
+          ]),
+          200,
+        );
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final groups = await repository.getArchiveGroups();
+
+      expect(groups, hasLength(1));
+      expect(groups.single.kind, ArchiveGroupKind.events);
+      expect(groups.single.groupId, 'series-1');
+      expect(groups.single.events, hasLength(2));
+    });
+
+    test('archive task groups are submitted as one batch', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/tasks/archive/batch');
+        expect(jsonDecode(request.body), {
+          'taskIds': ['task-1', 'task-2'],
+        });
+        return http.Response('', 204);
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      await repository.archiveTaskGroup(['task-1', 'task-2']);
+    });
+
+    test(
+      'restoring a task group reports when a target list is needed',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.url.path, '/api/archive/task-groups/group-1/restore');
+          return http.Response(jsonEncode({'error': 'list required'}), 409);
+        });
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: client,
+        );
+        const group = ArchiveGroup(
+          groupId: 'group-1',
+          kind: ArchiveGroupKind.tasks,
+          tasks: [],
+          events: [],
+        );
+
+        await expectLater(
+          repository.restoreArchiveGroup(group),
+          throwsA(isA<RestoreTargetListRequiredException>()),
+        );
       },
     );
   });

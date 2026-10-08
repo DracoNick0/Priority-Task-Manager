@@ -32,7 +32,8 @@ namespace PriorityTaskManager.Tests.Infrastructure
             RecurrenceRule = e.RecurrenceRule?.Clone(),
             SeriesId = e.SeriesId,
             Exceptions = e.Exceptions.Select(exception => exception.Clone()).ToList(),
-            OccurrenceOverrides = e.OccurrenceOverrides.Select(occurrence => occurrence.Clone()).ToList()
+            OccurrenceOverrides = e.OccurrenceOverrides.Select(occurrence => occurrence.Clone()).ToList(),
+            ArchiveGroupId = e.ArchiveGroupId
         };
 
         public DataContainer LoadData()
@@ -81,6 +82,12 @@ namespace PriorityTaskManager.Tests.Infrastructure
             return ArchivedTasks.RemoveAll(t => t.Id == taskId) > 0;
         }
 
+        public int RemoveArchivedTasks(IEnumerable<Guid> taskIds)
+        {
+            var ids = taskIds.ToHashSet();
+            return ArchivedTasks.RemoveAll(t => ids.Contains(t.Id));
+        }
+
         public void ArchiveEvents(IEnumerable<Event> eventsToArchive)
         {
             ArchivedEvents.AddRange(eventsToArchive.Select(CloneEvent));
@@ -94,6 +101,12 @@ namespace PriorityTaskManager.Tests.Infrastructure
         public bool RemoveArchivedEvent(Guid eventId)
         {
             return ArchivedEvents.RemoveAll(e => e.Id == eventId) > 0;
+        }
+
+        public int RemoveArchivedEvents(IEnumerable<Guid> eventIds)
+        {
+            var ids = eventIds.ToHashSet();
+            return ArchivedEvents.RemoveAll(e => ids.Contains(e.Id));
         }
 
         public void ClearArchive()

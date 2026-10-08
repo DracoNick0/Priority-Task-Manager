@@ -1,8 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/archive_group.dart';
 import '../models/fixed_event.dart';
 import '../models/task_item.dart';
 import 'task_providers.dart';
+
+final archiveGroupsProvider = FutureProvider<List<ArchiveGroup>>((ref) async {
+  final repository = await ref.watch(taskRepositoryProvider.future);
+  return repository.getArchiveGroups();
+});
 
 /// Archived tasks for the active (Authenticated-only) session. Archive is an
 /// online-exclusive feature (see docs/VISION.md); the UI must not watch this
@@ -36,6 +42,7 @@ class ArchivedTasksNotifier extends AsyncNotifier<List<TaskItem>> {
     ref.invalidateSelf();
     await future;
     ref.invalidate(tasksProvider(restored.listId));
+    ref.invalidate(archiveGroupsProvider);
   }
 
   /// Permanently deletes an archived task, refreshing this list on success.
@@ -44,6 +51,7 @@ class ArchivedTasksNotifier extends AsyncNotifier<List<TaskItem>> {
     await repository.deleteArchivedTask(taskId);
     ref.invalidateSelf();
     await future;
+    ref.invalidate(archiveGroupsProvider);
   }
 
   /// Permanently deletes every archived task and event.
@@ -53,6 +61,19 @@ class ArchivedTasksNotifier extends AsyncNotifier<List<TaskItem>> {
     ref.invalidateSelf();
     await future;
     ref.invalidate(archivedEventsProvider);
+    ref.invalidate(archiveGroupsProvider);
+  }
+
+  Future<void> restoreArchiveGroup(
+    ArchiveGroup group, {
+    String? targetListId,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.restoreArchiveGroup(group, targetListId: targetListId);
+    ref.invalidateSelf();
+    await future;
+    ref.invalidate(archivedEventsProvider);
+    ref.invalidate(archiveGroupsProvider);
   }
 }
 
@@ -74,6 +95,7 @@ class ArchivedEventsNotifier extends AsyncNotifier<List<FixedEvent>> {
     await repository.restoreArchivedEvent(eventId);
     ref.invalidateSelf();
     await future;
+    ref.invalidate(archiveGroupsProvider);
   }
 
   Future<void> deleteArchivedEvent(String eventId) async {
@@ -81,5 +103,6 @@ class ArchivedEventsNotifier extends AsyncNotifier<List<FixedEvent>> {
     await repository.deleteArchivedEvent(eventId);
     ref.invalidateSelf();
     await future;
+    ref.invalidate(archiveGroupsProvider);
   }
 }

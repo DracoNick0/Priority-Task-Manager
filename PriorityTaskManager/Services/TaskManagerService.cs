@@ -264,8 +264,32 @@ namespace PriorityTaskManager.Services
             var task = _data.Tasks.Find(t => t.Id == id);
             if (task == null)
                 return false;
+            task.ArchiveGroupId = null;
             _persistenceService.ArchiveTasks(new[] { task });
             _data.Tasks.Remove(task);
+            SaveData();
+            return true;
+        }
+
+        /// <summary>Archives a set of tasks as one restorable group.</summary>
+        /// <param name="taskIds">The IDs of all tasks in the group.</param>
+        /// <returns>True when every requested task was found and archived.</returns>
+        public bool ArchiveTaskGroup(IEnumerable<Guid> taskIds)
+        {
+            var requestedIds = taskIds.Distinct().ToHashSet();
+            if (requestedIds.Count == 0)
+                return false;
+
+            var tasks = _data.Tasks.Where(task => requestedIds.Contains(task.Id)).ToList();
+            if (tasks.Count != requestedIds.Count)
+                return false;
+
+            var groupId = Guid.NewGuid();
+            foreach (var task in tasks)
+                task.ArchiveGroupId = groupId;
+
+            _persistenceService.ArchiveTasks(tasks);
+            _data.Tasks.RemoveAll(task => requestedIds.Contains(task.Id));
             SaveData();
             return true;
         }
@@ -535,7 +559,11 @@ namespace PriorityTaskManager.Services
         /// <param name="tasksToArchive">The tasks to archive.</param>
         public void ArchiveTasks(IEnumerable<TaskItem> tasksToArchive)
         {
-            _persistenceService.ArchiveTasks(tasksToArchive);
+            var tasks = tasksToArchive.ToList();
+            var groupId = Guid.NewGuid();
+            foreach (var task in tasks)
+                task.ArchiveGroupId = groupId;
+            _persistenceService.ArchiveTasks(tasks);
         }
 
         /// <summary>
@@ -544,6 +572,18 @@ namespace PriorityTaskManager.Services
         public List<TaskItem> GetArchivedTasks()
         {
             return _persistenceService.GetArchivedTasks();
+        }
+
+        /// <summary>Builds grouped archive contents, including singleton groups for legacy items.</summary>
+        public List<ArchiveGroup> GetArchiveGroups()
+        {
+            var taskGroups = _persistenceService.GetArchivedTasks()
+                .GroupBy(task => task.ArchiveGroupId ?? task.Id)
+                .Select(group => new ArchiveGroup(group.Key, "tasks", group.ToList(), Array.Empty<Event>()));
+            var eventGroups = _persistenceService.GetArchivedEvents()
+                .GroupBy(evt => evt.ArchiveGroupId ?? evt.SeriesId ?? evt.Id)
+                .Select(group => new ArchiveGroup(group.Key, "events", Array.Empty<TaskItem>(), group.ToList()));
+            return taskGroups.Concat(eventGroups).ToList();
         }
 
         /// <summary>
@@ -582,10 +622,46 @@ namespace PriorityTaskManager.Services
             }
 
             _persistenceService.RemoveArchivedTask(taskId);
+            archivedTask.ArchiveGroupId = null;
             archivedTask.ListId = targetList.Id;
             archivedTask.ListName = targetList.Name;
             archivedTask.DisplayId = _data.NextDisplayId++;
             _data.Tasks.Add(archivedTask);
+            SaveData();
+            return RestoreArchivedTaskResult.Restored;
+        }
+
+        /// <summary>Restores every archived task in a group, validating destinations before changing state.</summary>
+        public RestoreArchivedTaskResult RestoreArchivedTaskGroup(Guid groupId, Guid? targetListId = null)
+        {
+            var archivedTasks = _persistenceService.GetArchivedTasks()
+                .Where(task => (task.ArchiveGroupId ?? task.Id) == groupId)
+                .ToList();
+            if (archivedTasks.Count == 0)
+                return RestoreArchivedTaskResult.NotFound;
+
+            var targets = new List<(TaskItem Task, TaskList List)>();
+            foreach (var task in archivedTasks)
+            {
+                var targetList = targetListId.HasValue
+                    ? GetListById(targetListId.Value)
+                    : GetListById(task.ListId);
+                if (targetList == null)
+                    return targetListId.HasValue
+                        ? RestoreArchivedTaskResult.TargetListNotFound
+                        : RestoreArchivedTaskResult.ListRequired;
+                targets.Add((task, targetList));
+            }
+
+            _persistenceService.RemoveArchivedTasks(archivedTasks.Select(task => task.Id));
+            foreach (var (task, targetList) in targets)
+            {
+                task.ArchiveGroupId = null;
+                task.ListId = targetList.Id;
+                task.ListName = targetList.Name;
+                task.DisplayId = _data.NextDisplayId++;
+                _data.Tasks.Add(task);
+            }
             SaveData();
             return RestoreArchivedTaskResult.Restored;
         }
@@ -650,6 +726,9 @@ namespace PriorityTaskManager.Services
 
         /// <summary>Restores an archived event or recurring series.</summary>
         public bool RestoreArchivedEvent(Guid eventId) => _eventService.RestoreArchivedEvent(eventId);
+
+        /// <summary>Restores all archived events in the specified group.</summary>
+        public bool RestoreArchivedEventGroup(Guid groupId) => _eventService.RestoreArchivedEventGroup(groupId);
 
         /// <summary>Permanently deletes an archived event or recurring series.</summary>
         public bool DeleteArchivedEvent(Guid eventId) => _persistenceService.RemoveArchivedEvent(eventId);

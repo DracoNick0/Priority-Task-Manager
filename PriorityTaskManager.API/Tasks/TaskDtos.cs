@@ -24,6 +24,9 @@ namespace PriorityTaskManager.API.Tasks
 		bool IsDivisible = false,
 		string? Link = null);
 
+	/// <summary>Request body for archiving a set of tasks as one group.</summary>
+	public record ArchiveTasksRequest(List<Guid> TaskIds);
+
 	/// <summary>Response body representing a persisted task, including scheduler-computed read-only fields.</summary>
 	public record TaskResponse(
 		Guid Id,

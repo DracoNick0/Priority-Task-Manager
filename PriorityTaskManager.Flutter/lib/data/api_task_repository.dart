@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/archive_group.dart';
 import '../models/fixed_event.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
@@ -345,6 +346,11 @@ class ApiTaskRepository implements TaskRepository {
   @override
   Future<void> archiveTask(String taskId) async {
     await _send('POST', '/api/tasks/$taskId/archive');
+  }
+
+  @override
+  Future<void> archiveTaskGroup(List<String> taskIds) async {
+    await _send('POST', '/api/tasks/archive/batch', body: {'taskIds': taskIds});
   }
 
   @override
@@ -720,5 +726,63 @@ class ApiTaskRepository implements TaskRepository {
   @override
   Future<void> clearArchive() async {
     await _send('DELETE', '/api/archive/');
+  }
+
+  @override
+  Future<List<ArchiveGroup>> getArchiveGroups() async {
+    final response = await _send('GET', '/api/archive/groups');
+    final json = jsonDecode(response.body) as List<dynamic>;
+    return json.map((value) {
+      final group = value as Map<String, dynamic>;
+      final kind = switch (group['kind']) {
+        'tasks' => ArchiveGroupKind.tasks,
+        'events' => ArchiveGroupKind.events,
+        final value => throw FormatException(
+          'Unknown archive group kind: $value',
+        ),
+      };
+      return ArchiveGroup(
+        groupId: group['groupId'] as String,
+        kind: kind,
+        tasks: (group['tasks'] as List<dynamic>)
+            .map((task) => _taskFromJson(task as Map<String, dynamic>))
+            .toList(),
+        events: (group['events'] as List<dynamic>)
+            .map((event) => _eventFromJson(event as Map<String, dynamic>, ''))
+            .toList(),
+      );
+    }).toList();
+  }
+
+  @override
+  Future<void> restoreArchiveGroup(
+    ArchiveGroup group, {
+    String? targetListId,
+  }) async {
+    final isTaskGroup = group.kind == ArchiveGroupKind.tasks;
+    final path = isTaskGroup
+        ? '/api/archive/task-groups/${group.groupId}/restore'
+        : '/api/archive/event-groups/${group.groupId}/restore';
+    http.Response response;
+    try {
+      response = await _httpClient.post(
+        baseUri.resolve(path),
+        headers: _headers,
+        body: isTaskGroup ? jsonEncode({'targetListId': targetListId}) : null,
+      );
+    } catch (error) {
+      throw StateError(
+        'Could not reach the API at $baseUri. Make sure PriorityTaskManager.API '
+        'is running (see docs/WORKFLOW.md). Underlying error: $error',
+      );
+    }
+    if (response.statusCode == 409 && isTaskGroup) {
+      throw RestoreTargetListRequiredException();
+    }
+    if (response.statusCode >= 400) {
+      throw StateError(
+        'Request to restore archive group failed (${response.statusCode}).',
+      );
+    }
   }
 }

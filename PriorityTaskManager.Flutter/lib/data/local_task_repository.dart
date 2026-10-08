@@ -1,6 +1,7 @@
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/archive_group.dart';
 import '../models/fixed_event.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
@@ -144,6 +145,13 @@ class LocalTaskRepository implements TaskRepository {
 
   @override
   Future<void> archiveTask(String taskId) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> archiveTaskGroup(List<String> taskIds) {
     throw UnsupportedError(
       'Archive is an online-exclusive feature; Guests do not have access to it.',
     );
@@ -317,6 +325,20 @@ class LocalTaskRepository implements TaskRepository {
 
   @override
   Future<void> deleteArchivedEvent(String eventId) {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<List<ArchiveGroup>> getArchiveGroups() {
+    throw UnsupportedError(
+      'Archive is an online-exclusive feature; Guests do not have access to it.',
+    );
+  }
+
+  @override
+  Future<void> restoreArchiveGroup(ArchiveGroup group, {String? targetListId}) {
     throw UnsupportedError(
       'Archive is an online-exclusive feature; Guests do not have access to it.',
     );

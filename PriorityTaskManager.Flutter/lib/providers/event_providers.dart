@@ -73,6 +73,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     ref.invalidateSelf();
     await future;
     ref.invalidate(archivedEventsProvider);
+    ref.invalidate(archiveGroupsProvider);
   }
 
   /// Edits one or more occurrences of a recurring series (issue #71). The
@@ -120,5 +121,6 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     ref.invalidateSelf();
     await future;
     ref.invalidate(archivedEventsProvider);
+    ref.invalidate(archiveGroupsProvider);
   }
 }

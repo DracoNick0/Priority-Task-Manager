@@ -1,4 +1,5 @@
 import '../models/fixed_event.dart';
+import '../models/archive_group.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
@@ -118,6 +119,12 @@ class LoggingTaskRepository implements TaskRepository {
   @override
   Future<void> archiveTask(String taskId) =>
       _logged('archiveTask($taskId)', () => _inner.archiveTask(taskId));
+
+  @override
+  Future<void> archiveTaskGroup(List<String> taskIds) => _logged(
+    'archiveTaskGroup(${taskIds.length} tasks)',
+    () => _inner.archiveTaskGroup(taskIds),
+  );
 
   @override
   Future<void> setCompleted(String taskId, bool isCompleted) => _logged(
@@ -265,4 +272,17 @@ class LoggingTaskRepository implements TaskRepository {
 
   @override
   Future<void> clearArchive() => _logged('clearArchive()', _inner.clearArchive);
+
+  @override
+  Future<List<ArchiveGroup>> getArchiveGroups() =>
+      _logged('getArchiveGroups()', _inner.getArchiveGroups);
+
+  @override
+  Future<void> restoreArchiveGroup(
+    ArchiveGroup group, {
+    String? targetListId,
+  }) => _logged(
+    'restoreArchiveGroup(${group.kind.name}:${group.groupId})',
+    () => _inner.restoreArchiveGroup(group, targetListId: targetListId),
+  );
 }

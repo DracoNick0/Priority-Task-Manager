@@ -189,6 +189,9 @@ namespace PriorityTaskManager.API.Persistence
 		}
 
 		public bool RemoveArchivedTask(Guid taskId)
+			=> RemoveArchivedTasks(new[] { taskId }) != 0;
+
+		public int RemoveArchivedTasks(IEnumerable<Guid> taskIds)
 		{
 			using var connection = OpenConnection();
 			var archiveDocument = ReadDocument(connection, _accountId, ArchiveDocumentId);
@@ -196,8 +199,9 @@ namespace PriorityTaskManager.API.Persistence
 				? JsonSerializer.Deserialize<List<TaskItem>>(archiveDocument) ?? new List<TaskItem>()
 				: new List<TaskItem>();
 
-			var removed = archivedTasks.RemoveAll(t => t.Id == taskId) > 0;
-			if (removed)
+			var taskIdsToRemove = taskIds.ToHashSet();
+			var removed = archivedTasks.RemoveAll(t => taskIdsToRemove.Contains(t.Id));
+			if (removed != 0)
 			{
 				WriteDocument(connection, _accountId, ArchiveDocumentId, JsonSerializer.Serialize(archivedTasks));
 			}
@@ -228,11 +232,15 @@ namespace PriorityTaskManager.API.Persistence
 		}
 
 		public bool RemoveArchivedEvent(Guid eventId)
+			=> RemoveArchivedEvents(new[] { eventId }) != 0;
+
+		public int RemoveArchivedEvents(IEnumerable<Guid> eventIds)
 		{
 			using var connection = OpenConnection();
 			var archivedEvents = GetArchivedEvents(connection);
-			var removed = archivedEvents.RemoveAll(e => e.Id == eventId) > 0;
-			if (removed)
+			var eventIdsToRemove = eventIds.ToHashSet();
+			var removed = archivedEvents.RemoveAll(e => eventIdsToRemove.Contains(e.Id));
+			if (removed != 0)
 				WriteDocument(connection, _accountId, ArchivedEventsDocumentId, JsonSerializer.Serialize(archivedEvents));
 			return removed;
 		}

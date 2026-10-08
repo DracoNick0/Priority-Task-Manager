@@ -65,6 +65,15 @@ namespace PriorityTaskManager.API.Tasks
 			group.MapDelete("/{id:guid}", (Guid id, TaskManagerService taskManagerService) =>
 				taskManagerService.ArchiveTask(id) ? Results.NoContent() : Results.NotFound());
 
+			group.MapPost("/archive/batch", (ArchiveTasksRequest request, TaskManagerService taskManagerService) =>
+			{
+				if (request.TaskIds is not { Count: > 0 })
+					return Results.BadRequest(new { error = "At least one task ID is required." });
+				return taskManagerService.ArchiveTaskGroup(request.TaskIds)
+					? Results.NoContent()
+					: Results.NotFound();
+			});
+
 			group.MapPost("/{id:guid}/complete", (Guid id, TaskManagerService taskManagerService) =>
 				taskManagerService.MarkTaskAsComplete(id) ? Results.Ok(taskManagerService.GetTaskById(id)!.ToResponse()) : Results.NotFound());
 

@@ -780,6 +780,21 @@ namespace PriorityTaskManager.Tests.Integration
             }
 
             [Fact]
+            public void ArchiveTask_Individually_DoesNotAssignGroup()
+            {
+                var task = new TaskItem
+                {
+                    Title = "Archived alone",
+                    ListId = _TMS.GetActiveListId()
+                };
+                _TMS.AddTask(task);
+
+                Assert.True(_TMS.ArchiveTask(task.Id));
+
+                Assert.Null(Assert.Single(_TMS.GetArchivedTasks()).ArchiveGroupId);
+            }
+
+            [Fact]
             public void RestoreArchivedTask_WhenOriginalListGoneAndNoTargetGiven_ReturnsListRequired()
             {
                 var archivedTask = new TaskItem { Id = Guid.NewGuid(), Title = "Archived Task", ListId = Guid.NewGuid() };
@@ -817,6 +832,57 @@ namespace PriorityTaskManager.Tests.Integration
 
                 Assert.Equal(RestoreArchivedTaskResult.TargetListNotFound, result);
                 Assert.Single(_TMS.GetArchivedTasks());
+            }
+
+            [Fact]
+            public void ArchiveTaskGroup_RestoresAllTasksTogether()
+            {
+                var listId = _TMS.GetActiveListId();
+                var first = new TaskItem { Title = "First", ListId = listId };
+                var second = new TaskItem { Title = "Second", ListId = listId };
+                _TMS.AddTask(first);
+                _TMS.AddTask(second);
+
+                Assert.True(_TMS.ArchiveTaskGroup(new[] { first.Id, second.Id }));
+
+                var group = Assert.Single(_TMS.GetArchiveGroups());
+                Assert.Equal("tasks", group.Kind);
+                Assert.Collection(group.Tasks, _ => { }, _ => { });
+                Assert.All(group.Tasks, task => Assert.Equal(group.GroupId, task.ArchiveGroupId));
+
+                Assert.Equal(
+                    RestoreArchivedTaskResult.Restored,
+                    _TMS.RestoreArchivedTaskGroup(group.GroupId));
+
+                Assert.Empty(_TMS.GetArchivedTasks());
+                Assert.Equal(2, _TMS.GetAllTasks(listId).Count());
+                Assert.All(_TMS.GetAllTasks(listId), task => Assert.Null(task.ArchiveGroupId));
+            }
+
+            [Fact]
+            public void RestoreArchivedTaskGroup_WhenOriginalListIsGone_DoesNotPartiallyRestore()
+            {
+                var originalListId = _TMS.GetActiveListId();
+                var first = new TaskItem { Title = "First", ListId = originalListId };
+                var second = new TaskItem { Title = "Second", ListId = originalListId };
+                _TMS.AddTask(first);
+                _TMS.AddTask(second);
+                Assert.True(_TMS.ArchiveTaskGroup(new[] { first.Id, second.Id }));
+                var group = Assert.Single(_TMS.GetArchiveGroups());
+                var destination = new TaskList { Name = "Destination" };
+                _TMS.AddList(destination);
+                _TMS.DeleteList("General");
+
+                Assert.Equal(
+                    RestoreArchivedTaskResult.ListRequired,
+                    _TMS.RestoreArchivedTaskGroup(group.GroupId));
+                Assert.Collection(_TMS.GetArchivedTasks(), _ => { }, _ => { });
+
+                Assert.Equal(
+                    RestoreArchivedTaskResult.Restored,
+                    _TMS.RestoreArchivedTaskGroup(group.GroupId, destination.Id));
+                Assert.Equal(2, _TMS.GetAllTasks(destination.Id).Count());
+                Assert.Empty(_TMS.GetArchivedTasks());
             }
         }
     }

@@ -135,6 +135,7 @@ namespace PriorityTaskManager.Services
             if (eventToArchive == null)
                 return false;
 
+            eventToArchive.ArchiveGroupId = eventToArchive.SeriesId ?? eventToArchive.Id;
             _persistenceService.ArchiveEvents(new[] { eventToArchive });
             _data.Events.Remove(eventToArchive);
             _persistenceService.SaveData(_data);
@@ -169,7 +170,8 @@ namespace PriorityTaskManager.Services
                         Description = occurrence.Event.Description,
                         Link = occurrence.Event.Link,
                         StartTime = occurrence.Event.StartTime,
-                        EndTime = occurrence.Event.EndTime
+                        EndTime = occurrence.Event.EndTime,
+                        ArchiveGroupId = seriesId
                     };
                     _persistenceService.ArchiveEvents(new[] { archivedEvent });
                     seriesEvent.Exceptions.RemoveAll(e => e.OriginalOccurrenceDate.Date == occurrenceDateOnly);
@@ -199,6 +201,7 @@ namespace PriorityTaskManager.Services
                             .Add(seriesEvent.EndTime - seriesEvent.StartTime),
                         RecurrenceRule = split.NewRule,
                         Exceptions = split.NewExceptions,
+                        ArchiveGroupId = seriesId,
                         OccurrenceOverrides = seriesEvent.OccurrenceOverrides
                             .Where(o => o.OriginalOccurrenceDate.Date >= occurrenceDateOnly)
                             .Select(o => o.Clone())
@@ -244,7 +247,27 @@ namespace PriorityTaskManager.Services
                 return false;
 
             _persistenceService.RemoveArchivedEvent(eventId);
+            archivedEvent.ArchiveGroupId = null;
             _data.Events.Add(archivedEvent);
+            _persistenceService.SaveData(_data);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public bool RestoreArchivedEventGroup(Guid groupId)
+        {
+            var archivedEvents = _persistenceService.GetArchivedEvents()
+                .Where(e => (e.ArchiveGroupId ?? e.SeriesId ?? e.Id) == groupId)
+                .ToList();
+            if (archivedEvents.Count == 0)
+                return false;
+
+            _persistenceService.RemoveArchivedEvents(archivedEvents.Select(e => e.Id));
+            foreach (var archivedEvent in archivedEvents)
+            {
+                archivedEvent.ArchiveGroupId = null;
+                _data.Events.Add(archivedEvent);
+            }
             _persistenceService.SaveData(_data);
             return true;
         }

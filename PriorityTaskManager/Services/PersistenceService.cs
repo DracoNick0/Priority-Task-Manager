@@ -358,10 +358,14 @@ namespace PriorityTaskManager.Services
         /// <param name="taskId">The ID of the archived task to remove.</param>
         /// <returns>True if a matching archived task was found and removed; otherwise false.</returns>
         public bool RemoveArchivedTask(Guid taskId)
+            => RemoveArchivedTasks(new[] { taskId }) != 0;
+
+        public int RemoveArchivedTasks(IEnumerable<Guid> taskIds)
         {
             var archivedTasks = GetArchivedTasks();
-            var removed = archivedTasks.RemoveAll(t => t.Id == taskId) > 0;
-            if (removed)
+            var taskIdsToRemove = taskIds.ToHashSet();
+            var removed = archivedTasks.RemoveAll(t => taskIdsToRemove.Contains(t.Id));
+            if (removed != 0)
             {
                 WriteAtomic(_archiveFilePath, JsonSerializer.Serialize(archivedTasks));
             }
@@ -387,10 +391,14 @@ namespace PriorityTaskManager.Services
         }
 
         public bool RemoveArchivedEvent(Guid eventId)
+            => RemoveArchivedEvents(new[] { eventId }) != 0;
+
+        public int RemoveArchivedEvents(IEnumerable<Guid> eventIds)
         {
             var archivedEvents = GetArchivedEvents();
-            var removed = archivedEvents.RemoveAll(e => e.Id == eventId) > 0;
-            if (removed)
+            var eventIdsToRemove = eventIds.ToHashSet();
+            var removed = archivedEvents.RemoveAll(e => eventIdsToRemove.Contains(e.Id));
+            if (removed != 0)
                 WriteAtomic(_archivedEventsFilePath, JsonSerializer.Serialize(archivedEvents));
             return removed;
         }

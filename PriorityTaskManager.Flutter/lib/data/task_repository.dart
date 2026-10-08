@@ -1,4 +1,5 @@
 import '../models/fixed_event.dart';
+import '../models/archive_group.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
@@ -46,11 +47,14 @@ abstract class TaskRepository {
   /// Permanently deletes for Guests; API-backed sessions move the task to archive.
   Future<void> deleteTask(String taskId);
 
-  /// Archives a completed task: moves it out of the active list into the
+  /// Archives a task: moves it out of the active list into the
   /// archive (see [getArchivedTasks]). Archive is an online-exclusive
   /// feature (Guests have no access to it, consistent with other
   /// online-only features; see docs/VISION.md).
   Future<void> archiveTask(String taskId);
+
+  /// Archives multiple tasks in one restore group.
+  Future<void> archiveTaskGroup(List<String> taskIds);
 
   Future<void> setCompleted(String taskId, bool isCompleted);
 
@@ -132,6 +136,12 @@ abstract class TaskRepository {
 
   /// Permanently deletes an event from the archive.
   Future<void> deleteArchivedEvent(String eventId);
+
+  /// Returns archived items grouped by the action or event series that created them.
+  Future<List<ArchiveGroup>> getArchiveGroups();
+
+  /// Restores every archived item in a group.
+  Future<void> restoreArchiveGroup(ArchiveGroup group, {String? targetListId});
 
   /// Permanently deletes every archived task and event.
   Future<void> clearArchive();
