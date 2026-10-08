@@ -78,5 +78,27 @@ namespace PriorityTaskManager.Tests.Services
 
             Assert.Null(result);
         }
+
+        [Fact]
+        public void FindById_ReturnsAccount_WhenAccountExists()
+        {
+            var repository = new InMemoryAccountRepository();
+            var service = new AccountService(repository);
+            var account = service.Register("user@example.com", "correct horse battery staple");
+
+            var result = service.FindById(account.Id);
+
+            Assert.Same(account, result);
+        }
+
+        [Fact]
+        public void FindById_ReturnsNull_WhenAccountDoesNotExist()
+        {
+            var service = new AccountService(new InMemoryAccountRepository());
+
+            var result = service.FindById(Guid.NewGuid());
+
+            Assert.Null(result);
+        }
     }
 }

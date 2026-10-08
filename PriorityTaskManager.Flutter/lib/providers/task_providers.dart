@@ -28,6 +28,8 @@ final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
   if (session.status == SessionStatus.authenticated && session.token != null) {
     final api = ApiTaskRepository(
       authToken: session.token!,
+      onUnauthorized: () =>
+          ref.read(sessionControllerProvider.notifier).logout(),
       httpClient: kDebugMode ? LoggingHttpClient(http.Client()) : null,
     );
     return kDebugMode ? LoggingTaskRepository(api) : api;

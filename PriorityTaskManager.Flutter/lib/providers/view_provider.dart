@@ -10,6 +10,7 @@ import '../models/schedule_models.dart';
 import '../utils/iterable_extensions.dart';
 import 'auth_provider.dart';
 import 'event_providers.dart';
+import 'session_provider.dart';
 import 'task_providers.dart';
 import 'user_profile_provider.dart';
 
@@ -35,6 +36,7 @@ final scheduleRepositoryProvider = FutureProvider<ScheduleRepository>((
   }
   return ApiScheduleRepository(
     authToken: authToken,
+    onUnauthorized: () => ref.read(sessionControllerProvider.notifier).logout(),
     httpClient: kDebugMode ? LoggingHttpClient(http.Client()) : null,
   );
 });

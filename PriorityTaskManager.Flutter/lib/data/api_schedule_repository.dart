@@ -56,6 +56,7 @@ class ApiScheduleRepository implements ScheduleRepository {
     Uri? baseUri,
     http.Client? httpClient,
     required this.authToken,
+    this.onUnauthorized,
   }) : baseUri = baseUri ?? defaultBaseUri,
        _httpClient = httpClient ?? http.Client();
 
@@ -78,6 +79,7 @@ class ApiScheduleRepository implements ScheduleRepository {
   final Uri baseUri;
   final http.Client _httpClient;
   final String authToken;
+  final Future<void> Function()? onUnauthorized;
 
   @override
   Future<DailySchedule> computeSchedule({
@@ -117,6 +119,10 @@ class ApiScheduleRepository implements ScheduleRepository {
         'PriorityTaskManager.API is running (see docs/WORKFLOW.md). '
         'Underlying error: $error',
       );
+    }
+
+    if (response.statusCode == 401) {
+      await onUnauthorized?.call();
     }
 
     if (response.statusCode != 200) {

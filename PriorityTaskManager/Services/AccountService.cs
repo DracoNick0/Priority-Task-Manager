@@ -74,6 +74,11 @@ namespace PriorityTaskManager.Services
                 : null;
         }
 
+        /// <summary>
+        /// Finds an account by its id, or <c>null</c> if it no longer exists.
+        /// </summary>
+        public Account? FindById(Guid id) => _accountRepository.FindById(id);
+
         private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
     }
 }

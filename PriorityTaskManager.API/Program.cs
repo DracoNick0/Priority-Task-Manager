@@ -102,6 +102,26 @@ if (cloudModeEnabled)
 				ValidateLifetime = true,
 				ClockSkew = TimeSpan.FromSeconds(30)
 			};
+			options.Events = new JwtBearerEvents
+			{
+				OnTokenValidated = context =>
+				{
+					var accountIdClaim = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+					if (!Guid.TryParse(accountIdClaim, out var accountId))
+					{
+						context.Fail("The token does not identify an account.");
+						return Task.CompletedTask;
+					}
+
+					var accountService = context.HttpContext.RequestServices.GetRequiredService<AccountService>();
+					if (accountService.FindById(accountId) is null)
+					{
+						context.Fail("The account no longer exists.");
+					}
+
+					return Task.CompletedTask;
+				}
+			};
 		});
 	builder.Services.AddAuthorization(options =>
 	{
@@ -173,4 +193,3 @@ static class CorsPolicies
 		Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
 		(uri.Host is "localhost" or "127.0.0.1");
 }
-

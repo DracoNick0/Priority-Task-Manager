@@ -17,6 +17,39 @@ import 'package:priority_task_manager/models/user_profile.dart';
 void main() {
   group('ApiTaskRepository', () {
     test(
+      'getLists invokes unauthorized handler for an invalid session',
+      () async {
+        var signedOut = false;
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: MockClient((_) async => http.Response('', 401)),
+          onUnauthorized: () async {
+            signedOut = true;
+          },
+        );
+
+        await expectLater(repository.getLists(), throwsStateError);
+
+        expect(signedOut, isTrue);
+      },
+    );
+
+    test('getLists does not sign out when the API is unavailable', () async {
+      var signedOut = false;
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: MockClient((_) async => http.Response('', 503)),
+        onUnauthorized: () async {
+          signedOut = true;
+        },
+      );
+
+      await expectLater(repository.getLists(), throwsStateError);
+
+      expect(signedOut, isFalse);
+    });
+
+    test(
       'getLists parses enum names and TimeOnly strings from the response',
       () async {
         final client = MockClient((request) async {

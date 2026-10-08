@@ -83,12 +83,14 @@ class ApiTaskRepository implements TaskRepository {
     Uri? baseUri,
     http.Client? httpClient,
     required this.authToken,
+    this.onUnauthorized,
   }) : baseUri = baseUri ?? ApiScheduleRepository.defaultBaseUri,
        _httpClient = httpClient ?? http.Client();
 
   final Uri baseUri;
   final http.Client _httpClient;
   final String authToken;
+  final Future<void> Function()? onUnauthorized;
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -132,6 +134,10 @@ class ApiTaskRepository implements TaskRepository {
         'Could not reach the API at $baseUri. Make sure PriorityTaskManager.API '
         'is running (see docs/WORKFLOW.md). Underlying error: $error',
       );
+    }
+
+    if (response.statusCode == 401) {
+      await onUnauthorized?.call();
     }
 
     if (response.statusCode >= 400) {
