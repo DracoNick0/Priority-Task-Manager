@@ -71,9 +71,9 @@ Production secrets (`ConnectionStrings__Postgres`, `Jwt__Key`, etc.) are set via
 
 To point a local Flutter build at the hosted production API instead of a local one, pass `--dart-define=API_BASE_URL=https://tpm-api.fly.dev` (or use the "Flutter (Windows, Fly.io prod)" launch config).
 
-**Deploying the Web Client (Cloudflare Pages / Workers Static Assets):**
+**Deploying the Web Client (Cloudflare Workers Static Assets):**
 
-`PriorityTaskManager.Flutter/wrangler.jsonc` configures the static asset deployment to Cloudflare (`tpm-web`, pointing to `./build/web`).
+`PriorityTaskManager.Flutter/wrangler.jsonc` configures the static asset deployment to the Cloudflare Worker (`priority-task-manager`, serving `./build/web`). Cloudflare Workers Builds runs the configured build and deploy commands for GitHub Preview and Production builds. Preview builds use `npx wrangler preview`, which requires the `previews` block in the Wrangler config; Production builds use `npx wrangler deploy`.
 
 1. Build the Flutter web application targeting the production API:
    ```bash
@@ -84,7 +84,6 @@ To point a local Flutter build at the hosted production API instead of a local o
    ```bash
    npx wrangler deploy
    ```
-   *(Or deploy via Cloudflare Pages dashboard / `npx wrangler pages deploy build/web`)*
 
 3. Configure CORS on Fly.io (if origin restrictions are added):
    Set the allowed origin in Fly secrets or environment variables:
@@ -92,7 +91,7 @@ To point a local Flutter build at the hosted production API instead of a local o
    flyctl secrets set Cors__AllowedOrigins__0="https://<your-cloudflare-pages-domain>" -a tpm-api
    ```
 
-**There is no CI/CD for the API or Web Deployments.** Merging or pushing to `main` does not redeploy `tpm-api` or `tpm-web`; both are manual deployments. Any change under `PriorityTaskManager.API/` or `PriorityTaskManager/` (new/changed endpoints, routes, request/response contracts, persistence, auth) is **not live** until redeployed. Run `flyctl releases -a tpm-api` to check the last deploy date/commit before assuming the hosted API matches `main`, and redeploy after merging such a change if the hosted instance needs it (e.g. before testing the Flutter client against `https://tpm-api.fly.dev`).
+**The API deployment is manual; the web client uses Cloudflare Workers Builds.** Cloudflare runs the configured build/deploy commands for the connected GitHub branches. Changes under `PriorityTaskManager.API/` or `PriorityTaskManager/` (new/changed endpoints, routes, request/response contracts, persistence, auth) are **not live** until the API is redeployed with `flyctl deploy`. Run `flyctl releases -a tpm-api` to check the last deploy date/commit before assuming the hosted API matches `main`, and redeploy after merging such a change if the hosted instance needs it (e.g. before testing the Flutter client against `https://tpm-api.fly.dev`).
 
 ## Testing
 
