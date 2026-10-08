@@ -298,10 +298,11 @@ class _Pipeline extends ConsumerWidget {
       );
     }
 
-    Widget buildPlainTaskCard(TaskItem task) {
+    Widget buildPlainTaskCard(TaskItem task, {bool showDueDate = false}) {
       return TaskCard(
         key: ValueKey('plain-${task.id}'),
         task: task,
+        showDueDate: showDueDate,
         isBlocked: isBlocked(task),
         onToggleCompleted: (value) {
           ref.read(tasksProvider(listId).notifier).setCompleted(task.id, value);
@@ -378,9 +379,6 @@ class _Pipeline extends ConsumerWidget {
       return 'Free Time: ${hours}h ${minutes}m';
     }
 
-    // Completed tasks aren't sent through the scheduler, so surface them
-    // directly in Today's column so they remain visible (dimmed/struck-through)
-    // instead of disappearing once checked off.
     final completedTasks = tasks.where((task) => task.isCompleted).toList();
 
     bool isSameDay(DateTime a, DateTime b) =>
@@ -392,7 +390,6 @@ class _Pipeline extends ConsumerWidget {
 
     final todayCards = <Widget>[
       ...schedule.todayTasks.map(buildTaskCard),
-      ...completedTasks.map(buildPlainTaskCard),
       ...todayEvents.map(buildEventCard),
     ];
 
@@ -449,10 +446,18 @@ class _Pipeline extends ConsumerWidget {
                   .map(buildEventCard),
             ],
           ),
+      if (unscheduledTasks.isNotEmpty)
+        DayColumn(
+          title: 'Unscheduled',
+          subtitle: '${unscheduledTasks.length} task(s)',
+          cards: unscheduledTasks.map(buildPlainTaskCard).toList(),
+        ),
       DayColumn(
-        title: 'Unscheduled',
-        subtitle: '${unscheduledTasks.length} task(s)',
-        cards: unscheduledTasks.map(buildPlainTaskCard).toList(),
+        title: 'Completed',
+        subtitle: '${completedTasks.length} task(s)',
+        cards: completedTasks
+            .map((task) => buildPlainTaskCard(task, showDueDate: true))
+            .toList(),
       ),
     ];
 

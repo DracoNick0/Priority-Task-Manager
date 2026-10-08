@@ -17,6 +17,7 @@ class TaskCard extends StatelessWidget {
     required this.task,
     this.startTime,
     this.endTime,
+    this.showDueDate = false,
     required this.isBlocked,
     this.fragmentIndex,
     this.fragmentTotal,
@@ -27,6 +28,7 @@ class TaskCard extends StatelessWidget {
   final TaskItem task;
   final DateTime? startTime;
   final DateTime? endTime;
+  final bool showDueDate;
   final bool isBlocked;
   final int? fragmentIndex;
   final int? fragmentTotal;
@@ -39,6 +41,7 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final timeFormat = DateFormat.jm();
+    final dueDateFormat = DateFormat.yMMMd();
 
     final double opacity = task.isCompleted ? 0.4 : (isBlocked ? 0.5 : 1.0);
 
@@ -101,6 +104,16 @@ class TaskCard extends StatelessWidget {
                           ],
                         ],
                       ),
+                      if (showDueDate) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          task.dueDate == null
+                              ? 'No due date'
+                              : 'Due ${dueDateFormat.format(task.dueDate!)}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
                       if (startTime != null && endTime != null) ...[
                         const SizedBox(height: 2),
                         Text(
