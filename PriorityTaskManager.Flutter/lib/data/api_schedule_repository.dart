@@ -188,44 +188,28 @@ class ApiScheduleRepository implements ScheduleRepository {
     for (final taskJson in scheduledTasksJson) {
       final parts = (taskJson['scheduledParts'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>();
-      if (parts.isEmpty) continue;
+      for (final part in parts) {
+        final start = DateTime.parse(part['startTime'] as String);
+        final end = DateTime.parse(part['endTime'] as String);
+        final isToday =
+            start.year == now.year &&
+            start.month == now.month &&
+            start.day == now.day;
 
-      final startTimes = parts
-          .map((p) => DateTime.parse(p['startTime'] as String))
-          .toList();
-      final endTimes = parts
-          .map((p) => DateTime.parse(p['endTime'] as String))
-          .toList();
-      final start = startTimes.reduce((a, b) => a.isBefore(b) ? a : b);
-      final end = endTimes.reduce((a, b) => a.isAfter(b) ? a : b);
-      final totalHours = parts.fold<double>(
-        0,
-        (sum, p) =>
-            sum +
-            DateTime.parse(p['endTime'] as String)
-                    .difference(DateTime.parse(p['startTime'] as String))
-                    .inMinutes /
-                60.0,
-      );
+        final scheduledTask = ScheduledTask(
+          id: taskJson['id'] as String,
+          title: (taskJson['title'] as String?) ?? '',
+          startTime: start,
+          endTime: end,
+          dueDate: taskJson['dueDate'] == null
+              ? null
+              : DateTime.parse(taskJson['dueDate'] as String),
+          chunkHours: end.difference(start).inMinutes / 60.0,
+          isFuture: !isToday,
+        );
 
-      final isToday =
-          start.year == now.year &&
-          start.month == now.month &&
-          start.day == now.day;
-
-      final scheduledTask = ScheduledTask(
-        id: taskJson['id'] as String,
-        title: (taskJson['title'] as String?) ?? '',
-        startTime: start,
-        endTime: end,
-        dueDate: taskJson['dueDate'] == null
-            ? null
-            : DateTime.parse(taskJson['dueDate'] as String),
-        chunkHours: totalHours,
-        isFuture: !isToday,
-      );
-
-      (isToday ? todayTasks : futureTasks).add(scheduledTask);
+        (isToday ? todayTasks : futureTasks).add(scheduledTask);
+      }
     }
 
     todayTasks.sort((a, b) => a.startTime.compareTo(b.startTime));

@@ -19,7 +19,7 @@ import 'task_card.dart';
 
 /// The Center Stage: a horizontally scrolling pipeline of Daily Columns
 /// (Today, Tomorrow, ... , Unscheduled), each holding scheduled task cards
-/// and fixed event cards for that day.
+/// and fixed event cards for that day in chronological order.
 class CenterStage extends ConsumerWidget {
   const CenterStage({
     super.key,
@@ -325,6 +325,34 @@ class _Pipeline extends ConsumerWidget {
       );
     }
 
+    List<Widget> buildTimelineCards({
+      required Iterable<ScheduledTask> scheduledTasks,
+      required Iterable<FixedEvent> dayEvents,
+    }) {
+      final entries = <({DateTime startTime, int eventOrder, Widget card})>[];
+      for (final task in scheduledTasks) {
+        entries.add((
+          startTime: task.startTime,
+          eventOrder: 1,
+          card: buildTaskCard(task),
+        ));
+      }
+      for (final event in dayEvents) {
+        entries.add((
+          startTime: event.startTime,
+          eventOrder: 0,
+          card: buildEventCard(event),
+        ));
+      }
+      entries.sort((a, b) {
+        final byStartTime = a.startTime.compareTo(b.startTime);
+        return byStartTime != 0
+            ? byStartTime
+            : a.eventOrder.compareTo(b.eventOrder);
+      });
+      return entries.map((entry) => entry.card).toList();
+    }
+
     // The list's work window (mirrors ApiScheduleRepository's default
     // profile) used to derive each day's "Free Time" remainder.
     const workStartHour = 9;
@@ -388,10 +416,10 @@ class _Pipeline extends ConsumerWidget {
         .where((event) => isSameDay(event.startTime, today))
         .toList();
 
-    final todayCards = <Widget>[
-      ...schedule.todayTasks.map(buildTaskCard),
-      ...todayEvents.map(buildEventCard),
-    ];
+    final todayCards = buildTimelineCards(
+      scheduledTasks: schedule.todayTasks,
+      dayEvents: todayEvents,
+    );
 
     // Bucket future scheduled tasks and events by calendar day.
     final futureByDay = <DateTime, List<ScheduledTask>>{};
@@ -439,12 +467,12 @@ class _Pipeline extends ConsumerWidget {
               futureByDay[day] ?? const [],
               events.where((event) => isSameDay(event.startTime, day)).toList(),
             ),
-            cards: [
-              ...(futureByDay[day] ?? const []).map(buildTaskCard),
-              ...events
-                  .where((event) => isSameDay(event.startTime, day))
-                  .map(buildEventCard),
-            ],
+            cards: buildTimelineCards(
+              scheduledTasks: futureByDay[day] ?? const [],
+              dayEvents: events.where(
+                (event) => isSameDay(event.startTime, day),
+              ),
+            ),
           ),
       if (unscheduledTasks.isNotEmpty)
         DayColumn(

@@ -50,14 +50,12 @@ class TaskCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: _isFragmented
-            ? Border(
-                top: BorderSide(color: colorScheme.primary, width: 2),
-                bottom: BorderSide(color: colorScheme.primary, width: 2),
-                left: BorderSide(color: colorScheme.outlineVariant),
-                right: BorderSide(color: colorScheme.outlineVariant),
-              )
-            : Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(
+          color: _isFragmented
+              ? colorScheme.primary
+              : colorScheme.outlineVariant,
+          width: _isFragmented ? 2 : 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -152,9 +150,15 @@ class TaskCard extends StatelessWidget {
                       ],
                       if (_isFragmented) ...[
                         const SizedBox(height: 4),
-                        _FragmentBadge(
-                          index: fragmentIndex ?? 1,
-                          total: fragmentTotal!,
+                        Tooltip(
+                          message:
+                              'Scheduled part ${fragmentIndex ?? 1} of '
+                              '$fragmentTotal. Parts may continue on another '
+                              'day or after an event.',
+                          child: _FragmentBadge(
+                            index: fragmentIndex ?? 1,
+                            total: fragmentTotal!,
+                          ),
                         ),
                       ],
                     ],
@@ -191,7 +195,7 @@ class _FragmentBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        '$index/$total',
+        'Part $index of $total',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.bold,
           color: colorScheme.onPrimaryContainer,
