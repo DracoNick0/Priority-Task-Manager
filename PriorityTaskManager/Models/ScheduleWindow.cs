@@ -12,5 +12,8 @@ namespace PriorityTaskManager.Models
         /// Gets or sets the list of continuous time slots where work can be scheduled.
         /// </summary>
         public List<TimeSlot> AvailableSlots { get; set; } = new List<TimeSlot>();
+
+        /// <summary>Gets or sets the final date included in the scheduler's computed horizon.</summary>
+        public DateTime? HorizonEndDate { get; set; }
     }
 }

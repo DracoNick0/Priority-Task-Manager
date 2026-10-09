@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/archive_group.dart';
 import '../models/fixed_event.dart';
 import '../models/recurrence_rule.dart';
+import '../models/recurring_schedule_task.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -90,6 +91,11 @@ class LocalTaskRepository implements TaskRepository {
   @override
   Future<List<TaskItem>> getTasks(String listId) async =>
       _tasksBox.values.where((task) => task.listId == listId).toList();
+
+  @override
+  Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
+    String listId,
+  ) async => const [];
 
   @override
   Future<TaskItem> addTask({

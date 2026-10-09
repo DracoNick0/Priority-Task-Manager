@@ -195,6 +195,65 @@ void main() {
     });
 
     test(
+      'getRecurringTasksForScheduling returns persisted recurrence state',
+      () async {
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: MockClient((request) async {
+            expect(request.url.path, '/api/tasks/');
+            return http.Response(
+              jsonEncode([
+                {
+                  'id': 'series-1',
+                  'seriesId': 'series-1',
+                  'listId': 'list-1',
+                  'title': 'Read',
+                  'description': '',
+                  'importance': 5,
+                  'complexity': 1,
+                  'points': 0,
+                  'estimatedDuration': '01:30:00',
+                  'isPinned': false,
+                  'beforePadding': null,
+                  'afterPadding': null,
+                  'isDivisible': false,
+                  'isCompleted': false,
+                  'recurrenceRule': {
+                    'type': 'dailyInterval',
+                    'seriesStartDate': '2026-10-08T00:00:00',
+                    'endCondition': {'type': 'never'},
+                    'intervalDays': 1,
+                  },
+                  'progressionMode': 'RollForwardKeepBacklog',
+                  'requiredCompletions': 2,
+                  'occurrenceStates': [
+                    {
+                      'scheduledDate': '2026-10-08T00:00:00',
+                      'status': 'Missed',
+                      'completionCount': 1,
+                      'completedAt': null,
+                    },
+                  ],
+                },
+              ]),
+              200,
+            );
+          }),
+        );
+
+        final tasks = await repository.getRecurringTasksForScheduling('list-1');
+
+        expect(tasks, hasLength(1));
+        expect(
+          tasks.single.recurrenceRule.seriesStartDate,
+          DateTime(2026, 10, 8),
+        );
+        expect(tasks.single.occurrenceStates.single.status, 'Missed');
+        expect(tasks.single.occurrenceStates.single.completionCount, 1);
+      },
+    );
+
+    test(
       'completeTaskOccurrence addresses its series and original recurrence date',
       () async {
         late http.Request sentRequest;

@@ -35,7 +35,7 @@ namespace PriorityTaskManager.Services
                 strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(effectiveProfile, _data.Events, timeService, new RecurrenceExpansionService());
             }
             
-            var rawTasks = GetAllTasks(listId).Where(task => task.RecurrenceRule == null).ToList();
+            var rawTasks = GetAllTasks(listId).Where(task => !task.IsCompleted).ToList();
 
             // Apply the list's intrinsic sort option before scheduling so tie-breakers align with user intent
             var effectiveSortOption = currentList?.SortOption ?? _data.UserProfile.DefaultListSortOption;

@@ -1,6 +1,7 @@
 import '../models/fixed_event.dart';
 import '../models/archive_group.dart';
 import '../models/recurrence_rule.dart';
+import '../models/recurring_schedule_task.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -26,6 +27,11 @@ abstract class TaskRepository {
   Future<void> deleteList(String listId);
 
   Future<List<TaskItem>> getTasks(String listId);
+
+  /// Returns recurring series and their persisted per-date state for scheduling.
+  Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
+    String listId,
+  );
 
   Future<TaskItem> addTask({
     required String listId,

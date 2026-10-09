@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/effective_settings.dart';
 import '../models/fixed_event.dart';
+import '../models/recurring_schedule_task.dart';
 import '../models/schedule_models.dart';
 import '../models/task_item.dart';
 import 'schedule_repository.dart';
@@ -15,6 +16,18 @@ String _formatDuration(Duration duration) {
   final minutes = duration.inMinutes.remainder(60);
   final seconds = duration.inSeconds.remainder(60);
   return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
+}
+
+int _parseDurationAsMinutes(String value) {
+  final dayParts = value.split('.');
+  final dayCount = dayParts.length == 2 ? int.parse(dayParts.first) : 0;
+  final timeParts = dayParts.last.split(':');
+  if (timeParts.length != 3) {
+    throw FormatException('Invalid TimeSpan value: $value');
+  }
+  return dayCount * 24 * 60 +
+      int.parse(timeParts[0]) * 60 +
+      int.parse(timeParts[1]);
 }
 
 /// Renders total minutes as a "D days H hours M minutes" string, matching the
@@ -84,18 +97,22 @@ class ApiScheduleRepository implements ScheduleRepository {
   @override
   Future<DailySchedule> computeSchedule({
     required List<TaskItem> tasks,
+    List<RecurringScheduleTask> recurringTasks = const [],
     required EffectiveListSettings settings,
     List<FixedEvent> events = const [],
     DateTime? now,
   }) async {
-    if (tasks.isEmpty) {
+    if (tasks.isEmpty && recurringTasks.isEmpty) {
       return DailySchedule.empty();
     }
 
     final effectiveNow = now ?? DateTime.now();
 
     final requestBody = jsonEncode({
-      'tasks': tasks.map(_taskToJson).toList(),
+      'tasks': [
+        ...tasks.map(_taskToJson),
+        ...recurringTasks.map((task) => task.toJson()),
+      ],
       'events': events.map(_eventToJson).toList(),
       'profile': _profileJson(settings),
       'now': effectiveNow.toIso8601String(),
@@ -185,8 +202,49 @@ class ApiScheduleRepository implements ScheduleRepository {
 
     final todayTasks = <ScheduledTask>[];
     final futureTasks = <ScheduledTask>[];
+    final scheduledOccurrences = <TaskItem>[];
 
     for (final taskJson in scheduledTasksJson) {
+      if (taskJson['seriesId'] != null && taskJson['occurrenceDate'] != null) {
+        final status = taskJson['occurrenceStatus'] as String? ?? 'Pending';
+        scheduledOccurrences.add(
+          TaskItem(
+            id: taskJson['id'] as String,
+            listId: taskJson['listId'] as String? ?? '',
+            title: taskJson['title'] as String? ?? '',
+            description: taskJson['description'] as String? ?? '',
+            link: taskJson['link'] as String? ?? '',
+            dueDate: taskJson['dueDate'] == null
+                ? null
+                : DateTime.parse(taskJson['dueDate'] as String),
+            estimatedDurationMinutes: _parseDurationAsMinutes(
+              taskJson['estimatedDuration'] as String,
+            ),
+            importance: taskJson['importance'] as int? ?? 5,
+            complexity: taskJson['complexity'] as int? ?? 1,
+            isPinned: taskJson['isPinned'] as bool? ?? false,
+            isCompleted: status == 'Completed',
+            seriesId: taskJson['seriesId'] as String,
+            occurrenceDate: DateTime.parse(
+              taskJson['occurrenceDate'] as String,
+            ),
+            occurrenceStatus: status,
+            completionCount: taskJson['completionCount'] as int? ?? 0,
+            requiredCompletions: taskJson['requiredCompletions'] as int? ?? 1,
+            showMissedIndicator:
+                taskJson['showMissedIndicator'] as bool? ?? true,
+            hasMissedOccurrence:
+                taskJson['hasMissedOccurrence'] as bool? ?? false,
+            isMissed: taskJson['isMissed'] as bool? ?? false,
+            trackStreak: taskJson['trackStreak'] as bool? ?? false,
+            currentStreak: taskJson['currentStreak'] as int? ?? 0,
+            bestStreak: taskJson['bestStreak'] as int? ?? 0,
+            progressionMode:
+                taskJson['progressionMode'] as String? ??
+                'RollForwardKeepBacklog',
+          ),
+        );
+      }
       final parts = (taskJson['scheduledParts'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>();
       for (final part in parts) {
@@ -219,6 +277,7 @@ class ApiScheduleRepository implements ScheduleRepository {
     return DailySchedule(
       todayTasks: todayTasks,
       futureTasks: futureTasks,
+      scheduledOccurrences: scheduledOccurrences,
       unscheduledTaskIds: (json['unscheduledTaskIds'] as List<dynamic>? ?? [])
           .cast<String>(),
       leastSlackTask: (json['leastSlackTaskTitle'] as String?) ?? 'None',

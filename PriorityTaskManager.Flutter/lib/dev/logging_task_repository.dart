@@ -1,6 +1,7 @@
 import '../models/fixed_event.dart';
 import '../models/archive_group.dart';
 import '../models/recurrence_rule.dart';
+import '../models/recurring_schedule_task.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -75,6 +76,14 @@ class LoggingTaskRepository implements TaskRepository {
   @override
   Future<List<TaskItem>> getTasks(String listId) =>
       _logged('getTasks($listId)', () => _inner.getTasks(listId));
+
+  @override
+  Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
+    String listId,
+  ) => _logged(
+    'getRecurringTasksForScheduling($listId)',
+    () => _inner.getRecurringTasksForScheduling(listId),
+  );
 
   @override
   Future<TaskItem> addTask({

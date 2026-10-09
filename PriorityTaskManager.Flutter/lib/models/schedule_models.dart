@@ -1,3 +1,5 @@
+import 'task_item.dart';
+
 /// A single computed block of scheduled work for a task, as returned by the
 /// scheduling engine (see `ScheduleRepository`). Purely a display model; the
 /// task's persisted state lives in [TaskItem]/Hive.
@@ -27,6 +29,7 @@ class ScheduledTask {
 class DailySchedule {
   final List<ScheduledTask> todayTasks;
   final List<ScheduledTask> futureTasks;
+  final List<TaskItem> scheduledOccurrences;
   final List<String> unscheduledTaskIds;
   final String leastSlackTask;
   final String realisticSlack;
@@ -35,6 +38,7 @@ class DailySchedule {
   DailySchedule({
     required this.todayTasks,
     required this.futureTasks,
+    this.scheduledOccurrences = const [],
     this.unscheduledTaskIds = const [],
     required this.leastSlackTask,
     required this.realisticSlack,
@@ -45,6 +49,7 @@ class DailySchedule {
   factory DailySchedule.empty() => DailySchedule(
     todayTasks: [],
     futureTasks: [],
+    scheduledOccurrences: [],
     leastSlackTask: 'None',
     realisticSlack: '-',
     actualSlack: '-',

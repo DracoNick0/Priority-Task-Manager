@@ -18,12 +18,28 @@ namespace PriorityTaskManager.API.Local
 		bool IsPinned,
 		TimeSpan? BeforePadding,
 		TimeSpan? AfterPadding,
-		bool IsDivisible)
+		bool IsDivisible,
+		RecurrenceRule? RecurrenceRule = null,
+		Guid? SeriesId = null,
+		TaskProgressionMode ProgressionMode = TaskProgressionMode.RollForwardKeepBacklog,
+		int RequiredCompletions = 1,
+		List<TaskOccurrenceState>? OccurrenceStates = null,
+		Guid? ListId = null,
+		string? Description = null,
+		string? Link = null,
+		bool ShowMissedIndicator = true,
+		bool TrackStreak = false,
+		int CurrentStreak = 0,
+		int BestStreak = 0,
+		double EffectiveImportance = 0)
 	{
 		public TaskItem ToTaskItem() => new()
 		{
 			Id = Id,
+			ListId = ListId ?? Guid.Empty,
 			Title = Title,
+			Description = Description ?? string.Empty,
+			Link = Link,
 			IsCompleted = IsCompleted,
 			Progress = Progress,
 			Importance = Importance,
@@ -36,7 +52,23 @@ namespace PriorityTaskManager.API.Local
 			IsPinned = IsPinned,
 			BeforePadding = BeforePadding,
 			AfterPadding = AfterPadding,
-			IsDivisible = IsDivisible
+			IsDivisible = IsDivisible,
+			RecurrenceRule = RecurrenceRule?.Clone(),
+			SeriesId = SeriesId,
+			ProgressionMode = ProgressionMode,
+			RequiredCompletions = RequiredCompletions,
+			ShowMissedIndicator = ShowMissedIndicator,
+			TrackStreak = TrackStreak,
+			CurrentStreak = CurrentStreak,
+			BestStreak = BestStreak,
+			EffectiveImportance = EffectiveImportance,
+			OccurrenceStates = OccurrenceStates?.Select(state => new TaskOccurrenceState
+			{
+				ScheduledDate = state.ScheduledDate,
+				Status = state.Status,
+				CompletionCount = state.CompletionCount,
+				CompletedAt = state.CompletedAt
+			}).ToList() ?? new List<TaskOccurrenceState>()
 		};
 	}
 
@@ -108,7 +140,26 @@ namespace PriorityTaskManager.API.Local
 		bool IsPinned,
 		List<LocalScheduledChunkResponse> ScheduledParts,
 		double RealisticSlackMinutes,
-		double ActualSlackMinutes);
+		double ActualSlackMinutes,
+		Guid ListId = default,
+		string? Description = null,
+		string? Link = null,
+		int Importance = 0,
+		int Complexity = 1,
+		double EffectiveImportance = 0,
+		Guid? SeriesId = null,
+		DateTime? OccurrenceDate = null,
+		double Progress = 0,
+		int CompletionCount = 0,
+		int RequiredCompletions = 1,
+		TaskOccurrenceStatus? OccurrenceStatus = null,
+		bool ShowMissedIndicator = true,
+		bool HasMissedOccurrence = false,
+		bool IsMissed = false,
+		bool TrackStreak = false,
+		int CurrentStreak = 0,
+		int BestStreak = 0,
+		TaskProgressionMode ProgressionMode = TaskProgressionMode.RollForwardKeepBacklog);
 
 	/// <summary>
 	/// Response for the local schedule-compute endpoint: the computed placement for each schedulable task,

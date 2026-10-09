@@ -110,5 +110,29 @@ namespace PriorityTaskManager.Tests.API
             Assert.Equal(2, response.CurrentStreak);
             Assert.Equal(4, response.BestStreak);
         }
+
+        [Fact]
+        public void TaskResponse_ExposesPersistedOccurrenceStatesToTheScheduler()
+        {
+            var task = new TaskItem
+            {
+                OccurrenceStates =
+                [
+                    new TaskOccurrenceState
+                    {
+                        ScheduledDate = new DateTime(2026, 10, 8),
+                        Status = TaskOccurrenceStatus.Missed,
+                        CompletionCount = 1
+                    }
+                ]
+            };
+
+            var response = task.ToResponse();
+
+            var state = Assert.Single(response.OccurrenceStates);
+            Assert.Equal(new DateTime(2026, 10, 8), state.ScheduledDate);
+            Assert.Equal(TaskOccurrenceStatus.Missed, state.Status);
+            Assert.Equal(1, state.CompletionCount);
+        }
     }
 }

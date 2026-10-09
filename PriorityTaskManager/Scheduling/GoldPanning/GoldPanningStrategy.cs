@@ -33,9 +33,10 @@ namespace PriorityTaskManager.Scheduling.GoldPanning
             {
                 new TaskNormalizationStage(),          // 1. Cleans up task data (applies defaults).
                 new AvailabilityWindowStage(timeService, recurrenceExpansionService), // 2. Calculates available time slots.
-                new TaskRankingStage(),        // 3. "Weighs" tasks based on urgency and importance.
-                new TaskDistributionStage(),      // 4. Distributes tasks into daily buckets.
-                new DailySequencingStage()          // 5. Arranges tasks within each day.
+                new TaskOccurrenceExpansionStage(timeService, recurrenceExpansionService), // 3. Materializes recurring tasks within the computed horizon.
+                new TaskRankingStage(),        // 4. "Weighs" tasks based on urgency and importance.
+                new TaskDistributionStage(),      // 5. Distributes tasks into daily buckets.
+                new DailySequencingStage()          // 6. Arranges tasks within each day.
             };
         }
 
@@ -104,8 +105,28 @@ namespace PriorityTaskManager.Scheduling.GoldPanning
                 }
             }
 
-            // Combine the now-scheduled active tasks with the previously filtered completed tasks.
-            var finalTasks = activeTasks.Concat(completedTasks).ToList();
+            var recurringOccurrences = scheduledFragments
+                .Concat(unschedulable)
+                .Where(task => task.OccurrenceDate.HasValue)
+                .GroupBy(task => task.Id)
+                .Select(group =>
+                {
+                    var occurrence = group.First().Clone();
+                    occurrence.ScheduledParts = group
+                        .SelectMany(task => task.ScheduledParts)
+                        .OrderBy(part => part.StartTime)
+                        .Select(part => part.Clone())
+                        .ToList();
+                    return occurrence;
+                })
+                .ToList();
+
+            // Series templates are not schedulable tasks; return their concrete occurrences instead.
+            var finalTasks = activeTasks
+                .Where(task => task.RecurrenceRule == null)
+                .Concat(completedTasks)
+                .Concat(recurringOccurrences)
+                .ToList();
 
             var result = new PrioritizationResult
             {

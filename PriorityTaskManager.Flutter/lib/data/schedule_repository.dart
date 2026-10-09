@@ -2,6 +2,7 @@ import '../models/effective_settings.dart';
 import '../models/fixed_event.dart';
 import '../models/schedule_models.dart';
 import '../models/task_item.dart';
+import '../models/recurring_schedule_task.dart';
 
 /// Client-side abstraction over computing a [DailySchedule] from a set of tasks.
 ///
@@ -15,6 +16,7 @@ abstract class ScheduleRepository {
   /// the global defaults) and any fixed, unmovable [events].
   Future<DailySchedule> computeSchedule({
     required List<TaskItem> tasks,
+    List<RecurringScheduleTask> recurringTasks = const [],
     required EffectiveListSettings settings,
     List<FixedEvent> events,
     DateTime? now,

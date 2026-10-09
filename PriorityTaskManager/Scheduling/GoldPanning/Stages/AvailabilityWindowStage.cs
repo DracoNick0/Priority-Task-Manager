@@ -47,7 +47,11 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             if (totalWorkloadDuration <= TimeSpan.Zero)
             {
                 context.History.Add("AvailabilityWindowStage: No tasks to schedule, no time slots generated.");
-                context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow { AvailableSlots = new List<TimeSlot>() };
+                context.SharedState["AvailableScheduleWindow"] = new ScheduleWindow
+                {
+                    AvailableSlots = new List<TimeSlot>(),
+                    HorizonEndDate = now.Date
+                };
                 context.SharedState["TotalAvailableTime"] = TimeSpan.Zero;
                 return context;
             }
@@ -64,7 +68,11 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 context.History.Add($"    - Slot: {slot.StartTime} to {slot.EndTime} (Duration: {slot.Duration.TotalHours:F2}h)");
             }
 
-            var scheduleWindow = new ScheduleWindow { AvailableSlots = slots };
+            var scheduleWindow = new ScheduleWindow
+            {
+                AvailableSlots = slots,
+                HorizonEndDate = coreHorizonEndDate.Date
+            };
             context.SharedState["AvailableScheduleWindow"] = scheduleWindow;
 
             var totalAvailableTime = slots.Sum(slot => slot.Duration.Ticks);

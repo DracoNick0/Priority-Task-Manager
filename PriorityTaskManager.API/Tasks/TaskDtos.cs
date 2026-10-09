@@ -1,7 +1,4 @@
 using PriorityTaskManager.Models;
-using System.Security.Cryptography;
-using System.Text;
-
 namespace PriorityTaskManager.API.Tasks
 {
 	/// <summary>
@@ -103,7 +100,15 @@ namespace PriorityTaskManager.API.Tasks
 		bool TrackStreak,
 		bool HasMissedOccurrence,
 		int CurrentStreak,
-		int BestStreak);
+		int BestStreak,
+		List<TaskOccurrenceStateResponse> OccurrenceStates);
+
+	/// <summary>Persisted progress for one recurrence-rule date, supplied to the scheduler.</summary>
+	public sealed record TaskOccurrenceStateResponse(
+		DateTime ScheduledDate,
+		TaskOccurrenceStatus Status,
+		int CompletionCount,
+		DateTime? CompletedAt);
 
 	public static class TaskDtoExtensions
 	{
@@ -139,7 +144,14 @@ namespace PriorityTaskManager.API.Tasks
 			task.TrackStreak,
 			task.ShowMissedIndicator && task.HasUnresolvedMissedIndicator,
 			task.TrackStreak ? task.CurrentStreak : 0,
-			task.TrackStreak ? task.BestStreak : 0);
+			task.TrackStreak ? task.BestStreak : 0,
+			(task.OccurrenceStates ?? new List<TaskOccurrenceState>())
+				.Select(state => new TaskOccurrenceStateResponse(
+					state.ScheduledDate,
+					state.Status,
+					state.CompletionCount,
+					state.CompletedAt))
+				.ToList());
 
 		public static TaskOccurrenceResponse ToResponse(this TaskOccurrence occurrence)
 		{
@@ -187,8 +199,7 @@ namespace PriorityTaskManager.API.Tasks
 
 		private static Guid CreateOccurrenceId(Guid seriesId, DateTime date)
 		{
-			var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{seriesId:N}:{date:yyyy-MM-dd}"));
-			return new Guid(hash.AsSpan(0, 16));
+			return TaskOccurrence.CreateId(seriesId, date);
 		}
 
 		/// <summary>Maps a request onto a new <see cref="TaskItem"/>; identity/scheduler-computed fields are left for core to assign.</summary>

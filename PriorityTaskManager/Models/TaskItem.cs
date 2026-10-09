@@ -42,6 +42,8 @@ namespace PriorityTaskManager.Models
                 ArchiveGroupId = this.ArchiveGroupId,
                 RecurrenceRule = this.RecurrenceRule?.Clone(),
                 SeriesId = this.SeriesId,
+                OccurrenceDate = this.OccurrenceDate,
+                OccurrenceStatus = this.OccurrenceStatus,
                 ProgressionMode = this.ProgressionMode,
                 RequiredCompletions = this.RequiredCompletions,
                 ShowMissedIndicator = this.ShowMissedIndicator,
@@ -240,6 +242,12 @@ namespace PriorityTaskManager.Models
 
         /// <summary>Gets or sets the identity shared by the task series and its occurrences.</summary>
         public Guid? SeriesId { get; set; }
+
+        /// <summary>Gets or sets the scheduled date when this task is an ephemeral recurring occurrence.</summary>
+        public DateTime? OccurrenceDate { get; set; }
+
+        /// <summary>Gets or sets the persisted status when this task is an ephemeral recurring occurrence.</summary>
+        public TaskOccurrenceStatus? OccurrenceStatus { get; set; }
 
         /// <summary>Gets or sets how missed occurrences advance. Defaults to retaining backlog.</summary>
         public TaskProgressionMode ProgressionMode { get; set; } = TaskProgressionMode.RollForwardKeepBacklog;

@@ -29,9 +29,14 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 if (task.Importance == 0)
                     task.Importance = 1;
 
-                // Ensure EstimatedDuration is a positive, non-zero value.
-                if (task.EstimatedDuration <= TimeSpan.Zero)
+                if (task.OccurrenceDate.HasValue)
+                {
+                    NormalizeOccurrence(task);
+                }
+                else if (task.RecurrenceRule == null && task.EstimatedDuration <= TimeSpan.Zero)
+                {
                     task.EstimatedDuration = TimeSpan.FromHours(1);
+                }
 
                 // Ensure Complexity has a baseline value.
                 if (task.Complexity <= 0)
@@ -49,6 +54,17 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             context.History.Add("TaskNormalizationStage: Task normalization complete. Defaults applied.");
 
             return context;
+        }
+
+        /// <summary>Applies the occurrence's own completion progress to its per-occurrence effort estimate.</summary>
+        public static void NormalizeOccurrence(TaskItem occurrence)
+        {
+            if (!occurrence.OccurrenceDate.HasValue || occurrence.EstimatedDuration <= TimeSpan.Zero)
+                return;
+
+            var remainingProgress = Math.Clamp(1.0 - occurrence.Progress, 0.0, 1.0);
+            occurrence.EstimatedDuration = TimeSpan.FromTicks(
+                (long)(occurrence.EstimatedDuration.Ticks * remainingProgress));
         }
     }
 }

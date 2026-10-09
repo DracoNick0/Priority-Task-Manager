@@ -1,6 +1,59 @@
-@PriorityTaskManager.API_HostAddress = http://localhost:5113
+@PriorityTaskManager.API_HostAddress = http://127.0.0.1:5299
+@subscriptionToken = replace-with-subscription-jwt
 
-GET {{PriorityTaskManager.API_HostAddress}}/weatherforecast/
-Accept: application/json
+### Compute a schedule with a recurring series and persisted occurrence progress
+POST {{PriorityTaskManager.API_HostAddress}}/api/schedule
+Authorization: Bearer {{subscriptionToken}}
+Content-Type: application/json
 
-###
+{
+  "tasks": [
+    {
+      "id": "a6000000-0000-0000-0000-000000000001",
+      "title": "Review notes",
+      "isCompleted": false,
+      "progress": 0,
+      "importance": 5,
+      "complexity": 1,
+      "points": 0,
+      "dueDate": null,
+      "notBefore": null,
+      "estimatedDuration": "01:00:00",
+      "dependencies": [],
+      "isPinned": false,
+      "beforePadding": null,
+      "afterPadding": null,
+      "isDivisible": false,
+      "recurrenceRule": {
+        "type": "dailyInterval",
+        "seriesStartDate": "2026-10-09T00:00:00",
+        "endCondition": { "type": "never" },
+        "intervalDays": 10
+      },
+      "seriesId": "a6000000-0000-0000-0000-000000000001",
+      "progressionMode": "RollForwardKeepBacklog",
+      "requiredCompletions": 2,
+      "occurrenceStates": [
+        {
+          "scheduledDate": "2026-10-09T00:00:00",
+          "status": "Missed",
+          "completionCount": 1,
+          "completedAt": null
+        }
+      ]
+    }
+  ],
+  "events": [],
+  "profile": {
+    "workStartTime": "09:00:00",
+    "workEndTime": "17:00:00",
+    "workDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "schedulingMode": "GoldPanning",
+    "desiredBreatherDuration": "00:15:00",
+    "slackThresholdDire": 0.5,
+    "slackThresholdPressing": 1,
+    "slackThresholdFocus": 2,
+    "slackThresholdSafe": 4
+  },
+  "now": "2026-10-09T08:00:00"
+}

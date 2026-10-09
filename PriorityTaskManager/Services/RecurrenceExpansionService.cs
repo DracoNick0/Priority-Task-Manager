@@ -26,12 +26,26 @@ namespace PriorityTaskManager.Services
                 return Array.Empty<DateTime>();
 
             var maxOccurrences = rule.EndCondition is AfterOccurrencesEndCondition after ? after.OccurrenceCount : int.MaxValue;
+            var cancelledDates = new HashSet<DateTime>(exceptions.Where(e => e.IsCancelled).Select(e => e.OriginalOccurrenceDate.Date));
+
+            if (rule is ExplicitDatesRecurrenceRule explicitDates)
+            {
+                var scheduledDates = explicitDates.Dates
+                    .Select(date => date.Date)
+                    .Where(date => date >= rule.SeriesStartDate.Date)
+                    .Distinct()
+                    .OrderBy(date => date)
+                    .Take(maxOccurrences);
+                return scheduledDates
+                    .Where(date => date >= effectiveStart &&
+                        date <= hardCap &&
+                        !cancelledDates.Contains(date))
+                    .ToList();
+            }
 
             // Only iterate from the series start (instead of the requested range start) when occurrence
             // counting from the true beginning of the series is required to honor an occurrence-count limit.
             var iterationStart = maxOccurrences == int.MaxValue ? effectiveStart : rule.SeriesStartDate.Date;
-
-            var cancelledDates = new HashSet<DateTime>(exceptions.Where(e => e.IsCancelled).Select(e => e.OriginalOccurrenceDate.Date));
 
             var result = new List<DateTime>();
             var occurrenceIndex = 0;

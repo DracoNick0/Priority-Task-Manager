@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/archive_group.dart';
 import '../models/fixed_event.dart';
 import '../models/recurrence_rule.dart';
+import '../models/recurring_schedule_task.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
 import '../models/user_profile.dart';
@@ -302,6 +303,24 @@ class ApiTaskRepository implements TaskRepository {
           )
           .where((task) => !completedSeriesIds.contains(task.seriesId)),
     ];
+  }
+
+  @override
+  Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
+    String listId,
+  ) async {
+    final response = await _send('GET', '/api/tasks/');
+    final json = jsonDecode(response.body) as List<dynamic>;
+    return json
+        .map((entry) => entry as Map<String, dynamic>)
+        .where(
+          (task) =>
+              task['listId'] == listId &&
+              task['recurrenceRule'] != null &&
+              task['isCompleted'] != true,
+        )
+        .map(RecurringScheduleTask.fromApiJson)
+        .toList();
   }
 
   @override

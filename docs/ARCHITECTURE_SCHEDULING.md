@@ -29,9 +29,10 @@ Do not select scheduling strategies in client handlers. Clients may change setti
 
 1. `TaskNormalizationStage`
 2. `AvailabilityWindowStage`
-3. `TaskRankingStage`
-4. `TaskDistributionStage`
-5. `DailySequencingStage`
+3. `TaskOccurrenceExpansionStage`
+4. `TaskRankingStage`
+5. `TaskDistributionStage`
+6. `DailySequencingStage`
 
 Each stage should have one clear responsibility. When adding scheduling behavior, prefer placing it in the stage that owns that transformation rather than adding cross-cutting logic to the strategy wrapper.
 
@@ -39,6 +40,7 @@ Each stage should have one clear responsibility. When adding scheduling behavior
 | --- | --- |
 | `TaskNormalizationStage` | Apply defaults and clean task data before scheduling |
 | `AvailabilityWindowStage` | Build available windows from work hours and events |
+| `TaskOccurrenceExpansionStage` | Expand recurring series into ephemeral instances within the computed horizon, preserving each date's own progress |
 | `TaskRankingStage` | Rank tasks by urgency and importance |
 | `TaskDistributionStage` | Pack tasks into available windows and split tasks when needed, gating placement so a task is never placed until its prerequisites are fully placed |
 | `DailySequencingStage` | Order tasks within each day for focus and deadline safety, while keeping same-day prerequisites ahead of their dependents |
@@ -56,7 +58,9 @@ Constraint solver code should live under `PriorityTaskManager/Scheduling/Optimiz
 Inputs:
 
 - Incomplete tasks from the active list.
-- Authenticated clients may submit expanded recurring-task occurrences as ordinary task placeholders; the stateless schedule endpoint does not expand or persist recurrence rules itself.
+- Authenticated clients submit recurring series definitions with persisted per-date state. Gold Panning expands the series into ephemeral occurrences after the availability horizon is known; the stateless schedule endpoint persists neither the expansion nor recurrence state.
+- The recurrence-rule date is each occurrence's due date. Forward-moving modes may schedule exactly one occurrence beyond the horizon when its immediately preceding recurrence date falls within the horizon; its `NotBefore` is that predecessor date. The next occurrence is not exposed until its own predecessor is within the horizon. Sequential catch-up still exposes only its oldest unresolved occurrence. Missed backlog retains its original due date; overdue occurrences remain unscheduled under the normal due-date invariant.
+- Zero-effort recurring tasks do not produce time blocks. Nonzero effort is reduced according to that occurrence's own completion progress.
 - Effective profile built from global defaults plus list-scoped overrides.
 - Events that block available work time.
 - Scheduling clients preserve recurring event rules in the schedule request so the availability stage can expand each blocking occurrence across the computed horizon.
@@ -85,6 +89,7 @@ When tests expose scheduler defects, keep correct invariant tests as focused red
 
 - Use `ITimeService` in scheduler code and tests for deterministic time behavior.
 - Core task-service scheduling reconciles recurring series missed-date state using `ITimeService`; it does not schedule the series template as a one-off task.
+- The schedule endpoint requires initialized recurring-task state metadata and expands rules only for scheduling; generated occurrences are not persisted.
 - Prefer transformations over mutating original task lists directly; `GoldPanningStrategy` clones active tasks before pipeline execution and maps scheduled parts back to originals.
 - Do not add scheduling logic to client handlers or rendering helpers.
 - Do not use characterization tests to bless behavior that violates hard invariants.

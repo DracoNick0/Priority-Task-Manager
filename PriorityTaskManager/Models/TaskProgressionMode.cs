@@ -47,5 +47,14 @@ namespace PriorityTaskManager.Models
         int CompletionCount,
         bool IsMissed,
         int CurrentStreak,
-        int BestStreak);
+        int BestStreak)
+    {
+        /// <summary>Creates the stable transport identity used for one occurrence of a recurring task.</summary>
+        public static Guid CreateId(Guid seriesId, DateTime scheduledDate)
+        {
+            var hash = System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes($"{seriesId:N}:{scheduledDate:yyyy-MM-dd}"));
+            return new Guid(hash.AsSpan(0, 16));
+        }
+    }
 }

@@ -256,7 +256,11 @@ class _Pipeline extends ConsumerWidget {
 
     final tasks = tasksAsync.value ?? const <TaskItem>[];
     final schedule = scheduleAsync.value ?? DailySchedule.empty();
-    final tasksById = {for (final task in tasks) task.id: task};
+    final tasksById = {
+      for (final task in tasks) task.id: task,
+      for (final occurrence in schedule.scheduledOccurrences)
+        occurrence.id: occurrence,
+    };
 
     // Fragment counts: how many scheduled chunks share the same task id.
     final allScheduled = [...schedule.todayTasks, ...schedule.futureTasks];

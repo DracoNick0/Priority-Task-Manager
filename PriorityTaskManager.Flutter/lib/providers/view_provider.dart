@@ -54,8 +54,12 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
 
   final tasks = await ref.watch(tasksProvider(activeListId).future);
   final incompleteTasks = tasks
-      .where((t) => !t.isResolvedOccurrence && !t.isCompleted)
+      .where((t) => !t.isRecurringOccurrence && !t.isCompleted)
       .toList();
+  final taskRepository = await ref.watch(taskRepositoryProvider.future);
+  final recurringTasks = await taskRepository.getRecurringTasksForScheduling(
+    activeListId,
+  );
 
   final lists = await ref.watch(taskListsProvider.future);
   final list = lists.where((l) => l.id == activeListId).firstOrNull;
@@ -69,6 +73,7 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
   final repository = await ref.watch(scheduleRepositoryProvider.future);
   return repository.computeSchedule(
     tasks: incompleteTasks,
+    recurringTasks: recurringTasks,
     settings: settings,
     events: events,
     now: list?.simulatedTime,

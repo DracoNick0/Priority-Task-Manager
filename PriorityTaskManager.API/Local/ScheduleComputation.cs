@@ -16,9 +16,22 @@ namespace PriorityTaskManager.API.Local
 	{
 		public static IResult Compute(LocalScheduleRequest request)
 		{
+			if (request.Tasks is null)
+			{
+				return Results.BadRequest(new { error = "A task list is required to compute a schedule." });
+			}
+
 			if (request.Profile is null)
 			{
 				return Results.BadRequest(new { error = "A user profile is required to compute a schedule." });
+			}
+
+			if (request.Tasks.Any(task => task.RecurrenceRule != null && !IsValidRecurringTask(task)))
+			{
+				return Results.BadRequest(new
+				{
+					error = "Recurring tasks require a rule, valid occurrence state, at least one required completion, and no dependencies."
+				});
 			}
 
 			var profile = request.Profile.ToUserProfile();
@@ -48,7 +61,26 @@ namespace PriorityTaskManager.API.Local
 					t.IsPinned,
 					t.ScheduledParts.Select(p => new LocalScheduledChunkResponse(p.StartTime, p.EndTime)).ToList(),
 					metrics.CalculateRealisticSlack(t, profile).TotalMinutes,
-					metrics.CalculateActualSlack(t, profile).TotalMinutes))
+					metrics.CalculateActualSlack(t, profile).TotalMinutes,
+					t.ListId,
+					t.Description,
+					t.Link,
+					t.Importance,
+					t.Complexity,
+					t.EffectiveImportance,
+					t.SeriesId,
+					t.OccurrenceDate,
+					t.Progress,
+					(int)Math.Round(t.Progress * t.RequiredCompletions),
+					t.RequiredCompletions,
+					t.OccurrenceStatus,
+					t.ShowMissedIndicator,
+					t.ShowMissedIndicator && t.HasUnresolvedMissedIndicator,
+					t.OccurrenceStatus == TaskOccurrenceStatus.Missed,
+					t.TrackStreak,
+					t.TrackStreak ? t.CurrentStreak : 0,
+					t.TrackStreak ? t.BestStreak : 0,
+					t.ProgressionMode))
 				.ToList();
 
 			// Mirrors the CLI dashboard's "closest task to due date" pick (see ConsoleHelper.FindClosestTaskToDueDate).
@@ -66,6 +98,35 @@ namespace PriorityTaskManager.API.Local
 				leastSlackTask is null ? null : metrics.CalculateActualSlack(leastSlackTask, profile).TotalMinutes);
 
 			return Results.Ok(response);
+		}
+
+		private static bool IsValidRecurringTask(LocalTaskRequest task)
+		{
+			if (task.RecurrenceRule?.EndCondition == null ||
+				task.RequiredCompletions < 1 ||
+				!Enum.IsDefined(task.ProgressionMode) ||
+				task.Dependencies is { Count: > 0 } ||
+				task.OccurrenceStates is null)
+			{
+				return false;
+			}
+
+			var states = task.OccurrenceStates;
+			if (states.Any(state => state is null ||
+				!Enum.IsDefined(state.Status) ||
+				state.CompletionCount < 0 ||
+				state.CompletionCount > task.RequiredCompletions ||
+				((state.Status == TaskOccurrenceStatus.Completed) !=
+					(state.CompletionCount == task.RequiredCompletions)) ||
+				(state.Status is TaskOccurrenceStatus.Skipped or TaskOccurrenceStatus.Disregarded &&
+					state.CompletionCount != 0)))
+			{
+				return false;
+			}
+
+			return states
+				.GroupBy(state => state.ScheduledDate.Date)
+				.All(group => group.Count() == 1);
 		}
 	}
 }
