@@ -166,6 +166,27 @@ class LocalTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<void> completeTaskOccurrence(TaskItem occurrence) {
+    throw UnsupportedError(
+      'Recurring tasks are available only to authenticated users.',
+    );
+  }
+
+  @override
+  Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence) {
+    throw UnsupportedError(
+      'Recurring tasks are available only to authenticated users.',
+    );
+  }
+
+  @override
+  Future<void> skipTaskOccurrence(TaskItem occurrence) {
+    throw UnsupportedError(
+      'Recurring tasks are available only to authenticated users.',
+    );
+  }
+
+  @override
   Future<void> addDependency(String taskId, String dependsOnTaskId) async {
     if (taskId == dependsOnTaskId) return;
     final task = _tasksBox.get(taskId);

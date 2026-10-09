@@ -58,6 +58,15 @@ abstract class TaskRepository {
 
   Future<void> setCompleted(String taskId, bool isCompleted);
 
+  /// Adds one completion unit to a recurring occurrence.
+  Future<void> completeTaskOccurrence(TaskItem occurrence);
+
+  /// Removes the latest completion unit from only the specified occurrence.
+  Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence);
+
+  /// Skips an unresolved recurring occurrence.
+  Future<void> skipTaskOccurrence(TaskItem occurrence);
+
   Future<void> addDependency(String taskId, String dependsOnTaskId);
 
   Future<void> removeDependency(String taskId, String dependsOnTaskId);

@@ -164,6 +164,27 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await future;
   }
 
+  Future<void> completeTaskOccurrence(TaskItem occurrence) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.completeTaskOccurrence(occurrence);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.undoTaskOccurrenceCompletion(occurrence);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> skipTaskOccurrence(TaskItem occurrence) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.skipTaskOccurrence(occurrence);
+    ref.invalidateSelf();
+    await future;
+  }
+
   Future<void> addDependency(String taskId, String dependsOnTaskId) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     await repository.addDependency(taskId, dependsOnTaskId);

@@ -133,6 +133,24 @@ class LoggingTaskRepository implements TaskRepository {
   );
 
   @override
+  Future<void> completeTaskOccurrence(TaskItem occurrence) => _logged(
+    'completeTaskOccurrence(${occurrence.seriesId}, ${occurrence.occurrenceDate})',
+    () => _inner.completeTaskOccurrence(occurrence),
+  );
+
+  @override
+  Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence) => _logged(
+    'undoTaskOccurrenceCompletion(${occurrence.seriesId}, ${occurrence.occurrenceDate})',
+    () => _inner.undoTaskOccurrenceCompletion(occurrence),
+  );
+
+  @override
+  Future<void> skipTaskOccurrence(TaskItem occurrence) => _logged(
+    'skipTaskOccurrence(${occurrence.seriesId}, ${occurrence.occurrenceDate})',
+    () => _inner.skipTaskOccurrence(occurrence),
+  );
+
+  @override
   Future<void> addDependency(String taskId, String dependsOnTaskId) => _logged(
     'addDependency($taskId -> $dependsOnTaskId)',
     () => _inner.addDependency(taskId, dependsOnTaskId),

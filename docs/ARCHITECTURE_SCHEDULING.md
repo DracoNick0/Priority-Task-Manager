@@ -56,6 +56,7 @@ Constraint solver code should live under `PriorityTaskManager/Scheduling/Optimiz
 Inputs:
 
 - Incomplete tasks from the active list.
+- Authenticated clients may submit expanded recurring-task occurrences as ordinary task placeholders; the stateless schedule endpoint does not expand or persist recurrence rules itself.
 - Effective profile built from global defaults plus list-scoped overrides.
 - Events that block available work time.
 - Current or simulated time from `ITimeService`.
@@ -82,6 +83,7 @@ When tests expose scheduler defects, keep correct invariant tests as focused red
 ## Implementation Guidance
 
 - Use `ITimeService` in scheduler code and tests for deterministic time behavior.
+- Core task-service scheduling reconciles recurring series missed-date state using `ITimeService`; it does not schedule the series template as a one-off task.
 - Prefer transformations over mutating original task lists directly; `GoldPanningStrategy` clones active tasks before pipeline execution and maps scheduled parts back to originals.
 - Do not add scheduling logic to client handlers or rendering helpers.
 - Do not use characterization tests to bless behavior that violates hard invariants.

@@ -278,6 +278,7 @@ class _Pipeline extends ConsumerWidget {
       if (task == null) return const SizedBox.shrink();
       final group = fragmentGroups[scheduled.id]!;
       final fragmentIndex = group.indexOf(scheduled) + 1;
+      final taskNotifier = ref.read(tasksProvider(listId).notifier);
       return TaskCard(
         key: ValueKey('${scheduled.id}-${scheduled.startTime}'),
         task: task,
@@ -287,32 +288,73 @@ class _Pipeline extends ConsumerWidget {
         fragmentIndex: fragmentIndex,
         fragmentTotal: group.length,
         onToggleCompleted: (value) {
-          ref.read(tasksProvider(listId).notifier).setCompleted(task.id, value);
+          if (task.isRecurringOccurrence) {
+            if (value) {
+              taskNotifier.completeTaskOccurrence(task);
+            } else {
+              taskNotifier.undoTaskOccurrenceCompletion(task);
+            }
+          } else {
+            taskNotifier.setCompleted(task.id, value);
+          }
           if (value) {
-            ref.read(appNotificationProvider.notifier).state =
-                const AppNotification('Task completed', icon: Icons.task_alt);
+            ref.read(appNotificationProvider.notifier).state = AppNotification(
+              task.isRecurringOccurrence
+                  ? 'Occurrence progress updated'
+                  : 'Task completed',
+              icon: Icons.task_alt,
+            );
           }
         },
-        onTap: () => ref.read(selectedInspectorProvider.notifier).state =
-            InspectorTarget(kind: InspectorKind.task, id: task.id),
+        onUndoOccurrenceUnit: task.isRecurringOccurrence
+            ? () => taskNotifier.undoTaskOccurrenceCompletion(task)
+            : null,
+        onSkipOccurrence: task.isRecurringOccurrence
+            ? () => taskNotifier.skipTaskOccurrence(task)
+            : null,
+        onTap: task.isRecurringOccurrence
+            ? () {}
+            : () => ref.read(selectedInspectorProvider.notifier).state =
+                  InspectorTarget(kind: InspectorKind.task, id: task.id),
       );
     }
 
     Widget buildPlainTaskCard(TaskItem task, {bool showDueDate = false}) {
+      final taskNotifier = ref.read(tasksProvider(listId).notifier);
       return TaskCard(
         key: ValueKey('plain-${task.id}'),
         task: task,
         showDueDate: showDueDate,
         isBlocked: isBlocked(task),
         onToggleCompleted: (value) {
-          ref.read(tasksProvider(listId).notifier).setCompleted(task.id, value);
+          if (task.isRecurringOccurrence) {
+            if (value) {
+              taskNotifier.completeTaskOccurrence(task);
+            } else {
+              taskNotifier.undoTaskOccurrenceCompletion(task);
+            }
+          } else {
+            taskNotifier.setCompleted(task.id, value);
+          }
           if (value) {
-            ref.read(appNotificationProvider.notifier).state =
-                const AppNotification('Task completed', icon: Icons.task_alt);
+            ref.read(appNotificationProvider.notifier).state = AppNotification(
+              task.isRecurringOccurrence
+                  ? 'Occurrence progress updated'
+                  : 'Task completed',
+              icon: Icons.task_alt,
+            );
           }
         },
-        onTap: () => ref.read(selectedInspectorProvider.notifier).state =
-            InspectorTarget(kind: InspectorKind.task, id: task.id),
+        onUndoOccurrenceUnit: task.isRecurringOccurrence
+            ? () => taskNotifier.undoTaskOccurrenceCompletion(task)
+            : null,
+        onSkipOccurrence: task.isRecurringOccurrence
+            ? () => taskNotifier.skipTaskOccurrence(task)
+            : null,
+        onTap: task.isRecurringOccurrence
+            ? () {}
+            : () => ref.read(selectedInspectorProvider.notifier).state =
+                  InspectorTarget(kind: InspectorKind.task, id: task.id),
       );
     }
 
@@ -407,7 +449,9 @@ class _Pipeline extends ConsumerWidget {
       return 'Free Time: ${hours}h ${minutes}m';
     }
 
-    final completedTasks = tasks.where((task) => task.isCompleted).toList();
+    final completedTasks = tasks
+        .where((task) => task.isCompleted || task.isSkippedOrDisregarded)
+        .toList();
 
     bool isSameDay(DateTime a, DateTime b) =>
         a.year == b.year && a.month == b.month && a.day == b.day;

@@ -1,5 +1,7 @@
 import 'package:hive_ce/hive.dart';
 
+import 'recurrence_rule.dart';
+
 part 'task_item.g.dart';
 
 /// A single unit of work belonging to a [TaskList], stored locally via Hive.
@@ -20,6 +22,19 @@ class TaskItem extends HiveObject {
     this.isPinned = false,
     this.isDivisible = false,
     this.link = '',
+    this.recurrenceRule,
+    this.seriesId,
+    this.occurrenceDate,
+    this.occurrenceStatus,
+    this.completionCount = 0,
+    this.requiredCompletions = 1,
+    this.showMissedIndicator = true,
+    this.hasMissedOccurrence = false,
+    this.isMissed = false,
+    this.trackStreak = false,
+    this.currentStreak = 0,
+    this.bestStreak = 0,
+    this.progressionMode = 'RollForwardKeepBacklog',
   }) : dependencies = dependencies ?? <String>[];
 
   @HiveField(0)
@@ -72,6 +87,47 @@ class TaskItem extends HiveObject {
   @HiveField(13)
   String link;
 
+  /// Recurrence settings are server-backed; Guest Hive tasks remain one-off.
+  RecurrenceRule? recurrenceRule;
+
+  /// The owning recurring task ID for a projected occurrence.
+  String? seriesId;
+
+  /// The original recurrence-rule date addressed by occurrence actions.
+  DateTime? occurrenceDate;
+
+  /// The server's [PriorityTaskManager.Models.TaskOccurrenceStatus] name.
+  String? occurrenceStatus;
+
+  int completionCount;
+
+  int requiredCompletions;
+
+  bool showMissedIndicator;
+
+  bool hasMissedOccurrence;
+
+  bool isMissed;
+
+  bool trackStreak;
+
+  int currentStreak;
+
+  int bestStreak;
+
+  String progressionMode;
+
+  bool get isRecurringOccurrence => seriesId != null && occurrenceDate != null;
+
+  bool get isSkippedOrDisregarded =>
+      occurrenceStatus == 'Skipped' || occurrenceStatus == 'Disregarded';
+
+  bool get isResolvedOccurrence =>
+      isRecurringOccurrence && (isCompleted || isSkippedOrDisregarded);
+
+  double get completionProgress =>
+      requiredCompletions <= 0 ? 0 : completionCount / requiredCompletions;
+
   TaskItem copyWith({
     String? title,
     String? description,
@@ -87,6 +143,19 @@ class TaskItem extends HiveObject {
     bool? isPinned,
     bool? isDivisible,
     String? link,
+    RecurrenceRule? recurrenceRule,
+    String? seriesId,
+    DateTime? occurrenceDate,
+    String? occurrenceStatus,
+    int? completionCount,
+    int? requiredCompletions,
+    bool? showMissedIndicator,
+    bool? hasMissedOccurrence,
+    bool? isMissed,
+    bool? trackStreak,
+    int? currentStreak,
+    int? bestStreak,
+    String? progressionMode,
   }) {
     return TaskItem(
       id: id,
@@ -104,6 +173,19 @@ class TaskItem extends HiveObject {
       isPinned: isPinned ?? this.isPinned,
       isDivisible: isDivisible ?? this.isDivisible,
       link: link ?? this.link,
+      recurrenceRule: recurrenceRule ?? this.recurrenceRule,
+      seriesId: seriesId ?? this.seriesId,
+      occurrenceDate: occurrenceDate ?? this.occurrenceDate,
+      occurrenceStatus: occurrenceStatus ?? this.occurrenceStatus,
+      completionCount: completionCount ?? this.completionCount,
+      requiredCompletions: requiredCompletions ?? this.requiredCompletions,
+      showMissedIndicator: showMissedIndicator ?? this.showMissedIndicator,
+      hasMissedOccurrence: hasMissedOccurrence ?? this.hasMissedOccurrence,
+      isMissed: isMissed ?? this.isMissed,
+      trackStreak: trackStreak ?? this.trackStreak,
+      currentStreak: currentStreak ?? this.currentStreak,
+      bestStreak: bestStreak ?? this.bestStreak,
+      progressionMode: progressionMode ?? this.progressionMode,
     );
   }
 }

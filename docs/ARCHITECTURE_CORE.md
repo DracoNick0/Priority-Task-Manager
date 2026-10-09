@@ -18,10 +18,10 @@ The core library must not depend on front-end handlers, console helpers, renderi
 
 | Service | Responsibility |
 | --- | --- |
-| `TaskManagerService` | Coordinates task/list/profile operations, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
+| `TaskManagerService` | Coordinates task/list/profile operations, recurring-task occurrence progress and missed-state transitions, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
 | `TaskMetricsService` | Computes schedule-related metrics used by presentation and status indicators |
 | `EventService` | Owns CRUD and archive/restore operations for calendar events (self-contained; extracted from `TaskManagerService` per the growth criteria below) |
-| `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands a `RecurrenceRule` into concrete occurrence dates on demand for a caller-supplied range (expansion-on-read; nothing is persisted ahead of time). Self-contained, shared by recurring tasks and recurring events; consumed by `AvailabilityWindowStage` to expand recurring events into ephemeral, in-memory occurrences that block scheduling availability. `EventService` assigns `SeriesId` on creation but does not itself call expansion; not yet consumed for recurring tasks (see the repository's GitHub Issues for that consumer wiring) |
+| `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands a `RecurrenceRule` into concrete occurrence dates on demand for a caller-supplied range. Shared by recurring tasks and recurring events; the event scheduler expands blocking occurrences, while task progression stores state only for dates that have occurred or been acted upon. |
 | `RecurrenceSplitHelper` (`Services/Helpers`) | Implements the shared "this and following" split semantics for a recurring series (closes the prior series, starts a new one, partitions exceptions) |
 | `TimeService` / `ITimeService` | Provides current or simulated time for deterministic behavior |
 | `PersistenceService` / `IPersistenceService` | Reads and writes persisted state, including task and event archiving |

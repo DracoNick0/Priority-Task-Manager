@@ -12,6 +12,13 @@ namespace PriorityTaskManager.Services
         /// <returns>The prioritization result (tasks and history).</returns>
         public PrioritizationResult GetPrioritizedTasks(Guid listId, ITimeService timeService)
         {
+            var now = timeService.GetCurrentTime();
+            var recurrenceStateChanged = false;
+            foreach (var recurringTask in _data.Tasks.Where(t => t.ListId == listId && t.RecurrenceRule != null))
+                recurrenceStateChanged |= ReconcileTaskOccurrences(recurringTask, now);
+            if (recurrenceStateChanged)
+                SaveData();
+
             var currentList = _data.Lists.FirstOrDefault(l => l.Id == listId);
             var effectiveProfile = BuildEffectiveUserProfile(currentList);
 
@@ -28,7 +35,7 @@ namespace PriorityTaskManager.Services
                 strategy = new PriorityTaskManager.Scheduling.GoldPanning.GoldPanningStrategy(effectiveProfile, _data.Events, timeService, new RecurrenceExpansionService());
             }
             
-            var rawTasks = GetAllTasks(listId).ToList();
+            var rawTasks = GetAllTasks(listId).Where(task => task.RecurrenceRule == null).ToList();
 
             // Apply the list's intrinsic sort option before scheduling so tie-breakers align with user intent
             var effectiveSortOption = currentList?.SortOption ?? _data.UserProfile.DefaultListSortOption;
@@ -141,7 +148,11 @@ namespace PriorityTaskManager.Services
             {
                 throw new ArgumentException("Task title cannot be empty.");
             }
+            if (task.RecurrenceRule != null)
+                ValidateRecurringTask(task);
             task.Id = Guid.NewGuid();
+            if (task.RecurrenceRule != null)
+                task.SeriesId = task.Id;
             task.EffectiveImportance = task.Importance;
             task.DisplayId = _data.NextDisplayId++;
             _data.Tasks.Add(task);
@@ -173,6 +184,371 @@ namespace PriorityTaskManager.Services
             return _data.Tasks.Find(t => t.Id == id);
         }
 
+        /// <summary>Gets recurring task occurrences and lazily applies missed-date transitions.</summary>
+        public IReadOnlyList<TaskOccurrence> GetTaskOccurrences(Guid listId, DateTime rangeStart, DateTime rangeEnd, ITimeService timeService)
+        {
+            if (timeService == null) throw new ArgumentNullException(nameof(timeService));
+            if (rangeEnd.Date < rangeStart.Date)
+                throw new ArgumentException("Occurrence window end must not precede its start.", nameof(rangeEnd));
+
+            var now = timeService.GetCurrentTime();
+            var changed = false;
+            var result = new List<TaskOccurrence>();
+            foreach (var task in _data.Tasks.Where(t => t.ListId == listId && t.RecurrenceRule != null))
+            {
+                changed |= ReconcileTaskOccurrences(task, now);
+                result.AddRange(ProjectTaskOccurrences(task, rangeStart.Date, rangeEnd.Date, now.Date));
+            }
+
+            if (changed)
+                SaveData();
+            return result.OrderBy(o => o.ScheduledDate).ThenBy(o => o.Series.Title).ToList();
+        }
+
+        /// <summary>Increments completion progress for one recurrence-rule date.</summary>
+        public bool CompleteTaskOccurrence(Guid seriesId, DateTime occurrenceDate, ITimeService timeService)
+        {
+            var task = GetRecurringTask(seriesId);
+            if (task == null)
+                return false;
+
+            var now = timeService.GetCurrentTime();
+            var date = occurrenceDate.Date;
+            if (!IsScheduledOccurrence(task, date))
+                return false;
+
+            ReconcileTaskOccurrences(task, now);
+            var state = GetOrCreateOccurrenceState(task, date);
+            EnsureSequentialOccurrence(task, state);
+            if (state.Status is TaskOccurrenceStatus.Completed or TaskOccurrenceStatus.Skipped or TaskOccurrenceStatus.Disregarded)
+                throw new InvalidOperationException("This occurrence is already resolved.");
+
+            state.CompletionCount = Math.Min(task.RequiredCompletions, state.CompletionCount + 1);
+            if (state.CompletionCount == task.RequiredCompletions)
+            {
+                state.Status = TaskOccurrenceStatus.Completed;
+                state.CompletedAt = now;
+            }
+            else if (date < now.Date)
+            {
+                state.Status = TaskOccurrenceStatus.Missed;
+            }
+
+            UpdateStreak(task);
+            UpdateSeriesCompletion(task, now.Date);
+            SaveData();
+            return true;
+        }
+
+        /// <summary>Undoes one completion action on the specified occurrence without changing other occurrences.</summary>
+        public bool UndoTaskOccurrenceCompletion(Guid seriesId, DateTime occurrenceDate, ITimeService timeService)
+        {
+            var task = GetRecurringTask(seriesId);
+            if (task == null)
+                return false;
+
+            var date = occurrenceDate.Date;
+            var state = task.OccurrenceStates?.FirstOrDefault(o => o.ScheduledDate.Date == date);
+            if (state == null || state.CompletionCount <= 0)
+                return false;
+
+            state.CompletionCount--;
+            if (state.CompletionCount >= task.RequiredCompletions)
+            {
+                state.Status = TaskOccurrenceStatus.Completed;
+            }
+            else
+            {
+                state.CompletedAt = null;
+                state.Status = date < timeService.GetCurrentTime().Date
+                    ? TaskOccurrenceStatus.Missed
+                    : TaskOccurrenceStatus.Pending;
+            }
+            task.IsCompleted = false;
+            UpdateStreak(task);
+            SaveData();
+            return true;
+        }
+
+        /// <summary>Manually skips one unresolved occurrence.</summary>
+        public bool SkipTaskOccurrence(Guid seriesId, DateTime occurrenceDate, ITimeService timeService)
+        {
+            var task = GetRecurringTask(seriesId);
+            if (task == null)
+                return false;
+
+            var now = timeService.GetCurrentTime();
+            var date = occurrenceDate.Date;
+            if (!IsScheduledOccurrence(task, date))
+                return false;
+
+            ReconcileTaskOccurrences(task, now);
+            var state = GetOrCreateOccurrenceState(task, date);
+            EnsureSequentialOccurrence(task, state);
+            if (state.Status is TaskOccurrenceStatus.Completed or TaskOccurrenceStatus.Skipped or TaskOccurrenceStatus.Disregarded)
+                throw new InvalidOperationException("This occurrence is already resolved.");
+
+            state.CompletionCount = 0;
+            state.CompletedAt = null;
+            state.Status = TaskOccurrenceStatus.Skipped;
+            UpdateStreak(task);
+            UpdateSeriesCompletion(task, now.Date);
+            SaveData();
+            return true;
+        }
+
+        private static readonly RecurrenceExpansionService TaskRecurrenceExpansion = new();
+
+        private static TaskItem? GetRecurringTaskBySeriesId(DataContainer data, Guid seriesId) =>
+            data.Tasks.FirstOrDefault(t => t.RecurrenceRule != null && (t.SeriesId ?? t.Id) == seriesId);
+
+        private TaskItem? GetRecurringTask(Guid seriesId) => GetRecurringTaskBySeriesId(_data, seriesId);
+
+        private static bool IsScheduledOccurrence(TaskItem task, DateTime date) =>
+            TaskRecurrenceExpansion.GetOccurrences(
+                task.RecurrenceRule!,
+                Array.Empty<RecurrenceException>(),
+                date.Date,
+                date.Date).Count > 0;
+
+        private static TaskOccurrenceState GetOrCreateOccurrenceState(TaskItem task, DateTime date)
+        {
+            task.OccurrenceStates ??= new List<TaskOccurrenceState>();
+            var state = task.OccurrenceStates.FirstOrDefault(o => o.ScheduledDate.Date == date.Date);
+            if (state != null)
+                return state;
+
+            state = new TaskOccurrenceState { ScheduledDate = date.Date };
+            task.OccurrenceStates.Add(state);
+            return state;
+        }
+
+        private static bool ReconcileTaskOccurrences(TaskItem task, DateTime now)
+        {
+            if (task.RequiredCompletions < 1)
+                throw new InvalidOperationException($"Recurring task '{task.Id}' has an invalid RequiredCompletions value.");
+
+            task.OccurrenceStates ??= new List<TaskOccurrenceState>();
+            var changed = false;
+            var generated = TaskRecurrenceExpansion.GetOccurrences(
+                task.RecurrenceRule!,
+                Array.Empty<RecurrenceException>(),
+                task.RecurrenceRule!.SeriesStartDate.Date,
+                now.Date);
+
+            foreach (var date in generated)
+            {
+                var state = task.OccurrenceStates.FirstOrDefault(o => o.ScheduledDate.Date == date.Date);
+                if (state == null)
+                {
+                    state = new TaskOccurrenceState
+                    {
+                        ScheduledDate = date.Date,
+                        Status = date.Date < now.Date &&
+                            task.ProgressionMode == TaskProgressionMode.RollForwardDisregard
+                                ? TaskOccurrenceStatus.Disregarded
+                                : date.Date < now.Date
+                                    ? TaskOccurrenceStatus.Missed
+                                    : TaskOccurrenceStatus.Pending
+                    };
+                    task.OccurrenceStates.Add(state);
+                    changed = true;
+                }
+                else if (date.Date < now.Date)
+                {
+                    if (task.ProgressionMode == TaskProgressionMode.RollForwardDisregard &&
+                        state.Status is TaskOccurrenceStatus.Pending or TaskOccurrenceStatus.Missed)
+                    {
+                        state.Status = TaskOccurrenceStatus.Disregarded;
+                        state.CompletionCount = 0;
+                        state.CompletedAt = null;
+                        changed = true;
+                    }
+                    else if (task.ProgressionMode != TaskProgressionMode.RollForwardDisregard &&
+                        state.Status == TaskOccurrenceStatus.Pending)
+                    {
+                        state.Status = TaskOccurrenceStatus.Missed;
+                        changed = true;
+                    }
+                }
+            }
+
+            foreach (var state in task.OccurrenceStates)
+            {
+                if (state.Status is TaskOccurrenceStatus.Skipped or TaskOccurrenceStatus.Disregarded)
+                    continue;
+
+                if (state.CompletionCount >= task.RequiredCompletions && state.Status != TaskOccurrenceStatus.Completed)
+                {
+                    state.Status = TaskOccurrenceStatus.Completed;
+                    state.CompletedAt ??= now;
+                    changed = true;
+                }
+                else if (state.CompletionCount < task.RequiredCompletions && state.Status == TaskOccurrenceStatus.Completed)
+                {
+                    state.Status = state.ScheduledDate.Date < now.Date
+                        ? TaskOccurrenceStatus.Missed
+                        : TaskOccurrenceStatus.Pending;
+                    state.CompletedAt = null;
+                    changed = true;
+                }
+            }
+
+            var previousCurrent = task.CurrentStreak;
+            var previousBest = task.BestStreak;
+            UpdateStreak(task);
+            changed |= previousCurrent != task.CurrentStreak || previousBest != task.BestStreak;
+            var wasCompleted = task.IsCompleted;
+            UpdateSeriesCompletion(task, now.Date, generated);
+            changed |= wasCompleted != task.IsCompleted;
+            return changed;
+        }
+
+        private static List<TaskOccurrence> ProjectTaskOccurrences(TaskItem task, DateTime from, DateTime to, DateTime today)
+        {
+            var generated = TaskRecurrenceExpansion.GetOccurrences(
+                task.RecurrenceRule!,
+                Array.Empty<RecurrenceException>(),
+                task.RecurrenceRule!.SeriesStartDate.Date,
+                to > today ? to : today);
+            var byDate = (task.OccurrenceStates ?? new List<TaskOccurrenceState>())
+                .ToDictionary(o => o.ScheduledDate.Date);
+            var selected = generated
+                .Where(d => d.Date >= from && d.Date <= to)
+                .Select(d => d.Date)
+                .ToHashSet();
+
+            if (task.ProgressionMode == TaskProgressionMode.SequentialCatchUp)
+            {
+                var firstUnresolved = generated
+                    .Select(d => d.Date)
+                    .FirstOrDefault(date => !byDate.TryGetValue(date, out var state) ||
+                        state.Status is TaskOccurrenceStatus.Pending or TaskOccurrenceStatus.Missed);
+                if (firstUnresolved != default)
+                    selected.Add(firstUnresolved);
+                selected.RemoveWhere(date => date != firstUnresolved &&
+                    (!byDate.TryGetValue(date, out var state) ||
+                        state.Status is TaskOccurrenceStatus.Pending or TaskOccurrenceStatus.Missed));
+            }
+            else if (task.ProgressionMode == TaskProgressionMode.RollForwardKeepBacklog)
+            {
+                selected.UnionWith((task.OccurrenceStates ?? new List<TaskOccurrenceState>())
+                    .Where(o => o.Status == TaskOccurrenceStatus.Missed)
+                    .Select(o => o.ScheduledDate.Date));
+            }
+
+            var currentStreak = task.TrackStreak ? task.CurrentStreak : 0;
+            var bestStreak = task.TrackStreak ? task.BestStreak : 0;
+            return selected.OrderBy(d => d).Select(date =>
+            {
+                byDate.TryGetValue(date, out var state);
+                var status = state?.Status ?? TaskOccurrenceStatus.Pending;
+                return new TaskOccurrence(
+                    task,
+                    date,
+                    status,
+                    state?.CompletionCount ?? 0,
+                    status == TaskOccurrenceStatus.Missed,
+                    currentStreak,
+                    bestStreak);
+            }).ToList();
+        }
+
+        private static void EnsureSequentialOccurrence(TaskItem task, TaskOccurrenceState target)
+        {
+            if (task.ProgressionMode != TaskProgressionMode.SequentialCatchUp)
+                return;
+
+            var oldestUnresolved = task.OccurrenceStates
+                .Where(o => o.Status is TaskOccurrenceStatus.Pending or TaskOccurrenceStatus.Missed)
+                .OrderBy(o => o.ScheduledDate)
+                .FirstOrDefault();
+            if (oldestUnresolved != target)
+                throw new InvalidOperationException("Resolve the oldest occurrence before advancing this series.");
+        }
+
+        private static void UpdateStreak(TaskItem task)
+        {
+            if (!task.TrackStreak)
+                return;
+
+            var current = 0;
+            var best = task.BestStreak;
+            var blockedByUnresolvedOccurrence = false;
+            foreach (var occurrence in task.OccurrenceStates.OrderBy(o => o.ScheduledDate))
+            {
+                switch (occurrence.Status)
+                {
+                    case TaskOccurrenceStatus.Completed:
+                        if (blockedByUnresolvedOccurrence)
+                            current = 0;
+                        else
+                            current++;
+                        best = Math.Max(best, current);
+                        break;
+                    case TaskOccurrenceStatus.Pending:
+                    case TaskOccurrenceStatus.Missed:
+                        blockedByUnresolvedOccurrence = true;
+                        break;
+                    case TaskOccurrenceStatus.Skipped:
+                    case TaskOccurrenceStatus.Disregarded:
+                        current = 0;
+                        blockedByUnresolvedOccurrence = false;
+                        break;
+                }
+            }
+
+            task.CurrentStreak = current;
+            task.BestStreak = best;
+        }
+
+        private static void UpdateSeriesCompletion(TaskItem task, DateTime today, IReadOnlyList<DateTime>? generated = null)
+        {
+            var rule = task.RecurrenceRule!;
+            generated ??= TaskRecurrenceExpansion.GetOccurrences(
+                rule,
+                Array.Empty<RecurrenceException>(),
+                rule.SeriesStartDate.Date,
+                today.Date);
+
+            var endReached = rule.EndCondition switch
+            {
+                AfterOccurrencesEndCondition after => generated.Count >= after.OccurrenceCount,
+                UntilDateEndCondition until => today.Date > until.UntilDate.Date,
+                _ when rule is ExplicitDatesRecurrenceRule explicitDates =>
+                    explicitDates.Dates.All(date => date.Date <= today.Date),
+                _ => false
+            };
+            if (!endReached)
+            {
+                task.IsCompleted = false;
+                return;
+            }
+
+            var states = task.OccurrenceStates ?? new List<TaskOccurrenceState>();
+            task.IsCompleted = generated.All(date =>
+            {
+                var state = states.FirstOrDefault(o => o.ScheduledDate.Date == date.Date);
+                return state?.Status is TaskOccurrenceStatus.Completed or TaskOccurrenceStatus.Skipped or TaskOccurrenceStatus.Disregarded;
+            });
+        }
+
+        private static void ValidateRecurringTask(TaskItem task)
+        {
+            if (task.RequiredCompletions < 1)
+                throw new ArgumentOutOfRangeException(nameof(task.RequiredCompletions), "Required completions must be at least one.");
+            if (task.RecurrenceRule == null || task.RecurrenceRule.EndCondition == null)
+                throw new ArgumentException("A recurring task requires a recurrence rule and end condition.");
+            if (task.RecurrenceRule.SeriesStartDate == default)
+                throw new ArgumentException("A recurring task requires a valid series start date.");
+            if (task.Dependencies.Count > 0)
+                throw new ArgumentException("Recurring task dependencies are not supported.");
+            if (task.RecurrenceRule.EndCondition is AfterOccurrencesEndCondition after && after.OccurrenceCount < 1)
+                throw new ArgumentOutOfRangeException(nameof(task.RecurrenceRule), "An after-occurrences condition must include at least one occurrence.");
+            if (!Enum.IsDefined(task.ProgressionMode))
+                throw new ArgumentOutOfRangeException(nameof(task.ProgressionMode));
+        }
+
         /// <summary>
         /// Retrieves a task by its display ID and list ID.
         /// </summary>
@@ -200,6 +576,15 @@ namespace PriorityTaskManager.Services
             if (existingTask == null)
                 return false;
 
+            if (updatedTask.RecurrenceRule != null)
+                ValidateRecurringTask(updatedTask);
+            if (updatedTask.Dependencies.Any(dependencyId =>
+                    _data.Tasks.Any(task => task.Id == dependencyId && task.RecurrenceRule != null)) ||
+                (updatedTask.RecurrenceRule != null &&
+                    _data.Tasks.Any(task => task.Dependencies.Contains(updatedTask.Id))))
+            {
+                throw new InvalidOperationException("Recurring task dependencies are not supported.");
+            }
             if (_dependencyGraphHelper.WouldCreateCycle(_data.Tasks, updatedTask.Id, updatedTask.Dependencies))
                 throw new InvalidOperationException("Circular dependency detected. Cannot update task with dependencies that create a cycle.");
 
@@ -216,6 +601,25 @@ namespace PriorityTaskManager.Services
             existingTask.EstimatedDuration = updatedTask.EstimatedDuration;
             existingTask.Complexity = updatedTask.Complexity;
             existingTask.IsPinned = updatedTask.IsPinned;
+            if (updatedTask.RecurrenceRule == null)
+            {
+                existingTask.RecurrenceRule = null;
+                existingTask.SeriesId = null;
+                existingTask.OccurrenceStates ??= new List<TaskOccurrenceState>();
+                existingTask.OccurrenceStates.Clear();
+                existingTask.CurrentStreak = 0;
+                existingTask.BestStreak = 0;
+            }
+            else
+            {
+                existingTask.RecurrenceRule = updatedTask.RecurrenceRule.Clone();
+                existingTask.SeriesId = existingTask.Id;
+                existingTask.ProgressionMode = updatedTask.ProgressionMode;
+                existingTask.RequiredCompletions = updatedTask.RequiredCompletions;
+                existingTask.ShowMissedIndicator = updatedTask.ShowMissedIndicator;
+                existingTask.TrackStreak = updatedTask.TrackStreak;
+                existingTask.IsCompleted = false;
+            }
 
             // If critical scheduling parameters changed, we might want to clear the scheduled parts
             // so they don't persist in an invalid state until the next schedule run.

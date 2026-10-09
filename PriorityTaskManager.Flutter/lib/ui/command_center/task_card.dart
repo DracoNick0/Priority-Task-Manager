@@ -10,7 +10,7 @@ import '../theme/app_theme.dart';
 /// Visual states (per spec):
 /// - Completed: 40% opacity, strikethrough title, circular checkbox.
 /// - Blocked (unmet dependencies): 50% opacity, lock icon.
-/// - Split/fragmented across days: dashed border + "n/total" badge.
+/// - Split/fragmented across the schedule: highlighted border + part badge.
 class TaskCard extends StatelessWidget {
   const TaskCard({
     super.key,
@@ -22,6 +22,8 @@ class TaskCard extends StatelessWidget {
     this.fragmentIndex,
     this.fragmentTotal,
     required this.onToggleCompleted,
+    this.onUndoOccurrenceUnit,
+    this.onSkipOccurrence,
     required this.onTap,
   });
 
@@ -33,6 +35,8 @@ class TaskCard extends StatelessWidget {
   final int? fragmentIndex;
   final int? fragmentTotal;
   final ValueChanged<bool> onToggleCompleted;
+  final VoidCallback? onUndoOccurrenceUnit;
+  final VoidCallback? onSkipOccurrence;
   final VoidCallback onTap;
 
   bool get _isFragmented => fragmentTotal != null && fragmentTotal! > 1;
@@ -43,7 +47,8 @@ class TaskCard extends StatelessWidget {
     final timeFormat = DateFormat.jm();
     final dueDateFormat = DateFormat.yMMMd();
 
-    final double opacity = task.isCompleted ? 0.4 : (isBlocked ? 0.5 : 1.0);
+    final isResolved = task.isCompleted || task.isSkippedOrDisregarded;
+    final double opacity = isResolved ? 0.4 : (isBlocked ? 0.5 : 1.0);
 
     Widget card = Container(
       margin: const EdgeInsets.symmetric(vertical: AppTheme.spacingXs),
@@ -68,8 +73,14 @@ class TaskCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _CircularCheckbox(
-                  value: task.isCompleted,
-                  onChanged: isBlocked ? null : onToggleCompleted,
+                  value: isResolved,
+                  onChanged:
+                      isBlocked ||
+                          task.isSkippedOrDisregarded ||
+                          (task.recurrenceRule != null &&
+                              !task.isRecurringOccurrence)
+                      ? null
+                      : onToggleCompleted,
                 ),
                 const SizedBox(width: AppTheme.spacingSm),
                 Expanded(
@@ -86,7 +97,7 @@ class TaskCard extends StatelessWidget {
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    decoration: task.isCompleted
+                                    decoration: isResolved
                                         ? TextDecoration.lineThrough
                                         : null,
                                   ),
@@ -102,7 +113,22 @@ class TaskCard extends StatelessWidget {
                           ],
                         ],
                       ),
-                      if (showDueDate) ...[
+                      if (task.isRecurringOccurrence) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Occurrence ${dueDateFormat.format(task.occurrenceDate!)}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ] else if (task.recurrenceRule != null &&
+                          task.isCompleted) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Recurring series completed',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ] else if (showDueDate) ...[
                         const SizedBox(height: 2),
                         Text(
                           task.dueDate == null
@@ -146,6 +172,75 @@ class TaskCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                      if (task.isRecurringOccurrence) ...[
+                        const SizedBox(height: AppTheme.spacingXs),
+                        Text(
+                          '${task.completionCount}/${task.requiredCompletions} completions',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 2),
+                        LinearProgressIndicator(
+                          value: task.completionProgress
+                              .clamp(0.0, 1.0)
+                              .toDouble(),
+                          minHeight: 4,
+                        ),
+                      ],
+                      if (task.showMissedIndicator &&
+                          task.hasMissedOccurrence) ...[
+                        const SizedBox(height: AppTheme.spacingXs),
+                        Text(
+                          'Missed occurrence',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colorScheme.error),
+                        ),
+                      ],
+                      if (task.isRecurringOccurrence && task.trackStreak) ...[
+                        const SizedBox(height: AppTheme.spacingXs),
+                        Text(
+                          'Streak ${task.currentStreak} \u2022 Best ${task.bestStreak}',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                      if (task.isSkippedOrDisregarded) ...[
+                        const SizedBox(height: AppTheme.spacingXs),
+                        Text(
+                          task.occurrenceStatus!,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                      if (task.isRecurringOccurrence &&
+                          !isResolved &&
+                          (onUndoOccurrenceUnit != null ||
+                              onSkipOccurrence != null)) ...[
+                        Wrap(
+                          spacing: AppTheme.spacingSm,
+                          children: [
+                            if (task.completionCount > 0)
+                              TextButton.icon(
+                                onPressed: onUndoOccurrenceUnit,
+                                icon: const Icon(Icons.undo, size: 16),
+                                label: const Text('Undo last step'),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                            if (onSkipOccurrence != null)
+                              TextButton.icon(
+                                onPressed: onSkipOccurrence,
+                                icon: const Icon(Icons.skip_next, size: 16),
+                                label: const Text('Skip occurrence'),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                       if (_isFragmented) ...[

@@ -12,6 +12,7 @@ import 'package:priority_task_manager/models/archive_group.dart';
 import 'package:priority_task_manager/data/task_repository.dart';
 import 'package:priority_task_manager/models/fixed_event.dart';
 import 'package:priority_task_manager/models/recurrence_rule.dart';
+import 'package:priority_task_manager/models/task_item.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
 
 void main() {
@@ -91,6 +92,135 @@ void main() {
         expect(list.workStartMinutes, 8 * 60 + 30);
         expect(list.workEndMinutes, 16 * 60);
         expect(list.workDays, [1, 3]); // Monday, Wednesday
+      },
+    );
+
+    test('getTasks returns expanded authenticated task occurrences', () async {
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/tasks/') {
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 'series-1',
+                'listId': 'list-1',
+                'title': 'Read',
+                'description': '',
+                'link': null,
+                'isCompleted': false,
+                'dueDate': null,
+                'estimatedDuration': '00:30:00',
+                'dependencies': <String>[],
+                'importance': 5,
+                'complexity': 1,
+                'notBefore': null,
+                'isPinned': false,
+                'isDivisible': false,
+                'recurrenceRule': {
+                  'type': 'dailyInterval',
+                  'seriesStartDate': '2026-10-08T00:00:00',
+                  'endCondition': {'type': 'never'},
+                  'intervalDays': 1,
+                },
+                'seriesId': 'series-1',
+                'progressionMode': 'RollForwardKeepBacklog',
+                'requiredCompletions': 2,
+                'showMissedIndicator': true,
+                'hasMissedOccurrence': false,
+                'trackStreak': true,
+                'currentStreak': 1,
+                'bestStreak': 3,
+              },
+            ]),
+            200,
+          );
+        }
+
+        expect(request.url.path, '/api/tasks/occurrences');
+        expect(request.url.queryParameters['listId'], 'list-1');
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'occurrence-guid',
+              'seriesId': 'series-1',
+              'occurrenceDate': '2026-10-08T00:00:00',
+              'title': 'Read',
+              'description': '',
+              'link': null,
+              'listId': 'list-1',
+              'listName': 'General',
+              'isCompleted': false,
+              'progress': 0.5,
+              'completionCount': 1,
+              'requiredCompletions': 2,
+              'status': 'Pending',
+              'isMissed': false,
+              'showMissedIndicator': true,
+              'hasMissedOccurrence': false,
+              'trackStreak': true,
+              'currentStreak': 1,
+              'bestStreak': 3,
+              'importance': 5,
+              'effectiveImportance': 5,
+              'dueDate': '2026-10-08T00:00:00',
+              'notBefore': '2026-10-08T00:00:00',
+              'estimatedDuration': '00:15:00',
+              'dependencies': <String>[],
+              'urgencyScore': 0,
+              'isPinned': false,
+              'complexity': 1,
+              'points': 0,
+              'beforePadding': null,
+              'afterPadding': null,
+              'isDivisible': false,
+              'progressionMode': 'RollForwardKeepBacklog',
+            },
+          ]),
+          200,
+        );
+      });
+      final repository = ApiTaskRepository(
+        authToken: 'test-token',
+        httpClient: client,
+      );
+
+      final tasks = await repository.getTasks('list-1');
+
+      final occurrence = tasks.single;
+      expect(occurrence.id, 'occurrence-guid');
+      expect(occurrence.seriesId, 'series-1');
+      expect(occurrence.occurrenceDate, DateTime(2026, 10, 8));
+      expect(occurrence.completionCount, 1);
+      expect(occurrence.requiredCompletions, 2);
+      expect(occurrence.isRecurringOccurrence, isTrue);
+    });
+
+    test(
+      'completeTaskOccurrence addresses its series and original recurrence date',
+      () async {
+        late http.Request sentRequest;
+        final repository = ApiTaskRepository(
+          authToken: 'test-token',
+          httpClient: MockClient((request) async {
+            sentRequest = request;
+            return http.Response('', 204);
+          }),
+        );
+
+        await repository.completeTaskOccurrence(
+          TaskItem(
+            id: 'occurrence-1',
+            listId: 'list-1',
+            title: 'Read',
+            seriesId: 'series-1',
+            occurrenceDate: DateTime(2026, 10, 8),
+          ),
+        );
+
+        expect(sentRequest.method, 'POST');
+        expect(
+          sentRequest.url.path,
+          '/api/tasks/series-1/occurrences/2026-10-08/complete',
+        );
       },
     );
 

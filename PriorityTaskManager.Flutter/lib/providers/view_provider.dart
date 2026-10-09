@@ -53,7 +53,9 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
   }
 
   final tasks = await ref.watch(tasksProvider(activeListId).future);
-  final incompleteTasks = tasks.where((t) => !t.isCompleted).toList();
+  final incompleteTasks = tasks
+      .where((t) => !t.isResolvedOccurrence && !t.isCompleted)
+      .toList();
 
   final lists = await ref.watch(taskListsProvider.future);
   final list = lists.where((l) => l.id == activeListId).firstOrNull;

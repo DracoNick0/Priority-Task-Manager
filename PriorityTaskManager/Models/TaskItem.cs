@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PriorityTaskManager.Models
 {
     /// <summary>
@@ -38,6 +40,21 @@ namespace PriorityTaskManager.Models
                 AfterPadding = this.AfterPadding,
                 IsDivisible = this.IsDivisible,
                 ArchiveGroupId = this.ArchiveGroupId,
+                RecurrenceRule = this.RecurrenceRule?.Clone(),
+                SeriesId = this.SeriesId,
+                ProgressionMode = this.ProgressionMode,
+                RequiredCompletions = this.RequiredCompletions,
+                ShowMissedIndicator = this.ShowMissedIndicator,
+                TrackStreak = this.TrackStreak,
+                CurrentStreak = this.CurrentStreak,
+                BestStreak = this.BestStreak,
+                OccurrenceStates = (this.OccurrenceStates ?? new List<TaskOccurrenceState>()).Select(o => new TaskOccurrenceState
+                {
+                    ScheduledDate = o.ScheduledDate,
+                    Status = o.Status,
+                    CompletionCount = o.CompletionCount,
+                    CompletedAt = o.CompletedAt
+                }).ToList(),
                 ScheduledParts = new List<ScheduledChunk>(this.ScheduledParts.Select(c => c.Clone()))
             };
         }
@@ -217,6 +234,52 @@ namespace PriorityTaskManager.Models
         /// Null for active tasks and legacy archive entries.
         /// </summary>
         public Guid? ArchiveGroupId { get; set; }
+
+        /// <summary>Gets or sets the rule when this task defines a recurring series.</summary>
+        public RecurrenceRule? RecurrenceRule { get; set; }
+
+        /// <summary>Gets or sets the identity shared by the task series and its occurrences.</summary>
+        public Guid? SeriesId { get; set; }
+
+        /// <summary>Gets or sets how missed occurrences advance. Defaults to retaining backlog.</summary>
+        public TaskProgressionMode ProgressionMode { get; set; } = TaskProgressionMode.RollForwardKeepBacklog;
+
+        /// <summary>Gets or sets the number of completion actions required for each occurrence.</summary>
+        public int RequiredCompletions { get; set; } = 1;
+
+        /// <summary>Gets or sets whether the missed-occurrence indicator is shown.</summary>
+        public bool ShowMissedIndicator { get; set; } = true;
+
+        /// <summary>Gets or sets whether current and best streaks are tracked.</summary>
+        public bool TrackStreak { get; set; }
+
+        /// <summary>Gets or sets the current consecutive-completion streak.</summary>
+        public int CurrentStreak { get; set; }
+
+        /// <summary>Gets or sets the best consecutive-completion streak.</summary>
+        public int BestStreak { get; set; }
+
+        /// <summary>Gets or sets persisted progress for generated occurrences.</summary>
+        public List<TaskOccurrenceState> OccurrenceStates { get; set; } = new();
+
+        /// <summary>Gets whether missed state should currently be indicated for this task.</summary>
+        [JsonIgnore]
+        public bool HasUnresolvedMissedIndicator
+        {
+            get
+            {
+                var states = OccurrenceStates ?? new List<TaskOccurrenceState>();
+                if (ProgressionMode != TaskProgressionMode.RollForwardDisregard)
+                    return states.Any(o => o.Status == TaskOccurrenceStatus.Missed);
+
+                var latestCompletedDate = states
+                    .Where(o => o.Status == TaskOccurrenceStatus.Completed)
+                    .Select(o => (DateTime?)o.ScheduledDate.Date)
+                    .Max();
+                return states.Any(o => o.Status == TaskOccurrenceStatus.Disregarded &&
+                    (!latestCompletedDate.HasValue || o.ScheduledDate.Date > latestCompletedDate.Value));
+            }
+        }
 
         #endregion
     }

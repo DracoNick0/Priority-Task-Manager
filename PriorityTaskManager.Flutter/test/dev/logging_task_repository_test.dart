@@ -70,6 +70,15 @@ class _FakeTaskRepository implements TaskRepository {
   Future<void> setCompleted(String taskId, bool isCompleted) async {}
 
   @override
+  Future<void> completeTaskOccurrence(TaskItem occurrence) async {}
+
+  @override
+  Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence) async {}
+
+  @override
+  Future<void> skipTaskOccurrence(TaskItem occurrence) async {}
+
+  @override
   Future<void> addDependency(String taskId, String dependsOnTaskId) async {}
 
   @override
