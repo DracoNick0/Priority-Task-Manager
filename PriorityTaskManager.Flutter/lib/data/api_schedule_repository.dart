@@ -160,6 +160,7 @@ class ApiScheduleRepository implements ScheduleRepository {
     'name': event.title,
     'startTime': event.startTime.toIso8601String(),
     'endTime': event.endTime.toIso8601String(),
+    if (event.recurrenceRule != null) 'recurrenceRule': event.recurrenceRule,
   };
 
   Map<String, dynamic> _profileJson(EffectiveListSettings settings) => {

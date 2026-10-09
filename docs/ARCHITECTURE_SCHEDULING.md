@@ -59,6 +59,7 @@ Inputs:
 - Authenticated clients may submit expanded recurring-task occurrences as ordinary task placeholders; the stateless schedule endpoint does not expand or persist recurrence rules itself.
 - Effective profile built from global defaults plus list-scoped overrides.
 - Events that block available work time.
+- Scheduling clients preserve recurring event rules in the schedule request so the availability stage can expand each blocking occurrence across the computed horizon.
 - Current or simulated time from `ITimeService`.
 
 Output:
