@@ -1,6 +1,6 @@
 import '../models/fixed_event.dart';
-import '../models/archive_group.dart';
 import '../models/recurrence_rule.dart';
+import '../models/archive_group.dart';
 import '../models/recurring_schedule_task.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
@@ -78,6 +78,20 @@ class LoggingTaskRepository implements TaskRepository {
       _logged('getTasks($listId)', () => _inner.getTasks(listId));
 
   @override
+  Future<TaskItem> getTaskOccurrence({
+    required String listId,
+    required String seriesId,
+    required DateTime occurrenceDate,
+  }) => _logged(
+    'getTaskOccurrence($seriesId, $occurrenceDate)',
+    () => _inner.getTaskOccurrence(
+      listId: listId,
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+    ),
+  );
+
+  @override
   Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
     String listId,
   ) => _logged(
@@ -99,6 +113,11 @@ class LoggingTaskRepository implements TaskRepository {
     bool isPinned = false,
     bool isDivisible = false,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   }) => _logged(
     'addTask(listId: $listId, title: $title)',
     () => _inner.addTask(
@@ -114,12 +133,75 @@ class LoggingTaskRepository implements TaskRepository {
       isPinned: isPinned,
       isDivisible: isDivisible,
       link: link,
+      recurrenceRule: recurrenceRule,
+      progressionMode: progressionMode,
+      requiredCompletions: requiredCompletions,
+      showMissedIndicator: showMissedIndicator,
+      trackStreak: trackStreak,
     ),
   );
 
   @override
   Future<void> updateTask(TaskItem task) =>
       _logged('updateTask(${task.id})', () => _inner.updateTask(task));
+
+  @override
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  }) => _logged(
+    'editTaskOccurrence($seriesId, $occurrenceDate, ${target.apiValue})',
+    () => _inner.editTaskOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      title: title,
+      description: description,
+      link: link,
+      dueDate: dueDate,
+      notBefore: notBefore,
+      estimatedDurationMinutes: estimatedDurationMinutes,
+      importance: importance,
+      complexity: complexity,
+      isPinned: isPinned,
+      isDivisible: isDivisible,
+      target: target,
+      recurrenceRule: recurrenceRule,
+      progressionMode: progressionMode,
+      requiredCompletions: requiredCompletions,
+      showMissedIndicator: showMissedIndicator,
+      trackStreak: trackStreak,
+    ),
+  );
+
+  @override
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) => _logged(
+    'deleteTaskOccurrence($seriesId, $occurrenceDate, ${target.apiValue})',
+    () => _inner.deleteTaskOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      target: target,
+    ),
+  );
 
   @override
   Future<void> deleteTask(String taskId) =>

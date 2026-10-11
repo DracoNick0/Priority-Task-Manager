@@ -18,7 +18,7 @@ The core library must not depend on front-end handlers, console helpers, renderi
 
 | Service | Responsibility |
 | --- | --- |
-| `TaskManagerService` | Coordinates task/list/profile operations, recurring-task occurrence progress and missed-state transitions, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
+| `TaskManagerService` | Coordinates task/list/profile operations, recurring-task occurrence progress, missed-state transitions and scoped occurrence edits/deletes, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
 | `TaskMetricsService` | Computes schedule-related metrics used by presentation and status indicators |
 | `EventService` | Owns CRUD and archive/restore operations for calendar events (self-contained; extracted from `TaskManagerService` per the growth criteria below) |
 | `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands a `RecurrenceRule` into concrete occurrence dates on demand for a caller-supplied range. Shared by recurring tasks and recurring events; the event scheduler expands blocking occurrences, while task progression stores state only for dates that have occurred or been acted upon. |
@@ -38,6 +38,8 @@ Prefer existing service methods before adding duplicates. Important reusable res
 - Effective scheduling profile resolution through `BuildEffectiveUserProfile(...)`.
 - List time preference application through `ApplyListTimePreference(...)`.
 - Dependency validation and cycle prevention through existing dependency helpers.
+- Recurring task mutations target the persisted series ID and original occurrence date; keep occurrence overrides, cancellation exceptions, and progression state partitioned consistently when splitting a series.
+- Undoing an occurrence action removes one completion step, or reopens a manually skipped occurrence as pending/missed; disregarded occurrences are progression outcomes rather than manual skips.
 
 ## Avoiding Unbounded Service Growth
 

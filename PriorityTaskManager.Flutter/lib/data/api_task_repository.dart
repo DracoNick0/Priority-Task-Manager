@@ -306,6 +306,33 @@ class ApiTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<TaskItem> getTaskOccurrence({
+    required String listId,
+    required String seriesId,
+    required DateTime occurrenceDate,
+  }) async {
+    final date = _dateOnly(occurrenceDate);
+    final path = Uri(
+      path: '/api/tasks/occurrences',
+      queryParameters: {'listId': listId, 'from': date, 'to': date},
+    ).toString();
+    final response = await _send('GET', path);
+    final occurrences = (jsonDecode(response.body) as List<dynamic>).map(
+      (entry) => _taskOccurrenceFromJson(entry as Map<String, dynamic>),
+    );
+    return occurrences.firstWhere(
+      (occurrence) =>
+          occurrence.seriesId == seriesId &&
+          occurrence.occurrenceDate?.year == occurrenceDate.year &&
+          occurrence.occurrenceDate?.month == occurrenceDate.month &&
+          occurrence.occurrenceDate?.day == occurrenceDate.day,
+      orElse: () => throw StateError(
+        'Recurring occurrence $seriesId on $date was not found.',
+      ),
+    );
+  }
+
+  @override
   Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
     String listId,
   ) async {
@@ -337,6 +364,11 @@ class ApiTaskRepository implements TaskRepository {
     bool isPinned = false,
     bool isDivisible = false,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   }) async {
     final response = await _send(
       'POST',
@@ -354,6 +386,11 @@ class ApiTaskRepository implements TaskRepository {
         isPinned: isPinned,
         isDivisible: isDivisible,
         link: link,
+        recurrenceRule: recurrenceRule,
+        progressionMode: progressionMode,
+        requiredCompletions: requiredCompletions,
+        showMissedIndicator: showMissedIndicator,
+        trackStreak: trackStreak,
       ),
     );
     return _taskFromJson(jsonDecode(response.body) as Map<String, dynamic>);
@@ -383,6 +420,64 @@ class ApiTaskRepository implements TaskRepository {
         showMissedIndicator: task.showMissedIndicator,
         trackStreak: task.trackStreak,
       ),
+    );
+  }
+
+  @override
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  }) async {
+    await _send(
+      'PUT',
+      '/api/tasks/$seriesId/occurrences/${_dateOnly(occurrenceDate)}'
+          '?target=${target.apiValue}',
+      body: {
+        'title': title,
+        'description': description,
+        'link': link.isEmpty ? null : link,
+        'dueDate': dueDate?.toIso8601String(),
+        'notBefore': notBefore?.toIso8601String(),
+        'estimatedDuration': _formatMinutesAsDuration(estimatedDurationMinutes),
+        'importance': importance,
+        'complexity': complexity,
+        'isPinned': isPinned,
+        'isDivisible': isDivisible,
+        'recurrenceRule': recurrenceRule?.toJson(),
+        'progressionMode': progressionMode,
+        'requiredCompletions': requiredCompletions,
+        'showMissedIndicator': showMissedIndicator,
+        'trackStreak': trackStreak,
+      },
+    );
+  }
+
+  @override
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {
+    await _send(
+      'DELETE',
+      '/api/tasks/$seriesId/occurrences/${_dateOnly(occurrenceDate)}'
+          '?target=${target.apiValue}',
     );
   }
 
@@ -510,6 +605,9 @@ class ApiTaskRepository implements TaskRepository {
     estimatedDurationMinutes: _parseDurationAsMinutes(
       json['estimatedDuration'] as String,
     ),
+    fullEstimatedDurationMinutes: json['fullEstimatedDuration'] == null
+        ? null
+        : _parseDurationAsMinutes(json['fullEstimatedDuration'] as String),
     dependencies: (json['dependencies'] as List<dynamic>)
         .map((d) => d as String)
         .toList(),
@@ -544,10 +642,15 @@ class ApiTaskRepository implements TaskRepository {
     description: json['description'] as String? ?? '',
     link: json['link'] as String? ?? '',
     isCompleted: json['isCompleted'] as bool,
-    dueDate: DateTime.parse(json['dueDate'] as String),
+    dueDate: json['dueDate'] == null
+        ? null
+        : DateTime.parse(json['dueDate'] as String),
     estimatedDurationMinutes: _parseDurationAsMinutes(
       json['estimatedDuration'] as String,
     ),
+    fullEstimatedDurationMinutes: json['fullEstimatedDuration'] == null
+        ? null
+        : _parseDurationAsMinutes(json['fullEstimatedDuration'] as String),
     dependencies: (json['dependencies'] as List<dynamic>)
         .map((dependency) => dependency as String)
         .toList(),
@@ -567,6 +670,9 @@ class ApiTaskRepository implements TaskRepository {
     currentStreak: json['currentStreak'] as int,
     bestStreak: json['bestStreak'] as int,
     progressionMode: json['progressionMode'] as String,
+    recurrenceRule: RecurrenceRule.fromJson(
+      json['recurrenceRule'] as Map<dynamic, dynamic>?,
+    ),
   );
 
   // ---- Profile ----

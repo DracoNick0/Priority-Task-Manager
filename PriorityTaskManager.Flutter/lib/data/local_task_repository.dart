@@ -93,6 +93,17 @@ class LocalTaskRepository implements TaskRepository {
       _tasksBox.values.where((task) => task.listId == listId).toList();
 
   @override
+  Future<TaskItem> getTaskOccurrence({
+    required String listId,
+    required String seriesId,
+    required DateTime occurrenceDate,
+  }) {
+    throw UnsupportedError(
+      'Recurring tasks are available only to authenticated users.',
+    );
+  }
+
+  @override
   Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
     String listId,
   ) async => const [];
@@ -111,7 +122,17 @@ class LocalTaskRepository implements TaskRepository {
     bool isPinned = false,
     bool isDivisible = false,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   }) async {
+    if (recurrenceRule != null) {
+      throw UnsupportedError(
+        'Recurring tasks are available only to authenticated users.',
+      );
+    }
     final task = TaskItem(
       id: _uuid.v4(),
       listId: listId,
@@ -133,7 +154,49 @@ class LocalTaskRepository implements TaskRepository {
 
   @override
   Future<void> updateTask(TaskItem task) async {
+    if (task.recurrenceRule != null || task.isRecurringOccurrence) {
+      throw UnsupportedError(
+        'Recurring tasks are available only to authenticated users.',
+      );
+    }
     await _tasksBox.put(task.id, task);
+  }
+
+  @override
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  }) {
+    throw UnsupportedError(
+      'Recurring tasks are available only to authenticated users.',
+    );
+  }
+
+  @override
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) {
+    throw UnsupportedError(
+      'Recurring tasks are available only to authenticated users.',
+    );
   }
 
   @override

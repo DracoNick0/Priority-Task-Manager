@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/effective_settings.dart';
 import '../models/fixed_event.dart';
+import '../models/recurrence_rule.dart';
 import '../models/recurring_schedule_task.dart';
 import '../models/schedule_models.dart';
 import '../models/task_item.dart';
@@ -149,7 +150,7 @@ class ApiScheduleRepository implements ScheduleRepository {
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return _toDailySchedule(json, effectiveNow);
+    return _toDailySchedule(json, effectiveNow, settings);
   }
 
   Map<String, dynamic> _taskToJson(TaskItem task) => {
@@ -196,54 +197,27 @@ class ApiScheduleRepository implements ScheduleRepository {
     'slackThresholdSafe': settings.slackThresholdSafe,
   };
 
-  DailySchedule _toDailySchedule(Map<String, dynamic> json, DateTime now) {
+  DailySchedule _toDailySchedule(
+    Map<String, dynamic> json,
+    DateTime now,
+    EffectiveListSettings settings,
+  ) {
     final scheduledTasksJson = (json['scheduledTasks'] as List<dynamic>? ?? [])
         .cast<Map<String, dynamic>>();
+    final unscheduledTasksJson =
+        (json['unscheduledTasks'] as List<dynamic>? ?? [])
+            .cast<Map<String, dynamic>>();
 
     final todayTasks = <ScheduledTask>[];
     final futureTasks = <ScheduledTask>[];
     final scheduledOccurrences = <TaskItem>[];
+    final unscheduledTasks = unscheduledTasksJson
+        .map(_taskFromScheduleJson)
+        .toList();
 
     for (final taskJson in scheduledTasksJson) {
       if (taskJson['seriesId'] != null && taskJson['occurrenceDate'] != null) {
-        final status = taskJson['occurrenceStatus'] as String? ?? 'Pending';
-        scheduledOccurrences.add(
-          TaskItem(
-            id: taskJson['id'] as String,
-            listId: taskJson['listId'] as String? ?? '',
-            title: taskJson['title'] as String? ?? '',
-            description: taskJson['description'] as String? ?? '',
-            link: taskJson['link'] as String? ?? '',
-            dueDate: taskJson['dueDate'] == null
-                ? null
-                : DateTime.parse(taskJson['dueDate'] as String),
-            estimatedDurationMinutes: _parseDurationAsMinutes(
-              taskJson['estimatedDuration'] as String,
-            ),
-            importance: taskJson['importance'] as int? ?? 5,
-            complexity: taskJson['complexity'] as int? ?? 1,
-            isPinned: taskJson['isPinned'] as bool? ?? false,
-            isCompleted: status == 'Completed',
-            seriesId: taskJson['seriesId'] as String,
-            occurrenceDate: DateTime.parse(
-              taskJson['occurrenceDate'] as String,
-            ),
-            occurrenceStatus: status,
-            completionCount: taskJson['completionCount'] as int? ?? 0,
-            requiredCompletions: taskJson['requiredCompletions'] as int? ?? 1,
-            showMissedIndicator:
-                taskJson['showMissedIndicator'] as bool? ?? true,
-            hasMissedOccurrence:
-                taskJson['hasMissedOccurrence'] as bool? ?? false,
-            isMissed: taskJson['isMissed'] as bool? ?? false,
-            trackStreak: taskJson['trackStreak'] as bool? ?? false,
-            currentStreak: taskJson['currentStreak'] as int? ?? 0,
-            bestStreak: taskJson['bestStreak'] as int? ?? 0,
-            progressionMode:
-                taskJson['progressionMode'] as String? ??
-                'RollForwardKeepBacklog',
-          ),
-        );
+        scheduledOccurrences.add(_taskFromScheduleJson(taskJson));
       }
       final parts = (taskJson['scheduledParts'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>();
@@ -280,12 +254,78 @@ class ApiScheduleRepository implements ScheduleRepository {
       scheduledOccurrences: scheduledOccurrences,
       unscheduledTaskIds: (json['unscheduledTaskIds'] as List<dynamic>? ?? [])
           .cast<String>(),
+      unscheduledTasks: unscheduledTasks,
+      catchUpWorkday: _catchUpWorkday(now, settings),
       leastSlackTask: (json['leastSlackTaskTitle'] as String?) ?? 'None',
       realisticSlack: _formatSlackMinutes(
         (json['leastSlackRealisticMinutes'] as num?)?.toDouble(),
       ),
       actualSlack: _formatSlackMinutes(
         (json['leastSlackActualMinutes'] as num?)?.toDouble(),
+      ),
+    );
+  }
+
+  DateTime _catchUpWorkday(DateTime now, EffectiveListSettings settings) {
+    final effectiveWorkDays = settings.workDays.isEmpty
+        ? const {
+            DateTime.monday,
+            DateTime.tuesday,
+            DateTime.wednesday,
+            DateTime.thursday,
+            DateTime.friday,
+          }
+        : settings.workDays.toSet();
+    final today = DateTime(now.year, now.month, now.day);
+    final workdayEnd = today.add(Duration(minutes: settings.workEndMinutes));
+    if (effectiveWorkDays.contains(today.weekday) && now.isBefore(workdayEnd)) {
+      return today;
+    }
+
+    for (var daysAfterToday = 1; daysAfterToday <= 7; daysAfterToday++) {
+      final date = today.add(Duration(days: daysAfterToday));
+      if (effectiveWorkDays.contains(date.weekday)) return date;
+    }
+
+    throw StateError('Work days must include a valid weekday.');
+  }
+
+  TaskItem _taskFromScheduleJson(Map<String, dynamic> taskJson) {
+    final status = taskJson['occurrenceStatus'] as String? ?? 'Pending';
+    final occurrenceDate = taskJson['occurrenceDate'] as String?;
+    return TaskItem(
+      id: taskJson['id'] as String,
+      listId: taskJson['listId'] as String? ?? '',
+      title: taskJson['title'] as String? ?? '',
+      description: taskJson['description'] as String? ?? '',
+      link: taskJson['link'] as String? ?? '',
+      dueDate: taskJson['dueDate'] == null
+          ? null
+          : DateTime.parse(taskJson['dueDate'] as String),
+      estimatedDurationMinutes: _parseDurationAsMinutes(
+        taskJson['estimatedDuration'] as String,
+      ),
+      importance: taskJson['importance'] as int? ?? 5,
+      complexity: taskJson['complexity'] as int? ?? 1,
+      isPinned: taskJson['isPinned'] as bool? ?? false,
+      isCompleted: status == 'Completed',
+      seriesId: taskJson['seriesId'] as String?,
+      occurrenceDate: occurrenceDate == null
+          ? null
+          : DateTime.parse(occurrenceDate),
+      occurrenceStatus: taskJson['occurrenceStatus'] as String?,
+      completionCount: taskJson['completionCount'] as int? ?? 0,
+      requiredCompletions: taskJson['requiredCompletions'] as int? ?? 1,
+      showMissedIndicator: taskJson['showMissedIndicator'] as bool? ?? true,
+      hasMissedOccurrence: taskJson['hasMissedOccurrence'] as bool? ?? false,
+      isMissed: taskJson['isMissed'] as bool? ?? false,
+      trackStreak: taskJson['trackStreak'] as bool? ?? false,
+      currentStreak: taskJson['currentStreak'] as int? ?? 0,
+      bestStreak: taskJson['bestStreak'] as int? ?? 0,
+      progressionMode:
+          taskJson['progressionMode'] as String? ?? 'RollForwardKeepBacklog',
+      recurrenceRule: RecurrenceRule.fromJson(
+        taskJson['recurrenceRule'] as Map<dynamic, dynamic>?,
       ),
     );
   }

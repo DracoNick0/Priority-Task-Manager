@@ -15,6 +15,7 @@ class TaskItem extends HiveObject {
     this.isCompleted = false,
     this.dueDate,
     this.estimatedDurationMinutes = 60,
+    this.fullEstimatedDurationMinutes,
     List<String>? dependencies,
     this.importance = 5,
     this.complexity = 1,
@@ -57,6 +58,9 @@ class TaskItem extends HiveObject {
 
   @HiveField(6)
   int estimatedDurationMinutes;
+
+  /// Full per-occurrence estimate returned separately from remaining schedule effort.
+  final int? fullEstimatedDurationMinutes;
 
   /// IDs of `TaskItem`s that must be completed before this one, mirroring
   /// the dependency model in `PriorityTaskManager.Models.TaskItem`.
@@ -135,6 +139,7 @@ class TaskItem extends HiveObject {
     DateTime? dueDate,
     bool clearDueDate = false,
     int? estimatedDurationMinutes,
+    int? fullEstimatedDurationMinutes,
     List<String>? dependencies,
     int? importance,
     int? complexity,
@@ -166,6 +171,8 @@ class TaskItem extends HiveObject {
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       estimatedDurationMinutes:
           estimatedDurationMinutes ?? this.estimatedDurationMinutes,
+      fullEstimatedDurationMinutes:
+          fullEstimatedDurationMinutes ?? this.fullEstimatedDurationMinutes,
       dependencies: dependencies ?? List<String>.from(this.dependencies),
       importance: importance ?? this.importance,
       complexity: complexity ?? this.complexity,

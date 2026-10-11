@@ -76,7 +76,7 @@ class TaskCard extends StatelessWidget {
                   value: isResolved,
                   onChanged:
                       isBlocked ||
-                          task.isSkippedOrDisregarded ||
+                          task.occurrenceStatus == 'Disregarded' ||
                           (task.recurrenceRule != null &&
                               !task.isRecurringOccurrence)
                       ? null

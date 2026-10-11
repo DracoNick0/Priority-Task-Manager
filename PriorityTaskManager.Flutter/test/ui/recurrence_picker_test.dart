@@ -4,6 +4,60 @@ import 'package:priority_task_manager/models/recurrence_rule.dart';
 import 'package:priority_task_manager/ui/command_center/inspector_forms/recurrence_picker.dart';
 
 void main() {
+  testWidgets('editing a recurrence initializes its pattern and end settings', (
+    tester,
+  ) async {
+    final rule = WeeklyRecurrenceRule(
+      seriesStartDate: DateTime(2026, 10, 8),
+      endCondition: AfterOccurrencesEndCondition(3),
+      daysOfWeek: [1],
+      intervalWeeks: 2,
+    );
+    RecurrenceRule? changedRule;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecurrencePicker(
+            seriesStartDate: () => rule.seriesStartDate,
+            initialRule: rule,
+            canDisable: false,
+            label: 'Series recurrence',
+            onChanged: (value) => changedRule = value,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Series recurrence'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.widgetWithText(FilterChip, 'Mon'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, 'Mon'))
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, 'Thu'))
+          .selected,
+      isFalse,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      '2',
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).controller!.text,
+      '3',
+    );
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Thu'));
+    await tester.pumpAndSettle();
+    expect(changedRule, isA<WeeklyRecurrenceRule>());
+    expect((changedRule! as WeeklyRecurrenceRule).daysOfWeek, [1, 4]);
+  });
+
   for (final (startDate, dayLabel, weekday) in [
     (DateTime(2026, 10, 1), 'Thu', 4),
     (DateTime(2026, 10, 4), 'Sun', 0),

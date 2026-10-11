@@ -63,10 +63,18 @@ class RecurrencePicker extends StatefulWidget {
     super.key,
     required this.seriesStartDate,
     required this.onChanged,
+    this.initialRule,
+    this.canDisable = true,
+    this.label = 'Recurring event',
+    this.onEnabledChanged,
   });
 
   final DateTime Function() seriesStartDate;
   final ValueChanged<RecurrenceRule?> onChanged;
+  final RecurrenceRule? initialRule;
+  final bool canDisable;
+  final String label;
+  final ValueChanged<bool>? onEnabledChanged;
 
   @override
   State<RecurrencePicker> createState() => _RecurrencePickerState();
@@ -90,6 +98,62 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   final List<DateTime> _explicitDates = [];
   final _afterCountController = TextEditingController(text: '7');
   DateTime? _untilDate;
+  DateTime? _lastSeriesStartDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastSeriesStartDate = widget.seriesStartDate();
+    final rule = widget.initialRule;
+    if (rule == null) return;
+    _enabled = true;
+
+    if (rule is DailyIntervalRecurrenceRule) {
+      _pattern = RecurrencePatternType.daily;
+      _intervalDaysController.text = rule.intervalDays.toString();
+    } else if (rule is WeeklyRecurrenceRule) {
+      _pattern = RecurrencePatternType.weekly;
+      _daysOfWeek.addAll(rule.daysOfWeek);
+      _intervalWeeksController.text = rule.intervalWeeks.toString();
+    } else if (rule is MonthlyOnDaysRecurrenceRule) {
+      _pattern = RecurrencePatternType.monthlyOnDays;
+      _daysOfMonthController.text = rule.daysOfMonth.join(', ');
+      _shortMonthBehavior = rule.shortMonthBehavior;
+    } else if (rule is MonthlyRelativeRecurrenceRule) {
+      _pattern = RecurrencePatternType.monthlyRelative;
+      _ordinal = rule.ordinal;
+      _dayKind = rule.dayKind;
+      _relativeDayOfWeek = rule.dayOfWeek ?? 'Monday';
+    } else if (rule is YearlyRecurrenceRule) {
+      _pattern = RecurrencePatternType.yearly;
+      _month = rule.month;
+      _yearlyDayController.text = rule.day.toString();
+    } else if (rule is ExplicitDatesRecurrenceRule) {
+      _pattern = RecurrencePatternType.explicitDates;
+      _explicitDates.addAll(rule.dates);
+    }
+
+    final endCondition = rule.endCondition;
+    if (endCondition is NeverEndCondition) {
+      _endType = _EndType.never;
+    } else if (endCondition is AfterOccurrencesEndCondition) {
+      _endType = _EndType.after;
+      _afterCountController.text = endCondition.occurrenceCount.toString();
+    } else if (endCondition is UntilDateEndCondition) {
+      _endType = _EndType.until;
+      _untilDate = endCondition.untilDate;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant RecurrencePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final startDate = widget.seriesStartDate();
+    if (_enabled && _lastSeriesStartDate != startDate) {
+      _lastSeriesStartDate = startDate;
+      widget.onChanged(_buildRule());
+    }
+  }
 
   @override
   void dispose() {
@@ -202,21 +266,34 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Recurring event'),
-              value: _enabled,
-              onChanged: (v) => _update(() {
-                _enabled = v;
-                if (v && _daysOfWeek.isEmpty) {
-                  _daysOfWeek.add(widget.seriesStartDate().weekday % 7);
-                }
-              }),
-            ),
+            if (widget.canDisable)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(widget.label),
+                value: _enabled,
+                onChanged: (v) => _update(() {
+                  _enabled = v;
+                  widget.onEnabledChanged?.call(v);
+                  if (v && _daysOfWeek.isEmpty) {
+                    _daysOfWeek.add(widget.seriesStartDate().weekday % 7);
+                  }
+                }),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppTheme.spacingSm,
+                ),
+                child: Text(
+                  widget.label,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
             if (_enabled) ...[
               const SizedBox(height: AppTheme.spacingSm),
               DropdownButtonFormField<RecurrencePatternType>(
                 initialValue: _pattern,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Repeats'),
                 items: const [
                   DropdownMenuItem(
@@ -251,6 +328,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
               const Divider(height: AppTheme.spacingLg),
               DropdownButtonFormField<_EndType>(
                 initialValue: _endType,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Ends'),
                 items: const [
                   DropdownMenuItem(value: _EndType.never, child: Text('Never')),
@@ -326,6 +404,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
             const SizedBox(height: AppTheme.spacingSm),
             DropdownButtonFormField<String>(
               initialValue: _shortMonthBehavior,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'If a day is missing in a short month',
               ),
@@ -346,6 +425,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
           children: [
             DropdownButtonFormField<String>(
               initialValue: _ordinal,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Occurrence'),
               items: const [
                 DropdownMenuItem(value: 'First', child: Text('First')),
@@ -359,6 +439,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
             const SizedBox(height: AppTheme.spacingSm),
             DropdownButtonFormField<String>(
               initialValue: _dayKind,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Day'),
               items: const [
                 DropdownMenuItem(
@@ -381,6 +462,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
               const SizedBox(height: AppTheme.spacingSm),
               DropdownButtonFormField<String>(
                 initialValue: _relativeDayOfWeek,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Weekday'),
                 items: _dayOfWeekNames
                     .map((d) => DropdownMenuItem(value: d, child: Text(d)))

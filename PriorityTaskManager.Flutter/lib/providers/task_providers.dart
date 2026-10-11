@@ -9,6 +9,7 @@ import '../dev/logging_http_client.dart';
 import '../dev/logging_task_repository.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
+import '../models/recurrence_rule.dart';
 import 'archive_providers.dart';
 import 'session_provider.dart';
 
@@ -102,6 +103,11 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     bool isPinned = false,
     bool isDivisible = false,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   }) async {
     final repository = await ref.read(taskRepositoryProvider.future);
     final created = await repository.addTask(
@@ -117,6 +123,11 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
       isPinned: isPinned,
       isDivisible: isDivisible,
       link: link,
+      recurrenceRule: recurrenceRule,
+      progressionMode: progressionMode,
+      requiredCompletions: requiredCompletions,
+      showMissedIndicator: showMissedIndicator,
+      trackStreak: trackStreak,
     );
     ref.invalidateSelf();
     await future;
@@ -128,6 +139,82 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.updateTask(task);
     ref.invalidateSelf();
     await future;
+  }
+
+  Future<TaskItem> getTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    return repository.getTaskOccurrence(
+      listId: arg,
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+    );
+  }
+
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.editTaskOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      title: title,
+      description: description,
+      link: link,
+      dueDate: dueDate,
+      notBefore: notBefore,
+      estimatedDurationMinutes: estimatedDurationMinutes,
+      importance: importance,
+      complexity: complexity,
+      isPinned: isPinned,
+      isDivisible: isDivisible,
+      target: target,
+      recurrenceRule: recurrenceRule,
+      progressionMode: progressionMode,
+      requiredCompletions: requiredCompletions,
+      showMissedIndicator: showMissedIndicator,
+      trackStreak: trackStreak,
+    );
+    ref.invalidateSelf();
+    await future;
+    ref.invalidate(archivedTasksProvider);
+    ref.invalidate(archiveGroupsProvider);
+  }
+
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {
+    final repository = await ref.read(taskRepositoryProvider.future);
+    await repository.deleteTaskOccurrence(
+      seriesId: seriesId,
+      occurrenceDate: occurrenceDate,
+      target: target,
+    );
+    ref.invalidateSelf();
+    await future;
+    ref.invalidate(archivedTasksProvider);
+    ref.invalidate(archiveGroupsProvider);
   }
 
   Future<void> deleteTask(String taskId) async {

@@ -260,7 +260,26 @@ class _Pipeline extends ConsumerWidget {
       for (final task in tasks) task.id: task,
       for (final occurrence in schedule.scheduledOccurrences)
         occurrence.id: occurrence,
+      for (final task in schedule.unscheduledTasks) task.id: task,
     };
+    final unscheduledTasks = schedule.unscheduledTaskIds
+        .toSet()
+        .map((id) => tasksById[id])
+        .whereType<TaskItem>()
+        .toList();
+    final sequentialCatchUpTasks = unscheduledTasks
+        .where(
+          (task) =>
+              task.isRecurringOccurrence &&
+              task.progressionMode == 'SequentialCatchUp',
+        )
+        .toList();
+    final sequentialCatchUpIds = sequentialCatchUpTasks
+        .map((task) => task.id)
+        .toSet();
+    final catchUpWorkday = sequentialCatchUpTasks.isEmpty
+        ? null
+        : schedule.catchUpWorkday;
 
     // Fragment counts: how many scheduled chunks share the same task id.
     final allScheduled = [...schedule.todayTasks, ...schedule.futureTasks];
@@ -316,10 +335,8 @@ class _Pipeline extends ConsumerWidget {
         onSkipOccurrence: task.isRecurringOccurrence
             ? () => taskNotifier.skipTaskOccurrence(task)
             : null,
-        onTap: task.isRecurringOccurrence
-            ? () {}
-            : () => ref.read(selectedInspectorProvider.notifier).state =
-                  InspectorTarget(kind: InspectorKind.task, id: task.id),
+        onTap: () => ref.read(selectedInspectorProvider.notifier).state =
+            InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
       );
     }
 
@@ -355,10 +372,8 @@ class _Pipeline extends ConsumerWidget {
         onSkipOccurrence: task.isRecurringOccurrence
             ? () => taskNotifier.skipTaskOccurrence(task)
             : null,
-        onTap: task.isRecurringOccurrence
-            ? () {}
-            : () => ref.read(selectedInspectorProvider.notifier).state =
-                  InspectorTarget(kind: InspectorKind.task, id: task.id),
+        onTap: () => ref.read(selectedInspectorProvider.notifier).state =
+            InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
       );
     }
 
@@ -464,10 +479,14 @@ class _Pipeline extends ConsumerWidget {
         .where((event) => isSameDay(event.startTime, today))
         .toList();
 
-    final todayCards = buildTimelineCards(
-      scheduledTasks: schedule.todayTasks,
-      dayEvents: todayEvents,
-    );
+    final todayCards = [
+      ...buildTimelineCards(
+        scheduledTasks: schedule.todayTasks,
+        dayEvents: todayEvents,
+      ),
+      if (catchUpWorkday != null && isSameDay(catchUpWorkday, today))
+        ...sequentialCatchUpTasks.map(buildPlainTaskCard),
+    ];
 
     // Bucket future scheduled tasks and events by calendar day.
     final futureByDay = <DateTime, List<ScheduledTask>>{};
@@ -487,11 +506,14 @@ class _Pipeline extends ConsumerWidget {
           (e) => DateTime(e.startTime.year, e.startTime.month, e.startTime.day),
         )
         .where((day) => day.isAfter(today));
-    final futureDays = {...futureByDay.keys, ...eventDays}.toList()..sort();
-
-    final unscheduledTasks = schedule.unscheduledTaskIds
-        .map((id) => tasksById[id])
-        .whereType<TaskItem>()
+    final futureDays = {
+      ...futureByDay.keys,
+      ...eventDays,
+      if (catchUpWorkday != null && catchUpWorkday.isAfter(today))
+        catchUpWorkday,
+    }.toList()..sort();
+    final remainingUnscheduledTasks = unscheduledTasks
+        .where((task) => !sequentialCatchUpIds.contains(task.id))
         .toList();
 
     final columns = <DayColumn>[
@@ -504,7 +526,8 @@ class _Pipeline extends ConsumerWidget {
         ),
       for (final day in futureDays)
         if ((futureByDay[day]?.isNotEmpty ?? false) ||
-            events.any((event) => isSameDay(event.startTime, day)))
+            events.any((event) => isSameDay(event.startTime, day)) ||
+            (catchUpWorkday != null && isSameDay(day, catchUpWorkday)))
           DayColumn(
             title: isSameDay(day, today.add(const Duration(days: 1)))
                 ? 'Tomorrow'
@@ -515,18 +538,22 @@ class _Pipeline extends ConsumerWidget {
               futureByDay[day] ?? const [],
               events.where((event) => isSameDay(event.startTime, day)).toList(),
             ),
-            cards: buildTimelineCards(
-              scheduledTasks: futureByDay[day] ?? const [],
-              dayEvents: events.where(
-                (event) => isSameDay(event.startTime, day),
+            cards: [
+              ...buildTimelineCards(
+                scheduledTasks: futureByDay[day] ?? const [],
+                dayEvents: events.where(
+                  (event) => isSameDay(event.startTime, day),
+                ),
               ),
-            ),
+              if (catchUpWorkday != null && isSameDay(day, catchUpWorkday))
+                ...sequentialCatchUpTasks.map(buildPlainTaskCard),
+            ],
           ),
-      if (unscheduledTasks.isNotEmpty)
+      if (remainingUnscheduledTasks.isNotEmpty)
         DayColumn(
           title: 'Unscheduled',
-          subtitle: '${unscheduledTasks.length} task(s)',
-          cards: unscheduledTasks.map(buildPlainTaskCard).toList(),
+          subtitle: '${remainingUnscheduledTasks.length} task(s)',
+          cards: remainingUnscheduledTasks.map(buildPlainTaskCard).toList(),
         ),
       DayColumn(
         title: 'Completed',

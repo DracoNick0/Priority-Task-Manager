@@ -86,6 +86,7 @@ class RightInspector extends ConsumerWidget {
           key: ValueKey('task-${selection.id}'),
           listId: activeListId,
           taskId: selection.id,
+          initialTask: selection.task,
         );
       case InspectorKind.event:
         if (activeListId == null) return const SizedBox.shrink();

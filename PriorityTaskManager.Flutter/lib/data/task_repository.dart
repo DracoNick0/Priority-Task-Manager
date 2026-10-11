@@ -28,6 +28,13 @@ abstract class TaskRepository {
 
   Future<List<TaskItem>> getTasks(String listId);
 
+  /// Loads the authoritative recurring occurrence fields for editing.
+  Future<TaskItem> getTaskOccurrence({
+    required String listId,
+    required String seriesId,
+    required DateTime occurrenceDate,
+  });
+
   /// Returns recurring series and their persisted per-date state for scheduling.
   Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
     String listId,
@@ -46,9 +53,43 @@ abstract class TaskRepository {
     bool isPinned = false,
     bool isDivisible = false,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   });
 
   Future<void> updateTask(TaskItem task);
+
+  /// Edits a recurring occurrence or series segment; Guest repositories reject this operation.
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  });
+
+  /// Deletes one occurrence, truncates a series, or archives the whole series.
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  });
 
   /// Permanently deletes for Guests; API-backed sessions move the task to archive.
   Future<void> deleteTask(String taskId);
@@ -67,7 +108,7 @@ abstract class TaskRepository {
   /// Adds one completion unit to a recurring occurrence.
   Future<void> completeTaskOccurrence(TaskItem occurrence);
 
-  /// Removes the latest completion unit from only the specified occurrence.
+  /// Removes the latest completion unit or undoes a manual skip on the occurrence.
   Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence);
 
   /// Skips an unresolved recurring occurrence.

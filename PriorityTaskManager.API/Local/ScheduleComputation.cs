@@ -50,37 +50,17 @@ namespace PriorityTaskManager.API.Local
 
 			var result = strategy.CalculateUrgency(tasks);
 			var metrics = new TaskMetricsService();
+			var recurrenceRulesBySeriesId = tasks
+				.Where(task => task.RecurrenceRule != null)
+				.ToDictionary(task => task.SeriesId ?? task.Id, task => task.RecurrenceRule!);
 
 			var scheduledTasks = result.Tasks
 				.Where(t => t.ScheduledParts.Any())
-				.Select(t => new LocalScheduledTaskResponse(
-					t.Id,
-					t.Title,
-					t.DueDate,
-					t.EstimatedDuration,
-					t.IsPinned,
-					t.ScheduledParts.Select(p => new LocalScheduledChunkResponse(p.StartTime, p.EndTime)).ToList(),
-					metrics.CalculateRealisticSlack(t, profile).TotalMinutes,
-					metrics.CalculateActualSlack(t, profile).TotalMinutes,
-					t.ListId,
-					t.Description,
-					t.Link,
-					t.Importance,
-					t.Complexity,
-					t.EffectiveImportance,
-					t.SeriesId,
-					t.OccurrenceDate,
-					t.Progress,
-					(int)Math.Round(t.Progress * t.RequiredCompletions),
-					t.RequiredCompletions,
-					t.OccurrenceStatus,
-					t.ShowMissedIndicator,
-					t.ShowMissedIndicator && t.HasUnresolvedMissedIndicator,
-					t.OccurrenceStatus == TaskOccurrenceStatus.Missed,
-					t.TrackStreak,
-					t.TrackStreak ? t.CurrentStreak : 0,
-					t.TrackStreak ? t.BestStreak : 0,
-					t.ProgressionMode))
+				.Select(t => ToResponse(t, metrics, profile, recurrenceRulesBySeriesId))
+				.ToList();
+			var unscheduledTasks = result.UnscheduledTasks
+				.GroupBy(task => task.Id)
+				.Select(group => ToResponse(group.First(), metrics, profile, recurrenceRulesBySeriesId))
 				.ToList();
 
 			// Mirrors the CLI dashboard's "closest task to due date" pick (see ConsoleHelper.FindClosestTaskToDueDate).
@@ -91,13 +71,55 @@ namespace PriorityTaskManager.API.Local
 
 			var response = new LocalScheduleResponse(
 				scheduledTasks,
-				result.UnscheduledTasks.Select(t => t.Id).ToList(),
+				unscheduledTasks.Select(task => task.Id).Distinct().ToList(),
 				leastSlackTask?.Id,
 				leastSlackTask?.Title,
 				leastSlackTask is null ? null : metrics.CalculateRealisticSlack(leastSlackTask, profile).TotalMinutes,
-				leastSlackTask is null ? null : metrics.CalculateActualSlack(leastSlackTask, profile).TotalMinutes);
+				leastSlackTask is null ? null : metrics.CalculateActualSlack(leastSlackTask, profile).TotalMinutes,
+				unscheduledTasks);
 
 			return Results.Ok(response);
+		}
+
+		private static LocalScheduledTaskResponse ToResponse(
+			TaskItem task,
+			TaskMetricsService metrics,
+			UserProfile profile,
+			IReadOnlyDictionary<Guid, RecurrenceRule> recurrenceRulesBySeriesId)
+		{
+			var seriesId = task.SeriesId ?? task.Id;
+			recurrenceRulesBySeriesId.TryGetValue(seriesId, out var recurrenceRule);
+			return new(
+				task.Id,
+				task.Title,
+				task.DueDate,
+				task.EstimatedDuration,
+				task.IsPinned,
+				task.ScheduledParts.Select(part =>
+					new LocalScheduledChunkResponse(part.StartTime, part.EndTime)).ToList(),
+				metrics.CalculateRealisticSlack(task, profile).TotalMinutes,
+				metrics.CalculateActualSlack(task, profile).TotalMinutes,
+				task.ListId,
+				task.Description,
+				task.Link,
+				task.Importance,
+				task.Complexity,
+				task.EffectiveImportance,
+				task.SeriesId,
+				task.OccurrenceDate,
+				task.Progress,
+				(int)Math.Round(task.Progress * task.RequiredCompletions),
+				task.RequiredCompletions,
+				task.OccurrenceStatus,
+				task.ShowMissedIndicator,
+				task.ShowMissedIndicator &&
+					(task.HasUnresolvedMissedIndicator || task.OccurrenceStatus == TaskOccurrenceStatus.Missed),
+				task.OccurrenceStatus == TaskOccurrenceStatus.Missed,
+				task.TrackStreak,
+				task.TrackStreak ? task.CurrentStreak : 0,
+				task.TrackStreak ? task.BestStreak : 0,
+				task.ProgressionMode,
+				recurrenceRule?.Clone());
 		}
 
 		private static bool IsValidRecurringTask(LocalTaskRequest task)

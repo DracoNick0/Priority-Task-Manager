@@ -1,4 +1,5 @@
 import 'recurrence_rule.dart';
+import 'task_occurrence_override.dart';
 
 /// Persisted recurring-series data needed by the stateless schedule endpoint.
 class RecurringScheduleTask {
@@ -11,6 +12,7 @@ class RecurringScheduleTask {
     required this.complexity,
     required this.points,
     required this.estimatedDuration,
+    this.dueDate,
     required this.isPinned,
     required this.beforePadding,
     required this.afterPadding,
@@ -20,6 +22,8 @@ class RecurringScheduleTask {
     required this.progressionMode,
     required this.requiredCompletions,
     required this.occurrenceStates,
+    this.recurrenceExceptions = const [],
+    this.occurrenceOverrides = const [],
     this.showMissedIndicator = true,
     this.trackStreak = false,
     this.currentStreak = 0,
@@ -34,6 +38,7 @@ class RecurringScheduleTask {
   final int complexity;
   final double points;
   final String estimatedDuration;
+  final DateTime? dueDate;
   final bool isPinned;
   final String? beforePadding;
   final String? afterPadding;
@@ -43,6 +48,8 @@ class RecurringScheduleTask {
   final String progressionMode;
   final int requiredCompletions;
   final List<RecurringScheduleOccurrenceState> occurrenceStates;
+  final List<TaskRecurrenceException> recurrenceExceptions;
+  final List<TaskOccurrenceOverride> occurrenceOverrides;
   final bool showMissedIndicator;
   final bool trackStreak;
   final int currentStreak;
@@ -59,7 +66,7 @@ class RecurringScheduleTask {
     'importance': importance,
     'complexity': complexity,
     'points': points,
-    'dueDate': null,
+    'dueDate': dueDate?.toIso8601String(),
     'notBefore': null,
     'estimatedDuration': estimatedDuration,
     'dependencies': const <String>[],
@@ -77,6 +84,12 @@ class RecurringScheduleTask {
     'bestStreak': bestStreak,
     'occurrenceStates': occurrenceStates
         .map((state) => state.toJson())
+        .toList(),
+    'recurrenceExceptions': recurrenceExceptions
+        .map((exception) => exception.toJson())
+        .toList(),
+    'occurrenceOverrides': occurrenceOverrides
+        .map((occurrenceOverride) => occurrenceOverride.toJson())
         .toList(),
   };
 
@@ -105,6 +118,9 @@ class RecurringScheduleTask {
       complexity: json['complexity'] as int,
       points: (json['points'] as num).toDouble(),
       estimatedDuration: json['estimatedDuration'] as String,
+      dueDate: json['dueDate'] == null
+          ? null
+          : DateTime.parse(json['dueDate'] as String),
       isPinned: json['isPinned'] as bool,
       beforePadding: json['beforePadding'] as String?,
       afterPadding: json['afterPadding'] as String?,
@@ -125,6 +141,22 @@ class RecurringScheduleTask {
             ),
           )
           .toList(),
+      recurrenceExceptions:
+          (json['recurrenceExceptions'] as List<dynamic>? ?? const [])
+              .map(
+                (entry) => TaskRecurrenceException.fromJson(
+                  Map<String, dynamic>.from(entry as Map<dynamic, dynamic>),
+                ),
+              )
+              .toList(),
+      occurrenceOverrides:
+          (json['occurrenceOverrides'] as List<dynamic>? ?? const [])
+              .map(
+                (entry) => TaskOccurrenceOverride.fromJson(
+                  Map<String, dynamic>.from(entry as Map<dynamic, dynamic>),
+                ),
+              )
+              .toList(),
     );
   }
 }

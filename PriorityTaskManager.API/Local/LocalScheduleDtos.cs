@@ -31,7 +31,9 @@ namespace PriorityTaskManager.API.Local
 		bool TrackStreak = false,
 		int CurrentStreak = 0,
 		int BestStreak = 0,
-		double EffectiveImportance = 0)
+		double EffectiveImportance = 0,
+		List<RecurrenceException>? RecurrenceExceptions = null,
+		List<TaskOccurrenceOverride>? OccurrenceOverrides = null)
 	{
 		public TaskItem ToTaskItem() => new()
 		{
@@ -68,7 +70,11 @@ namespace PriorityTaskManager.API.Local
 				Status = state.Status,
 				CompletionCount = state.CompletionCount,
 				CompletedAt = state.CompletedAt
-			}).ToList() ?? new List<TaskOccurrenceState>()
+			}).ToList() ?? new List<TaskOccurrenceState>(),
+			RecurrenceExceptions = RecurrenceExceptions?.Select(exception => exception.Clone()).ToList()
+				?? new List<RecurrenceException>(),
+			OccurrenceOverrides = OccurrenceOverrides?.Select(occurrenceOverride => occurrenceOverride.Clone()).ToList()
+				?? new List<TaskOccurrenceOverride>()
 		};
 	}
 
@@ -159,7 +165,8 @@ namespace PriorityTaskManager.API.Local
 		bool TrackStreak = false,
 		int CurrentStreak = 0,
 		int BestStreak = 0,
-		TaskProgressionMode ProgressionMode = TaskProgressionMode.RollForwardKeepBacklog);
+		TaskProgressionMode ProgressionMode = TaskProgressionMode.RollForwardKeepBacklog,
+		RecurrenceRule? RecurrenceRule = null);
 
 	/// <summary>
 	/// Response for the local schedule-compute endpoint: the computed placement for each schedulable task,
@@ -171,5 +178,6 @@ namespace PriorityTaskManager.API.Local
 		Guid? LeastSlackTaskId,
 		string? LeastSlackTaskTitle,
 		double? LeastSlackRealisticMinutes,
-		double? LeastSlackActualMinutes);
+		double? LeastSlackActualMinutes,
+		List<LocalScheduledTaskResponse>? UnscheduledTasks = null);
 }

@@ -9,6 +9,7 @@ import 'package:priority_task_manager/models/fixed_event.dart';
 import 'package:priority_task_manager/models/recurrence_rule.dart';
 import 'package:priority_task_manager/models/recurring_schedule_task.dart';
 import 'package:priority_task_manager/models/task_item.dart';
+import 'package:priority_task_manager/models/task_occurrence_override.dart';
 
 void main() {
   group('ApiScheduleRepository', () {
@@ -96,6 +97,7 @@ void main() {
       expect(schedule.futureTasks.single.startTime, DateTime(2026, 10, 9, 9));
       expect(schedule.futureTasks.single.endTime, DateTime(2026, 10, 9, 10));
       expect(schedule.futureTasks.single.isFuture, isTrue);
+      expect(schedule.catchUpWorkday, DateTime(2026, 10, 8));
       final occurrence = schedule.scheduledOccurrences.single;
       expect(occurrence.id, 'task-1');
       expect(occurrence.occurrenceDate, DateTime(2026, 10, 20));
@@ -103,6 +105,125 @@ void main() {
       expect(occurrence.requiredCompletions, 2);
       expect(occurrence.currentStreak, 3);
       expect(occurrence.isRecurringOccurrence, isTrue);
+    });
+
+    test('uses today for catch-up until its workday ends', () async {
+      final repository = ApiScheduleRepository(
+        authToken: 'test-token',
+        httpClient: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'scheduledTasks': [],
+              'unscheduledTaskIds': [],
+              'leastSlackTaskTitle': 'None',
+              'leastSlackRealisticMinutes': null,
+              'leastSlackActualMinutes': null,
+            }),
+            200,
+          ),
+        ),
+      );
+      final settings = EffectiveListSettings(
+        sortOption: 0,
+        schedulingMode: 0,
+        workStartMinutes: 9 * 60,
+        workEndMinutes: 17 * 60,
+        workDays: const [1, 2, 3, 4, 5],
+        desiredBreatherMinutes: 15,
+        slackThresholdDire: 0.5,
+        slackThresholdPressing: 1,
+        slackThresholdFocus: 2,
+        slackThresholdSafe: 4,
+      );
+
+      Future<DateTime?> catchUpWorkdayAt(DateTime now) async {
+        final schedule = await repository.computeSchedule(
+          tasks: [TaskItem(id: 'task-1', listId: 'list-1', title: 'Task')],
+          settings: settings,
+          now: now,
+        );
+        return schedule.catchUpWorkday;
+      }
+
+      expect(
+        await catchUpWorkdayAt(DateTime(2026, 10, 15, 11)),
+        DateTime(2026, 10, 15),
+      );
+      expect(
+        await catchUpWorkdayAt(DateTime(2026, 10, 15, 17)),
+        DateTime(2026, 10, 16),
+      );
+      expect(
+        await catchUpWorkdayAt(DateTime(2026, 10, 17, 11)),
+        DateTime(2026, 10, 19),
+      );
+    });
+
+    test('parses unscheduled recurring backlog occurrence details', () async {
+      final repository = ApiScheduleRepository(
+        authToken: 'test-token',
+        httpClient: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'scheduledTasks': [],
+              'unscheduledTaskIds': ['occurrence-1'],
+              'unscheduledTasks': [
+                {
+                  'id': 'occurrence-1',
+                  'title': 'Review notes',
+                  'seriesId': 'series-1',
+                  'occurrenceDate': '2026-10-07T00:00:00',
+                  'recurrenceRule': {
+                    'type': 'dailyInterval',
+                    'seriesStartDate': '2026-10-07T00:00:00',
+                    'intervalDays': 1,
+                    'endCondition': {'type': 'never'},
+                  },
+                  'listId': 'list-1',
+                  'description': 'Review notes',
+                  'dueDate': '2026-10-07T16:30:00',
+                  'estimatedDuration': '01:00:00',
+                  'importance': 5,
+                  'complexity': 1,
+                  'occurrenceStatus': 'Missed',
+                  'completionCount': 0,
+                  'requiredCompletions': 1,
+                  'scheduledParts': [],
+                },
+              ],
+              'leastSlackTaskTitle': 'None',
+              'leastSlackRealisticMinutes': null,
+              'leastSlackActualMinutes': null,
+            }),
+            200,
+          ),
+        ),
+      );
+
+      final schedule = await repository.computeSchedule(
+        tasks: [TaskItem(id: 'series-1', listId: 'list-1', title: 'Review')],
+        settings: EffectiveListSettings(
+          sortOption: 0,
+          schedulingMode: 0,
+          workStartMinutes: 9 * 60,
+          workEndMinutes: 17 * 60,
+          workDays: const [1, 2, 3, 4, 5],
+          desiredBreatherMinutes: 15,
+          slackThresholdDire: 0.5,
+          slackThresholdPressing: 1,
+          slackThresholdFocus: 2,
+          slackThresholdSafe: 4,
+        ),
+        now: DateTime(2026, 10, 9, 8),
+      );
+
+      final backlog = schedule.unscheduledTasks.single;
+      expect(backlog.id, 'occurrence-1');
+      expect(backlog.seriesId, 'series-1');
+      expect(backlog.occurrenceDate, DateTime(2026, 10, 7));
+      expect(backlog.recurrenceRule, isA<DailyIntervalRecurrenceRule>());
+      expect(backlog.occurrenceStatus, 'Missed');
+      expect(backlog.dueDate, DateTime(2026, 10, 7, 16, 30));
     });
 
     test('signs out when the scheduling API rejects the session', () async {
@@ -164,6 +285,7 @@ void main() {
               complexity: 1,
               points: 0,
               estimatedDuration: '01:30:00',
+              dueDate: DateTime(2026, 10, 8, 16, 30),
               isPinned: false,
               beforePadding: null,
               afterPadding: null,
@@ -181,6 +303,27 @@ void main() {
                   status: 'Missed',
                   completionCount: 1,
                   completedAt: null,
+                ),
+              ],
+              recurrenceExceptions: [
+                TaskRecurrenceException(
+                  originalOccurrenceDate: DateTime(2026, 10, 10),
+                  isCancelled: true,
+                ),
+              ],
+              occurrenceOverrides: [
+                TaskOccurrenceOverride(
+                  originalOccurrenceDate: DateTime(2026, 10, 8),
+                  title: 'Moved review',
+                  description: 'Notes',
+                  dueDate: DateTime(2026, 10, 12),
+                  notBefore: null,
+                  estimatedDuration: '02:00:00',
+                  importance: 8,
+                  complexity: 4,
+                  isPinned: false,
+                  isDivisible: true,
+                  link: 'https://example.com',
                 ),
               ],
             ),
@@ -204,10 +347,17 @@ void main() {
             (requestBody!['tasks'] as List<dynamic>).single
                 as Map<String, dynamic>;
         expect(taskJson['recurrenceRule']['type'], 'dailyInterval');
+        expect(taskJson['dueDate'], '2026-10-08T16:30:00.000');
         expect(taskJson['progressionMode'], 'RollForwardKeepBacklog');
         expect(taskJson['requiredCompletions'], 2);
         expect(taskJson['occurrenceStates'][0]['status'], 'Missed');
         expect(taskJson['occurrenceStates'][0]['completionCount'], 1);
+        expect(taskJson['recurrenceExceptions'][0]['isCancelled'], isTrue);
+        expect(taskJson['occurrenceOverrides'][0]['title'], 'Moved review');
+        expect(
+          taskJson['occurrenceOverrides'][0]['originalOccurrenceDate'],
+          '2026-10-08T00:00:00.000',
+        );
       },
     );
 

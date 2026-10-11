@@ -1,3 +1,4 @@
+using PriorityTaskManager.Models;
 using PriorityTaskManager.Services;
 
 namespace PriorityTaskManager.API.Tasks
@@ -75,6 +76,55 @@ namespace PriorityTaskManager.API.Tasks
 
 			group.MapDelete("/{id:guid}", (Guid id, TaskManagerService taskManagerService) =>
 				taskManagerService.ArchiveTask(id) ? Results.NoContent() : Results.NotFound());
+
+			group.MapPut("/{seriesId:guid}/occurrences/{date}", (
+				Guid seriesId,
+				DateTime date,
+				string target,
+				TaskOccurrenceEditRequest request,
+				TaskManagerService taskManagerService) =>
+			{
+				if (!Enum.TryParse<RecurrenceEditTarget>(target, ignoreCase: true, out var editTarget))
+					return Results.BadRequest(new { error = $"Invalid target '{target}'. Expected ThisOccurrence, ThisAndFollowing, or AllOccurrences." });
+				if (string.IsNullOrWhiteSpace(request.Title))
+					return Results.BadRequest(new { error = "Task title cannot be empty." });
+
+				var series = taskManagerService.GetTaskById(seriesId);
+				if (series?.RecurrenceRule == null)
+					return Results.NotFound();
+
+				try
+				{
+					return taskManagerService.EditTaskOccurrence(
+						seriesId,
+						date,
+						request.ToTaskItem(series.ListId),
+						editTarget)
+						? Results.NoContent()
+						: Results.NotFound();
+				}
+				catch (ArgumentException error)
+				{
+					return Results.BadRequest(new { error = error.Message });
+				}
+				catch (InvalidOperationException error)
+				{
+					return Results.Conflict(new { error = error.Message });
+				}
+			});
+
+			group.MapDelete("/{seriesId:guid}/occurrences/{date}", (
+				Guid seriesId,
+				DateTime date,
+				string target,
+				TaskManagerService taskManagerService) =>
+			{
+				if (!Enum.TryParse<RecurrenceEditTarget>(target, ignoreCase: true, out var editTarget))
+					return Results.BadRequest(new { error = $"Invalid target '{target}'. Expected ThisOccurrence, ThisAndFollowing, or AllOccurrences." });
+				return taskManagerService.DeleteTaskOccurrence(seriesId, date, editTarget)
+					? Results.NoContent()
+					: Results.NotFound();
+			});
 
 			group.MapPost("/archive/batch", (ArchiveTasksRequest request, TaskManagerService taskManagerService) =>
 			{

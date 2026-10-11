@@ -35,11 +35,32 @@ class _Session extends SessionController {
 }
 
 class _Tasks extends TasksNotifier {
+  _Tasks([this.items = const []]);
+  final List<TaskItem> items;
   String? addedTitle;
   String? addedLink;
+  RecurrenceRule? addedRecurrenceRule;
+  String? addedProgressionMode;
+  String? editedSeriesId;
+  DateTime? editedOccurrenceDate;
+  RecurrenceEditTarget? editedTarget;
+  String? editedTitle;
+  int? editedEstimatedDurationMinutes;
+  DateTime? editedDueDate;
+  DateTime? editedNotBefore;
+  bool? editedIsDivisible;
 
   @override
-  Future<List<TaskItem>> build(String arg) async => [];
+  Future<List<TaskItem>> build(String arg) async => items;
+
+  @override
+  Future<TaskItem> getTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+  }) async => items.singleWhere(
+    (task) =>
+        task.seriesId == seriesId && task.occurrenceDate == occurrenceDate,
+  );
 
   @override
   Future<TaskItem> addTask({
@@ -54,10 +75,59 @@ class _Tasks extends TasksNotifier {
     bool isPinned = false,
     bool isDivisible = true,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   }) async {
     addedTitle = title;
     addedLink = link;
+    addedRecurrenceRule = recurrenceRule;
+    addedProgressionMode = progressionMode;
     return TaskItem(id: 'created-task', listId: arg, title: title, link: link);
+  }
+
+  @override
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  }) async {
+    editedSeriesId = seriesId;
+    editedOccurrenceDate = occurrenceDate;
+    editedTarget = target;
+    editedTitle = title;
+    editedEstimatedDurationMinutes = estimatedDurationMinutes;
+    editedDueDate = dueDate;
+    editedNotBefore = notBefore;
+    editedIsDivisible = isDivisible;
+  }
+
+  @override
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {
+    editedSeriesId = seriesId;
+    editedOccurrenceDate = occurrenceDate;
+    editedTarget = target;
   }
 }
 
@@ -94,6 +164,7 @@ void main() {
     WidgetTester tester, {
     required Widget form,
     required TaskList list,
+    double formWidth = 600,
     SessionStatus session = SessionStatus.authenticated,
     _Tasks? tasksNotifier,
     _Events? eventsNotifier,
@@ -117,7 +188,9 @@ void main() {
           )).overrideWith((ref) async => []),
         ],
         child: MaterialApp(
-          home: Scaffold(body: SizedBox(width: 600, height: 900, child: form)),
+          home: Scaffold(
+            body: SizedBox(width: formWidth, height: 900, child: form),
+          ),
         ),
       ),
     );
@@ -243,6 +316,93 @@ void main() {
 
     expect(tasks.addedLink, 'https://example.com/reference');
   });
+
+  testWidgets('authenticated task creation saves recurrence settings', (
+    tester,
+  ) async {
+    final tasks = _Tasks();
+    await pumpForm(
+      tester,
+      form: const TaskInspectorForm(listId: 'list'),
+      list: TaskList(id: 'list', name: 'Work'),
+      tasksNotifier: tasks,
+      formWidth: 260,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Advanced Settings'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Advanced Settings'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.text('Recurring task')).dy,
+      lessThan(tester.getTopLeft(find.text('Not before')).dy),
+    );
+    await tester.tap(find.text('Recurring task'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await submitName(tester, 'Read every week');
+
+    expect(tasks.addedRecurrenceRule, isA<WeeklyRecurrenceRule>());
+    expect(tasks.addedProgressionMode, 'RollForwardKeepBacklog');
+  });
+
+  testWidgets(
+    'recurring occurrence edit prompts for target and keeps original date',
+    (tester) async {
+      final occurrenceDate = DateTime(2026, 10, 8);
+      final dueDate = DateTime(2026, 10, 8, 17);
+      final notBefore = DateTime(2026, 10, 8, 10);
+      final task = TaskItem(
+        id: 'occurrence-id',
+        listId: 'list',
+        title: 'Review',
+        seriesId: 'series-id',
+        occurrenceDate: occurrenceDate,
+        dueDate: dueDate,
+        notBefore: notBefore,
+        estimatedDurationMinutes: 15,
+        fullEstimatedDurationMinutes: 60,
+        isDivisible: true,
+        recurrenceRule: DailyIntervalRecurrenceRule(
+          seriesStartDate: DateTime(2026, 10, 1),
+          endCondition: NeverEndCondition(),
+        ),
+      );
+      final tasks = _Tasks([task]);
+      await pumpForm(
+        tester,
+        form: const TaskInspectorForm(listId: 'list', taskId: 'occurrence-id'),
+        list: TaskList(id: 'list', name: 'Work'),
+        tasksNotifier: tasks,
+      );
+
+      await tester.enterText(find.byType(TextField).first, 'Updated review');
+      final saveButton = find.widgetWithText(FilledButton, 'Save');
+      await tester.scrollUntilVisible(
+        saveButton,
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This occurrence'));
+      await tester.pumpAndSettle();
+
+      expect(tasks.editedSeriesId, 'series-id');
+      expect(tasks.editedOccurrenceDate, occurrenceDate);
+      expect(tasks.editedTarget, RecurrenceEditTarget.thisOccurrence);
+      expect(tasks.editedTitle, 'Updated review');
+      expect(tasks.editedEstimatedDurationMinutes, 60);
+      expect(tasks.editedDueDate, dueDate);
+      expect(tasks.editedNotBefore, notBefore);
+      expect(tasks.editedIsDivisible, isTrue);
+    },
+  );
 
   testWidgets('event uses next full working hour from simulated time', (
     tester,

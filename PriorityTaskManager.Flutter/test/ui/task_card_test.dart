@@ -138,4 +138,70 @@ void main() {
     expect(undone, isTrue);
     expect(skipped, isTrue);
   });
+
+  testWidgets('uncompleting a skipped occurrence is enabled', (
+    WidgetTester tester,
+  ) async {
+    final task = TaskItem(
+      id: 'occurrence-1',
+      listId: 'list-1',
+      title: 'Take medication',
+      seriesId: 'series-1',
+      occurrenceDate: DateTime(2026, 10, 8),
+      occurrenceStatus: 'Skipped',
+    );
+    bool? completedValue;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TaskCard(
+            task: task,
+            isBlocked: false,
+            onToggleCompleted: (value) => completedValue = value,
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is GestureDetector && widget.child is AnimatedContainer,
+      ),
+    );
+
+    expect(completedValue, isFalse);
+  });
+
+  testWidgets('tapping a recurring occurrence invokes its selection callback', (
+    WidgetTester tester,
+  ) async {
+    final task = TaskItem(
+      id: 'occurrence-1',
+      listId: 'list-1',
+      title: 'Take medication',
+      seriesId: 'series-1',
+      occurrenceDate: DateTime(2026, 10, 8),
+    );
+    var selected = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TaskCard(
+            task: task,
+            isBlocked: false,
+            onToggleCompleted: (_) {},
+            onTap: () => selected = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Take medication'));
+
+    expect(selected, isTrue);
+  });
 }

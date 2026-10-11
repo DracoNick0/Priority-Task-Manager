@@ -40,6 +40,13 @@ class _FakeTaskRepository implements TaskRepository {
   Future<List<TaskItem>> getTasks(String listId) async => [];
 
   @override
+  Future<TaskItem> getTaskOccurrence({
+    required String listId,
+    required String seriesId,
+    required DateTime occurrenceDate,
+  }) async => throw UnsupportedError('Not implemented');
+
+  @override
   Future<List<RecurringScheduleTask>> getRecurringTasksForScheduling(
     String listId,
   ) async => [];
@@ -58,10 +65,44 @@ class _FakeTaskRepository implements TaskRepository {
     bool isPinned = false,
     bool isDivisible = true,
     String link = '',
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
   }) => throw UnimplementedError();
 
   @override
   Future<void> updateTask(TaskItem task) async {}
+
+  @override
+  Future<void> editTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required String title,
+    required String description,
+    required String link,
+    required DateTime? dueDate,
+    required DateTime? notBefore,
+    required int estimatedDurationMinutes,
+    required int importance,
+    required int complexity,
+    required bool isPinned,
+    required bool isDivisible,
+    required RecurrenceEditTarget target,
+    RecurrenceRule? recurrenceRule,
+    String progressionMode = 'RollForwardKeepBacklog',
+    int requiredCompletions = 1,
+    bool showMissedIndicator = true,
+    bool trackStreak = false,
+  }) async {}
+
+  @override
+  Future<void> deleteTaskOccurrence({
+    required String seriesId,
+    required DateTime occurrenceDate,
+    required RecurrenceEditTarget target,
+  }) async {}
 
   @override
   Future<void> deleteTask(String taskId) async {}

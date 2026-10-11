@@ -205,6 +205,143 @@ namespace PriorityTaskManager.Services
             return result.OrderBy(o => o.ScheduledDate).ThenBy(o => o.Series.Title).ToList();
         }
 
+        /// <summary>Applies an edit to one or more dates in a recurring task series.</summary>
+        public bool EditTaskOccurrence(
+            Guid seriesId,
+            DateTime occurrenceDate,
+            TaskItem updatedTask,
+            RecurrenceEditTarget target)
+        {
+            ArgumentNullException.ThrowIfNull(updatedTask);
+            if (string.IsNullOrWhiteSpace(updatedTask.Title))
+                throw new ArgumentException("Task title cannot be empty.", nameof(updatedTask));
+
+            var series = GetRecurringTask(seriesId);
+            if (series?.RecurrenceRule == null)
+                return false;
+
+            var date = occurrenceDate.Date;
+            if (!IsScheduledOccurrence(series, date))
+                return false;
+            series.RecurrenceExceptions ??= new List<RecurrenceException>();
+            series.OccurrenceOverrides ??= new List<TaskOccurrenceOverride>();
+            series.OccurrenceStates ??= new List<TaskOccurrenceState>();
+
+            var replacementRule = updatedTask.RecurrenceRule?.Clone();
+            if (replacementRule != null && target == RecurrenceEditTarget.ThisAndFollowing)
+            {
+                replacementRule.SeriesStartDate = date;
+                if (!IsRuleOccurrence(replacementRule, date))
+                    throw new ArgumentException(
+                        "The replacement recurrence must include the selected occurrence date.",
+                        nameof(updatedTask));
+            }
+            else if (replacementRule != null && target == RecurrenceEditTarget.AllOccurrences)
+            {
+                replacementRule.SeriesStartDate = series.RecurrenceRule.SeriesStartDate;
+            }
+            if (target != RecurrenceEditTarget.ThisOccurrence)
+            {
+                var settingsToValidate = updatedTask.Clone();
+                settingsToValidate.RecurrenceRule = replacementRule ?? series.RecurrenceRule.Clone();
+                ValidateRecurringTask(settingsToValidate);
+            }
+
+            switch (target)
+            {
+                case RecurrenceEditTarget.ThisOccurrence:
+                    series.OccurrenceOverrides.RemoveAll(item =>
+                        item.OriginalOccurrenceDate.Date == date);
+                    series.RecurrenceExceptions.RemoveAll(item =>
+                        item.OriginalOccurrenceDate.Date == date);
+                    series.OccurrenceOverrides.Add(CreateOccurrenceOverride(date, updatedTask));
+                    break;
+
+                case RecurrenceEditTarget.ThisAndFollowing:
+                    SplitTaskSeries(series, updatedTask, date, replacementRule);
+                    break;
+
+                case RecurrenceEditTarget.AllOccurrences:
+                    ApplyEditableTaskFields(series, updatedTask);
+                    if (replacementRule != null)
+                    {
+                        series.RecurrenceRule = replacementRule;
+                        PruneOccurrenceRecordsToRule(series, replacementRule);
+                    }
+                    ApplyTaskSeriesSettings(series, updatedTask);
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(target));
+            }
+
+            SaveData();
+            return true;
+        }
+
+        /// <summary>Deletes one occurrence or truncates a recurring task series from a date.</summary>
+        public bool DeleteTaskOccurrence(Guid seriesId, DateTime occurrenceDate, RecurrenceEditTarget target)
+        {
+            var series = GetRecurringTask(seriesId);
+            if (series?.RecurrenceRule == null)
+                return false;
+
+            var date = occurrenceDate.Date;
+            if (!IsScheduledOccurrence(series, date))
+                return false;
+            series.RecurrenceExceptions ??= new List<RecurrenceException>();
+            series.OccurrenceOverrides ??= new List<TaskOccurrenceOverride>();
+            series.OccurrenceStates ??= new List<TaskOccurrenceState>();
+
+            switch (target)
+            {
+                case RecurrenceEditTarget.ThisOccurrence:
+                    series.RecurrenceExceptions.RemoveAll(item =>
+                        item.OriginalOccurrenceDate.Date == date);
+                    series.RecurrenceExceptions.Add(new RecurrenceException
+                    {
+                        OriginalOccurrenceDate = date,
+                        IsCancelled = true
+                    });
+                    series.OccurrenceOverrides.RemoveAll(item =>
+                        item.OriginalOccurrenceDate.Date == date);
+                    series.OccurrenceStates.RemoveAll(item =>
+                        item.ScheduledDate.Date == date);
+                    break;
+
+                case RecurrenceEditTarget.ThisAndFollowing:
+                    var hasPriorOccurrence = IsRuleOccurrenceBefore(
+                        series.RecurrenceRule,
+                        series.RecurrenceExceptions,
+                        date);
+                    if (!hasPriorOccurrence)
+                        return ArchiveTask(series.Id);
+
+                    var split = RecurrenceSplitHelper.Split(
+                        series.RecurrenceRule,
+                        series.RecurrenceExceptions,
+                        date);
+                    series.RecurrenceRule = split.PriorRule;
+                    series.RecurrenceExceptions = split.PriorExceptions;
+                    series.OccurrenceOverrides = series.OccurrenceOverrides
+                        .Where(item => item.OriginalOccurrenceDate.Date < date)
+                        .ToList();
+                    series.OccurrenceStates = series.OccurrenceStates
+                        .Where(item => item.ScheduledDate.Date < date)
+                        .ToList();
+                    break;
+
+                case RecurrenceEditTarget.AllOccurrences:
+                    return ArchiveTask(series.Id);
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(target));
+            }
+
+            SaveData();
+            return true;
+        }
+
         /// <summary>Increments completion progress for one recurrence-rule date.</summary>
         public bool CompleteTaskOccurrence(Guid seriesId, DateTime occurrenceDate, ITimeService timeService)
         {
@@ -249,7 +386,23 @@ namespace PriorityTaskManager.Services
 
             var date = occurrenceDate.Date;
             var state = task.OccurrenceStates?.FirstOrDefault(o => o.ScheduledDate.Date == date);
-            if (state == null || state.CompletionCount <= 0)
+            if (state == null)
+                return false;
+
+            if (state.Status == TaskOccurrenceStatus.Skipped)
+            {
+                state.Status = date < timeService.GetCurrentTime().Date
+                    ? TaskOccurrenceStatus.Missed
+                    : TaskOccurrenceStatus.Pending;
+                state.CompletedAt = null;
+                task.IsCompleted = false;
+                UpdateStreak(task);
+                UpdateSeriesCompletion(task, timeService.GetCurrentTime().Date);
+                SaveData();
+                return true;
+            }
+
+            if (state.CompletionCount <= 0)
                 return false;
 
             state.CompletionCount--;
@@ -307,9 +460,165 @@ namespace PriorityTaskManager.Services
         private static bool IsScheduledOccurrence(TaskItem task, DateTime date) =>
             TaskRecurrenceExpansion.GetOccurrences(
                 task.RecurrenceRule!,
+                task.RecurrenceExceptions ?? new List<RecurrenceException>(),
+                date.Date,
+                date.Date).Count > 0;
+
+        private static bool IsRuleOccurrence(RecurrenceRule rule, DateTime date) =>
+            TaskRecurrenceExpansion.GetOccurrences(
+                rule,
                 Array.Empty<RecurrenceException>(),
                 date.Date,
                 date.Date).Count > 0;
+
+        private static bool IsRuleOccurrenceBefore(
+            RecurrenceRule rule,
+            IEnumerable<RecurrenceException> exceptions,
+            DateTime date) =>
+            TaskRecurrenceExpansion.GetOccurrences(
+                rule,
+                exceptions,
+                rule.SeriesStartDate.Date,
+                date.Date.AddDays(-1)).Count > 0;
+
+        private static void PruneOccurrenceRecordsToRule(TaskItem series, RecurrenceRule rule)
+        {
+            var recordDates = series.OccurrenceStates
+                .Select(state => state.ScheduledDate.Date)
+                .Concat(series.RecurrenceExceptions.Select(exception => exception.OriginalOccurrenceDate.Date))
+                .Concat(series.OccurrenceOverrides.Select(occurrenceOverride =>
+                    occurrenceOverride.OriginalOccurrenceDate.Date))
+                .Distinct()
+                .ToList();
+            if (recordDates.Count == 0)
+                return;
+
+            var generatedDates = TaskRecurrenceExpansion.GetOccurrences(
+                    rule,
+                    Array.Empty<RecurrenceException>(),
+                    rule.SeriesStartDate.Date,
+                    recordDates.Max())
+                .Select(date => date.Date)
+                .ToHashSet();
+
+            series.OccurrenceStates.RemoveAll(state =>
+                !generatedDates.Contains(state.ScheduledDate.Date));
+            series.RecurrenceExceptions.RemoveAll(exception =>
+                !generatedDates.Contains(exception.OriginalOccurrenceDate.Date));
+            series.OccurrenceOverrides.RemoveAll(occurrenceOverride =>
+                !generatedDates.Contains(occurrenceOverride.OriginalOccurrenceDate.Date));
+        }
+
+        private void SplitTaskSeries(
+            TaskItem series,
+            TaskItem updatedTask,
+            DateTime date,
+            RecurrenceRule? replacementRule)
+        {
+            var hasPriorOccurrence = IsRuleOccurrenceBefore(
+                series.RecurrenceRule!,
+                series.RecurrenceExceptions,
+                date);
+            if (!hasPriorOccurrence)
+            {
+                ApplyEditableTaskFields(series, updatedTask);
+                series.RecurrenceRule = replacementRule ?? series.RecurrenceRule;
+                series.RecurrenceRule!.SeriesStartDate = date;
+                ApplyTaskSeriesSettings(series, updatedTask);
+                series.RecurrenceExceptions.RemoveAll(item =>
+                    item.OriginalOccurrenceDate.Date == date);
+                series.OccurrenceOverrides.RemoveAll(item =>
+                    item.OriginalOccurrenceDate.Date == date);
+                if (updatedTask.DueDate?.Date != date)
+                    series.OccurrenceOverrides.Add(CreateOccurrenceOverride(date, updatedTask));
+                return;
+            }
+
+            var split = RecurrenceSplitHelper.Split(
+                series.RecurrenceRule!,
+                series.RecurrenceExceptions,
+                date);
+            var priorOverrides = series.OccurrenceOverrides
+                .Where(item => item.OriginalOccurrenceDate.Date < date)
+                .ToList();
+            var followingOverrides = series.OccurrenceOverrides
+                .Where(item => item.OriginalOccurrenceDate.Date > date)
+                .Select(item => item.Clone())
+                .ToList();
+            var priorStates = series.OccurrenceStates
+                .Where(item => item.ScheduledDate.Date < date)
+                .ToList();
+            var followingStates = series.OccurrenceStates
+                .Where(item => item.ScheduledDate.Date >= date)
+                .Select(item => new TaskOccurrenceState
+                {
+                    ScheduledDate = item.ScheduledDate,
+                    Status = item.Status,
+                    CompletionCount = item.CompletionCount,
+                    CompletedAt = item.CompletedAt
+                })
+                .ToList();
+
+            series.RecurrenceRule = split.PriorRule;
+            series.RecurrenceExceptions = split.PriorExceptions;
+            series.OccurrenceOverrides = priorOverrides;
+            series.OccurrenceStates = priorStates;
+
+            var next = updatedTask.Clone();
+            next.Id = Guid.NewGuid();
+            next.DisplayId = _data.NextDisplayId++;
+            next.SeriesId = next.Id;
+            next.IsCompleted = false;
+            next.RecurrenceRule = replacementRule ?? split.NewRule;
+            next.RecurrenceRule.SeriesStartDate = date;
+            next.RecurrenceExceptions = split.NewExceptions
+                .Where(item => item.OriginalOccurrenceDate.Date != date)
+                .Select(item => item.Clone())
+                .ToList();
+            next.OccurrenceOverrides = followingOverrides;
+            next.OccurrenceStates = followingStates;
+            if (updatedTask.DueDate?.Date != date)
+                next.OccurrenceOverrides.Add(CreateOccurrenceOverride(date, updatedTask));
+            _data.Tasks.Add(next);
+        }
+
+        private static TaskOccurrenceOverride CreateOccurrenceOverride(DateTime date, TaskItem task) => new()
+        {
+            OriginalOccurrenceDate = date,
+            Title = task.Title ?? string.Empty,
+            Description = task.Description,
+            DueDate = task.DueDate,
+            NotBefore = task.NotBefore,
+            EstimatedDuration = task.EstimatedDuration,
+            Importance = task.Importance,
+            Complexity = task.Complexity,
+            IsPinned = task.IsPinned,
+            IsDivisible = task.IsDivisible,
+            Link = task.Link
+        };
+
+        private static void ApplyEditableTaskFields(TaskItem target, TaskItem source)
+        {
+            target.Title = source.Title;
+            target.Description = source.Description;
+            target.Link = source.Link;
+            target.DueDate = source.DueDate;
+            target.NotBefore = source.NotBefore;
+            target.EstimatedDuration = source.EstimatedDuration;
+            target.Importance = source.Importance;
+            target.Complexity = source.Complexity;
+            target.IsPinned = source.IsPinned;
+            target.IsDivisible = source.IsDivisible;
+        }
+
+        private static void ApplyTaskSeriesSettings(TaskItem target, TaskItem source)
+        {
+            target.ProgressionMode = source.ProgressionMode;
+            target.RequiredCompletions = source.RequiredCompletions;
+            target.ShowMissedIndicator = source.ShowMissedIndicator;
+            target.TrackStreak = source.TrackStreak;
+            target.IsCompleted = false;
+        }
 
         private static TaskOccurrenceState GetOrCreateOccurrenceState(TaskItem task, DateTime date)
         {
@@ -328,11 +637,12 @@ namespace PriorityTaskManager.Services
             if (task.RequiredCompletions < 1)
                 throw new InvalidOperationException($"Recurring task '{task.Id}' has an invalid RequiredCompletions value.");
 
+            task.RecurrenceExceptions ??= new List<RecurrenceException>();
             task.OccurrenceStates ??= new List<TaskOccurrenceState>();
             var changed = false;
             var generated = TaskRecurrenceExpansion.GetOccurrences(
                 task.RecurrenceRule!,
-                Array.Empty<RecurrenceException>(),
+                task.RecurrenceExceptions,
                 task.RecurrenceRule!.SeriesStartDate.Date,
                 now.Date);
 
@@ -406,9 +716,10 @@ namespace PriorityTaskManager.Services
 
         private static List<TaskOccurrence> ProjectTaskOccurrences(TaskItem task, DateTime from, DateTime to, DateTime today)
         {
+            task.RecurrenceExceptions ??= new List<RecurrenceException>();
             var generated = TaskRecurrenceExpansion.GetOccurrences(
                 task.RecurrenceRule!,
-                Array.Empty<RecurrenceException>(),
+                task.RecurrenceExceptions,
                 task.RecurrenceRule!.SeriesStartDate.Date,
                 to > today ? to : today);
             var byDate = (task.OccurrenceStates ?? new List<TaskOccurrenceState>())
@@ -507,13 +818,18 @@ namespace PriorityTaskManager.Services
             var rule = task.RecurrenceRule!;
             generated ??= TaskRecurrenceExpansion.GetOccurrences(
                 rule,
-                Array.Empty<RecurrenceException>(),
+                task.RecurrenceExceptions,
                 rule.SeriesStartDate.Date,
                 today.Date);
 
             var endReached = rule.EndCondition switch
             {
-                AfterOccurrencesEndCondition after => generated.Count >= after.OccurrenceCount,
+                AfterOccurrencesEndCondition after =>
+                    TaskRecurrenceExpansion.GetOccurrences(
+                        rule,
+                        Array.Empty<RecurrenceException>(),
+                        rule.SeriesStartDate.Date,
+                        today.Date).Count >= after.OccurrenceCount,
                 UntilDateEndCondition until => today.Date > until.UntilDate.Date,
                 _ when rule is ExplicitDatesRecurrenceRule explicitDates =>
                     explicitDates.Dates.All(date => date.Date <= today.Date),
@@ -601,12 +917,17 @@ namespace PriorityTaskManager.Services
             existingTask.EstimatedDuration = updatedTask.EstimatedDuration;
             existingTask.Complexity = updatedTask.Complexity;
             existingTask.IsPinned = updatedTask.IsPinned;
+            existingTask.IsDivisible = updatedTask.IsDivisible;
             if (updatedTask.RecurrenceRule == null)
             {
                 existingTask.RecurrenceRule = null;
                 existingTask.SeriesId = null;
                 existingTask.OccurrenceStates ??= new List<TaskOccurrenceState>();
                 existingTask.OccurrenceStates.Clear();
+                existingTask.RecurrenceExceptions ??= new List<RecurrenceException>();
+                existingTask.OccurrenceOverrides ??= new List<TaskOccurrenceOverride>();
+                existingTask.RecurrenceExceptions.Clear();
+                existingTask.OccurrenceOverrides.Clear();
                 existingTask.CurrentStreak = 0;
                 existingTask.BestStreak = 0;
             }

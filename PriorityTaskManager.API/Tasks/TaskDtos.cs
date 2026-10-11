@@ -62,7 +62,48 @@ namespace PriorityTaskManager.API.Tasks
 		TimeSpan? BeforePadding,
 		TimeSpan? AfterPadding,
 		bool IsDivisible,
-		TaskProgressionMode ProgressionMode);
+		TaskProgressionMode ProgressionMode,
+		RecurrenceRule? RecurrenceRule,
+		TimeSpan FullEstimatedDuration);
+
+	/// <summary>Editable task and series fields for recurring occurrence mutations.</summary>
+	public record TaskOccurrenceEditRequest(
+		string Title,
+		string? Description,
+		string? Link,
+		DateTime? DueDate,
+		DateTime? NotBefore,
+		TimeSpan EstimatedDuration,
+		int Importance,
+		int Complexity,
+		bool IsPinned,
+		bool IsDivisible,
+		RecurrenceRule? RecurrenceRule,
+		TaskProgressionMode ProgressionMode,
+		int RequiredCompletions,
+		bool ShowMissedIndicator,
+		bool TrackStreak)
+	{
+		public TaskItem ToTaskItem(Guid listId) => new()
+		{
+			Title = Title,
+			Description = Description ?? string.Empty,
+			Link = Link,
+			ListId = listId,
+			DueDate = DueDate,
+			NotBefore = NotBefore,
+			EstimatedDuration = EstimatedDuration,
+			Importance = Importance,
+			Complexity = Complexity,
+			IsPinned = IsPinned,
+			IsDivisible = IsDivisible,
+			RecurrenceRule = RecurrenceRule?.Clone(),
+			ProgressionMode = ProgressionMode,
+			RequiredCompletions = RequiredCompletions,
+			ShowMissedIndicator = ShowMissedIndicator,
+			TrackStreak = TrackStreak
+		};
+	}
 
 	/// <summary>Request body for archiving a set of tasks as one group.</summary>
 	public record ArchiveTasksRequest(List<Guid> TaskIds);
@@ -101,7 +142,9 @@ namespace PriorityTaskManager.API.Tasks
 		bool HasMissedOccurrence,
 		int CurrentStreak,
 		int BestStreak,
-		List<TaskOccurrenceStateResponse> OccurrenceStates);
+		List<TaskOccurrenceStateResponse> OccurrenceStates,
+		List<RecurrenceException> RecurrenceExceptions,
+		List<TaskOccurrenceOverride> OccurrenceOverrides);
 
 	/// <summary>Persisted progress for one recurrence-rule date, supplied to the scheduler.</summary>
 	public sealed record TaskOccurrenceStateResponse(
@@ -151,6 +194,12 @@ namespace PriorityTaskManager.API.Tasks
 					state.Status,
 					state.CompletionCount,
 					state.CompletedAt))
+				.ToList(),
+			(task.RecurrenceExceptions ?? new List<RecurrenceException>())
+				.Select(exception => exception.Clone())
+				.ToList(),
+			(task.OccurrenceOverrides ?? new List<TaskOccurrenceOverride>())
+				.Select(occurrenceOverride => occurrenceOverride.Clone())
 				.ToList());
 
 		public static TaskOccurrenceResponse ToResponse(this TaskOccurrence occurrence)
@@ -158,13 +207,17 @@ namespace PriorityTaskManager.API.Tasks
 			var task = occurrence.Series;
 			var seriesId = task.SeriesId ?? task.Id;
 			var occurrenceId = CreateOccurrenceId(seriesId, occurrence.ScheduledDate);
+			var occurrenceOverride = task.OccurrenceOverrides
+				?.FirstOrDefault(item => item.OriginalOccurrenceDate.Date == occurrence.ScheduledDate.Date);
+			var duration = occurrenceOverride?.EstimatedDuration ?? task.EstimatedDuration;
+			var importance = occurrenceOverride?.Importance ?? task.Importance;
 			return new TaskOccurrenceResponse(
 				occurrenceId,
 				seriesId,
 				occurrence.ScheduledDate,
-				task.Title,
-				task.Description,
-				task.Link,
+				occurrenceOverride?.Title ?? task.Title,
+				occurrenceOverride?.Description ?? task.Description,
+				occurrenceOverride?.Link ?? task.Link,
 				task.ListId,
 				task.ListName,
 				occurrence.Status == TaskOccurrenceStatus.Completed,
@@ -178,23 +231,28 @@ namespace PriorityTaskManager.API.Tasks
 				task.TrackStreak,
 				occurrence.CurrentStreak,
 				occurrence.BestStreak,
-				task.Importance,
-				task.EffectiveImportance,
-				occurrence.ScheduledDate,
-				task.NotBefore.HasValue && task.NotBefore.Value.Date > occurrence.ScheduledDate.Date
-					? task.NotBefore
-					: occurrence.ScheduledDate,
-				TimeSpan.FromTicks((long)(task.EstimatedDuration.Ticks *
+				importance,
+				occurrenceOverride == null ? task.EffectiveImportance : importance,
+				occurrenceOverride == null
+					? occurrence.ScheduledDate.Date.Add(task.DueDate?.TimeOfDay ?? TimeSpan.Zero)
+					: occurrenceOverride.DueDate,
+				(occurrenceOverride?.NotBefore ?? task.NotBefore) is { } notBefore &&
+					notBefore.Date > occurrence.ScheduledDate.Date
+						? notBefore
+						: occurrence.ScheduledDate,
+				TimeSpan.FromTicks((long)(duration.Ticks *
 					(double)Math.Max(0, task.RequiredCompletions - occurrence.CompletionCount) / task.RequiredCompletions)),
 				task.Dependencies,
 				task.UrgencyScore,
-				task.IsPinned,
-				task.Complexity,
+				occurrenceOverride?.IsPinned ?? task.IsPinned,
+				occurrenceOverride?.Complexity ?? task.Complexity,
 				task.Points,
 				task.BeforePadding,
 				task.AfterPadding,
-				task.IsDivisible,
-				task.ProgressionMode);
+				occurrenceOverride?.IsDivisible ?? task.IsDivisible,
+				task.ProgressionMode,
+				task.RecurrenceRule?.Clone(),
+				duration);
 		}
 
 		private static Guid CreateOccurrenceId(Guid seriesId, DateTime date)

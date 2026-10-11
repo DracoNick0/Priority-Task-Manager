@@ -31,6 +31,8 @@ class DailySchedule {
   final List<ScheduledTask> futureTasks;
   final List<TaskItem> scheduledOccurrences;
   final List<String> unscheduledTaskIds;
+  final List<TaskItem> unscheduledTasks;
+  final DateTime? catchUpWorkday;
   final String leastSlackTask;
   final String realisticSlack;
   final String actualSlack;
@@ -40,6 +42,8 @@ class DailySchedule {
     required this.futureTasks,
     this.scheduledOccurrences = const [],
     this.unscheduledTaskIds = const [],
+    this.unscheduledTasks = const [],
+    this.catchUpWorkday,
     required this.leastSlackTask,
     required this.realisticSlack,
     required this.actualSlack,
@@ -50,6 +54,8 @@ class DailySchedule {
     todayTasks: [],
     futureTasks: [],
     scheduledOccurrences: [],
+    unscheduledTasks: [],
+    catchUpWorkday: null,
     leastSlackTask: 'None',
     realisticSlack: '-',
     actualSlack: '-',

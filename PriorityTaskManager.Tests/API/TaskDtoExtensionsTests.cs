@@ -75,6 +75,7 @@ namespace PriorityTaskManager.Tests.API
             {
                 Id = Guid.NewGuid(),
                 Title = "Review proposal",
+                DueDate = new DateTime(2026, 10, 8, 16, 30, 0),
                 EstimatedDuration = TimeSpan.FromMinutes(90),
                 RequiredCompletions = 3,
                 ShowMissedIndicator = true,
@@ -106,9 +107,65 @@ namespace PriorityTaskManager.Tests.API
             Assert.Equal(1.0 / 3.0, response.Progress, 5);
             Assert.Equal(TimeSpan.FromMinutes(60), response.EstimatedDuration);
             Assert.Equal(TaskOccurrenceStatus.Missed, response.Status);
+            Assert.Equal(new DateTime(2026, 10, 8, 16, 30, 0), response.DueDate);
             Assert.True(response.HasMissedOccurrence);
             Assert.Equal(2, response.CurrentStreak);
             Assert.Equal(4, response.BestStreak);
+        }
+
+        [Fact]
+        public void OccurrenceResponse_UsesOverrideFieldsAndKeepsOriginalRecurrenceDate()
+        {
+            var originalDate = new DateTime(2026, 10, 8);
+            var task = new TaskItem
+            {
+                Id = Guid.NewGuid(),
+                SeriesId = Guid.NewGuid(),
+                Title = "Series title",
+                Importance = 5,
+                EffectiveImportance = 5,
+                EstimatedDuration = TimeSpan.FromMinutes(90),
+                RequiredCompletions = 3,
+                RecurrenceRule = new DailyIntervalRecurrenceRule
+                {
+                    SeriesStartDate = originalDate,
+                    IntervalDays = 1,
+                    EndCondition = new NeverEndCondition()
+                },
+                OccurrenceOverrides =
+                [
+                    new TaskOccurrenceOverride
+                    {
+                        OriginalOccurrenceDate = originalDate,
+                        Title = "Moved title",
+                        Description = "Occurrence notes",
+                        DueDate = new DateTime(2026, 10, 12),
+                        EstimatedDuration = TimeSpan.FromMinutes(120),
+                        Importance = 8,
+                        Complexity = 4,
+                        Link = "https://example.com"
+                    }
+                ]
+            };
+            var occurrence = new TaskOccurrence(
+                task,
+                originalDate,
+                TaskOccurrenceStatus.Pending,
+                0,
+                IsMissed: false,
+                CurrentStreak: 0,
+                BestStreak: 0);
+
+            var response = occurrence.ToResponse();
+
+            Assert.Equal(originalDate, response.OccurrenceDate);
+            Assert.Equal("Moved title", response.Title);
+            Assert.Equal(new DateTime(2026, 10, 12), response.DueDate);
+            Assert.Equal(8, response.Importance);
+            Assert.Equal(8, response.EffectiveImportance);
+            Assert.Equal(TimeSpan.FromMinutes(120), response.FullEstimatedDuration);
+            Assert.Equal(TimeSpan.FromMinutes(120), response.EstimatedDuration);
+            Assert.NotNull(response.RecurrenceRule);
         }
 
         [Fact]

@@ -36,7 +36,7 @@ abstract class RecurrenceRule {
           seriesStartDate: seriesStartDate,
           endCondition: endCondition,
           daysOfWeek: (map['daysOfWeek'] as List<dynamic>? ?? const [])
-              .map((d) => d as int)
+              .map(_parseDayOfWeek)
               .toList(),
           intervalWeeks: map['intervalWeeks'] as int? ?? 1,
         );
@@ -82,6 +82,23 @@ abstract class RecurrenceRule {
     'seriesStartDate': seriesStartDate.toIso8601String(),
     'endCondition': endCondition.toJson(),
   };
+
+  static int _parseDayOfWeek(dynamic value) {
+    if (value is int && value >= 0 && value <= 6) return value;
+    if (value is String) {
+      return switch (value.toLowerCase()) {
+        'sunday' => 0,
+        'monday' => 1,
+        'tuesday' => 2,
+        'wednesday' => 3,
+        'thursday' => 4,
+        'friday' => 5,
+        'saturday' => 6,
+        _ => throw FormatException('Invalid recurrence weekday: $value'),
+      };
+    }
+    throw FormatException('Invalid recurrence weekday: $value');
+  }
 }
 
 /// Repeats every [intervalDays] days from [RecurrenceRule.seriesStartDate].

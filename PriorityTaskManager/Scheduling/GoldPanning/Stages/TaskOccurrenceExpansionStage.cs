@@ -34,21 +34,21 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 throw new InvalidOperationException("TaskOccurrenceExpansionStage requires a computed schedule horizon.");
             }
 
-            var today = _timeService.GetCurrentTime().Date;
+            var now = _timeService.GetCurrentTime();
+            var today = now.Date;
             var horizonEnd = window.HorizonEndDate.Value.Date;
             var expandedTasks = tasks.Where(task => task.RecurrenceRule == null).ToList();
 
             foreach (var series in tasks.Where(task => task.RecurrenceRule != null))
             {
                 ValidateSeries(series);
-                if (series.EstimatedDuration <= TimeSpan.Zero)
-                    continue;
-
+                series.RecurrenceExceptions ??= new List<RecurrenceException>();
+                series.OccurrenceOverrides ??= new List<TaskOccurrenceOverride>();
                 var rule = series.RecurrenceRule!;
                 var seriesId = series.SeriesId ?? series.Id;
                 var dates = _recurrenceExpansionService.GetOccurrences(
                     rule,
-                    Array.Empty<RecurrenceException>(),
+                    series.RecurrenceExceptions,
                     rule.SeriesStartDate.Date,
                     horizonEnd);
                 var lookaheadDate = GetLookaheadDate(series, dates, horizonEnd);
@@ -64,10 +64,15 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
                 foreach (var date in eligibleDates)
                 {
                     states.TryGetValue(date, out var state);
-                    var notBefore = date == lookaheadDate
-                        ? dates[^1].Date
-                        : date;
-                    var occurrence = CreateOccurrence(series, seriesId, date, notBefore, state);
+                    var occurrenceOverride = series.OccurrenceOverrides
+                        .FirstOrDefault(item => item.OriginalOccurrenceDate.Date == date.Date);
+                    var occurrence = CreateOccurrence(
+                        series,
+                        seriesId,
+                        date,
+                        state,
+                        occurrenceOverride,
+                        now);
                     if (occurrence.EstimatedDuration > TimeSpan.Zero)
                         expandedTasks.Add(occurrence);
                 }
@@ -137,7 +142,10 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             {
                 var generatedDateSet = generatedDates.Select(date => date.Date).ToHashSet();
                 result.UnionWith(states.Values
-                    .Where(state => state.Status == TaskOccurrenceStatus.Missed &&
+                    .Where(state =>
+                        (state.Status == TaskOccurrenceStatus.Missed ||
+                            state.Status == TaskOccurrenceStatus.Pending &&
+                            state.ScheduledDate.Date < today) &&
                         generatedDateSet.Contains(state.ScheduledDate.Date))
                     .Select(state => state.ScheduledDate.Date));
             }
@@ -159,7 +167,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 
             var nextDate = _recurrenceExpansionService.GetOccurrences(
                     series.RecurrenceRule!,
-                    Array.Empty<RecurrenceException>(),
+                    series.RecurrenceExceptions,
                     horizonEnd.Date.AddDays(1),
                     horizonEnd.Date.AddDays(366))
                 .FirstOrDefault();
@@ -170,7 +178,7 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 
                 nextDate = _recurrenceExpansionService.GetOccurrences(
                         series.RecurrenceRule,
-                        Array.Empty<RecurrenceException>(),
+                        series.RecurrenceExceptions,
                         horizonEnd.Date.AddDays(1),
                         DateTime.MaxValue.Date)
                     .FirstOrDefault();
@@ -183,24 +191,38 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             TaskItem series,
             Guid seriesId,
             DateTime date,
-            DateTime notBefore,
-            TaskOccurrenceState? state)
+            TaskOccurrenceState? state,
+            TaskOccurrenceOverride? occurrenceOverride,
+            DateTime now)
         {
             var completionCount = state?.CompletionCount ?? 0;
+            var occurrenceStatus = state?.Status ?? TaskOccurrenceStatus.Pending;
+            var dueDate = occurrenceOverride == null
+                ? date.Date.Add(series.DueDate?.TimeOfDay ?? TimeSpan.Zero)
+                : occurrenceOverride.DueDate;
+            if (occurrenceStatus == TaskOccurrenceStatus.Pending &&
+                series.ProgressionMode != TaskProgressionMode.RollForwardDisregard &&
+                dueDate.HasValue &&
+                dueDate.Value < now)
+                occurrenceStatus = TaskOccurrenceStatus.Missed;
+
             var occurrence = series.Clone();
+            occurrenceOverride?.ApplyTo(occurrence);
             occurrence.Id = TaskOccurrence.CreateId(seriesId, date);
             occurrence.SeriesId = seriesId;
             occurrence.OccurrenceDate = date.Date;
             occurrence.RecurrenceRule = null;
             occurrence.IsCompleted = false;
             occurrence.Progress = (double)completionCount / series.RequiredCompletions;
-            occurrence.DueDate = date.Date;
-            occurrence.NotBefore = series.NotBefore.HasValue && series.NotBefore.Value > notBefore
-                ? series.NotBefore
-                : notBefore.Date;
-            occurrence.OccurrenceStatus = state?.Status ?? TaskOccurrenceStatus.Pending;
+            occurrence.DueDate = dueDate;
+            occurrence.NotBefore = occurrence.NotBefore.HasValue &&
+                occurrence.NotBefore.Value.Date > date.Date
+                ? occurrence.NotBefore
+                : date.Date;
+            occurrence.OccurrenceStatus = occurrenceStatus;
             occurrence.ScheduledParts.Clear();
-            occurrence.EstimatedDuration = series.EstimatedDuration;
+            if (occurrenceOverride == null)
+                occurrence.EstimatedDuration = series.EstimatedDuration;
             TaskNormalizationStage.NormalizeOccurrence(occurrence);
             return occurrence;
         }

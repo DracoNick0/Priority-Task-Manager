@@ -58,6 +58,10 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
 
             // Step 1: Calculate the Core Horizon End Date
             var coreHorizonEndDate = CalculateHorizon(now, totalWorkloadDuration, userProfile, context.History);
+            coreHorizonEndDate = ExtendHorizonForCountLimitedSeries(
+                tasks,
+                now.Date,
+                coreHorizonEndDate);
 
             // Step 2: Generate available time slots within the horizon
             var slots = GenerateAvailableSlots(now, coreHorizonEndDate, userProfile, context);
@@ -79,6 +83,32 @@ namespace PriorityTaskManager.Scheduling.GoldPanning.Stages
             context.SharedState["TotalAvailableTime"] = TimeSpan.FromTicks(totalAvailableTime);
 
             return context;
+        }
+
+        private DateTime ExtendHorizonForCountLimitedSeries(
+            IReadOnlyList<TaskItem> tasks,
+            DateTime today,
+            DateTime currentHorizonEnd)
+        {
+            var maximumHorizonEnd = today.AddYears(5);
+            var horizonEnd = currentHorizonEnd;
+            foreach (var task in tasks)
+            {
+                if (task.RecurrenceRule?.EndCondition is not AfterOccurrencesEndCondition)
+                    continue;
+
+                var rule = task.RecurrenceRule;
+                var lastOccurrence = _recurrenceExpansionService.GetOccurrences(
+                        rule,
+                        task.RecurrenceExceptions ?? new List<RecurrenceException>(),
+                        rule.SeriesStartDate.Date,
+                        maximumHorizonEnd)
+                    .LastOrDefault();
+                if (lastOccurrence > horizonEnd)
+                    horizonEnd = lastOccurrence.Date;
+            }
+
+            return horizonEnd;
         }
 
         private DateTime CalculateHorizon(DateTime now, TimeSpan totalWorkloadDuration, UserProfile userProfile, List<string> history)

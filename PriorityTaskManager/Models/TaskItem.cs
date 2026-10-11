@@ -50,6 +50,12 @@ namespace PriorityTaskManager.Models
                 TrackStreak = this.TrackStreak,
                 CurrentStreak = this.CurrentStreak,
                 BestStreak = this.BestStreak,
+                RecurrenceExceptions = (this.RecurrenceExceptions ?? new List<RecurrenceException>())
+                    .Select(exception => exception.Clone())
+                    .ToList(),
+                OccurrenceOverrides = (this.OccurrenceOverrides ?? new List<TaskOccurrenceOverride>())
+                    .Select(occurrenceOverride => occurrenceOverride.Clone())
+                    .ToList(),
                 OccurrenceStates = (this.OccurrenceStates ?? new List<TaskOccurrenceState>()).Select(o => new TaskOccurrenceState
                 {
                     ScheduledDate = o.ScheduledDate,
@@ -269,6 +275,12 @@ namespace PriorityTaskManager.Models
 
         /// <summary>Gets or sets persisted progress for generated occurrences.</summary>
         public List<TaskOccurrenceState> OccurrenceStates { get; set; } = new();
+
+        /// <summary>Gets or sets occurrence cancellations keyed by original recurrence date.</summary>
+        public List<RecurrenceException> RecurrenceExceptions { get; set; } = new();
+
+        /// <summary>Gets or sets occurrence-specific task field overrides keyed by original recurrence date.</summary>
+        public List<TaskOccurrenceOverride> OccurrenceOverrides { get; set; } = new();
 
         /// <summary>Gets whether missed state should currently be indicated for this task.</summary>
         [JsonIgnore]

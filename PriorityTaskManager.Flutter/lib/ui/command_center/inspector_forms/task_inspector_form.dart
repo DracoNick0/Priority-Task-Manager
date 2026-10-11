@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/effective_settings.dart';
+import '../../../models/recurrence_rule.dart';
 import '../../../models/task_item.dart';
 import '../../../providers/app_notifications_provider.dart';
 import '../../../providers/selection_provider.dart';
@@ -15,15 +16,23 @@ import '../../theme/app_theme.dart';
 import '../resizable_text_field.dart';
 import 'combined_date_time_picker.dart';
 import 'date_time_field.dart';
+import 'recurrence_edit_target_dialog.dart';
+import 'recurrence_picker.dart';
 
 /// Inline CRUD form for a single task, shown in the Right Inspector.
 ///
 /// A null [taskId] means "create a new task" for [listId].
 class TaskInspectorForm extends ConsumerStatefulWidget {
-  const TaskInspectorForm({super.key, required this.listId, this.taskId});
+  const TaskInspectorForm({
+    super.key,
+    required this.listId,
+    this.taskId,
+    this.initialTask,
+  });
 
   final String listId;
   final String? taskId;
+  final TaskItem? initialTask;
 
   @override
   ConsumerState<TaskInspectorForm> createState() => _TaskInspectorFormState();
@@ -41,7 +50,13 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   int _complexity = 5;
   bool _isPinned = false;
   bool _isDivisible = false;
+  RecurrenceRule? _recurrenceRule;
+  String _progressionMode = 'RollForwardKeepBacklog';
+  bool _showMissedIndicator = true;
+  bool _trackStreak = false;
+  bool _recurrenceEnabled = false;
   TaskItem? _loadedFrom;
+  Future<TaskItem>? _occurrenceLoadFuture;
   bool _appliedDefaultDueDate = false;
   DateTime? _defaultDueDate;
   bool _hasNoWorkingDayDefault = false;
@@ -56,7 +71,18 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _descriptionController = TextEditingController();
     _linkController = TextEditingController();
     _durationController = TextEditingController(text: '60');
+    final initialTask = widget.initialTask;
+    if (initialTask?.isRecurringOccurrence == true) {
+      _occurrenceLoadFuture = _loadAuthoritativeOccurrence(initialTask!);
+    }
   }
+
+  Future<TaskItem> _loadAuthoritativeOccurrence(TaskItem task) => ref
+      .read(tasksProvider(widget.listId).notifier)
+      .getTaskOccurrence(
+        seriesId: task.seriesId!,
+        occurrenceDate: task.occurrenceDate!,
+      );
 
   void _loadFrom(TaskItem task) {
     if (identical(_loadedFrom, task)) return;
@@ -64,7 +90,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _titleController.text = task.title;
     _descriptionController.text = task.description;
     _linkController.text = task.link;
-    _durationController.text = task.estimatedDurationMinutes.toString();
+    _durationController.text =
+        (task.fullEstimatedDurationMinutes ?? task.estimatedDurationMinutes)
+            .toString();
     _selectedDependencyIds = {...task.dependencies};
     _dueDate = task.dueDate;
     _notBefore = task.notBefore;
@@ -72,6 +100,11 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _complexity = task.complexity;
     _isPinned = task.isPinned;
     _isDivisible = task.isDivisible;
+    _recurrenceRule = task.recurrenceRule;
+    _recurrenceEnabled = task.recurrenceRule != null;
+    _progressionMode = task.progressionMode;
+    _showMissedIndicator = task.showMissedIndicator;
+    _trackStreak = task.trackStreak;
   }
 
   @override
@@ -89,8 +122,109 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     }
   }
 
+  Widget _buildRecurringTaskSettings() => Column(
+    children: [
+      DropdownButtonFormField<String>(
+        initialValue: _progressionMode,
+        isExpanded: true,
+        decoration: const InputDecoration(labelText: 'Missed occurrences'),
+        items: const [
+          DropdownMenuItem(
+            value: 'SequentialCatchUp',
+            child: Text(
+              'Wait for each occurrence',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'RollForwardKeepBacklog',
+            child: Text(
+              'Roll forward and keep backlog',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'RollForwardDisregard',
+            child: Text(
+              'Roll forward and disregard missed',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) setState(() => _progressionMode = value);
+        },
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Show missed indicator'),
+        value: _showMissedIndicator,
+        onChanged: (value) => setState(() => _showMissedIndicator = value),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Track completion streaks'),
+        subtitle: const Text('Show current and best streak'),
+        value: _trackStreak,
+        onChanged: (value) => setState(() => _trackStreak = value),
+      ),
+      if (_isEditing && _loadedFrom?.isRecurringOccurrence == true)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'These series settings apply to “This and following” or “Whole series” edits.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
+    final occurrenceFuture = _occurrenceLoadFuture;
+    if (occurrenceFuture != null) {
+      return FutureBuilder<TaskItem>(
+        future: occurrenceFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Unable to load this occurrence: ${snapshot.error}'),
+                  const SizedBox(height: AppTheme.spacingSm),
+                  FilledButton(
+                    onPressed: () => setState(() {
+                      _occurrenceLoadFuture = _loadAuthoritativeOccurrence(
+                        widget.initialTask!,
+                      );
+                    }),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+          final occurrence = snapshot.data;
+          if (occurrence == null) {
+            return const Center(
+              child: Text('The selected occurrence could not be loaded.'),
+            );
+          }
+          return _buildForm(context, occurrence);
+        },
+      );
+    }
+    return _buildForm(context, null);
+  }
+
+  Widget _buildForm(BuildContext context, TaskItem? authoritativeOccurrence) {
     final tasksAsync = ref.watch(tasksProvider(widget.listId));
     final tasks = tasksAsync.asData?.value ?? const <TaskItem>[];
     final isAuthenticated =
@@ -99,13 +233,22 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
 
     TaskItem? existing;
     if (_isEditing) {
-      existing = tasks.where((task) => task.id == widget.taskId).firstOrNull;
+      existing =
+          authoritativeOccurrence ??
+          tasks.where((task) => task.id == widget.taskId).firstOrNull ??
+          (widget.initialTask?.id == widget.taskId ? widget.initialTask : null);
       if (existing != null) _loadFrom(existing);
+    }
+    if (_isEditing && existing == null) {
+      return const Center(child: Text('Task not found.'));
     }
 
     final candidateDependencies = tasks
         .where((task) => task.id != widget.taskId)
         .toList();
+    final showRecurrenceControls =
+        isAuthenticated &&
+        (!_isEditing || existing?.recurrenceRule != null || _recurrenceEnabled);
 
     if (!_isEditing && !_appliedDefaultDueDate) {
       final lists = ref.watch(taskListsProvider).asData?.value;
@@ -232,6 +375,28 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             children: [
+              if (showRecurrenceControls) ...[
+                RecurrencePicker(
+                  key: ValueKey('task-recurrence-${widget.taskId ?? 'new'}'),
+                  seriesStartDate: () =>
+                      existing?.recurrenceRule?.seriesStartDate ??
+                      _dueDate ??
+                      DateTime.now(),
+                  initialRule: existing?.recurrenceRule,
+                  canDisable: existing?.recurrenceRule == null,
+                  label: existing?.recurrenceRule == null
+                      ? 'Recurring task'
+                      : 'Series recurrence',
+                  onChanged: (rule) => _recurrenceRule = rule,
+                  onEnabledChanged: (enabled) =>
+                      setState(() => _recurrenceEnabled = enabled),
+                ),
+                if (_recurrenceEnabled || existing?.recurrenceRule != null) ...[
+                  const SizedBox(height: AppTheme.spacingMd),
+                  _buildRecurringTaskSettings(),
+                ],
+                const SizedBox(height: AppTheme.spacingMd),
+              ],
               DateTimeFieldBox(
                 icon: Icons.hourglass_empty,
                 label: 'Not before',
@@ -268,7 +433,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
                   ),
                 ),
               ),
-              if (candidateDependencies.isNotEmpty) ...[
+              if (candidateDependencies.isNotEmpty &&
+                  !_recurrenceEnabled &&
+                  existing?.recurrenceRule == null) ...[
                 const SizedBox(height: AppTheme.spacingMd),
                 Row(
                   children: [
@@ -431,6 +598,20 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
       return;
     }
     final duration = _estimatedDurationMinutes;
+    if (_recurrenceEnabled && _recurrenceRule == null) {
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'Complete the recurrence pattern before saving.',
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
+    if (existing?.recurrenceRule != null && _recurrenceRule == null) {
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'A recurring task must keep a valid recurrence pattern.',
+        icon: Icons.warning_amber_rounded,
+      );
+      return;
+    }
     final notBeforeWasCleared = _clearInvalidNotBefore(
       durationMinutes: duration,
       showWarning: false,
@@ -449,7 +630,50 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         complexity: _complexity,
         isPinned: _isPinned,
         isDivisible: _isDivisible,
-        dependencies: _selectedDependencyIds.toList(),
+        dependencies: _recurrenceRule == null
+            ? _selectedDependencyIds.toList()
+            : const [],
+        recurrenceRule: _recurrenceRule,
+        progressionMode: _progressionMode,
+        showMissedIndicator: _showMissedIndicator,
+        trackStreak: _trackStreak,
+      );
+    } else if (existing.isRecurringOccurrence ||
+        existing.recurrenceRule != null) {
+      final target = await showRecurrenceEditTargetDialog(
+        context,
+        isDelete: false,
+        allOccurrencesLabel: 'Whole series',
+      );
+      if (target == null) return;
+      await notifier.editTaskOccurrence(
+        seriesId: existing.seriesId ?? existing.id,
+        occurrenceDate:
+            existing.occurrenceDate ?? existing.recurrenceRule!.seriesStartDate,
+        title: title,
+        description: _descriptionController.text.trim(),
+        link: _linkController.text.trim(),
+        dueDate: _dueDate,
+        notBefore: _notBefore,
+        estimatedDurationMinutes: duration,
+        importance: _importance,
+        complexity: _complexity,
+        isPinned: _isPinned,
+        isDivisible: _isDivisible,
+        target: target,
+        recurrenceRule: target == RecurrenceEditTarget.thisOccurrence
+            ? existing.recurrenceRule
+            : _recurrenceRule,
+        progressionMode: target == RecurrenceEditTarget.thisOccurrence
+            ? existing.progressionMode
+            : _progressionMode,
+        requiredCompletions: existing.requiredCompletions,
+        showMissedIndicator: target == RecurrenceEditTarget.thisOccurrence
+            ? existing.showMissedIndicator
+            : _showMissedIndicator,
+        trackStreak: target == RecurrenceEditTarget.thisOccurrence
+            ? existing.trackStreak
+            : _trackStreak,
       );
     } else {
       await notifier.updateTask(
@@ -466,7 +690,13 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           complexity: _complexity,
           isPinned: _isPinned,
           isDivisible: _isDivisible,
-          dependencies: _selectedDependencyIds.toList(),
+          dependencies: _recurrenceRule == null
+              ? _selectedDependencyIds.toList()
+              : const [],
+          recurrenceRule: _recurrenceRule,
+          progressionMode: _progressionMode,
+          showMissedIndicator: _showMissedIndicator,
+          trackStreak: _trackStreak,
         ),
       );
     }
@@ -477,6 +707,8 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           ? _notBeforeWarning
           : existing == null
           ? 'Task created'
+          : existing.isRecurringOccurrence || existing.recurrenceRule != null
+          ? 'Recurring task updated'
           : 'Task saved',
       icon: notBeforeWasCleared
           ? Icons.warning_amber_rounded
@@ -491,6 +723,40 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     final isAuthenticated =
         ref.read(sessionControllerProvider).asData?.value.status ==
         SessionStatus.authenticated;
+    if (task.isRecurringOccurrence ||
+        (isAuthenticated && task.recurrenceRule != null)) {
+      final target = await showRecurrenceEditTargetDialog(
+        context,
+        isDelete: true,
+        allOccurrencesLabel: 'Whole series',
+      );
+      if (target == null) return;
+      await ref
+          .read(tasksProvider(widget.listId).notifier)
+          .deleteTaskOccurrence(
+            seriesId: task.seriesId ?? task.id,
+            occurrenceDate:
+                task.occurrenceDate ?? task.recurrenceRule!.seriesStartDate,
+            target: target,
+          );
+      if (!mounted) return;
+      final recurrenceStart = task.recurrenceRule?.seriesStartDate;
+      final selectedDate = task.occurrenceDate ?? recurrenceStart;
+      final archived =
+          target == RecurrenceEditTarget.allOccurrences ||
+          (target == RecurrenceEditTarget.thisAndFollowing &&
+              recurrenceStart != null &&
+              selectedDate != null &&
+              selectedDate.year == recurrenceStart.year &&
+              selectedDate.month == recurrenceStart.month &&
+              selectedDate.day == recurrenceStart.day);
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        archived ? 'Task archived' : 'Occurrence deleted',
+        icon: archived ? Icons.archive_outlined : Icons.delete_outline,
+      );
+      _closeInspector();
+      return;
+    }
     await ref.read(tasksProvider(widget.listId).notifier).deleteTask(task.id);
     if (!mounted) return;
     ref.read(appNotificationProvider.notifier).state = AppNotification(

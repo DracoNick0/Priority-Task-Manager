@@ -9,6 +9,7 @@ Future<RecurrenceEditTarget?> showRecurrenceEditTargetDialog(
   BuildContext context, {
   required bool isDelete,
   bool isArchive = false,
+  String allOccurrencesLabel = 'All occurrences',
 }) {
   final verb = isArchive
       ? 'Archive'
@@ -33,7 +34,7 @@ Future<RecurrenceEditTarget?> showRecurrenceEditTargetDialog(
         SimpleDialogOption(
           onPressed: () =>
               Navigator.pop(context, RecurrenceEditTarget.allOccurrences),
-          child: const Text('All occurrences'),
+          child: Text(allOccurrencesLabel),
         ),
       ],
     ),

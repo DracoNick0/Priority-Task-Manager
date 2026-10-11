@@ -75,6 +75,29 @@ public class TaskOccurrenceProgressionTests
     }
 
     [Fact]
+    public void UndoOccurrenceCompletionUnskipsManuallySkippedOccurrence()
+    {
+        var (service, time, listId) = CreateService(new DateTime(2026, 10, 8));
+        var task = AddRecurringTask(service, listId, new DateTime(2026, 10, 8));
+        var occurrenceDate = new DateTime(2026, 10, 8);
+
+        Assert.True(service.SkipTaskOccurrence(task.Id, occurrenceDate, time));
+        Assert.Equal(
+            TaskOccurrenceStatus.Skipped,
+            task.OccurrenceStates.Single().Status);
+
+        Assert.True(service.UndoTaskOccurrenceCompletion(task.Id, occurrenceDate, time));
+
+        var state = service.GetTaskById(task.Id)!.OccurrenceStates.Single();
+        Assert.Equal(TaskOccurrenceStatus.Pending, state.Status);
+        Assert.Equal(0, state.CompletionCount);
+        Assert.Null(state.CompletedAt);
+        Assert.Contains(
+            service.GetTaskOccurrences(listId, occurrenceDate, occurrenceDate, time),
+            occurrence => occurrence.Status == TaskOccurrenceStatus.Pending);
+    }
+
+    [Fact]
     public void DisregardedDatesBreakStreakAndIndicatorClearsAfterNextCompletion()
     {
         var (service, time, listId) = CreateService(new DateTime(2026, 10, 8));
@@ -156,6 +179,150 @@ public class TaskOccurrenceProgressionTests
         service.CompleteTaskOccurrence(task.Id, new DateTime(2026, 10, 7), time);
 
         Assert.True(task.IsCompleted);
+    }
+
+    [Fact]
+    public void ThisOccurrenceEditStoresAnOverrideByTheOriginalRecurrenceDate()
+    {
+        var (service, _, listId) = CreateService(new DateTime(2026, 10, 8));
+        var task = AddRecurringTask(service, listId, new DateTime(2026, 10, 6));
+        var edited = task.Clone();
+        edited.Title = "Moved occurrence";
+        edited.DueDate = new DateTime(2026, 10, 12);
+        edited.Description = "Occurrence-only description";
+
+        Assert.True(service.EditTaskOccurrence(
+            task.Id,
+            new DateTime(2026, 10, 7),
+            edited,
+            RecurrenceEditTarget.ThisOccurrence));
+
+        var occurrenceOverride = Assert.Single(task.OccurrenceOverrides);
+        Assert.Equal(new DateTime(2026, 10, 7), occurrenceOverride.OriginalOccurrenceDate);
+        Assert.Equal(new DateTime(2026, 10, 12), occurrenceOverride.DueDate);
+        Assert.Equal("Moved occurrence", occurrenceOverride.Title);
+        Assert.Equal("Recurring task", task.Title);
+        Assert.Empty(task.RecurrenceExceptions);
+    }
+
+    [Fact]
+    public void ThisAndFollowingEditSplitsExceptionsOverridesAndOccurrenceProgress()
+    {
+        var (service, time, listId) = CreateService(new DateTime(2026, 10, 9));
+        var task = AddRecurringTask(service, listId, new DateTime(2026, 10, 6));
+        service.GetTaskOccurrences(listId, new DateTime(2026, 10, 6), new DateTime(2026, 10, 9), time);
+        task.OccurrenceOverrides.Add(new TaskOccurrenceOverride
+        {
+            OriginalOccurrenceDate = new DateTime(2026, 10, 7),
+            Title = "Prior override"
+        });
+        task.OccurrenceOverrides.Add(new TaskOccurrenceOverride
+        {
+            OriginalOccurrenceDate = new DateTime(2026, 10, 9),
+            Title = "Following override"
+        });
+        task.RecurrenceExceptions.Add(new RecurrenceException
+        {
+            OriginalOccurrenceDate = new DateTime(2026, 10, 9),
+            IsCancelled = true
+        });
+        var selectedDate = new DateTime(2026, 10, 8);
+        var edited = task.Clone();
+        edited.Title = "New series title";
+        edited.DueDate = selectedDate;
+
+        Assert.True(service.EditTaskOccurrence(
+            task.Id,
+            selectedDate,
+            edited,
+            RecurrenceEditTarget.ThisAndFollowing));
+
+        var prior = service.GetTaskById(task.Id)!;
+        var following = service.GetAllTasks(listId).Single(candidate => candidate.Id != task.Id);
+        Assert.Equal(new DateTime(2026, 10, 7), ((UntilDateEndCondition)prior.RecurrenceRule!.EndCondition).UntilDate);
+        Assert.Equal(selectedDate, following.RecurrenceRule!.SeriesStartDate);
+        Assert.Equal(new[] { new DateTime(2026, 10, 6), new DateTime(2026, 10, 7) },
+            prior.OccurrenceStates.Select(state => state.ScheduledDate.Date).Order().ToArray());
+        Assert.Equal(new[] { selectedDate, new DateTime(2026, 10, 9) },
+            following.OccurrenceStates.Select(state => state.ScheduledDate.Date).Order().ToArray());
+        Assert.Equal(new DateTime(2026, 10, 7), Assert.Single(prior.OccurrenceOverrides).OriginalOccurrenceDate);
+        Assert.Equal(new DateTime(2026, 10, 9), Assert.Single(following.OccurrenceOverrides).OriginalOccurrenceDate);
+        Assert.Equal(new DateTime(2026, 10, 9), Assert.Single(following.RecurrenceExceptions).OriginalOccurrenceDate);
+    }
+
+    [Fact]
+    public void AllOccurrencesEditPrunesRecordsOutsideReplacementPattern()
+    {
+        var (service, _, listId) = CreateService(new DateTime(2026, 10, 8));
+        var series = AddRecurringTask(service, listId, new DateTime(2026, 10, 5));
+        var monday = new DateTime(2026, 10, 5);
+        var tuesday = new DateTime(2026, 10, 6);
+        var wednesday = new DateTime(2026, 10, 7);
+        var thursday = new DateTime(2026, 10, 8);
+        series.OccurrenceStates.AddRange(
+        [
+            new TaskOccurrenceState { ScheduledDate = monday, Status = TaskOccurrenceStatus.Completed },
+            new TaskOccurrenceState { ScheduledDate = tuesday, Status = TaskOccurrenceStatus.Missed },
+            new TaskOccurrenceState { ScheduledDate = wednesday, Status = TaskOccurrenceStatus.Pending }
+        ]);
+        series.RecurrenceExceptions.AddRange(
+        [
+            new RecurrenceException { OriginalOccurrenceDate = tuesday, IsCancelled = true },
+            new RecurrenceException { OriginalOccurrenceDate = wednesday, IsCancelled = true },
+            new RecurrenceException { OriginalOccurrenceDate = thursday, IsCancelled = true }
+        ]);
+        series.OccurrenceOverrides.AddRange(
+        [
+            new TaskOccurrenceOverride { OriginalOccurrenceDate = monday, Title = "Monday override" },
+            new TaskOccurrenceOverride { OriginalOccurrenceDate = tuesday, Title = "Tuesday override" },
+            new TaskOccurrenceOverride { OriginalOccurrenceDate = wednesday, Title = "Wednesday override" }
+        ]);
+        var edited = series.Clone();
+        edited.RecurrenceRule = new WeeklyRecurrenceRule
+        {
+            SeriesStartDate = monday,
+            DaysOfWeek = [DayOfWeek.Monday, DayOfWeek.Wednesday],
+            EndCondition = new NeverEndCondition()
+        };
+
+        Assert.True(service.EditTaskOccurrence(
+            series.Id,
+            monday,
+            edited,
+            RecurrenceEditTarget.AllOccurrences));
+
+        Assert.Equal(
+            new[] { monday, wednesday },
+            series.OccurrenceStates.Select(state => state.ScheduledDate.Date).Order().ToArray());
+        Assert.Equal(
+            new[] { wednesday },
+            series.RecurrenceExceptions.Select(exception => exception.OriginalOccurrenceDate.Date).ToArray());
+        Assert.Equal(
+            new[] { monday, wednesday },
+            series.OccurrenceOverrides.Select(occurrenceOverride =>
+                occurrenceOverride.OriginalOccurrenceDate.Date).Order().ToArray());
+    }
+
+    [Fact]
+    public void DeletingThisOccurrenceCancelsOnlyItsOriginalDate()
+    {
+        var (service, time, listId) = CreateService(new DateTime(2026, 10, 8));
+        var task = AddRecurringTask(service, listId, new DateTime(2026, 10, 6));
+
+        Assert.True(service.DeleteTaskOccurrence(
+            task.Id,
+            new DateTime(2026, 10, 7),
+            RecurrenceEditTarget.ThisOccurrence));
+
+        Assert.Contains(task.RecurrenceExceptions, exception =>
+            exception.OriginalOccurrenceDate.Date == new DateTime(2026, 10, 7) &&
+            exception.IsCancelled);
+        Assert.DoesNotContain(
+            service.GetTaskOccurrences(listId, new DateTime(2026, 10, 6), new DateTime(2026, 10, 8), time),
+            occurrence => occurrence.ScheduledDate.Date == new DateTime(2026, 10, 7));
+        Assert.Contains(
+            service.GetTaskOccurrences(listId, new DateTime(2026, 10, 6), new DateTime(2026, 10, 8), time),
+            occurrence => occurrence.ScheduledDate.Date == new DateTime(2026, 10, 8));
     }
 
     private static (TaskManagerService Service, MockTimeService Time, Guid ListId) CreateService(DateTime now)
