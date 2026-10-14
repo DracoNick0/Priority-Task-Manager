@@ -8,6 +8,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | --- | --- | --- |
 | README.md | Entry point and quick orientation | New users, maintainers, AI agents |
 | docs/VISION.md | Long-term desired outcome, target users, and core differentiator | Maintainer, contributors, AI agents |
+| docs/PRODUCT_BEHAVIOR_SPECIFICATION.md | Intended user-facing behavior and acceptance criteria | Product owner, designers, contributors |
 | docs/ARCHITECTURE.md | Architecture map, shared boundaries, and focused architecture reading paths | Developers and refactors |
 | docs/STATUS.md | Current state of working, partial, broken, in progress | Maintainer and contributors |
 
@@ -37,6 +38,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | --- | --- |
 | Onboarding and project overview | README.md |
 | Long-term vision, desired outcome, and core differentiator | docs/VISION.md |
+| Intended user-facing behavior and acceptance criteria | docs/PRODUCT_BEHAVIOR_SPECIFICATION.md |
 | Architecture overview and reading paths | docs/ARCHITECTURE.md |
 | Archived CLI reference | docs/ARCHITECTURE_CLI.md |
 | Business logic architecture | docs/ARCHITECTURE_CORE.md |

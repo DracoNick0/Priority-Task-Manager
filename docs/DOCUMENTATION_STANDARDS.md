@@ -22,6 +22,7 @@ This document defines documentation structure, ownership, style, verification, a
 | --- | --- | --- |
 | Project entry and navigation | README.md | High-level orientation only |
 | Long-term vision and desired outcome | docs/VISION.md | Direction and intent only; not current status |
+| Intended user-facing behavior | docs/PRODUCT_BEHAVIOR_SPECIFICATION.md | Target behavior and acceptance criteria; open decisions remain explicit |
 | Architecture map and shared boundaries | docs/ARCHITECTURE.md | Entry point for architecture reading paths |
 | Archived CLI reference | docs/ARCHITECTURE_CLI.md | Historical command handling and rendering boundaries; consult only when restoring the CLI |
 | Core business logic architecture | docs/ARCHITECTURE_CORE.md | Core services and business-rule placement |
@@ -70,6 +71,19 @@ Must not include:
 - Current implementation status (owned by docs/STATUS.md)
 - Architecture contracts (owned by docs/ARCHITECTURE.md and docs/ARCHITECTURE_*.md)
 - Scheduled or in-progress work (owned by the repository's GitHub Issues)
+
+### Product Behavior Specification
+Required sections:
+- Purpose and scope
+- User outcomes or user stories
+- Intended user-facing behavior
+- Observable acceptance criteria
+- Open product decisions, with unanswered behavior left unresolved rather than guessed
+
+Must not include:
+- Current implementation status owned by docs/STATUS.md
+- Architecture or implementation contracts owned by docs/ARCHITECTURE.md and docs/ARCHITECTURE_*.md
+- Backlog or active-work tracking owned by the repository's GitHub Issues
 
 ### Architecture
 Required sections:

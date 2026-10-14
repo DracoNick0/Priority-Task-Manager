@@ -69,6 +69,7 @@ The Flutter client requires a running `PriorityTaskManager.API` instance to comp
 Use these docs as the canonical references:
 
 - [docs/VISION.md](docs/VISION.md): long-term desired outcome, target users, and core differentiator.
+- [docs/PRODUCT_BEHAVIOR_SPECIFICATION.md](docs/PRODUCT_BEHAVIOR_SPECIFICATION.md): intended user-facing feature behavior, acceptance criteria, and open product decisions.
 - [docs/STATUS.md](docs/STATUS.md): current capabilities, limitations, known issues, and command surface.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture map, shared boundaries, and links to focused architecture documents.
 - [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md): API surface, external integrations, and shared service composition.
