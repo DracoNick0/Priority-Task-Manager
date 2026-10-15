@@ -1,14 +1,14 @@
 ---
-name: todo-plan
-description: "Assess a backlog item (from a GitHub Issue in this repository or pasted freeform text), determine which architecture and process docs govern it, check prerequisites/blockers, and produce a scoped implementation plan before any code changes are made. Use when the user attaches or references a GitHub Issue, backlog entry, roadmap task, or issue number and asks what to do next, how to approach it, or wants a plan."
+name: slice
+description: "Plan GitHub Issues and standalone feature/fix requests into ordered, commit-worthy, testable segments. Use when a user provides an issue or describes work for implementation: plan first, then implement only one segment per explicit 'proceed'. Check project docs and issue blockers."
 argument-hint: "a GitHub Issue reference (e.g. '#20'), backlog entry, or roadmap task (pasted text or file excerpt)"
 user-invocable: true
 disable-model-invocation: false
 ---
 
-# TODO Plan
+# Plan-Proceed-Review
 
-Use this skill to turn a backlog item into a grounded, doc-informed implementation plan — without starting implementation yet.
+Use this skill for issue-based or standalone feature/fix work. The first response is a grounded plan, not implementation. After the user says `proceed`, implement exactly one planned segment, verify it, and stop for review before continuing.
 
 ## Primary Sources
 Always consult these first:
@@ -18,12 +18,16 @@ Always consult these first:
 - The repository's GitHub Issues (backlog, status, prerequisites, blockers — use `github-pull-request_issue_fetch` or the `gh` CLI to read the issue and any linked/blocking issues)
 
 ## When to Use
-- The user pastes, selects, or references a GitHub Issue (or an issue number) and asks what to do about it, how to approach it, or for a plan.
+- The user provides or references a GitHub Issue for implementation or planning, even if the request says to implement it.
+- The user describes a standalone feature or fix to implement and expects the default plan-first workflow.
 - The user wants to know which docs govern a piece of planned work before touching code.
 - The user wants prerequisite/blocker status checked before starting an item.
 
 ## Hard Constraints
-- Produce a plan only. Do not make code or documentation edits as part of this skill, unless the user explicitly asks to proceed with execution in the same request.
+- On the initial request, produce a plan only; do not edit code or documentation before the user says `proceed`.
+- Each `proceed` authorizes exactly the next segment. After implementing and verifying it, stop and wait for another `proceed`; never continue automatically.
+- A request to implement does not bypass these checkpoints. Bypass the workflow only when the user explicitly asks for implementation without plan/review checkpoints.
+- Do not stage or create commits unless explicitly requested. `proceed` advances work; it is not commit permission.
 - Do not invent scope beyond what the issue body and its linked blocking/parent issues state.
 - Do not skip prerequisite/blocker checks — never propose starting an item whose blocking issue is still open without flagging it.
 - Do not fold in adjacent/unrelated backlog items even if they appear in the same tracking/parent issue.
@@ -56,8 +60,9 @@ Always consult these first:
    - If the issue (or a linked parent/tracking issue) is still open and marked as a prerequisite/blocker, say so explicitly.
    - Do not produce an execution plan that ignores an unmet prerequisite — either plan the prerequisite first or flag it back to the user and stop short of the blocked step.
 6. **Detect conflicts.** If the issue text conflicts with current `docs/STATUS.md` reality or an `docs/ARCHITECTURE_*.md` boundary, surface the conflict instead of silently resolving it (per `.github/copilot-instructions.md`: "If a request conflicts with documented architecture or current status, call it out").
-7. **Produce the plan** using the Output Contract below.
-8. **Stop.** Do not begin implementation unless the user confirms the plan or explicitly asked for plan-and-execute up front.
+7. **Produce the plan** using the Output Contract below. Split only at meaningful review and validation boundaries, not by file, project, or line count. Each segment must have a distinct outcome, remain understandable/buildable after its dependencies, and keep its implementation, tests, and relevant documentation together. If no useful split exists, plan one segment.
+8. **Stop after planning.** Wait for the user's `proceed` before editing. A clear request to bypass the checkpoint workflow is the only exception.
+9. **On `proceed`, execute one segment.** Implement only the next segment in the active plan. Run its focused automated validation and update relevant documentation. Report the completed scope, commands and results, remaining segments, and manual user-test steps when meaningful. If a user-visible segment is not meaningfully testable, say why. Stop for review and another `proceed`. If the conversation has no active plan, ask which task to proceed with. Treat feedback as work on the current segment before advancing.
 
 ## Output Contract
 Return, in order:
@@ -65,10 +70,10 @@ Return, in order:
 2. **Status & Prerequisites** — current status, prerequisite/blocking issue(s), and whether each is satisfied (open/closed).
 3. **Docs Consulted** — docs read, with one or two key facts/constraints pulled from each.
 4. **Domain(s) & Affected Boundaries** — which architecture boundaries/components/files are touched.
-5. **Plan** — numbered, concrete steps in dependency order, sized as small focused changes (per Code Quality guidance in `.github/copilot-instructions.md`).
-6. **Validation** — narrowest relevant build/test command(s) to run per step or at the end.
-7. **Documentation Impact** — which canonical docs (per `docs/DOC_INDEX.md`) would need updating once the work lands, or "none".
-8. **Open Questions / Risks** — anything ambiguous, conflicting, or blocked that should be confirmed with the user before starting.
+5. **Plan** — ordered segments, each with its outcome, scope/affected boundaries, dependencies, acceptance criteria, focused automated validation, manual user-test steps when meaningful, and intended commit purpose.
+6. **Documentation Impact** — which canonical docs (per `docs/DOC_INDEX.md`) would need updating for each segment, or "none".
+7. **Open Questions / Risks** — anything ambiguous, conflicting, or blocked that should be confirmed before starting.
+8. **Checkpoint** — state clearly that the plan is complete and wait for `proceed`; one `proceed` means one segment only.
 
 ## Decision Gates
 All must pass before finalizing the plan:
@@ -79,6 +84,6 @@ All must pass before finalizing the plan:
 5. **Consistency Gate** — the plan does not contradict documented scheduling invariants, architecture boundaries, or `docs/STATUS.md` current-state claims.
 
 ## Notes
-- This skill produces a plan, not code changes. Pair it with normal editing tools once the plan is confirmed by the user.
+- Do not create a planning Markdown file unless requested; keep the plan in the conversation.
 - For items already tracked as GitHub Issues, prefer quoting/extending the existing "Implementation targets" / "Next steps" bullets from the issue body with concrete file-level steps rather than rewriting them from scratch.
 - If the item is purely a documentation/process task, the "Plan" section should describe doc edits (scoped per `docs/DOCUMENTATION_STANDARDS.md`) rather than code changes.

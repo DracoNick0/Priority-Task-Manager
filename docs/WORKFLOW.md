@@ -18,12 +18,24 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 3.  **Update Documentation**: If you or the AI refactor code, you **must** update the corresponding documentation. The AI is instructed to help with this.
 4.  **Testing**: Use focused tests for deterministic core behavior and deterministic scenario-based invariant tests for scheduling algorithms (see `TESTING_STRATEGY.md`).
 
+### Plan-Proceed-Review Workflow
+
+For Copilot-assisted issue, feature, or fix work, plan first and implement one reviewable segment at a time. A request to implement still starts with a plan; the contributor can explicitly ask to skip these checkpoints.
+
+1. **Plan:** Read the issue and check its prerequisites when provided. For a standalone request, clarify the intended outcome and acceptance criteria when needed. Consult the relevant status and architecture guidance before implementation.
+2. **Define segments:** Present an ordered set of coherent, commit-worthy outcomes. Each segment should remain understandable and buildable after its prerequisites, and include acceptance criteria, focused automated checks, and manual user-test steps when the behavior is user-observable. If no useful split exists, use one segment rather than fragmenting by file or size.
+3. **Wait for `proceed`:** Do not start implementation after presenting the plan. Each `proceed` authorizes exactly the next segment.
+4. **Implement and verify one segment:** Change only that segment, keep its implementation, tests, and relevant documentation together, and run its targeted checks. Report the changes, validation results, and manual test steps where useful. If a segment is not meaningfully user-testable, say why and report its automated checks.
+5. **Stop for review:** Wait for the contributor to review or test the segment. If they give feedback, revise and revalidate the current segment before advancing. Start the next segment only after another `proceed`.
+
+Segments are prepared for independent review and possible commits, but `proceed` is not permission to stage or commit. The contributor controls when commits are made.
+
 ## Standard Workflow
 
 1.  **Select a Task**: Choose the highest-priority open GitHub Issue that has not yet been completed.
 2.  **Understand the Goal**: Read the task description and analyze the relevant parts of the codebase. Refer to `docs/ARCHITECTURE.md` and `docs/STATUS.md` to understand how the feature fits into the overall system.
-3.  **Implement the Changes**: Write the necessary code, following the established patterns.
-4.  **Build and Verify**: Ensure the project builds and runs without errors.
+3.  **Implement the Changes**: Write the necessary code, following the established patterns. For AI-assisted issue, feature, or fix work, follow the Plan-Proceed-Review workflow above.
+4.  **Build and Verify**: Ensure the project builds and runs without errors; AI-assisted work should verify each segment before presenting it for review.
 5.  **Update Documentation**: If the changes affect the architecture, workflow, or status, update the relevant `.md` files in the `docs/` folder.
 6.  **Update the GitHub Issue**: Mark the issue as complete or update its status.
 7.  **Commit**: Review the staged diff and write a clear Conventional Commit message describing the outcome. Choose one commit or a split based on useful review boundaries, not a fixed size target. Keep tests and documentation with the behavior they verify or describe. See the [commit-message skill](../.github/skills/commit-message/SKILL.md) for detailed boundary and message guidance.
