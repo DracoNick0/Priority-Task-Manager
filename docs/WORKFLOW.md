@@ -7,7 +7,7 @@ This document outlines the standard workflow for contributing to the Priority Ta
 -   **Task-Driven Development.** All work should be guided by a task list, tracked as GitHub Issues in this repository.
 -   **Architecture First.** Before implementing a new feature, refer to `docs/ARCHITECTURE.md` to understand the existing design patterns and ensure your changes are consistent with the project's structure.
 -   **Check the Status.** For a high-level overview of the project's current capabilities and state, refer to `docs/STATUS.md`.
--   **Small, iterative changes.** Prefer small, well-defined commits over large, monolithic ones.
+-   **Reviewable commits.** Keep each commit focused on one coherent outcome, with its implementation, tests, and relevant documentation together. Split independent changes only when each resulting commit remains meaningful and reviewable; do not split solely by file, project, or line count.
 
 ## Working with AI Assistants
 
@@ -16,7 +16,7 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 1.  **Reference Definitions**: Use the terms defined in `ARCHITECTURE.md` (e.g., "Ask the TaskRankingStage to...", not "Ask the thing that puts tasks on the calendar").
 2.  **Consult Documentation First**: As per `copilot.instructions.md`, always ask the AI to verify its plan against `ARCHITECTURE.md` and `STATUS.md`.
 3.  **Update Documentation**: If you or the AI refactor code, you **must** update the corresponding documentation. The AI is instructed to help with this.
-4.  **Hybrid Testing**: Instruct the AI to use strict TDD for deterministic core services, but use exploratory spiking and property-based invariant testing for scheduling algorithms (see `TESTING_STRATEGY.md`).
+4.  **Testing**: Use focused tests for deterministic core behavior and deterministic scenario-based invariant tests for scheduling algorithms (see `TESTING_STRATEGY.md`).
 
 ## Standard Workflow
 
@@ -26,7 +26,7 @@ When using AI tools (GitHub Copilot, etc.) to contribute to this project:
 4.  **Build and Verify**: Ensure the project builds and runs without errors.
 5.  **Update Documentation**: If the changes affect the architecture, workflow, or status, update the relevant `.md` files in the `docs/` folder.
 6.  **Update the GitHub Issue**: Mark the issue as complete or update its status.
-7.  **Commit**: Write a clear and concise commit message describing the changes.
+7.  **Commit**: Review the staged diff and write a clear Conventional Commit message describing the outcome. Choose one commit or a split based on useful review boundaries, not a fixed size target. Keep tests and documentation with the behavior they verify or describe. See the [commit-message skill](../.github/skills/commit-message/SKILL.md) for detailed boundary and message guidance.
 
 ## Building and Running the Application
 
@@ -95,10 +95,15 @@ To point a local Flutter build at the hosted production API instead of a local o
 
 ## Testing
 
-The project `PriorityTaskManager.Tests/` contains the unit tests for the core library.
-The archived CLI test sources are preserved but excluded from this active test project.
+The active .NET tests are under `PriorityTaskManager.Tests/` and cover core services, scheduling, and API contracts; archived CLI test sources are excluded. The Flutter client has a separate suite under `PriorityTaskManager.Flutter/test/`.
 
 To run the tests:
 ```bash
 dotnet test
+```
+
+From the Flutter package directory, run:
+```bash
+flutter analyze
+flutter test
 ```

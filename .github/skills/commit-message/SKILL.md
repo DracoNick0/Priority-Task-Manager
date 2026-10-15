@@ -1,65 +1,89 @@
 ---
 name: commit-message
-description: "Generate a clean conventional commit message from staged git changes. Use when you want a commit title, optional body, or a quick commit-message review based on changes."
+description: "Analyze staged or unstaged changes, reason about cohesive commit boundaries, and write clear Conventional Commit messages. Use when planning or splitting commits, writing a commit message, or reviewing a proposed commit plan."
 argument-hint: "optional context, commit scope, or special constraints"
 user-invocable: true
 disable-model-invocation: false
 ---
 
-# Conventional Commit Message Generator
+# Commit Planning and Message Review
 
-Use this skill when the user wants a commit message derived from git changes.
-It should inspect staged content first.
-If there are no staged changes, inspect unstaged content.
+Use this skill to recommend the smallest useful set of coherent commits and write a clear Conventional Commit message for each.
+
+This skill is advisory. Inspect and recommend only; do not stage files, create commits, amend commits, or rewrite history.
 
 ## When to Use
-- The user asks for a commit message, summary, or changelog entry for staged changes
-- The user wants the message to follow Conventional Commits
-- The user wants help choosing the right commit type or scope
+
+- The user asks for a commit message, summary, or changelog entry based on changes.
+- The user asks what to commit, how to split changes, or whether a proposed commit is cohesive.
+- The user wants a Conventional Commit message or a review of commit boundaries.
 
 ## Procedure
-1. Inspect the staged changes first.
-   - Prefer `git diff --cached --stat` and `git diff --cached --name-only` for a quick overview.
-   - Use `git diff --cached` when you need detail.
-   - If there are no staged changes, inspect unstaged changes with `git diff --stat`, `git diff --name-only`, and `git diff`.
-   - If staged changes exist, ignore unstaged changes unless the user says otherwise.
-2. Decide whether the inspected changes belong in one commit or should be split.
-   - Keep a cohesive change together, including its implementation, tests, and documentation.
-   - Recommend separate commits for independent changes with distinct purposes; do not split only because files or project areas differ.
-   - For each proposed commit, map the changed files to that commit. If changes in one file belong to different commits, identify the relevant changed line ranges or hunks.
-3. Identify the primary purpose and Conventional Commit type for each proposed commit.
+
+1. **Establish the exact change set.**
+   - Run `git status --short` to distinguish staged, unstaged, and untracked changes.
+   - If any changes are staged, inspect the staged changes first with `git diff --cached --stat`, `git diff --cached --name-only`, and focused parts of `git diff --cached`. By default, do not include unstaged or untracked changes in that proposal; call out that they were excluded.
+   - If nothing is staged, inspect the unstaged tracked changes with `git diff --stat`, `git diff --name-only`, and focused parts of `git diff`. Inspect untracked files only when the user wants the full working-tree change set or asks to include them.
+   - For a large diff, inspect relevant files and hunks selectively. Do not infer intent from filenames alone.
+
+2. **Identify intent and dependencies.**
+   - Summarize the user-visible or maintenance outcome the changes deliver.
+   - Inspect enough surrounding code, tests, and documentation to understand how the changes depend on one another.
+   - Separate the requested work from unrelated pre-existing changes. Do not silently absorb unrelated files into a proposal.
+   - If changes in one file serve different purposes, identify the distinct hunks or line ranges.
+
+3. **Reason about commit boundaries before writing messages.**
+   - Recommend **one commit** when the implementation, tests, and relevant documentation support one cohesive outcome and would be harder to understand or validate separately.
+   - Recommend a **split** when there are independent purposes or behavior changes that can be reviewed, tested, reverted, or released separately, or when a sequence of meaningful, buildable steps improves review.
+   - Explain why each proposed boundary is useful. When commits depend on one another, state their order and dependency.
+   - Keep tests with the implementation they verify and documentation with the behavior it describes, unless either is an independent change in its own right.
+   - Do not split solely by file, directory, language, project, or line count. A cross-layer feature can belong in one commit; split it only when the slices have distinct review value and remain coherent.
+   - Prefer each proposed commit to leave the repository buildable and understandable. If a clean split would create an incomplete or misleading commit, recommend one cohesive commit instead.
+   - If the intent or boundary is genuinely ambiguous after inspecting the changes, ask one focused question before finalizing the plan.
+
+4. **Choose the Conventional Commit type and scope for each proposed commit.**
    - `feat` for a new capability
    - `fix` for a bug fix
    - `refactor` for code changes that do not alter behavior
    - `docs` for documentation-only changes
-   - `test` for test-only changes
+   - `test` for an independent test-only change
    - `chore` for maintenance work
    - `perf` for performance improvements
    - `build` for build or dependency changes
    - `ci` for CI configuration changes
    - `revert` for a revert
-4. Choose a scope only when it is obvious and useful.
-   - Prefer a stable subsystem, package, or folder name
-   - Omit the scope when the change spans multiple areas or the scope is unclear
-5. Write each subject line in imperative mood.
-   - The subject line must always start with `type:` or `type(scope):` (per Conventional Commits) — never omit the type prefix, even in a quick draft or a follow-up revision
-   - Keep it lowercase after the type and scope
-   - Keep it concise and specific
-   - Avoid trailing punctuation
-   - Aim for 50 characters or fewer when possible, and keep it under 72 characters unless the change truly needs more
-6. Add a short body only when it clarifies intent.
-   - Explain why the change exists, not a line-by-line recap
-   - Mention user-visible behavior, tradeoffs, or migration notes
-   - Keep it short and factual
-7. If the intent or commit boundaries are still ambiguous after reviewing the inspected diff, ask one focused clarifying question before finalizing the recommendations.
+   - Choose a scope when it names a useful, stable subsystem; omit it when the change spans areas or the scope is unclear.
+
+5. **Write a specific subject for each commit.**
+   - Start with `type:` or `type(scope):`.
+   - Use imperative mood and describe the actual outcome, not the editing activity.
+   - Keep the subject lowercase after the type and scope, concise, and without trailing punctuation. Aim for 50 characters or fewer when practical; keep it under 72 unless the change genuinely needs more.
+   - Avoid vague subjects such as `updated`, `misc`, or `fix stuff`.
+   - For a breaking change, mark it in the subject with `!` and explain the compatibility impact in the body.
+
+6. **Add a body only when it clarifies intent.**
+   - Explain why the change exists, not a line-by-line recap.
+   - Mention user-visible behavior, important invariants, trade-offs, or migration/compatibility notes when relevant.
+   - Keep it short and factual. Do not claim that tests ran unless the available evidence confirms it.
+
+7. **Map and verify the proposed plan.**
+   - For one commit, state why the change is cohesive.
+   - For a split, list commits in dependency order and assign every included file or relevant hunk to exactly one commit.
+   - Include tests and documentation in the appropriate commit. Give line ranges only when needed to distinguish hunks within a file.
+   - Check that the proposal does not omit relevant changes, duplicate files across commits without explanation, or split work without a review or validation benefit.
 
 ## Output Format
-Return a concise commit plan that recommends one commit or a split. For every proposed commit, include a complete Conventional Commit message and the files it affects. Include changed line ranges only when they are needed to distinguish partial-file changes or clarify the mapping.
+
+Start with `Recommendation: One commit` or `Recommendation: Split into N commits`, followed by a concise rationale for the boundary decision.
+
+For every proposed commit, include its order if relevant, complete Conventional Commit message, intent/body when useful, and affected files. For a split, briefly explain dependencies between commits.
 
 Example:
 
 ```text
 Recommendation: Split into 2 commits
+
+Rationale: The scheduler fix and API development-account update have independent purposes and can be reviewed and reverted separately. Keep the scheduler test with the behavior it verifies.
 
 Commit 1
 fix(scheduler): preserve the active snapshot after cleanup
@@ -78,10 +102,13 @@ Files affected:
 ```
 
 ## Quality Check
-Before finishing, verify that the message:
-- Recommends one commit for a cohesive change, or explains a useful split for independent changes
-- Includes a Conventional Commits message and affected-file list for every proposed commit
-- Includes line ranges only where needed to identify the affected part of a file
-- Gives each message a correct type and sensible scope
-- Keeps each subject concise, imperative, and specific
-- Uses staged changes when present, otherwise unstaged changes
+
+Before responding, verify that the recommendation:
+
+- Explains why one commit or a split is the better boundary; it does not force a split to meet a size target.
+- Keeps each commit cohesive and accounts for all included files or relevant hunks exactly once.
+- Keeps implementation-specific tests and documentation with the change they verify or describe.
+- States commit order when dependencies exist and avoids proposing misleading or incomplete intermediate commits.
+- Uses a correct Conventional Commit type, a useful scope, and a concise, imperative subject for each commit.
+- Uses a body only when it adds intent or compatibility context.
+- Distinguishes observed test evidence from tests that merely appear in the diff.
