@@ -18,6 +18,6 @@ This guide provides a standardized way to quantify task complexity on a scale of
 | **9-10**| **Severe** | Full cognitive load. "Flow state" required. Research heavy or high risk. | • Distributed system architecture <br>• Debugging intermittent race condition <br>• Cryptography implementation | • Legal defense strategy <br>• Advanced scientific research <br>• Writing a book chapter |
 
 ## Usage in Priority Task Manager
-When inputting complexity for the `WorkloadBalancingStage`:
-*   **10** will be treated as a "Primary Focus" for the day. The user should not have many of these back-to-back.
-*   **1** is treated as "Filler" that can be slotted into small gaps or tired periods.
+Complexity is used by the scheduling engine (such as in `DailySequencingStage` in Gold Panning) for energy management and intraday task ordering:
+*   **High Complexity (7-10)**: Demands peak cognitive focus ("Flow state"). When deadlines are satisfied, higher-complexity tasks are sequenced earlier in the workday when mental energy is highest.
+*   **Low Complexity (1-3)**: Routine or filler work that can be scheduled later in the day as energy wanes, or slotted into smaller available gaps.

@@ -11,8 +11,8 @@ The active system is organized around the core library, API, and Flutter client:
 | Project | Responsibility |
 | --- | --- |
 | `PriorityTaskManager/` | Core models, services, persistence, and scheduling logic |
-| `PriorityTaskManager.API/` | Authenticated REST endpoints wrapping core services for networked clients |
-| `PriorityTaskManager.Flutter/` | Flutter web/desktop client; local-only (offline/guest) for the MVP shell, with its own `TaskRepository` abstraction (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) |
+| `PriorityTaskManager.API/` | Authenticated account, task, list, event, profile, and archive endpoints backed by core services and account-scoped Postgres, plus stateless schedule computation |
+| `PriorityTaskManager.Flutter/` | Flutter web and Windows desktop client with Guest-local and Authenticated API-backed repositories, plus an API-backed schedule repository (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) |
 | `PriorityTaskManager.Tests/` | Tests for core behavior, scheduling, and API behavior |
 | `PriorityTaskManager.CLI/` (archived) | Preserved source only; excluded from the active solution build and test suite |
 
@@ -33,26 +33,25 @@ The complete architecture should be understandable by reading this map plus all 
 ## System Boundaries
 
 - Core business logic lives in `PriorityTaskManager/`.
-- The API owns authenticated network access and account-scoped Postgres persistence; the Flutter client owns user interaction and local Guest data.
+- The API owns authenticated network access and account-scoped Postgres persistence for account data. Schedule computation is a separate stateless route that accepts a client-supplied snapshot and does not read or write account persistence.
+- The Flutter client owns user interaction and selects local Hive storage for Guests or API-backed storage for authenticated sessions. It requests schedule computation separately through the API.
 - The CLI source is archived and is not an active client or supported product surface.
-- Scheduling behavior is selected through `UserProfile.SchedulingMode` and executed through `IUrgencyStrategy`.
+- Core resolves the effective scheduling mode from profile defaults and list-scoped settings, then delegates computation through `IUrgencyStrategy`.
 - External integrations are planned but not currently implemented; integration design should preserve the core/client separation.
 
 ## Runtime Data Flow
 
-1. The Flutter client starts in Guest or authenticated mode and selects the corresponding task repository.
-2. Guest task/list/event changes use local Hive storage; authenticated account operations call the API.
-3. The API authenticates and scopes account operations, then calls core services backed by Postgres.
-4. Authenticated schedule requests call the selected `IUrgencyStrategy` through the API; the Flutter client renders returned schedules, while Guests see a plain task list.
+1. The Flutter client selects local storage for Guest mode or the API-backed repository for an authenticated session.
+2. Guest task, list, event, and profile changes stay in Hive; authenticated account operations use the API and account-scoped Postgres persistence.
+3. For authenticated sessions, Flutter sends tasks, events, the effective profile, and optional simulated time to `/api/schedule`; successful computation requires the Subscription tier. The API computes a schedule with the selected strategy and returns it without reading or writing account persistence.
+4. Guests do not use online scheduling; they see a sortable task list and events instead of a computed schedule.
 
 ## Architectural Invariants
 
 - Core must not reference client presentation concerns.
 - Client code must not duplicate business scheduling logic.
 - Active user flows must provide clear success, warning, or actionable error feedback.
-- Current behavior claims must match observable code paths and current status documentation.
-- Gold Panning stage order must match the active stage chain in code.
-- Scheduling invariants documented as correctness rules must not be weakened to match defective implementation behavior.
+- Gold Panning stage order and scheduling correctness invariants are defined in [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md); implementation defects do not justify weakening them.
 
 ## Related Specifications
 

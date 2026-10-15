@@ -1,11 +1,13 @@
-# Scheduling System Specification
+# Scheduling System Specification: Constraint Solver
+
+> **Status:** Planned Strategy Specification. The Constraint Solver is routed as a scheduling mode but is not yet implemented in the active runtime path; Gold Panning is the active strategy. See [STATUS.md](STATUS.md) and [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md).
 
 ## 1. Purpose
-This document defines the complete scheduling design for the **Constraint Solver** strategy.
+This document defines the scheduling design and intended contract for the **Constraint Solver** strategy.
 
 It consolidates requirements, algorithm behavior, workflow stages, agent responsibilities, data contracts, preference effects, fallback behavior, and expected outputs.
 
-This is the implementation source of truth for the `ConstraintOptimizationStrategy` class and its dependencies.
+This serves as the design specification for the future `ConstraintOptimizationStrategy` implementation under `PriorityTaskManager/Scheduling/Optimization/**`.
 
 *Note: This specification does not apply to the `GoldPanning` strategy document and pipeline rules.*
 
@@ -440,8 +442,8 @@ Mitigation:
 7. Merge to shared branch only after acceptance criteria are met.
 
 ## 20. Related Documents
-- [docs/SCHEDULING_DISCUSSION_NOTES.md](docs/SCHEDULING_DISCUSSION_NOTES.md)
-- [docs/RFC_SOLVER_MIGRATION.md](docs/RFC_SOLVER_MIGRATION.md)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/STATUS.md](docs/STATUS.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md)
+- [GOLD_PANNING.md](GOLD_PANNING.md)
+- [STATUS.md](STATUS.md)
 - Repository GitHub Issues

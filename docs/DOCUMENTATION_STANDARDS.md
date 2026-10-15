@@ -17,26 +17,13 @@ This document defines documentation structure, ownership, style, verification, a
 - Separate current behavior from future plans.
 - Treat documentation as part of the product surface.
 
-## Canonical Ownership Matrix
-| Topic | Canonical Document | Notes |
-| --- | --- | --- |
-| Project entry and navigation | README.md | High-level orientation only |
-| Long-term vision and desired outcome | docs/VISION.md | Direction and intent only; not current status |
-| Intended user-facing behavior | docs/PRODUCT_BEHAVIOR_SPECIFICATION.md | Target behavior and acceptance criteria; open decisions remain explicit |
-| Architecture map and shared boundaries | docs/ARCHITECTURE.md | Entry point for architecture reading paths |
-| Archived CLI reference | docs/ARCHITECTURE_CLI.md | Historical command handling and rendering boundaries; consult only when restoring the CLI |
-| Core business logic architecture | docs/ARCHITECTURE_CORE.md | Core services and business-rule placement |
-| Data and persistence architecture | docs/ARCHITECTURE_DATA.md | Models, JSON persistence, IDs, and list-scoped settings |
-| Scheduling architecture | docs/ARCHITECTURE_SCHEDULING.md | Strategy selection, scheduling stages, and scheduler invariants |
-| Integrations architecture | docs/ARCHITECTURE_INTEGRATIONS.md | Future API, provider, intake, and front-end boundaries |
-| Current behavior and maturity | docs/STATUS.md | Current state only |
-| Contributor process | docs/WORKFLOW.md | Process and workflow only |
-| Testing strategy | docs/TESTING_STRATEGY.md | Test philosophy and approach |
-| Gold Panning strategy details | docs/GOLD_PANNING.md | Algorithm-specific details |
-| Constraint Solver spec | docs/CONSTRAINT_SOLVER.md | Specification and intended contract |
-| Complexity scale semantics | docs/COMPLEXITY_GUIDE.md | Stable scoring reference |
-| Documentation ownership map | docs/DOC_INDEX.md | Documentation navigation and scope map |
-| Controlled vocabulary | docs/TERMINOLOGY.md | Canonical terms and aliases |
+## Canonical Ownership
+The canonical owner for every document and topic is defined in [DOC_INDEX.md](DOC_INDEX.md). If a topic is discussed in multiple documents, [DOC_INDEX.md](DOC_INDEX.md) governs which document is authoritative.
+
+Every document belongs to one of three categories defined in [DOC_INDEX.md](DOC_INDEX.md):
+- **Core Documents**: High-level orientation, vision, user behavior, architecture map, and current status.
+- **Supporting Documents**: Deep-dives into subsystems (focused architecture, algorithms, integration, testing, workflow).
+- **Long-Lived Knowledge Documents**: Stable rules, standards, and terminology.
 
 ## Required Structure by Document Type
 ### README
@@ -137,7 +124,7 @@ Must not include:
 - Keep section heading order stable once established.
 - Prefer tables for lists of commands, statuses, mappings, and ownership.
 - Use explicit labels: Current State, Planned Work, Assumption, Invariant.
-- Use explicit TODO labels for active work: Status, Completed, Remaining, Blockers / Dependencies, Next steps.
+- Do not maintain active work lists, task checklists, or sprint to-dos in documentation files; track active and planned work exclusively in the repository's GitHub Issues.
 - Avoid unexplained acronyms and overloaded terms.
 
 ## Verification Requirements
@@ -163,12 +150,18 @@ Update docs whenever any of the following changes occur:
 - Keep shared architecture routing in docs/ARCHITECTURE.md and focused architecture contracts in the matching docs/ARCHITECTURE_*.md file.
 
 ## Common Mistakes and How to Avoid Them
-- Mixing roadmap plans into status:
-Move planned items to the repository's GitHub Issues and keep status strictly current.
-- Mixing implementation notes into architecture:
-Keep architecture at subsystem and contract level.
-- Using ambiguous terms inconsistently:
-Use docs/TERMINOLOGY.md as the source of truth.
+- Mixing roadmap plans or to-do lists into status or testing strategy:
+Move planned items and task lists to the repository's GitHub Issues; keep documentation durable and current.
+- Leaking internal implementation details into user status:
+Keep docs/STATUS.md strictly user-facing (observable capabilities, behavior, and limitations). Class names, method signatures, DTOs, and issue numbers belong in docs/ARCHITECTURE_*.md or code.
+- Treating archived components as active:
+The CLI is archived source. Do not represent it as an active client integration in docs/STATUS.md or as a routine test target in docs/TESTING_STRATEGY.md.
+- Placing operational deployment and run commands in architecture:
+Keep step-by-step build, run, and deployment commands in docs/WORKFLOW.md; keep architectural boundaries and tenancy models in docs/ARCHITECTURE_*.md.
+- Conflating session modes and subscription tiers:
+Strictly use canonical terms from docs/TERMINOLOGY.md to distinguish Guest mode (local-only, unauthenticated, Hive), Free accounts (authenticated, no subscription), and Subscription tier (authenticated entitlement for online scheduling).
+- Duplicating ownership matrices:
+docs/DOC_INDEX.md is the sole source of truth for topic and document ownership. Link to it rather than recreating ownership tables.
 - Leaving stale references after refactors:
 Run link and ownership sweeps during doc updates.
 

@@ -1,84 +1,49 @@
 # Core Business Logic Architecture
 
-This document defines the architecture for core services and business rules in `PriorityTaskManager/`.
+This document describes the service boundaries and business-rule placement in `PriorityTaskManager/`.
 
 ## Responsibilities
 
-The core library owns:
+The core library owns task, list, event, profile, account, and dependency operations; business validation; persistence coordination; and scheduling delegation. Time-dependent behavior uses the `ITimeService` abstraction where deterministic time is required.
 
-- Task, list, event, profile, and dependency operations.
-- Business validation and domain invariants.
-- Persistence coordination through `IPersistenceService`.
-- Scheduling strategy selection and delegation through `IUrgencyStrategy`.
-- Time-sensitive logic through `ITimeService` seams.
-
-The core library must not depend on front-end handlers, console helpers, rendering, or user-prompt behavior.
+Core must not depend on client interaction, presentation, rendering, console helpers, or client-specific result types.
 
 ## Key Services
 
-| Service | Responsibility |
+| Service or abstraction | Responsibility |
 | --- | --- |
-| `TaskManagerService` | Coordinates task/list/profile operations, recurring-task occurrence progress, missed-state transitions and scoped occurrence edits/deletes, active-list behavior, default application, and scheduling delegation; delegates event CRUD and archiving to dedicated services below through thin pass-through methods |
-| `TaskMetricsService` | Computes schedule-related metrics used by presentation and status indicators |
-| `EventService` | Owns CRUD and archive/restore operations for calendar events (self-contained; extracted from `TaskManagerService` per the growth criteria below) |
-| `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands a `RecurrenceRule` into concrete occurrence dates on demand for a caller-supplied range. Shared by recurring tasks and recurring events; the event scheduler expands blocking occurrences, while task progression stores state only for dates that have occurred or been acted upon. |
-| `RecurrenceSplitHelper` (`Services/Helpers`) | Implements the shared "this and following" split semantics for a recurring series (closes the prior series, starts a new one, partitions exceptions) |
-| `TimeService` / `ITimeService` | Provides current or simulated time for deterministic behavior |
-| `PersistenceService` / `IPersistenceService` | Reads and writes persisted state, including task and event archiving |
-| `DependencyGraphHelper` (`Services/Helpers`) | Computes dependency chains and detects circular dependencies for task updates |
+| `TaskManagerService` | Coordinates task, list, and profile operations; resolves effective list settings for scheduling; and delegates event operations to `EventService`. |
+| `EventService` / `IEventService` | Owns event operations, including occurrence expansion, scoped recurring-event changes, and archive/restore behavior. |
+| `TaskMetricsService` / `ITaskMetricsService` | Computes the target workday and task slack metrics, both work-hours-adjusted and actual. |
+| `AccountService` / `IAccountRepository` | Registers accounts and verifies credentials through a separate account-storage abstraction. Account identity is distinct from task/list/event persistence. |
+| `RecurrenceExpansionService` / `IRecurrenceExpansionService` | Expands recurrence rules into occurrence dates for a requested range; used by task and event operations and scheduling. |
+| `RecurrenceSplitHelper` | Shares "this and following" series-split semantics between recurring tasks and events. |
+| `DependencyGraphHelper` | Traverses task dependency relationships and detects cycles during task updates. |
+| `TimeService` / `ITimeService` | Supplies current or simulated time to time-dependent core behavior. |
+| `IPersistenceService` | Defines loading, saving, and archive operations independently of the host’s storage implementation. |
+| `ServiceComposer` | Builds the shared core service graph around a host-supplied `IPersistenceService`, including the runtime time service, task manager, and task metrics service. |
 
-## TaskManagerService Boundary
+For persisted data shapes and storage ownership, see [ARCHITECTURE_DATA.md](ARCHITECTURE_DATA.md). For scheduling strategy and algorithm contracts, see [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md).
 
-`TaskManagerService` is the core coordination layer. Add business operations here when they need to mutate or query persisted domain state across tasks, lists, events, or profiles.
+## Task Coordination Boundary
 
-Prefer existing service methods before adding duplicates. Important reusable responsibilities include:
+`TaskManagerService` coordinates operations involving tasks, lists, and profiles, and provides the core scheduling entry point. Scheduling uses the effective profile for the requested list and selects the strategy in core; clients should not duplicate strategy-selection conditionals. Event-specific operations are owned by `EventService` and exposed through the task manager where needed by existing callers.
 
-- Active list access through `GetActiveListId()` and related list methods.
-- Display-ID lookup through task lookup methods rather than duplicating display-ID resolution in handlers.
-- Effective scheduling profile resolution through `BuildEffectiveUserProfile(...)`.
-- List time preference application through `ApplyListTimePreference(...)`.
-- Dependency validation and cycle prevention through existing dependency helpers.
-- Recurring task mutations target the persisted series ID and original occurrence date; keep occurrence overrides, cancellation exceptions, and progression state partitioned consistently when splitting a series.
-- Undoing an occurrence action removes one completion step, or reopens a manually skipped occurrence as pending/missed; disregarded occurrences are progression outcomes rather than manual skips.
-
-## Avoiding Unbounded Service Growth
-
-`TaskManagerService` is intentionally the default coordination point, which makes it a natural place for unrelated responsibilities to accumulate over time. Use these criteria before adding to it:
-
-- Add a method to `TaskManagerService` when the operation coordinates across two or more of tasks, lists, events, or profiles, or when it must share the same persistence/transaction boundary as existing operations.
-- Prefer a dedicated service (following the existing `TaskMetricsService` pattern) when new behavior is self-contained, has its own cohesive data/computation (for example, metrics, reporting, or a future notification or import service), and does not need to mutate core domain state directly.
-- Do not grow `TaskManagerService` by adding formatting, console-facing, or presentation-shaping logic; that belongs in a front-end layer.
-- A new unrelated domain concern (not tasks, lists, events, profiles, or their direct coordination) is a signal to introduce a new service rather than extend `TaskManagerService`.
-
-For current backlog status on extracting existing responsibilities, see the repository's GitHub Issues.
+Add an operation to `TaskManagerService` when it coordinates two or more core areas or must share their persistence boundary. Prefer a focused service for self-contained behavior with cohesive data or computation that does not need to mutate core domain state directly, as with `EventService` and `TaskMetricsService`. Treat an unrelated domain concern as a signal to introduce a separate service. Do not add presentation logic to the task manager.
 
 ## Business Rule Placement
 
-- Put rules that must hold across all interfaces in core services or models.
-- Put client-specific usage guidance, prompt behavior, and output formatting in the corresponding front-end layer.
-- Put algorithmic placement, ranking, and scheduling decisions under `PriorityTaskManager/Scheduling/**`.
-- Put data shape and serialization behavior in models and persistence services.
-- Archive group membership belongs to persisted archive metadata: task cleanup batches share a group, and archived recurring-event occurrences/segments share their source series group. Group restoration validates all task destinations before mutating archive or active data.
+- Put rules that must hold across clients in core services or models.
+- Keep client interaction, prompt behavior, and output formatting in the relevant client.
+- Keep algorithmic placement, ranking, and scheduling decisions under `PriorityTaskManager/Scheduling/**`.
+- Keep data shape and serialization behavior in models and persistence services.
 
-## Dependency Relationships
+## Dependencies And Invariants
 
-Core services may depend on:
+Core services may depend on domain models and core abstractions such as `IUrgencyStrategy`, `IPersistenceService`, and `ITimeService`. They must not depend on archived `PriorityTaskManager.CLI` code, `Console`, or client-specific types.
 
-- Models in `PriorityTaskManager/Models`.
-- Scheduling abstractions such as `IUrgencyStrategy`.
-- Persistence abstractions such as `IPersistenceService`.
-- Time abstractions such as `ITimeService`.
-
-Core services must not depend on:
-
-- Archived `PriorityTaskManager.CLI` code.
-- `Console` or console helpers.
-- Client-specific command result types.
-
-## Invariants
-
-- Core operations should leave persisted IDs, display IDs, active-list state, and list-scoped settings consistent.
-- Core validation should throw specific exceptions or return explicit success/failure values that the calling client can translate into user feedback.
-- Time-sensitive behavior should use `ITimeService` rather than `DateTime.Now` when deterministic behavior matters.
-- Scheduling mode selection should route through `TaskManagerService` and `IUrgencyStrategy`, not through client-side conditionals.
-- New unrelated domain concerns should be added as a new focused service rather than expanding `TaskManagerService` indefinitely; see "Avoiding Unbounded Service Growth" above.
+- Core operations preserve domain and reference consistency and honor list-scoped settings.
+- Group restoration validates every task destination before changing archive or active data.
+- Validation reports failures explicitly, using specific exceptions or success/failure results for the caller to translate into user feedback.
+- Time-dependent behavior uses `ITimeService` where deterministic behavior matters.
+- Scheduling mode selection routes through core services and `IUrgencyStrategy`, not client-side conditionals.

@@ -1,24 +1,30 @@
 # Data And Persistence Architecture
 
-This document defines persisted data ownership, model boundaries, JSON storage, and list-scoped settings behavior.
+This document defines persisted data ownership, model boundaries, storage formats, and list-scoped settings behavior.
 
 ## Responsibilities
 
 Data and persistence architecture covers:
 
 - Domain models in `PriorityTaskManager/Models`.
-- The aggregate persisted state in `DataContainer`.
-- JSON-backed loading and saving through `PersistenceService`.
-- ID counters and active-list state.
+- The in-memory aggregate state in `DataContainer`.
+- API account and account-scoped Postgres persistence.
+- Guest-local Flutter Hive persistence.
+- The retained JSON-backed `PersistenceService`, used by archived CLI code and tests rather than the active clients.
+- Entity identities, the task display-ID counter, and client active-list state.
 - User profile defaults and list-scoped setting snapshots.
 
-## Persisted State
+## Data Ownership And Stores
 
-`DataContainer` is the in-memory aggregate loaded from and saved to JSON. It contains tasks, lists, events, user profile, the `NextDisplayId` counter, and the active list ID.
+`DataContainer` is the core in-memory aggregate for tasks, lists, events, user profile, the `NextDisplayId` counter, and `ActiveListId`. `IPersistenceService` has two implementations: the API uses `PostgresPersistenceService`, while the retained file-based `PersistenceService` is used by the archived CLI. Neither implementation saves `ActiveListId`; active-list selection is client state.
 
-Each task, list, and event has a globally unique `Guid` `Id` assigned at creation time (`Guid.NewGuid()`), which is the sole identity used for internal references (`TaskItem.ListId`, `TaskItem.Dependencies`, `DataContainer.ActiveListId`). `TaskItem.DisplayId` remains a separate, per-list sequential `int` shown to users in the CLI (e.g. `edit 3`, `depend 3 1`); it is not a unique identifier and is reassigned during re-indexing. `NextDisplayId` is the only remaining ID counter in `DataContainer`.
+| Store | Ownership and shape |
+| --- | --- |
+| API / Postgres | `PostgresAccountRepository` stores accounts in `accounts`. `PostgresPersistenceService` stores account-scoped JSONB documents in `persisted_documents`: `tasks`, `lists`, `events`, `user_profile`, `archive`, and `archive_events`. The first four hold active task/list/event/profile data; archives are separate documents. See [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md) for the API boundary. |
+| Flutter Guest / Hive | `LocalTaskRepository` stores task lists, tasks, profile, and events in the `task_lists`, `tasks`, `user_profile`, and `events` Hive boxes, creating a default list and profile when their boxes are empty. Guest data is local-only, not an API cache or synchronized account data. |
+| Retained JSON / archived CLI | `PersistenceService` reads and writes JSON files under its configured data directory. This implementation is not the active product's persistence path. |
 
-`PersistenceService` stores state in separate JSON files under the runtime data directory:
+The retained JSON implementation uses these files under its configured data directory:
 
 | File | Data |
 | --- | --- |
@@ -29,11 +35,13 @@ Each task, list, and event has a globally unique `Guid` `Id` assigned at creatio
 | `archive.json` | Archived tasks |
 | `archive_events.json` | Archived events and recurring-series segments |
 
-Archived tasks and events carry an optional `ArchiveGroupId`; items without one and single-item groups are displayed as individual archive entries. A task cleanup batch shares one ID, while recurring-event occurrences and split series segments use their source series ID. Active entities clear the archive-only ID when restored.
+The API account rows are separate from the per-account `persisted_documents` rows. The Postgres document payloads use JSON serialization of the same core models; unlike the retained JSON-file loader, the Postgres loader does not run the legacy integer-ID migration.
 
-The archived CLI's JSON files hold a single local user's data and have no account concept; this persistence path is not part of the active product. `PriorityTaskManager.API`'s Postgres-backed `PostgresPersistenceService` (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)) scopes every document row by `account_id` instead. Do not preserve or extend CLI JSON compatibility for new work unless the CLI is explicitly restored.
+Archived tasks and events may carry an `ArchiveGroupId` to group related entries, such as a task cleanup batch or recurring-event series segment. Restored active entities clear this archive-only ID. API archive documents are account-scoped in Postgres; Guests cannot archive, so Guest deletion is permanent.
 
-The Flutter client's Hive store is the local source of truth for Guest task/list/event CRUD, while authenticated account data is served through the API and persisted in Postgres. Any future sync design must explicitly define reconciliation between local and server data instead of treating local data as a disposable cache. This keeps the "local-first data ownership" desired end state in [docs/VISION.md](VISION.md) true as the product evolves.
+Guest events have a list association in Hive. The Core `Event` model and API event documents are account-scoped, not list-scoped; event list ownership therefore does not round-trip through authenticated storage. Guest data is separate from account data, so any future sync must define reconciliation rather than treat the local store as a disposable cache.
+
+Core assigns each task, list, and event a `Guid` `Id` when created; the Guest Hive repository generates UUIDs for Guest entities. IDs support references such as `TaskItem.ListId` and `TaskItem.Dependencies`; Flutter represents them as strings. `TaskItem.DisplayId` is a separate integer, allocated by Core from the shared `DataContainer.NextDisplayId` counter and exposed in the API response. It is not an entity identity and clients must not use it for references or generate it.
 
 ## Model Boundaries
 
@@ -55,9 +63,9 @@ The Flutter client's Hive store is the local source of truth for Guest task/list
 
 ### RecurrenceRule Polymorphic Shape
 
-`RecurrenceRule` and `RecurrenceEndCondition` are each modeled as an abstract base plus sealed derived classes (one per pattern/end-condition kind: `DailyIntervalRecurrenceRule`, `WeeklyRecurrenceRule`, `MonthlyOnDaysRecurrenceRule`, `MonthlyRelativeRecurrenceRule`, `YearlyRecurrenceRule`, `ExplicitDatesRecurrenceRule`; `NeverEndCondition`, `AfterOccurrencesEndCondition`, `UntilDateEndCondition`), serialized with `System.Text.Json`'s `[JsonPolymorphic]`/`[JsonDerivedType]` attributes and a short string type discriminator. This was chosen over one flat class with nullable fields per pattern so each persisted instance only serializes the fields its own pattern actually uses (lower storage cost) and new pattern/end-condition kinds are additive (a new derived class, no changes to existing stored rows). `IRecurrenceExpansionService`/`RecurrenceExpansionService` expands a rule on demand into concrete occurrence dates for a caller-supplied range. Recurring task dates are not persisted as task rows; the series retains generated occurrence states (completion progress, missed/completed/skipped/disregarded status, and completion time), cancellation exceptions, and editable occurrence overrides. The task also persists required completion count, progression mode, missed-indicator preference, and optional current/best streak. `TaskProgressionMode` governs sequential catch-up, roll-forward with backlog, or roll-forward with disregard. Projected occurrence responses have stable derived IDs for scheduler transport, but mutations always target the persisted series ID and original recurrence date. `TaskItem` and `Event` remain flat classes; each carries its own additive recurrence/exception/override properties.
+`RecurrenceRule` and `RecurrenceEndCondition` are abstract polymorphic hierarchies serialized by `System.Text.Json` with string type discriminators. Derived types represent recurrence patterns and end conditions, allowing each persisted rule to contain only its relevant fields. Occurrence dates are expanded on demand for a bounded range; projected occurrences are not persisted as task or event rows.
 
-Per-occurrence edit/delete (`RecurrenceEditTarget.ThisOccurrence`/`ThisAndFollowing`/`AllOccurrences`) stores task and event cancellations/edits against the original recurrence date, even when the displayed due date or event time moves. Task occurrence edits are coordinated by `TaskManagerService`; event edits are owned by `EventService`. `RecurrenceSplitHelper.Split` closes the prior series at the previous date and subtracts its generated occurrences from a count-limited new series. A task's this-and-following edit partitions occurrence states, cancellations, and overrides between the old and new series. Editing the future segment creates a new series with its own `SeriesId`; deleting it closes the prior series without creating a replacement. At the first actual occurrence, the old row is updated or removed rather than leaving an empty series. An optional replacement rule starts at the selected date for a future edit. Expanded occurrences are read on demand for a bounded date window and carry their original date separately from displayed dates; they are not persisted as rows. The Flutter client sends that original date to authenticated task/event occurrence routes with an edit target.
+Recurring task series persist per-date progress and status, cancellation exceptions, and editable overrides, plus progression settings and optional streak data. Recurring events persist cancellation exceptions and editable occurrence overrides. Mutations address the series and the original recurrence date, even when an override moves the displayed task date or event time. A "this and following" edit splits a series; task occurrence state, exceptions, and overrides are partitioned between the old and new series. Projected task IDs are transport identifiers, not persisted identities.
 
 ## List-Scoped Settings
 
@@ -65,36 +73,34 @@ Lists carry copied settings so each active list can diverge from global defaults
 
 The intended behavior is:
 
-1. New lists copy missing defaults from `UserProfile` through `TaskList.ApplyDefaultsFrom(...)` and service setup.
+1. New lists copy missing defaults from `UserProfile`; explicit list values remain independent.
 2. Later global default changes do not retroactively rewrite existing list settings.
-3. `TaskManagerService.BuildEffectiveUserProfile(...)` resolves list settings into the effective profile for scheduling and dashboard logic.
-4. `TaskManagerService.ApplyListTimePreference(...)` applies list-specific simulated time when switching lists.
+3. Core resolves list settings over global defaults for scheduling. List-specific simulated time is applied when the active list changes.
 
 When adding settings, update the model, copy/default behavior, effective profile resolution, persistence expectations, active client editing flows, and focused tests together.
 
 ## Persistence Principles
 
-- Use `IPersistenceService` for persistence boundaries rather than reading or writing JSON from handlers or scheduling stages.
+- Use `IPersistenceService` for core persistence boundaries rather than reading or writing storage directly from handlers or scheduling stages. The API's active implementation is `PostgresPersistenceService`; do not add behavior to the archived JSON path unless restoring the CLI is explicitly requested.
 - Keep serialization shape changes intentional and covered by tests when existing data compatibility matters.
-- Preserve the `NextDisplayId` counter when adding or deleting items; do not infer new IDs in client code. Real `Id` values (tasks, lists, events) are always generated via `Guid.NewGuid()` at creation time in `TaskManagerService`/`EventService`, never assigned by a client.
+- Preserve `NextDisplayId` when adding or deleting tasks; do not infer display IDs in client code. Core generates IDs for authenticated entities, while the Guest Hive repository generates local UUIDs.
 - Keep persistence ignorant of console/UI behavior.
-- `PersistenceService.LoadData()` fails soft per file: if a single JSON file (tasks/lists/events/user profile) is missing, empty, or unreadable, that file's data resets to its default and a descriptive message is recorded in `DataContainer.LoadWarnings` instead of being silently discarded. Other files still load normally.
-- `PersistenceService.LoadData()` also transparently migrates JSON files still using the legacy `int`-based `Id` shape (from before the Guid identity migration) to the current `Guid` shape: lists are migrated first (building an old-int-Id → new-Guid map), then tasks (remapping `ListId` and `Dependencies` via that map plus a task-specific map), then events (self-contained, no cross-references). Each migrated file adds a `DataContainer.LoadWarnings` entry noting the migration. See `PersistenceService.IsLegacyIntIdShape`/`MigrateLegacyLists`/`MigrateLegacyTasks`/`MigrateLegacyEvents`.
-- `DataContainer.LoadWarnings` is populated only by `LoadData()` and is not itself persisted to disk; the archived CLI (`Program.cs`) prints any warnings once at startup.
-- `PersistenceService.SaveData()` writes each of the 4 files atomically (write to a `.tmp` file in the same directory, then `File.Replace`/`File.Move` into place) so a crash or interruption mid-save cannot leave a destination file partially written.
+- The retained JSON loader uses defaults for missing core-data files. An unreadable core-data file resets that file's data and adds a transient `DataContainer.LoadWarnings` entry; other files still load. The archived CLI prints these warnings at startup.
+- The retained JSON loader migrates legacy integer task, list, and event IDs to `Guid`s, remapping task list and dependency references. Postgres JSONB loading does not run this migration.
+- The retained JSON saver writes its four core-data files atomically via a temporary file. This guarantee does not describe Postgres writes.
 
 ## Schema Evolution Guidance
 
-There is currently no versioning field or migration pipeline for the JSON files `PersistenceService` reads and writes. When changing persisted shape:
+Neither the retained JSON files nor Postgres JSONB documents carry an explicit schema version. The JSON loader has a specific migration for legacy integer IDs; Postgres and Hive have no general migration pipeline. When changing persisted shape:
 
-- Prefer additive, optional changes (new nullable/defaulted properties) over renaming or removing existing properties, so older JSON files still deserialize.
-- If a change is not additive (rename, type change, removed field, restructured container), add explicit load-time migration logic in `PersistenceService` rather than assuming a clean data directory, and cover it with a test that loads a fixture representing the pre-change shape.
-- Treat a breaking, non-additive change to persisted shape as a documentation trigger: update this document and `docs/STATUS.md` describing the new shape and any migration behavior.
-- There is no schema/version marker in the persisted JSON files today; non-additive changes rely on `PersistenceService` migration logic described above rather than a version check.
+- Prefer additive, optional changes (new nullable/defaulted properties) over renaming or removing existing properties, so previously stored JSON can still deserialize.
+- For a non-additive change, define and implement a migration/compatibility path for every affected store (Postgres JSONB, Hive, and retained JSON files where applicable) and cover it with tests using pre-change data.
+- Treat a breaking persisted-shape change as a documentation trigger: update this document and `docs/STATUS.md` with the new shape and migration behavior.
 
 ## Invariants
 
 - `DataContainer` should always have at least one task list after service initialization.
 - `ActiveListId` should refer to an existing list after default setup.
-- `NextDisplayId` should remain a monotonic per-list-scoped counter for new task display IDs. Task, list, and event `Id` values are `Guid`s generated at creation time and require no counter.
+- `NextDisplayId` should remain a monotonically increasing shared counter for new task display IDs. Task, list, and event `Id` values are `Guid`s generated at creation time and require no counter.
 - List-scoped settings should not unexpectedly mutate global defaults or unrelated lists.
+- Authenticated event persistence is account-scoped and not list-scoped; changes to this boundary must be coordinated with client behavior and documented explicitly.

@@ -31,28 +31,24 @@ Large/Important items are more likely to get caught in the riffles.
 
 ## 3. The Execution Flow (The Stage Pipeline)
 
-The "Gold Panning" strategy is implemented via a series of stages, each performing a distinct step in the process. A central `SchedulingContext` object is passed from one stage to the next.
+The "Gold Panning" strategy is executed as a 6-stage pipeline over a shared `SchedulingContext` (see [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md) for architectural contracts and invariants):
 
-### Step 1: The Sort (The Sift) - `TaskRankingStage`
-First, we sort all active tasks by their "Weight" (a combination of Urgency and Importance). The heaviest items (most critical) are moved to the top of the stack. This is handled by the `TaskRankingStage`.
-
-### Step 2: The Fill (Bin Packing) - `TaskDistributionStage`
-Next, we treat each available day as a bucket with a fixed capacity (e.g., 8 hours). The `TaskDistributionStage` iterates through the prioritized task list and packs them into these daily buckets.
-*   **Iterate**: Take the top task from the sorted stack.
-*   **Fit Check**: Does it fit in the current day's remaining space?
-    *   **Yes**: Place it in.
-    *   **No**:
-        *   **Gap Analysis**: Is the remaining space usable (e.g., > 15 mins)?
-        *   **The Hammer (Task Splitting)**: If yes, the stage **splits** the task. Part A fills the gap perfectly. Part B is effectively returned to the top of the stack to be scheduled on the next day.
-        *   **Skip**: If the gap is too small, the stage moves to the next day.
-
-### Step 3: The Mosaic (Energy Management) - `DailySequencingStage`
-Finally, once the tasks for each day ("bucket") have been determined, the `DailySequencingStage` arranges the specific start and end times for the tasks *within* each day to optimize for cognitive load.
-*   **Goal**: Optimize for human energy levels and focus.
-*   **Strategy**: "Eat The Frog" combined with deadline safety.
-    *   The stage sorts the tasks for a single day, first by tasks due *today*, and then by `Complexity` in descending order.
-    *   **Dependency Order**: This priority ordering only decides *among tasks that are ready*. A task with a same-day prerequisite is held back until that prerequisite has been placed, so a dependent task can never be given an earlier time slot than its prerequisite on the same day.
-    *   **Result**: Critical deadlines are handled first. For the remaining time, high-complexity work is scheduled for the morning, with lower-complexity tasks filling the afternoon as energy naturally wanes.
+1. **`TaskNormalizationStage` (Preparation)**: Cleans up incoming task data, clamping conflicting `NotBefore` constraints and ensuring fallback defaults.
+2. **`AvailabilityWindowStage` (The Riverbed)**: Evaluates user work hours and overlays fixed and recurring events to determine exact usable time windows.
+3. **`TaskOccurrenceExpansionStage` (Materialization)**: Expands recurring task series into ephemeral occurrence instances across the computed scheduling horizon while preserving per-date progress.
+4. **`TaskRankingStage` (The Sort / Sift)**: Sorts all active tasks by their "Weight" (a combination of Urgency and Importance). The heaviest items (most critical) sink to the top of the queue.
+5. **`TaskDistributionStage` (The Fill / Bin Packing)**: Iterates through the prioritized task list and packs them into daily buckets.
+   * **Iterate**: Take the top task from the sorted stack.
+   * **Dependency Gate**: Defer any task whose prerequisites are not yet fully placed.
+   * **Earliest Start (`NotBefore`)**: Ensure placement occurs only during or after eligible release windows.
+   * **Fit Check**: Does it fit in the current day's remaining space?
+     * **Yes**: Place it in.
+     * **No (The Hammer / Task Splitting)**: If remaining space is usable (e.g. >= 15 min), split the task. Part A fills the gap; Part B returns to the stack for the next day.
+     * **Skip**: If the gap is too small, advance to the next day.
+6. **`DailySequencingStage` (The Mosaic / Energy Management)**: Arranges specific start and end times *within* each day to optimize for cognitive load.
+   * **Goal**: Optimize for human energy levels while ensuring deadline safety.
+   * **Strategy**: "Eat The Frog" combined with deadline safety.
+   * Critical deadlines are scheduled first. For remaining time, high-complexity work is scheduled in the morning, with lower-complexity tasks filling the afternoon as energy wanes. Same-day prerequisites strictly precede their dependents.
 
 ## 4. Why this works for your Questions
 *   **"Recalculate?"**: Yes. Every time you run the scheduler, we re-weigh the gold and re-pack the buckets.

@@ -17,11 +17,23 @@ applyTo: '**'
 - Read `docs/ARCHITECTURE_SCHEDULING.md` before changing prioritization, Gold Panning stages, scheduling invariants, strategy selection, or scheduler tests.
 - Read `docs/ARCHITECTURE_INTEGRATIONS.md` before adding APIs, provider integrations, external intake, import flows, or new front-end boundaries.
 
-## Documentation
-- All project documentation must follow `docs/DOCUMENTATION_STANDARDS.md`.
-- Consult `docs/DOCUMENTATION_STANDARDS.md` before creating, editing, reorganizing, or removing documentation.
-- Keep documentation updates scoped to the canonical owner document defined in `docs/DOC_INDEX.md`.
-- Update relevant documentation when behavior, command surface, architecture, status, backlog priority, or testing expectations change.
+## Documentation Boundaries & Standards
+- All project documentation must follow `docs/DOCUMENTATION_STANDARDS.md` and respect the canonical owner document defined in `docs/DOC_INDEX.md`.
+- **Status is user-observable only (`docs/STATUS.md`)**: Describe only what users can observe or do. Never put internal class/interface names, DTOs, method signatures, issue tracking numbers (`#123`), or refactoring narratives in `docs/STATUS.md`.
+- **No backlog in documentation**: Never maintain to-do lists, task checklists, or overhaul roadmaps in documentation files. The repository's GitHub Issues is the single source of truth for active and planned work.
+- **Strict anti-duplication**: Do not copy sections across documents. Update only the canonical document owner and link to it from other files.
+- **Preserve document scopes**:
+  - `docs/VISION.md`: Long-term intent, core differentiators, and milestone goals only; not current status or architecture contracts.
+  - `docs/PRODUCT_BEHAVIOR_SPECIFICATION.md`: Intended user-facing behavior, user stories, and acceptance criteria; not internal code details.
+  - `docs/ARCHITECTURE.md` & `docs/ARCHITECTURE_*.md`: System boundaries, service composition, data ownership, and invariants; not transient status or step-by-step shell commands.
+  - `docs/WORKFLOW.md`: How to build, run, test, and deploy; keep step-by-step developer and deployment procedures here.
+  - `docs/TESTING_STRATEGY.md`: Durable testing philosophy and active test surfaces; not temporary to-do lists.
+- **Canonical terminology**: Strictly adhere to `docs/TERMINOLOGY.md`:
+  - Distinguish *Guest mode* (local-only, unauthenticated, Hive) from *Free account* (authenticated, no subscription) from *Subscription tier* (authenticated entitlement for online scheduling).
+  - Distinguish *Scheduling mode* (the setting) from *Strategy* (the algorithm implementation).
+  - Distinguish *Global defaults* (profile-level) from *List-scoped settings* (per-list overrides).
+- **Archived CLI exclusion**: `PriorityTaskManager.CLI/` is archived source. Never represent it as an active client integration in `docs/STATUS.md` or a routine test suite in `docs/TESTING_STRATEGY.md`.
+- **Link integrity**: Always use relative Markdown links with valid targets. When linking within `docs/`, use relative links like `[STATUS.md](STATUS.md)`, not `docs/STATUS.md`.
 
 ## GitHub Issue Management
 - Use the `gh` CLI (e.g. `gh issue view`, `gh issue edit`, `gh issue create`, `gh issue close`, `gh api graphql`) to read and edit issues; do not guess issue content or fabricate issue URLs.

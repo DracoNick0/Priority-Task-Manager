@@ -1,63 +1,58 @@
 # Testing Strategy
 
-This document outlines the strategy for testing the Priority Task Manager application. The goal is to ensure the application is robust, reliable, and that all components function as expected.
+This document defines testing expectations for the active .NET and Flutter code. Current validation results and known failures belong in [STATUS.md](STATUS.md); test-overhaul work is tracked in the repository's GitHub Issues.
 
-## Guiding Principles: The Hybrid Testing Strategy
+## Guiding Principles
 
-Because this application blends deterministic CRUD operations with complex, evolving optimization algorithms, we use a hybrid testing strategy:
+- **Deterministic behavior:** Use focused unit and integration tests for core services, API contracts, and client behavior.
+- **Scheduling behavior:** Exploratory work can help tune heuristics, but supported scheduling behavior must be protected by deterministic scenarios and invariant assertions. The current .NET invariant suite uses fixed xUnit scenarios rather than generated property-based tests.
+- **Deterministic time:** Inject `ITimeService` into time-sensitive behavior. Use `MockTimeService` and `DeterministicTestFixtures` when a test needs a fixed current time; `TimeService` tests also verify its real-clock mode.
 
--   **Strict TDD for Deterministic Logic**: Core services (`TaskManagerService`, `PersistenceService`) and data models have highly predictable inputs and outputs.
--   **Exploratory Spiking for Algorithms**: Development of scheduling algorithms (`ConstraintOptimizationStrategy`, `GoldPanningStrategy`) is done via exploratory programming first. We rely on sample datasets and human verification to tune the heuristics before locking them down.
--   **Property-Based & Invariant Testing**: Instead of writing brittle assertions for precise algorithm outputs (e.g., "Task A must be at 9:00 AM"), we write invariant tests that check if the algorithm violated core rules (e.g., "No task is scheduled before its dependency", "Must-schedule tasks are never dropped").
--   **Use the `TimeService`**: All time-sensitive logic must use a mocked `ITimeService` to guarantee deterministic boundaries.
+## Active Test Surfaces
+
+| Area | Location | Current coverage |
+| --- | --- | --- |
+| Core services | `PriorityTaskManager.Tests/Services/` and `PriorityTaskManager.Tests/Integration/` | Focused service tests and `TaskManagerService` coordination, including task/list operations, validation, dependencies, and scheduling selection |
+| Scheduling | `PriorityTaskManager.Tests/Scheduling/` | Shared scheduling invariants, Gold Panning stage behavior, and recurring-task scheduling |
+| API contracts | `PriorityTaskManager.Tests/API/` | DTO mappings and schedule request/response contracts; add boundary tests when endpoint, authentication, or persistence behavior changes |
+| Flutter client | `PriorityTaskManager.Flutter/test/` | Widget behavior, date/time and recurrence utilities, repository behavior, and development HTTP logging |
+| Archived CLI | `PriorityTaskManager.Tests/CLI/` | Preserved test sources, excluded from the active test project |
 
 ## Areas to Test
 
-### 1. Core Services
+### Core Services and API
 
--   **`TaskManagerService`**:
-    -   Verify all CRUD operations for tasks, lists, and events.
-    -   Test adding/removing dependencies.
-    -   Test `GetPrioritizedTasks` and ensure it correctly invokes the urgency strategy.
--   **`PersistenceService`**:
-    -   Mock file system interactions to test `LoadData` and `SaveData` logic in isolation.
--   **`TimeService`**:
-    -   Test `SetSimulatedTime` and `ClearSimulatedTime`.
-    -   Verify `GetCurrentTime` returns the correct time in both real and simulated modes.
+- **`TaskManagerService`:** Cover task and list operations, validation and error outcomes, dependency changes, effective list-profile resolution, and strategy selection. Coordination tests live in `PriorityTaskManager.Tests/Integration/TaskManagerServiceTests.cs`.
+- **Focused services:** Keep unit coverage for account and event behavior, dependency graph operations, recurrence expansion and splitting, task metrics and occurrence progression, and time handling.
+- **`PersistenceService`:** Its tests exercise the core JSON load/save and archive paths using isolated temporary directories. This is not the API's Postgres persistence implementation.
+- **API boundary:** The current API tests focus on DTO and schedule-contract mapping. Add tests at the changed boundary for endpoint, authentication, tenant-scoping, or persistence behavior rather than treating DTO tests as endpoint coverage.
 
-### 2. Scheduling Algorithms (Constraint Solver & Gold Panning)
+### Flutter Client
 
-This is the most complex area of the application. We avoid brittle unit tests that assert exact schedules, as the objective functions are constantly being tuned.
+Keep tests alongside the Flutter package under `PriorityTaskManager.Flutter/test/`. Cover changed widgets and user interactions, date/time defaults and constraints, recurrence behavior, repository and HTTP-client behavior. Run `flutter analyze` and `flutter test` from the Flutter package directory.
 
--   **Invariant Rules (Property-Based Testing)**:
-    -   *Dependency Chain*: A dependent task is never scheduled before its prerequisites.
-    -   *Time Bounds*: Total scheduled time in a day never exceeds the user's defined `ScheduleWindow` limits (unless authorized by specific Overtime flags).
-    -   *Task Dropping*: `MustSchedule` tasks are prioritized and never placed in the unscheduled bucket unless totally unfeasible.
-    -   *No Overlapping Tasks*: Tasks must not be scheduled in the same time slot.
-    -   *Task Duration Adherence*: Scheduled time blocks must meet or exceed task duration estimates.
-    -   *Respect `NotBefore` and `DueDate`*: Tasks must be scheduled after their `NotBefore` date and before their `DueDate`.
-    -   *Idempotency*: The scheduler must produce an identical schedule given identical inputs.
-    -   *State Immutability*: The scheduler must not modify the original properties of input tasks.
-    -   *Task Splitting Logic*: If a task is split, chunk durations must sum to the original estimate, and all chunks must still respect dependency and `NotBefore`/`DueDate` constraints.
-    -   *Completed Task Exclusion*: Already-completed tasks must never be scheduled.
-    -   *Event Blocking*: Time for events must be reserved, and tasks scheduled around them.
--   **Snapshot / Characterization Tests**:
-    -   For stable algorithm outputs, we save the generated schedule against a complex benchmark dataset. Future refactors test against these text-based snapshots to catch unintended regressions in scheduling shape.
--   **Stage Pipeline Context**:
-    -   Isolated tests for distinct deterministic stages (e.g., verifying `TaskNormalizationStage` correctly calculates `EffectiveImportance` modifiers).
--   **Algorithm-Agnostic Invariant Suite**:
-    -   General scheduling invariants (the rules listed above) are written once against the `IUrgencyStrategy`/`PrioritizationResult` contract in `PriorityTaskManager.Tests.Scheduling.SchedulingInvariantTestsBase`, not against a specific strategy implementation.
-    -   Each concrete strategy (e.g., `GoldPanningInvariantTests`) subclasses the base and only supplies a factory method constructing that strategy; it should not re-declare invariant assertions.
-    -   Any new `IUrgencyStrategy` implementation (e.g., the Constraint Solver) must add a corresponding thin subclass of `SchedulingInvariantTestsBase` instead of duplicating the invariant suite.
-    -   Algorithm-internal pipeline stage tests (e.g., under `Scheduling/GoldPanning`) must only assert behavior specific to that stage/algorithm's own mechanics; they must not re-derive invariants already owned by `SchedulingInvariantTestsBase`.
+### Scheduling Algorithms
 
-### Archived CLI Tests
+`GoldPanningStrategy` is the active scheduling implementation. `ConstraintOptimizationStrategy` is currently a placeholder: its service-level test checks the graceful not-implemented result, but it is not covered as a functioning scheduling strategy.
 
-The CLI project and its test sources are preserved for possible future restoration, but are excluded from the active solution and test suite. Do not add to or run these tests as part of routine work; restore them only when the user explicitly requests bringing the CLI back.
+The algorithm-agnostic checks in `PriorityTaskManager.Tests.Scheduling.SchedulingInvariantTestsBase` assert these shared invariants:
 
-## Test Overhaul Plan
+- **No overlap and availability:** Scheduled chunks do not overlap, stay within configured workdays and work hours, and avoid blocking events.
+- **Duration and feasibility:** When the tested workload fits available capacity, task durations are preserved and tasks are not silently left unscheduled. Split chunks sum to the task's estimated duration.
+- **Dependencies:** A dependent task starts only after its prerequisite's final scheduled chunk, including when the prerequisite is split.
+- **Dates:** Chunks do not start before `NotBefore`; a `NotBefore` beyond the scheduling horizon is reported as unscheduled. The current due-date assertion checks that no scheduled chunk falls on a calendar date after the task's due date.
+- **Completion and input state:** Completed tasks are not scheduled, and scheduling does not alter original task properties (scheduled parts are output).
+- **Determinism:** Identical inputs and time produce the same schedule. This is checked by replaying a fixed scenario, not by comparing against a committed schedule snapshot.
 
-1.  **Reliable Core**: Enforce TDD on the `TaskManagerService` and `PersistenceService` to guarantee safe data manipulation.
-2.  **Define Pipeline Invariants**: Write the rule-based property tests for scheduling (e.g., dependency ordering, timeframe limits).
-3.  **Create Benchmark Datasets**: Assemble complex `taskitems.json` baseline files representing varying levels of user loads (light day, heavy dependencies, over-allocated).
-4.  **Implement Snapshot Testing**: Generate baseline schedule expectations for the benchmark datasets using both the V1 Solver and Gold Panning.
+Add general invariants once in `SchedulingInvariantTestsBase`. Each implemented strategy should have a thin subclass that supplies its strategy factory; `GoldPanningInvariantTests` is the active example. When constraint optimization is implemented, add its invariant-suite subclass and tests for its own solver behavior. Keep Gold Panning stage tests focused on the behavior of their individual stages instead of duplicating shared invariants.
+
+## Archived CLI Tests
+
+The CLI project and its test sources are retained for possible future restoration but are excluded from routine builds and tests. `PriorityTaskManager.Tests.csproj` explicitly excludes `PriorityTaskManager.Tests/CLI/`. Do not modify, build, or run these sources as part of routine work; restore the CLI only when explicitly requested.
+
+## Test Verification Standards
+
+- **Core and API changes:** Add unit or integration tests for deterministic behavior, success and error outcomes, and relevant domain invariants.
+- **Flutter changes:** Add or update package tests for affected widget, utility, repository, or HTTP-client behavior, and run `flutter analyze`.
+- **Scheduling changes:** Run the shared invariant suite against the active strategy. Preserve correct invariant tests when they expose an implementation defect; distinguish those defects from incorrect or outdated expectations before changing a test.
+- **Running the suites:** Run `dotnet test` from the repository root for the active .NET solution. From `PriorityTaskManager.Flutter/`, run `flutter analyze` and `flutter test`. See [WORKFLOW.md](WORKFLOW.md) and the [Flutter README](../PriorityTaskManager.Flutter/README.md#verifying-changes) for setup details.
