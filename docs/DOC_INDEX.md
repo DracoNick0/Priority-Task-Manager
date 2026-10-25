@@ -26,6 +26,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | docs/GOLD_PANNING.md | Gold Panning algorithm details |
 | docs/CONSTRAINT_SOLVER.md | Constraint Solver specification and contract |
 | docs/COMPLEXITY_GUIDE.md | Complexity model reference |
+| docs/wireframes/README.md | Reference UI wireframes, ASCII layouts, and interaction mockups |
 
 ## Long-Lived Knowledge Documents
 | Document | Purpose |
@@ -47,6 +48,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | Integration architecture | docs/ARCHITECTURE_INTEGRATIONS.md |
 | Current feature reality | docs/STATUS.md |
 | Planned work, roadmap, and active-work handoff | Repository GitHub Issues |
+| UI/UX wireframes, layout mockups, and interaction reference | docs/wireframes/README.md |
 | LLM-assisted intake planning | docs/LLM_ASSISTED_INTAKE.md |
 | Scheduling algorithm details | docs/GOLD_PANNING.md, docs/CONSTRAINT_SOLVER.md |
 | Testing philosophy | docs/TESTING_STRATEGY.md |

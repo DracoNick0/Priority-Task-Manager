@@ -13,11 +13,17 @@ For what is currently available, see [STATUS.md](STATUS.md). For the long-term p
 
 ## Main interaction pattern
 
-- The **Left Rail** is where a user switches lists and opens app-wide areas such as Settings and Archive.
-- The **Center Stage** shows the current schedule or a plain task list, depending on the user's access and selected view.
-- Selecting a task, event, or list opens it in the **Right Inspector** for viewing and editing. Global defaults are edited from Settings; list settings are edited in the context of that list.
-- Archive actions are available from the Archive view and clearly distinguish restore from permanent deletion.
-- At narrow window widths, navigation and editing remain available through pane drawers rather than disappearing.
+The user interface follows a focused, three-mode interaction model supported by flexible pane layouts (see [docs/wireframes/README.md](./wireframes/README.md) for full ASCII wireframes):
+
+- **View Navigation**: A primary top-level view switcher moves between temporal modes:
+  - **Today**: High-focus chronological execution timeline and active task tracker.
+  - **Horizon**: Strategic multi-day calendar-style planning grid with capacity meters.
+  - **Projects**: Backlog and dependency organization for strategic initiatives.
+- **Left Rail**: Switch lists, manage global navigation (Archive, Settings), and view Engine Status (simulated clock and algorithm mode).
+- **Center Stage**: The main workspace hosting the active view (Today timeline, Horizon calendar grid, or Projects backlog for authenticated subscribers; or plain, sortable list for Guests).
+- **Universal Fast-Capture (`Ctrl + K`)**: An omnipresent intake bar allowing users to capture tasks and events in seconds using clean text entry and smart defaults.
+- **Right Inspector**: Opens contextually for detailed viewing and editing of tasks, events, and list settings. Global defaults are edited from Settings; list settings are edited in the context of that list.
+- **Responsive Drawer Adapters**: At narrow window widths, navigation and inspector panels collapse into slide-over drawers, preserving full navigation and editing capability.
 
 ## Session and account access
 
@@ -73,23 +79,93 @@ Users who are already signed in can change their password after verifying contro
 
 ## Views
 
-**User story:** As a user, I want to see my schedule in a format that suits how and where I plan so I can move between a quick chronological view and a date-oriented view.
+**User story:** As a user, I want to see my schedule in formats that match whether I am executing work right now, evaluating weekly capacity, or structuring backlogs.
 
-Users can switch among three schedule views:
+Users can switch between three primary temporal views (supplemented by compact agenda and board presentations):
 
-| View | Intended user-facing behavior |
-| --- | --- |
-| Schedule Board | The current hybrid view: daily columns show scheduled task and event blocks, including pinned tasks and events outside regular work hours, with Unscheduled and Completed areas for work outside the timed schedule. |
-| Agenda | A compact chronological presentation of upcoming scheduled items, especially suited to mobile screens. It visibly indicates when unscheduled tasks exist and provides a direct way to view them. |
-| Calendar | A calendar-grid presentation, especially suited to desktop. The user can browse scheduled items by date; the view visibly indicates when unscheduled tasks exist and provides a direct way to view them. |
+| View | Intended user-facing behavior | Visual Reference |
+| --- | --- | --- |
+| **Today** (Execution Compass) | Focused daily planning compass. Presents the Gold Panning recommended priority sequence, remaining work hours compared to planned effort, and intentional transition buffers. Incomplete tasks remain available in sequence across offline intervals. Supports asynchronous batch completion (`[ ✓ Did This ]`) and 1-tap postponement to tomorrow for overloaded days. Past configured work hours, displays an evening accomplishment summary. | [TODAY_EXECUTION_VIEW.md](./wireframes/TODAY_EXECUTION_VIEW.md) |
+| **Horizon** (Week Calendar Grid) | Multi-day calendar grid across working days ([#56](https://github.com/DracoNick0/Priority-Task-Manager/issues/56)). Features proportional time-blocks, split-task part badges (`Part 1 of 2`), fixed event hashes, sticky headers with visual daily capacity utilization meters ([#27](https://github.com/DracoNick0/Priority-Task-Manager/issues/27), [#40](https://github.com/DracoNick0/Priority-Task-Manager/issues/40)), and a dedicated "Unscheduled & Risk" side tray that explains the exact constraint for unplaced tasks. | [WEEK_HORIZON_GRID.md](./wireframes/WEEK_HORIZON_GRID.md) |
+| **Projects** (Backlog & Structure) | Outlined backlog view for managing larger goals, recurring templates, and visual step-chain dependencies (`Prerequisite ➔ Dependent ➔ QA`). | [docs/wireframes/README.md](./wireframes/README.md) |
+| **Schedule Board** | Hybrid column pipeline: daily columns group scheduled task and event cards, with Unscheduled and Completed areas. (Historical Command Center layout). | [STATUS.md](./STATUS.md) |
+| **Agenda** | Compact vertical chronological list of scheduled items, suited for mobile viewports. | [STATUS.md](./STATUS.md) |
 
-All three views provide access to Unscheduled and Completed tasks; they need not show those items in the main chronological, calendar, or board layout. Each view indicates when unscheduled tasks exist and provides a direct way to open the Unscheduled task view, plus a direct way to open Completed tasks. A plain, sortable task-list view is also available where no computed schedule is shown, including for Guests. Sorting a plain task list does not change the computed schedule.
+All schedule views provide access to Unscheduled and Completed tasks; they need not show those items in the main chronological, calendar, or board layout. Each view indicates when unscheduled tasks exist and provides a direct way to open the Unscheduled task view, plus a direct way to open Completed tasks. A plain, sortable task-list view is also available where no computed schedule is shown, including for Guests. Sorting a plain task list does not change the computed schedule.
 
 ### View acceptance criteria
 
-- Switching among Schedule Board, Agenda, and Calendar preserves the current list scope and included-list selection without changing task, event, or schedule data.
-- A schedule view makes its list scope visible and lets users review or change a multi-list view's membership.
-- Schedule Board, Agenda, and Calendar display pinned tasks and events even when they fall outside regular work hours.
+- Switching among Today, Horizon, Projects, Schedule Board, and Agenda preserves the active list scope and selection without mutating task, event, or schedule data.
+- The **Today** view displays the recommended sequence of incomplete tasks ordered by scheduler urgency, along with remaining available work hours compared to remaining planned effort. Incomplete tasks remain active in sequence across offline intervals.
+- The Today view provides asynchronous batch completion, recording task completions directly whenever the user returns.
+- Past configured work hours, the Today view presents an evening accomplishment summary and unfinished task carry-over options.
+- The **Horizon** view renders scheduled tasks with heights proportional to duration, distinct dark hash styling for fixed events, and daily capacity meters colored green (< 85%), amber (85%–100%), or red (> 100% overload).
+- Tasks in the "Unscheduled & Risk" tray display plain-language diagnostic reasons (e.g. "Prerequisite incomplete", "Exceeds daily work hours", "Due date passed").
+- In Guest mode, where automated schedule computation is unavailable:
+  - The Today view displays tasks ordered by priority sequence with an option to sign in for automated scheduling.
+  - The Horizon view displays fixed calendar events and task deadline markers without automated time-block placement.
+  - The Projects view provides full local task and backlog management.
+
+## Fast-Capture Bar and Command Palette (`Ctrl + K`)
+
+**User story:** As a user, I want to capture tasks and events instantly with minimal keystrokes so that logging commitments preserves my flow.
+
+Users can press `Ctrl + K` (Windows/Web) or `Cmd + K` (macOS), or focus the inline quick-add field in Center Stage, to record work directly from keyboard focus (see [FAST_CAPTURE_AND_PALETTE.md](./wireframes/FAST_CAPTURE_AND_PALETTE.md)).
+
+- **Low-Friction Capture & Smart Defaults**: The initial capture accepts a natural task title and applies sensible defaults immediately (default duration of 60m, end-of-next-workday deadline, normal importance).
+- **One-Tap Micro Chips**: Extracted details appear as compact clickable preview pills (`[ ⏱ 60m ]`, `[ 📅 Due: Tomorrow ]`). Clicking a chip opens a 1-tap popover to adjust values directly.
+- **Upgrade Path to LLM Intake**: The preview pill container serves as the front-end review surface for the MVP LLM-assisted intake ([LLM_ASSISTED_INTAKE.md](./LLM_ASSISTED_INTAKE.md) / Issue #18). When LLM intake is enabled, natural English phrases populate these candidate chips for user approval.
+- **Immediate Feedback**: Pressing `Enter` adds the task, pencils it in locally, and triggers a debounced schedule rebalance with an actionable confirmation toast.
+
+### Fast-Capture acceptance criteria
+
+- Pressing `Ctrl + K` (or `Cmd + K`) opens the palette from any view and autofocuses the text input field; pressing `Esc` closes it.
+- Entering a title and pressing `Enter` creates the task with configured defaults applied.
+- Clicking an extracted preview pill opens an inline micro-picker to change the duration or due date directly.
+
+## Scheduling Execution Optimization and Trigger Policy
+
+**User story:** As a user, I want my schedule to remain accurate and responsive with smooth transitions and efficient resource usage.
+
+Schedule generation follows an **Impact-Based Trigger Policy**:
+
+1. **Cosmetic Mutations Persist Directly**:
+   - Modifying non-time attributes (task descriptions, notes, website links, or list names) saves directly to storage; `/api/schedule` is not called.
+2. **Debounced Rapid Entries (1000ms)**:
+   - When a user enters multiple tasks in quick succession, the client debounces scheduling requests by 1000ms after the last edit, sending one combined calculation.
+3. **Constraint Shifts Trigger Background Calculation**:
+   - Changes to time constraints trigger schedule generation: task completion, deletion, duration changes, deadline moves, dependency changes, list work-window adjustments, or calendar event creation/modification.
+   - Placement updates in the background, preserving view scroll state and active selections.
+4. **Day Rollover and Window Focus**:
+   - Passing wall-clock minutes during an active workday maintain the current plan.
+   - The scheduler recalculates on calendar day rollover (midnight) or upon regaining application window focus after more than two hours of inactivity.
+5. **Critical Invalidation Timestamp (Future Optimization)**:
+   - Schedule responses may return a `nextCriticalTimestamp` (such as the exact future moment remaining daily slack reaches zero or a work window closes). The client schedules its next automatic recalculation at that specific timestamp.
+
+### Scheduling trigger acceptance criteria
+
+- Cosmetic field edits (description, link, title) persist to storage without calling `/api/schedule`.
+- Adding tasks within 1000ms of each other results in a single coalesced call to `/api/schedule`.
+- Completing a task or modifying its duration triggers a background schedule recalculation that updates placements while preserving view scroll state.
+
+## Empty States, Onboarding Tour and Daily Rituals
+
+**User story:** As a user, I want clear guidance and structured routines so that using Priority Task Manager feels encouraging and organized.
+
+- **Actionable Empty Schedule ([#77](https://github.com/DracoNick0/Priority-Task-Manager/issues/77))**: When a list has no scheduled tasks or events, Center Stage renders an onboarding hero container featuring three primary actions: `Take a 60-Sec Tour`, `Add Your First Task`, and `Add a Fixed Event`, plus a button to `Load a 1-day sample schedule` (see [EMPTY_STATES_AND_RITUALS.md](./wireframes/EMPTY_STATES_AND_RITUALS.md)).
+- **60-Second Interactive Tour ([#77](https://github.com/DracoNick0/Priority-Task-Manager/issues/77))**: A lightweight 3-step carousel modal that demonstrates:
+  1. Effort and priority estimation with automatic schedule placement.
+  2. Automatic task splitting around fixed meetings and lunch.
+  3. Honest slack calculations and deadline risk indicators.
+- **Morning Kickoff Ritual**: When the app opens during morning work hours, an optional overlay highlights total scheduled hours, fixed events, available buffer, and the single least-slack task.
+- **Evening Wind-Down Ritual**: At the end of work hours, an optional prompt presents completed tasks and handles unfinished work by deadline: tasks due tonight before midnight offer options to complete tonight with an evening window extension, mark done, or accept postponement; tasks due tomorrow or later offer 1-tap options to schedule for tomorrow morning or return to backlog.
+
+### Onboarding and rituals acceptance criteria
+
+- An empty schedule displays the three primary action tiles and the sample schedule trigger.
+- Launching the tour preserves existing user tasks; closing the tour returns to the active view.
+- Loading the sample schedule populates 3 demo tasks and 1 event, calculates an immediate schedule, and supports a single-action clear.
+- The Evening Wind-Down ritual distinguishes tasks due before midnight from tasks due later, offering an evening work-window extension for tonight's deadlines.
 
 ## Settings
 
@@ -246,8 +322,8 @@ The following behavior remains undecided and should not be inferred during imple
 
 | ID | Question | Answer |
 | --- | --- | --- |
-| P-01 | What numeric work-time-slack thresholds and pre-deadline buffer lengths should correspond to each urgency level? | Deferred for a later product decision. |
+| P-01 | What numeric work-time-slack thresholds and pre-deadline buffer lengths should correspond to each urgency level? | Reference UI tiers established: Healthy buffer (> 2.0h slack), Tight buffer (0.5h–2.0h slack), Critical / At-Risk (< 0.5h slack). Configurable thresholds remain open. |
 | P-02 | When the user's current local time zone changes, how should saved recurring work windows, task deadlines, and event times be interpreted? | Deferred for a later product decision. |
 | P-03 | How should recurring work windows and event occurrences handle local times that do not exist or occur twice during daylight-saving transitions? | Deferred for a later product decision. |
-| P-04 | When a Guest chooses to merge data into an existing account, how should duplicate records and other conflicts be resolved? | Deferred until the merge flow is designed. |
+| P-04 | When a Guest chooses to merge data into an existing account, how should duplicate records and other conflicts be resolved? | Default to non-destructive import: retain account tasks and append guest tasks under their matching list name or an 'Imported from Guest' list. Edge-case conflict UI deferred until merge flow implementation. |
 | P-05 | Should users be able to export account data, and if so, what data and formats should be included? | Deferred for a later product decision. |
