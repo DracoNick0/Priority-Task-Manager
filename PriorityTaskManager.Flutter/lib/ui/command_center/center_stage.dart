@@ -17,6 +17,7 @@ import 'empty_schedule_hero.dart';
 import 'event_card.dart';
 import 'fast_capture_palette.dart';
 import 'guest_task_list.dart';
+import 'horizon_grid_view.dart';
 import 'task_card.dart';
 import 'today_compass_view.dart';
 
@@ -66,6 +67,8 @@ class CenterStage extends ConsumerWidget {
                 )
               : ref.watch(viewModeProvider) == ViewMode.today
               ? TodayCompassView(listId: activeListId)
+              : ref.watch(viewModeProvider) == ViewMode.horizon
+              ? HorizonGridView(listId: activeListId)
               : isAuthenticated
               ? _AuthenticatedBody(listId: activeListId)
               : GuestTaskList(listId: activeListId),
