@@ -529,52 +529,87 @@ class _Pipeline extends ConsumerWidget {
         .where((task) => !sequentialCatchUpIds.contains(task.id))
         .toList();
 
+    final viewMode = ref.watch(viewModeProvider);
+
     final columns = <DayColumn>[
-      if (todayCards.isNotEmpty && !isPastWorkEnd)
+      if ((viewMode == ViewMode.today ||
+              viewMode == ViewMode.projects ||
+              viewMode == ViewMode.board) &&
+          todayCards.isNotEmpty &&
+          !isPastWorkEnd)
         DayColumn(
           title: 'Today',
           subtitle: _formatDate(today),
           freeTimeLabel: freeTimeLabel(today, schedule.todayTasks, todayEvents),
           cards: todayCards,
         ),
-      for (final day in futureDays)
-        if ((futureByDay[day]?.isNotEmpty ?? false) ||
-            events.any((event) => isSameDay(event.startTime, day)) ||
-            (catchUpWorkday != null && isSameDay(day, catchUpWorkday)))
-          DayColumn(
-            title: isSameDay(day, today.add(const Duration(days: 1)))
-                ? 'Tomorrow'
-                : _formatWeekday(day),
-            subtitle: _formatDate(day),
-            freeTimeLabel: freeTimeLabel(
-              day,
-              futureByDay[day] ?? const [],
-              events.where((event) => isSameDay(event.startTime, day)).toList(),
-            ),
-            cards: [
-              ...buildTimelineCards(
-                scheduledTasks: futureByDay[day] ?? const [],
-                dayEvents: events.where(
-                  (event) => isSameDay(event.startTime, day),
+      if (viewMode == ViewMode.today &&
+          todayCards.isEmpty &&
+          !isPastWorkEnd &&
+          viewMode != ViewMode.projects)
+        DayColumn(
+          title: 'Today',
+          subtitle: _formatDate(today),
+          freeTimeLabel: freeTimeLabel(today, schedule.todayTasks, todayEvents),
+          cards: [
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingMd),
+              child: Text(
+                'No tasks scheduled for today.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              if (catchUpWorkday != null && isSameDay(day, catchUpWorkday))
-                ...sequentialCatchUpTasks.map(buildPlainTaskCard),
-            ],
-          ),
-      if (remainingUnscheduledTasks.isNotEmpty)
+            ),
+          ],
+        ),
+      if (viewMode == ViewMode.horizon ||
+          viewMode == ViewMode.projects ||
+          viewMode == ViewMode.board)
+        for (final day in futureDays)
+          if ((futureByDay[day]?.isNotEmpty ?? false) ||
+              events.any((event) => isSameDay(event.startTime, day)) ||
+              (catchUpWorkday != null && isSameDay(day, catchUpWorkday)))
+            DayColumn(
+              title: isSameDay(day, today.add(const Duration(days: 1)))
+                  ? 'Tomorrow'
+                  : _formatWeekday(day),
+              subtitle: _formatDate(day),
+              freeTimeLabel: freeTimeLabel(
+                day,
+                futureByDay[day] ?? const [],
+                events.where((event) => isSameDay(event.startTime, day)).toList(),
+              ),
+              cards: [
+                ...buildTimelineCards(
+                  scheduledTasks: futureByDay[day] ?? const [],
+                  dayEvents: events.where(
+                    (event) => isSameDay(event.startTime, day),
+                  ),
+                ),
+                if (catchUpWorkday != null && isSameDay(day, catchUpWorkday))
+                  ...sequentialCatchUpTasks.map(buildPlainTaskCard),
+              ],
+            ),
+      if (remainingUnscheduledTasks.isNotEmpty &&
+          (viewMode == ViewMode.horizon ||
+              viewMode == ViewMode.projects ||
+              viewMode == ViewMode.board))
         DayColumn(
           title: 'Unscheduled',
           subtitle: '${remainingUnscheduledTasks.length} task(s)',
           cards: remainingUnscheduledTasks.map(buildPlainTaskCard).toList(),
         ),
-      DayColumn(
-        title: 'Completed',
-        subtitle: '${completedTasks.length} task(s)',
-        cards: completedTasks
-            .map((task) => buildPlainTaskCard(task, showDueDate: true))
-            .toList(),
-      ),
+      if (viewMode == ViewMode.projects ||
+          viewMode == ViewMode.board ||
+          (viewMode == ViewMode.today && completedTasks.isNotEmpty))
+        DayColumn(
+          title: 'Completed',
+          subtitle: '${completedTasks.length} task(s)',
+          cards: completedTasks
+              .map((task) => buildPlainTaskCard(task, showDueDate: true))
+              .toList(),
+        ),
     ];
 
     return ListView(

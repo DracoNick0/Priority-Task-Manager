@@ -14,9 +14,15 @@ import 'session_provider.dart';
 import 'task_providers.dart';
 import 'user_profile_provider.dart';
 
-enum ViewMode { minimalist, dense, fluid }
+enum ViewMode {
+  today,
+  horizon,
+  projects,
+  board,
+  agenda,
+}
 
-final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.minimalist);
+final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.today);
 
 /// The [ScheduleRepository] used to compute the displayed schedule for a
 /// logged-in account (see docs/VISION.md: scheduling is an online-exclusive,

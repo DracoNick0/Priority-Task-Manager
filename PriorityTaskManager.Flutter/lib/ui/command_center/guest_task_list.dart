@@ -6,6 +6,7 @@ import '../../providers/app_notifications_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/view_provider.dart';
 import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'empty_schedule_hero.dart';
@@ -84,6 +85,14 @@ class GuestTaskList extends ConsumerWidget {
       );
     }
 
+    final viewMode = ref.watch(viewModeProvider);
+    final viewLabel = switch (viewMode) {
+      ViewMode.today => 'Today View',
+      ViewMode.horizon => 'Horizon View',
+      ViewMode.projects => 'Projects View',
+      _ => 'Backlog',
+    };
+
     return Column(
       children: [
         Container(
@@ -103,7 +112,7 @@ class GuestTaskList extends ConsumerWidget {
               const SizedBox(width: AppTheme.spacingXs),
               Expanded(
                 child: Text(
-                  'Log in to compute a scheduled plan. Showing your tasks sorted by:',
+                  '$viewLabel (Guest): Log in to compute an automated schedule. Sorted by:',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),

@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/task_list.dart';
 import '../../providers/app_notifications_provider.dart';
 import '../../providers/dev_log_provider.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
-import '../../models/task_list.dart';
+import '../../providers/view_provider.dart';
 import '../dev/dev_log_panel.dart';
 import '../theme/app_theme.dart';
 import 'center_stage.dart';
@@ -19,6 +20,8 @@ const double _leftMaxWidth = 350;
 const double _centerMinWidth = 400;
 const double _rightMinWidth = 300;
 const double _rightMaxWidth = 500;
+const double _wideBreakpoint = 1050;
+const double _mediumBreakpoint = 720;
 const double _dividerWidth = 12;
 // How far past a pane's minimum width the user must drag before it snaps
 // shut and collapses into a drawer/button, independent of window size.
@@ -134,8 +137,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   }
 
   bool _isRightDocked(double windowWidth) {
-    final isWide =
-        windowWidth >= _leftMinWidth + _centerMinWidth + _rightMinWidth;
+    final isWide = windowWidth >= _wideBreakpoint;
     return isWide && !_right.collapsed;
   }
 
@@ -256,8 +258,8 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
     bool devLogOpen,
   ) {
     final width = constraints.maxWidth;
-    final isWide = width >= _leftMinWidth + _centerMinWidth + _rightMinWidth;
-    final isMedium = !isWide && width >= _leftMinWidth + _centerMinWidth;
+    final isWide = width >= _wideBreakpoint;
+    final isMedium = !isWide && width >= _mediumBreakpoint;
     final isNarrow = !isWide && !isMedium;
 
     // Docked (in-line) visibility, factoring in manual drag-to-collapse on
@@ -287,6 +289,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
           : _buildRightDrawer(context, isWide, rightWidth),
       body: Column(
         children: [
+          _buildTopAppBar(context, leftDocked, rightDocked, width),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -299,7 +302,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                   _buildLeftDivider(width, rightWidth),
                 Expanded(
                   child: CenterStage(
-                    showHamburger: !leftDocked,
+                    showHamburger: false,
                     onOpenLeftRail: () =>
                         _scaffoldKey.currentState?.openDrawer(),
                     showInspectorToggle: !rightDocked,
@@ -322,6 +325,109 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
             ),
           ),
           if (devLogOpen) ..._buildDevLogSection(devLogHeight, devLogMaxHeight),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopAppBar(
+    BuildContext context,
+    bool leftDocked,
+    bool rightDocked,
+    double screenWidth,
+  ) {
+    final currentView = ref.watch(viewModeProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    final lists = ref.watch(taskListsProvider).asData?.value ?? const [];
+    final activeListId = ref.watch(activeListIdProvider);
+    final activeList = lists.where((l) => l.id == activeListId).firstOrNull;
+    final isCompact = screenWidth < 820;
+
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
+      child: Row(
+        children: [
+          if (!leftDocked) ...[
+            IconButton(
+              icon: const Icon(Icons.menu),
+              tooltip: 'Show navigation',
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            ),
+            const SizedBox(width: AppTheme.spacingXs),
+          ],
+          if (!isCompact) ...[
+            Icon(Icons.checklist_rtl_rounded, color: colorScheme.primary, size: 22),
+            const SizedBox(width: AppTheme.spacingSm),
+            Text(
+              'Priority Task Manager',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (activeList != null) ...[
+              Text(
+                ' · ${activeList.name}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const Spacer(),
+          ] else ...[
+            Icon(Icons.checklist_rtl_rounded, color: colorScheme.primary, size: 20),
+            const SizedBox(width: 4),
+            const Spacer(),
+          ],
+          SegmentedButton<ViewMode>(
+            segments: [
+              ButtonSegment(
+                value: ViewMode.today,
+                label: isCompact ? null : const Text('Today'),
+                icon: const Icon(Icons.today_outlined, size: 16),
+                tooltip: 'Today',
+              ),
+              ButtonSegment(
+                value: ViewMode.horizon,
+                label: isCompact ? null : const Text('Horizon'),
+                icon: const Icon(Icons.calendar_view_week_outlined, size: 16),
+                tooltip: 'Horizon',
+              ),
+              ButtonSegment(
+                value: ViewMode.projects,
+                label: isCompact ? null : const Text('Projects'),
+                icon: const Icon(Icons.folder_outlined, size: 16),
+                tooltip: 'Projects',
+              ),
+            ],
+            selected: {
+              if (currentView == ViewMode.today ||
+                  currentView == ViewMode.horizon ||
+                  currentView == ViewMode.projects)
+                currentView
+              else
+                ViewMode.projects,
+            },
+            onSelectionChanged: (newSelection) {
+              ref.read(viewModeProvider.notifier).state = newSelection.first;
+            },
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const Spacer(),
+          if (!rightDocked)
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              tooltip: 'Show inspector',
+              onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+            ),
         ],
       ),
     );
