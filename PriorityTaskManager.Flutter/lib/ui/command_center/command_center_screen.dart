@@ -13,6 +13,7 @@ import '../../providers/view_provider.dart';
 import '../dev/dev_log_panel.dart';
 import '../theme/app_theme.dart';
 import 'center_stage.dart';
+import 'daily_rituals_dialog.dart';
 import 'fast_capture_palette.dart';
 import 'left_rail.dart';
 import 'resizable_divider.dart';
@@ -280,6 +281,40 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
         }
       }
     });
+
+    final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
+    final todayStr = '${now.year}-${now.month}-${now.day}';
+    final activeListId = ref.watch(activeListIdProvider);
+    final ritualsState = ref.watch(dailyRitualsStateProvider);
+
+    if (activeListId != null) {
+      if (now.hour >= 7 &&
+          now.hour < 12 &&
+          ritualsState.lastMorningDate != todayStr) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ref.read(dailyRitualsStateProvider.notifier).state =
+              ritualsState.copyWith(lastMorningDate: todayStr);
+          showDailyRitualDialog(
+            context,
+            type: DailyRitualType.morningKickoff,
+            listId: activeListId,
+          );
+        });
+      } else if (now.hour >= 17 &&
+          ritualsState.lastEveningDate != todayStr) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ref.read(dailyRitualsStateProvider.notifier).state =
+              ritualsState.copyWith(lastEveningDate: todayStr);
+          showDailyRitualDialog(
+            context,
+            type: DailyRitualType.eveningWindDown,
+            listId: activeListId,
+          );
+        });
+      }
+    }
 
     final devLogOpen = kDebugMode && ref.watch(devLogPanelOpenProvider);
 

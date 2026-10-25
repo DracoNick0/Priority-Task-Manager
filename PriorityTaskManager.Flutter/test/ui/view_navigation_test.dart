@@ -6,6 +6,7 @@ import 'package:priority_task_manager/providers/engine_status_provider.dart';
 import 'package:priority_task_manager/providers/task_providers.dart';
 import 'package:priority_task_manager/providers/view_provider.dart';
 import 'package:priority_task_manager/ui/command_center/command_center_screen.dart';
+import 'package:priority_task_manager/ui/command_center/daily_rituals_dialog.dart';
 
 class _FakeTaskListsNotifier extends TaskListsNotifier {
   @override
@@ -36,6 +37,12 @@ void main() {
         activeListIdProvider.overrideWith((ref) => 'list-1'),
         engineClockProvider.overrideWith(
           (ref) => Stream.value(DateTime(2026, 10, 24, 10, 0)),
+        ),
+        dailyRitualsStateProvider.overrideWith(
+          (ref) => const DailyRitualsState(
+            lastMorningDate: '2026-10-24',
+            lastEveningDate: '2026-10-24',
+          ),
         ),
       ],
     );
@@ -89,6 +96,12 @@ void main() {
         activeListIdProvider.overrideWith((ref) => 'list-1'),
         engineClockProvider.overrideWith(
           (ref) => Stream.value(DateTime(2026, 10, 24, 10, 0)),
+        ),
+        dailyRitualsStateProvider.overrideWith(
+          (ref) => const DailyRitualsState(
+            lastMorningDate: '2026-10-24',
+            lastEveningDate: '2026-10-24',
+          ),
         ),
       ],
     );

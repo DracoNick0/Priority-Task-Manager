@@ -12,6 +12,7 @@ import '../../providers/view_provider.dart';
 import '../../utils/iterable_extensions.dart';
 import '../../utils/working_day_defaults.dart';
 import '../theme/app_theme.dart';
+import 'daily_rituals_dialog.dart';
 import 'empty_schedule_hero.dart';
 
 /// Data structure representing candidate attributes for task creation.
@@ -244,7 +245,7 @@ class _FastCapturePaletteDialogState
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 680),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppTheme.spacingMd),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -380,6 +381,36 @@ class _FastCapturePaletteDialogState
                 onTap: () {
                   ref.read(viewModeProvider.notifier).state = ViewMode.projects;
                   Navigator.of(context).pop();
+                },
+              ),
+              _CommandTile(
+                icon: Icons.wb_sunny_outlined,
+                title: 'Morning Kickoff Ritual',
+                onTap: () {
+                  final listId = _selectedListId ?? ref.read(activeListIdProvider);
+                  Navigator.of(context).pop();
+                  if (listId != null) {
+                    showDailyRitualDialog(
+                      context,
+                      type: DailyRitualType.morningKickoff,
+                      listId: listId,
+                    );
+                  }
+                },
+              ),
+              _CommandTile(
+                icon: Icons.bedtime_outlined,
+                title: 'Evening Wind-Down Ritual',
+                onTap: () {
+                  final listId = _selectedListId ?? ref.read(activeListIdProvider);
+                  Navigator.of(context).pop();
+                  if (listId != null) {
+                    showDailyRitualDialog(
+                      context,
+                      type: DailyRitualType.eveningWindDown,
+                      listId: listId,
+                    );
+                  }
                 },
               ),
               _CommandTile(
