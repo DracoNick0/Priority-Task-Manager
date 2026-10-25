@@ -13,6 +13,7 @@ import '../../providers/view_provider.dart';
 import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'day_column.dart';
+import 'empty_schedule_hero.dart';
 import 'event_card.dart';
 import 'guest_task_list.dart';
 import 'task_card.dart';
@@ -166,7 +167,19 @@ class _AuthenticatedBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tasksAsync = ref.watch(tasksProvider(listId));
+    final eventsAsync = ref.watch(eventsProvider(listId));
     final schedule = ref.watch(scheduleProvider).asData?.value;
+
+    final tasks = tasksAsync.asData?.value ?? const <TaskItem>[];
+    final events = eventsAsync.asData?.value ?? const <FixedEvent>[];
+
+    if (!tasksAsync.isLoading &&
+        !eventsAsync.isLoading &&
+        tasks.isEmpty &&
+        events.isEmpty) {
+      return EmptyScheduleHero(listId: listId);
+    }
 
     return Column(
       children: [

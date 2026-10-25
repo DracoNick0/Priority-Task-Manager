@@ -8,6 +8,7 @@ import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
+import 'empty_schedule_hero.dart';
 import 'event_card.dart';
 import 'task_card.dart';
 
@@ -51,6 +52,9 @@ class GuestTaskList extends ConsumerWidget {
     }
 
     final tasks = tasksAsync.value ?? const <TaskItem>[];
+    if (tasks.isEmpty && events.isEmpty) {
+      return EmptyScheduleHero(listId: listId);
+    }
     final incompleteTasks = tasks.where((t) => !t.isCompleted).toList()
       ..sort(_comparatorFor(sort));
     final completedTasks = tasks.where((t) => t.isCompleted).toList()
