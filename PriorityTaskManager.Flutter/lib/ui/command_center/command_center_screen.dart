@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/task_list.dart';
@@ -12,6 +13,7 @@ import '../../providers/view_provider.dart';
 import '../dev/dev_log_panel.dart';
 import '../theme/app_theme.dart';
 import 'center_stage.dart';
+import 'fast_capture_palette.dart';
 import 'left_rail.dart';
 import 'resizable_divider.dart';
 import 'right_inspector.dart';
@@ -315,52 +317,61 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
         .clamp(_devLogMinHeight, devLogMaxHeight)
         .toDouble();
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: leftDocked ? null : _buildLeftDrawer(context, isNarrow),
-      onEndDrawerChanged: _onEndDrawerChanged,
-      endDrawer: rightDocked
-          ? null
-          : _buildRightDrawer(context, isWide, rightWidth),
-      body: Column(
-        children: [
-          _buildTopAppBar(context, leftDocked, rightDocked, width),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (leftDocked)
-                  SizedBox(width: leftWidth, child: const LeftRail()),
-                // Only rendered while docked or mid-drag, so the handle
-                // disappears once the rail is collapsed and released.
-                if ((isWide || isMedium) && (leftDocked || _left.dividerHeld))
-                  _buildLeftDivider(width, rightWidth),
-                Expanded(
-                  child: CenterStage(
-                    showHamburger: false,
-                    onOpenLeftRail: () =>
-                        _scaffoldKey.currentState?.openDrawer(),
-                    showInspectorToggle: !rightDocked,
-                    onOpenInspector: () =>
-                        _scaffoldKey.currentState?.openEndDrawer(),
-                  ),
-                ),
-                // Only rendered while docked or mid-drag, so the handle
-                // disappears once the inspector is collapsed and released.
-                if (isWide && (rightDocked || _right.dividerHeld))
-                  _buildRightDivider(width, leftWidth),
-                if (rightDocked)
-                  SizedBox(
-                    width: rightWidth,
-                    child: RightInspector(
-                      onClose: () => setState(_right.collapse),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+            () => showFastCapturePalette(context),
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+            () => showFastCapturePalette(context),
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: leftDocked ? null : _buildLeftDrawer(context, isNarrow),
+        onEndDrawerChanged: _onEndDrawerChanged,
+        endDrawer: rightDocked
+            ? null
+            : _buildRightDrawer(context, isWide, rightWidth),
+        body: Column(
+          children: [
+            _buildTopAppBar(context, leftDocked, rightDocked, width),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (leftDocked)
+                    SizedBox(width: leftWidth, child: const LeftRail()),
+                  // Only rendered while docked or mid-drag, so the handle
+                  // disappears once the rail is collapsed and released.
+                  if ((isWide || isMedium) && (leftDocked || _left.dividerHeld))
+                    _buildLeftDivider(width, rightWidth),
+                  Expanded(
+                    child: CenterStage(
+                      showHamburger: false,
+                      onOpenLeftRail: () =>
+                          _scaffoldKey.currentState?.openDrawer(),
+                      showInspectorToggle: !rightDocked,
+                      onOpenInspector: () =>
+                          _scaffoldKey.currentState?.openEndDrawer(),
                     ),
                   ),
-              ],
+                  // Only rendered while docked or mid-drag, so the handle
+                  // disappears once the inspector is collapsed and released.
+                  if (isWide && (rightDocked || _right.dividerHeld))
+                    _buildRightDivider(width, leftWidth),
+                  if (rightDocked)
+                    SizedBox(
+                      width: rightWidth,
+                      child: RightInspector(
+                        onClose: () => setState(_right.collapse),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (devLogOpen) ..._buildDevLogSection(devLogHeight, devLogMaxHeight),
-        ],
+            if (devLogOpen)
+              ..._buildDevLogSection(devLogHeight, devLogMaxHeight),
+          ],
+        ),
       ),
     );
   }
@@ -457,6 +468,11 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
             ),
           ),
           const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.flash_on_rounded, size: 20),
+            tooltip: 'Fast Capture (Ctrl + K)',
+            onPressed: () => showFastCapturePalette(context),
+          ),
           if (!rightDocked)
             IconButton(
               icon: const Icon(Icons.info_outline),

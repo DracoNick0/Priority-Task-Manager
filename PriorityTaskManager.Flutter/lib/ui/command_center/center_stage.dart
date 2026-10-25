@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import 'day_column.dart';
 import 'empty_schedule_hero.dart';
 import 'event_card.dart';
+import 'fast_capture_palette.dart';
 import 'guest_task_list.dart';
 import 'task_card.dart';
 
@@ -52,6 +53,8 @@ class CenterStage extends ConsumerWidget {
           isAuthenticated: isAuthenticated,
         ),
         const Divider(height: 1),
+        if (activeListId != null)
+          InlineFastCaptureBar(listId: activeListId),
         Expanded(
           child: activeListId == null
               ? Center(
