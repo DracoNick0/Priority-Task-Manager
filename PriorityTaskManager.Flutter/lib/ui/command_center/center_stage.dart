@@ -18,6 +18,7 @@ import 'event_card.dart';
 import 'fast_capture_palette.dart';
 import 'guest_task_list.dart';
 import 'task_card.dart';
+import 'today_compass_view.dart';
 
 /// The Center Stage: a horizontally scrolling pipeline of Daily Columns
 /// (Today, Tomorrow, ... , Unscheduled), each holding scheduled task cards
@@ -63,6 +64,8 @@ class CenterStage extends ConsumerWidget {
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                 )
+              : ref.watch(viewModeProvider) == ViewMode.today
+              ? TodayCompassView(listId: activeListId)
               : isAuthenticated
               ? _AuthenticatedBody(listId: activeListId)
               : GuestTaskList(listId: activeListId),
