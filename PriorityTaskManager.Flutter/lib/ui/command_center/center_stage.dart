@@ -255,13 +255,16 @@ class _Pipeline extends ConsumerWidget {
         ref.watch(eventOccurrencesProvider((listId, today))).asData?.value ??
         const <FixedEvent>[];
 
-    if (tasksAsync.isLoading || scheduleAsync.isLoading) {
+    final isInitialLoading =
+        (tasksAsync.isLoading && !tasksAsync.hasValue) ||
+        (scheduleAsync.isLoading && !scheduleAsync.hasValue);
+    if (isInitialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (tasksAsync.hasError) {
+    if (tasksAsync.hasError && !tasksAsync.hasValue) {
       return Center(child: Text('Could not load tasks: ${tasksAsync.error}'));
     }
-    if (scheduleAsync.hasError) {
+    if (scheduleAsync.hasError && !scheduleAsync.hasValue) {
       return Center(
         child: Text('Could not compute schedule: ${scheduleAsync.error}'),
       );

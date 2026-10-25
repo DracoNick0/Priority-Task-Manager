@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/task_list.dart';
 import '../../providers/app_notifications_provider.dart';
 import '../../providers/dev_log_provider.dart';
+import '../../providers/engine_status_provider.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/view_provider.dart';
@@ -120,6 +121,9 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   );
   double _devLogHeight = 260;
   double? _devLogHeightAtDragStart;
+  late final AppLifecycleListener _lifecycleListener;
+  DateTime _lastActiveTime = DateTime.now();
+  int _lastDay = DateTime.now().day;
 
   // Selects the first list whenever nothing is selected yet, or whenever the
   // currently selected id no longer exists in the loaded lists (e.g. it was
@@ -214,9 +218,30 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   @override
   void initState() {
     super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () {
+        final now = DateTime.now();
+        final hoursAway = now.difference(_lastActiveTime).inHours;
+        final dayRolledOver = now.day != _lastDay;
+        _lastActiveTime = now;
+        _lastDay = now.day;
+        if (hoursAway >= 2 || dayRolledOver) {
+          final activeListId = ref.read(activeListIdProvider);
+          if (activeListId != null) {
+            ref.read(schedulingTriggerProvider(activeListId).notifier).state++;
+          }
+        }
+      },
+    );
     // Ensure a list is selected once lists finish loading, so the pipeline
     // and inspector have something to show by default.
     Future.microtask(() => _ensureValidSelection(ref.read(taskListsProvider)));
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
   }
 
   @override
@@ -243,6 +268,16 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
       appNotificationProvider,
       (previous, next) => _showNotificationSnackBar(context, next),
     );
+    ref.listen<AsyncValue<DateTime>>(engineClockProvider, (previous, next) {
+      final current = next.asData?.value;
+      if (current != null && current.day != _lastDay) {
+        _lastDay = current.day;
+        final activeListId = ref.read(activeListIdProvider);
+        if (activeListId != null) {
+          ref.read(schedulingTriggerProvider(activeListId).notifier).state++;
+        }
+      }
+    });
 
     final devLogOpen = kDebugMode && ref.watch(devLogPanelOpenProvider);
 

@@ -58,11 +58,26 @@ final scheduleProvider = FutureProvider<DailySchedule>((ref) async {
     return DailySchedule.empty();
   }
 
-  final tasks = await ref.watch(tasksProvider(activeListId).future);
-  final incompleteTasks = tasks
+  // Watch the scheduling trigger for the active list (ignores cosmetic task edits)
+  final trigger = ref.watch(schedulingTriggerProvider(activeListId));
+
+  // Debounce rapid modifications by 1000ms when triggered by edits (trigger > 0)
+  if (trigger > 0) {
+    var didDispose = false;
+    ref.onDispose(() => didDispose = true);
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
+    if (didDispose) {
+      throw StateError(
+        'Debounced schedule calculation superseded by newer edit',
+      );
+    }
+  }
+
+  final taskRepository = await ref.watch(taskRepositoryProvider.future);
+  final allTasks = await taskRepository.getTasks(activeListId);
+  final incompleteTasks = allTasks
       .where((t) => !t.isRecurringOccurrence && !t.isCompleted)
       .toList();
-  final taskRepository = await ref.watch(taskRepositoryProvider.future);
   final recurringTasks = await taskRepository.getRecurringTasksForScheduling(
     activeListId,
   );

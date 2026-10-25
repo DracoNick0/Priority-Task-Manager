@@ -57,6 +57,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     );
     ref.invalidateSelf();
     await future;
+    ref.read(schedulingTriggerProvider(arg).notifier).state++;
     return created;
   }
 
@@ -65,6 +66,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     await repository.updateEvent(event);
     ref.invalidateSelf();
     await future;
+    ref.read(schedulingTriggerProvider(arg).notifier).state++;
   }
 
   Future<void> deleteEvent(String eventId) async {
@@ -74,6 +76,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     await future;
     ref.invalidate(archivedEventsProvider);
     ref.invalidate(archiveGroupsProvider);
+    ref.read(schedulingTriggerProvider(arg).notifier).state++;
   }
 
   /// Edits one or more occurrences of a recurring series (issue #71). The
@@ -105,6 +108,7 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     );
     ref.invalidateSelf();
     await future;
+    ref.read(schedulingTriggerProvider(arg).notifier).state++;
   }
 
   Future<void> deleteOccurrence({
@@ -122,5 +126,6 @@ class EventsNotifier extends FamilyAsyncNotifier<List<FixedEvent>, String> {
     await future;
     ref.invalidate(archivedEventsProvider);
     ref.invalidate(archiveGroupsProvider);
+    ref.read(schedulingTriggerProvider(arg).notifier).state++;
   }
 }

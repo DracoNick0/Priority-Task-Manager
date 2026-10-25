@@ -60,10 +60,23 @@ class TaskListsNotifier extends AsyncNotifier<List<TaskList>> {
   }
 
   Future<void> updateList(TaskList list) async {
+    final oldLists = state.asData?.value;
+    final oldList = oldLists?.where((l) => l.id == list.id).firstOrNull;
+    final isSchedulingChange = oldList == null ||
+        oldList.workStartMinutes != list.workStartMinutes ||
+        oldList.workEndMinutes != list.workEndMinutes ||
+        !listEquals(oldList.workDays, list.workDays) ||
+        oldList.schedulingMode != list.schedulingMode ||
+        oldList.simulatedTime != list.simulatedTime;
+
     final repository = await ref.read(taskRepositoryProvider.future);
     await repository.updateList(list);
     ref.invalidateSelf();
     await future;
+
+    if (isSchedulingChange) {
+      ref.read(schedulingTriggerProvider(list.id).notifier).state++;
+    }
   }
 
   Future<void> deleteList(String listId) async {
@@ -74,6 +87,12 @@ class TaskListsNotifier extends AsyncNotifier<List<TaskList>> {
     ref.invalidate(tasksProvider(listId));
   }
 }
+
+/// Tracks scheduling-affecting mutations for a list id (task creation, deletion,
+/// time/constraint edits, completion, etc.). Cosmetic mutations (title, description,
+/// link) do not bump this trigger, filtering out redundant schedule recalculations.
+final schedulingTriggerProvider =
+    StateProvider.family<int, String>((ref, listId) => 0);
 
 /// The currently selected list id, driving which tasks are shown.
 final activeListIdProvider = StateProvider<String?>((ref) => null);
@@ -89,6 +108,26 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
   Future<List<TaskItem>> build(String arg) async {
     final repository = await ref.watch(taskRepositoryProvider.future);
     return repository.getTasks(arg);
+  }
+
+  void _bumpSchedulingTrigger() {
+    ref.read(schedulingTriggerProvider(arg).notifier).state++;
+  }
+
+  bool _isSchedulingChange(TaskItem oldTask, TaskItem newTask) {
+    return oldTask.dueDate != newTask.dueDate ||
+        oldTask.estimatedDurationMinutes != newTask.estimatedDurationMinutes ||
+        oldTask.isCompleted != newTask.isCompleted ||
+        oldTask.importance != newTask.importance ||
+        oldTask.complexity != newTask.complexity ||
+        oldTask.notBefore != newTask.notBefore ||
+        oldTask.isPinned != newTask.isPinned ||
+        oldTask.isDivisible != newTask.isDivisible ||
+        !listEquals(oldTask.dependencies, newTask.dependencies) ||
+        oldTask.recurrenceRule != newTask.recurrenceRule ||
+        oldTask.progressionMode != newTask.progressionMode ||
+        oldTask.requiredCompletions != newTask.requiredCompletions ||
+        oldTask.isSkippedOrDisregarded != newTask.isSkippedOrDisregarded;
   }
 
   Future<TaskItem> addTask({
@@ -131,14 +170,24 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     );
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
     return created;
   }
 
   Future<void> updateTask(TaskItem task) async {
+    final oldTasks = state.asData?.value;
+    final oldTask = oldTasks?.where((t) => t.id == task.id).firstOrNull;
+    final isSchedulingChange =
+        oldTask == null || _isSchedulingChange(oldTask, task);
+
     final repository = await ref.read(taskRepositoryProvider.future);
     await repository.updateTask(task);
     ref.invalidateSelf();
     await future;
+
+    if (isSchedulingChange) {
+      _bumpSchedulingTrigger();
+    }
   }
 
   Future<TaskItem> getTaskOccurrence({
@@ -198,6 +247,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await future;
     ref.invalidate(archivedTasksProvider);
     ref.invalidate(archiveGroupsProvider);
+    _bumpSchedulingTrigger();
   }
 
   Future<void> deleteTaskOccurrence({
@@ -215,6 +265,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await future;
     ref.invalidate(archivedTasksProvider);
     ref.invalidate(archiveGroupsProvider);
+    _bumpSchedulingTrigger();
   }
 
   Future<void> deleteTask(String taskId) async {
@@ -224,6 +275,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await future;
     ref.invalidate(archivedTasksProvider);
     ref.invalidate(archiveGroupsProvider);
+    _bumpSchedulingTrigger();
   }
 
   Future<void> archiveTask(String taskId) async {
@@ -233,6 +285,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await future;
     ref.invalidate(archivedTasksProvider);
     ref.invalidate(archiveGroupsProvider);
+    _bumpSchedulingTrigger();
   }
 
   Future<void> archiveTaskGroup(List<String> taskIds) async {
@@ -242,6 +295,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await future;
     ref.invalidate(archivedTasksProvider);
     ref.invalidate(archiveGroupsProvider);
+    _bumpSchedulingTrigger();
   }
 
   Future<void> setCompleted(String taskId, bool isCompleted) async {
@@ -249,6 +303,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.setCompleted(taskId, isCompleted);
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
   }
 
   Future<void> completeTaskOccurrence(TaskItem occurrence) async {
@@ -256,6 +311,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.completeTaskOccurrence(occurrence);
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
   }
 
   Future<void> undoTaskOccurrenceCompletion(TaskItem occurrence) async {
@@ -263,6 +319,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.undoTaskOccurrenceCompletion(occurrence);
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
   }
 
   Future<void> skipTaskOccurrence(TaskItem occurrence) async {
@@ -270,6 +327,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.skipTaskOccurrence(occurrence);
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
   }
 
   Future<void> addDependency(String taskId, String dependsOnTaskId) async {
@@ -277,6 +335,7 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.addDependency(taskId, dependsOnTaskId);
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
   }
 
   Future<void> removeDependency(String taskId, String dependsOnTaskId) async {
@@ -284,5 +343,6 @@ class TasksNotifier extends FamilyAsyncNotifier<List<TaskItem>, String> {
     await repository.removeDependency(taskId, dependsOnTaskId);
     ref.invalidateSelf();
     await future;
+    _bumpSchedulingTrigger();
   }
 }
