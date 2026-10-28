@@ -107,6 +107,67 @@ void main() {
       expect(occurrence.isRecurringOccurrence, isTrue);
     });
 
+    test(
+      'parses .NET TimeSpan fractional seconds and day components',
+      () async {
+        final repository = ApiScheduleRepository(
+          authToken: 'test-token',
+          httpClient: MockClient(
+            (_) async => http.Response(
+              jsonEncode({
+                'scheduledTasks': [],
+                'unscheduledTaskIds': ['fractional', 'day-fractional'],
+                'unscheduledTasks': [
+                  {
+                    'id': 'fractional',
+                    'title': 'Fractional duration',
+                    'estimatedDuration': '08:03:59.0000000',
+                  },
+                  {
+                    'id': 'day-fractional',
+                    'title': 'Duration with days and fractions',
+                    'estimatedDuration': '1.08:03:59.0000000',
+                  },
+                ],
+              }),
+              200,
+            ),
+          ),
+        );
+
+        final schedule = await repository.computeSchedule(
+          tasks: [
+            TaskItem(id: 'fractional', listId: 'list-1', title: 'Fractional'),
+            TaskItem(
+              id: 'day-fractional',
+              listId: 'list-1',
+              title: 'Day fractional',
+            ),
+          ],
+          settings: EffectiveListSettings(
+            sortOption: 0,
+            schedulingMode: 0,
+            workStartMinutes: 9 * 60,
+            workEndMinutes: 17 * 60,
+            workDays: const [1, 2, 3, 4, 5],
+            desiredBreatherMinutes: 15,
+            slackThresholdDire: 0.5,
+            slackThresholdPressing: 1,
+            slackThresholdFocus: 2,
+            slackThresholdSafe: 4,
+          ),
+          now: DateTime(2026, 10, 8, 8),
+        );
+
+        expect(
+          schedule.unscheduledTasks.map(
+            (task) => task.estimatedDurationMinutes,
+          ),
+          [483, 1923],
+        );
+      },
+    );
+
     test('uses today for catch-up until its workday ends', () async {
       final repository = ApiScheduleRepository(
         authToken: 'test-token',

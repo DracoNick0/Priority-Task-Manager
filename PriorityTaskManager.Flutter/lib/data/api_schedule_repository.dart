@@ -20,9 +20,18 @@ String _formatDuration(Duration duration) {
 }
 
 int _parseDurationAsMinutes(String value) {
-  final dayParts = value.split('.');
-  final dayCount = dayParts.length == 2 ? int.parse(dayParts.first) : 0;
-  final timeParts = dayParts.last.split(':');
+  final daySeparatorIndex = value.indexOf('.');
+  final firstColonIndex = value.indexOf(':');
+  final hasDayComponent =
+      daySeparatorIndex >= 0 &&
+      (firstColonIndex < 0 || daySeparatorIndex < firstColonIndex);
+  final dayCount = hasDayComponent
+      ? int.parse(value.substring(0, daySeparatorIndex))
+      : 0;
+  final timeValue = hasDayComponent
+      ? value.substring(daySeparatorIndex + 1)
+      : value;
+  final timeParts = timeValue.split(':');
   if (timeParts.length != 3) {
     throw FormatException('Invalid TimeSpan value: $value');
   }

@@ -14,6 +14,8 @@ With Postgres configured, `PriorityTaskManager.API` exposes account, task, list,
 
 `POST /api/schedule` requires an authenticated account with the `Subscription` tier. It accepts the caller's tasks, events, profile settings, and optional simulated time, then computes and returns a schedule without reading or writing account persistence. The Flutter client calls this endpoint to obtain schedules; it does not implement scheduling itself. The active strategy is Gold Panning; Constraint Optimization remains unimplemented (see [ARCHITECTURE_SCHEDULING.md](ARCHITECTURE_SCHEDULING.md)). Guests do not use online scheduling.
 
+The Flutter schedule-response adapter parses .NET `TimeSpan` durations with optional day and fractional-second components into minute-resolution task estimates.
+
 The Flutter client selects a Hive-backed repository in Guest mode and an API-backed repository for authenticated sessions. Guest data is local and is not automatically migrated to an account or synchronized with account data. The API and Guest stores also differ in event scoping; see [ARCHITECTURE_DATA.md](ARCHITECTURE_DATA.md) before changing persistence or sync behavior.
 
 For a .NET host that invokes Core, use `ServiceComposer` with the host's `IPersistenceService` rather than independently wiring the shared Core service graph. Keep host-specific transport, authentication, and presentation concerns outside Core; see [ARCHITECTURE_CORE.md](ARCHITECTURE_CORE.md).
