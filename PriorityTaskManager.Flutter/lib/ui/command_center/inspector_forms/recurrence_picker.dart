@@ -151,7 +151,11 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
     final startDate = widget.seriesStartDate();
     if (_enabled && _lastSeriesStartDate != startDate) {
       _lastSeriesStartDate = startDate;
-      widget.onChanged(_buildRule());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _enabled) {
+          widget.onChanged(_buildRule());
+        }
+      });
     }
   }
 

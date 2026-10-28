@@ -105,4 +105,53 @@ void main() {
       );
     });
   }
+
+  testWidgets(
+    'changing the series start while enabled notifies the parent after build',
+    (tester) async {
+      await tester.pumpWidget(const _RecurrencePickerHost());
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Advance series start'));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(find.text('2026-10-09T00:00:00.000'), findsOneWidget);
+    },
+  );
+}
+
+class _RecurrencePickerHost extends StatefulWidget {
+  const _RecurrencePickerHost();
+
+  @override
+  State<_RecurrencePickerHost> createState() => _RecurrencePickerHostState();
+}
+
+class _RecurrencePickerHostState extends State<_RecurrencePickerHost> {
+  DateTime _seriesStart = DateTime(2026, 10, 8);
+  RecurrenceRule? _rule;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: Scaffold(
+      body: Column(
+        children: [
+          TextButton(
+            onPressed: () => setState(
+              () => _seriesStart = _seriesStart.add(const Duration(days: 1)),
+            ),
+            child: const Text('Advance series start'),
+          ),
+          RecurrencePicker(
+            seriesStartDate: () => _seriesStart,
+            onChanged: (rule) => setState(() => _rule = rule),
+          ),
+          Text(_rule?.seriesStartDate.toIso8601String() ?? 'No recurrence'),
+        ],
+      ),
+    ),
+  );
 }
