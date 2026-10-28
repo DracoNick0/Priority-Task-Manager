@@ -16,6 +16,7 @@ import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'empty_schedule_hero.dart';
 import 'fast_capture_palette.dart';
+import 'workload_capacity_meter.dart';
 
 /// The Today Execution Compass View (resolves Issue #84).
 /// Provides a fluid, priority-ranked daily plan that answers:
@@ -35,20 +36,31 @@ class TodayCompassView extends ConsumerWidget {
 
     final tasksAsync = ref.watch(tasksProvider(listId));
     final scheduleAsync = ref.watch(scheduleProvider);
-    final eventsAsync = ref.watch(eventsProvider(listId));
+    final eventSeriesAsync = ref.watch(eventsProvider(listId));
+    final eventOccurrencesAsync = ref.watch(
+      eventOccurrencesProvider((listId, today)),
+    );
 
     if (tasksAsync.isLoading && !tasksAsync.hasValue) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (eventOccurrencesAsync.hasError && !eventOccurrencesAsync.hasValue) {
+      return Center(
+        child: Text(
+          'Could not load event occurrences: ${eventOccurrencesAsync.error}',
+        ),
+      );
+    }
 
     final tasks = tasksAsync.asData?.value ?? const <TaskItem>[];
-    final events = eventsAsync.asData?.value ?? const <FixedEvent>[];
+    final eventSeries = eventSeriesAsync.asData?.value ?? const <FixedEvent>[];
+    final events = eventOccurrencesAsync.asData?.value ?? const <FixedEvent>[];
     final schedule = scheduleAsync.asData?.value ?? DailySchedule.empty();
 
     if (!tasksAsync.isLoading &&
-        !eventsAsync.isLoading &&
+        !eventSeriesAsync.isLoading &&
         tasks.isEmpty &&
-        events.isEmpty) {
+        eventSeries.isEmpty) {
       return EmptyScheduleHero(listId: listId);
     }
 
@@ -97,13 +109,7 @@ class TodayCompassView extends ConsumerWidget {
 
               // Evening accomplishments or active execution sequence
               if (isPastWorkEnd)
-                _buildEveningWrapUp(
-                  context,
-                  ref,
-                  today,
-                  tasks,
-                  workEndTime,
-                )
+                _buildEveningWrapUp(context, ref, today, tasks, workEndTime)
               else
                 _buildExecutionSequence(
                   context,
@@ -145,7 +151,11 @@ class TodayCompassView extends ConsumerWidget {
         padding: const EdgeInsets.all(AppTheme.spacingMd),
         child: Row(
           children: [
-            Icon(Icons.compass_calibration, color: colorScheme.primary, size: 28),
+            Icon(
+              Icons.compass_calibration,
+              color: colorScheme.primary,
+              size: 28,
+            ),
             const SizedBox(width: AppTheme.spacingSm),
             Expanded(
               child: Column(
@@ -206,27 +216,41 @@ class TodayCompassView extends ConsumerWidget {
     bool isSameDay(DateTime a, DateTime b) =>
         a.year == b.year && a.month == b.month && a.day == b.day;
 
-    final todayEvents =
-        events.where((e) => isSameDay(e.startTime, today)).toList();
+    final todayEvents = events
+        .where((e) => isSameDay(e.startTime, today))
+        .toList();
+    final workdayStart = today.add(Duration(minutes: workStartMinutes));
+    final workdayEnd = today.add(Duration(minutes: workEndMinutes));
 
     double plannedWorkHours;
     if (schedule.todayTasks.isNotEmpty) {
-      plannedWorkHours = schedule.todayTasks
-          .fold<double>(0.0, (sum, t) => sum + t.chunkHours);
+      plannedWorkHours = scheduledTaskHoursWithinWorkWindow(
+        schedule.todayTasks,
+        windowStart: workdayStart,
+        windowEnd: workdayEnd,
+      );
     } else {
-      final incompleteToday = tasks.where((t) =>
-          !t.isCompleted &&
-          (t.dueDate == null || isSameDay(t.dueDate!, today)));
+      final incompleteToday = tasks.where(
+        (t) =>
+            !t.isCompleted &&
+            (t.dueDate == null || isSameDay(t.dueDate!, today)),
+      );
       plannedWorkHours = incompleteToday.fold<double>(
-          0.0, (sum, t) => sum + (t.estimatedDurationMinutes / 60.0));
+        0.0,
+        (sum, t) => sum + (t.estimatedDurationMinutes / 60.0),
+      );
     }
 
-    final meetingHours = todayEvents.fold<double>(
-      0.0,
-      (sum, e) => sum + (e.endTime.difference(e.startTime).inMinutes / 60.0),
+    final meetingHours = eventHoursWithinWorkWindow(
+      todayEvents,
+      windowStart: workdayStart,
+      windowEnd: workdayEnd,
     );
 
-    final totalCapacityHours = (workEndMinutes - workStartMinutes) / 60.0;
+    final totalCapacityHours = max(
+      0.0,
+      workdayEnd.difference(workdayStart).inSeconds / 3600.0,
+    ).toDouble();
     final totalPlanned = plannedWorkHours + meetingHours;
     final freeBufferHours = max(0.0, totalCapacityHours - totalPlanned);
     final capacityRatio = totalCapacityHours > 0
@@ -245,16 +269,22 @@ class TodayCompassView extends ConsumerWidget {
 
     // Workday remaining calculation
     final currentMinutes = now.hour * 60 + now.minute;
-    final remainingMinutes = max(0, workEndMinutes - max(workStartMinutes, currentMinutes));
+    final remainingMinutes = max(
+      0,
+      workEndMinutes - max(workStartMinutes, currentMinutes),
+    );
     final remainingWorkHours = remainingMinutes / 60.0;
-    final isOverloaded = !isPastWorkEnd && (plannedWorkHours > remainingWorkHours);
+    final isOverloaded =
+        !isPastWorkEnd && (plannedWorkHours > remainingWorkHours);
 
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         side: BorderSide(
-          color: isOverloaded ? Colors.amber.shade700 : colorScheme.outlineVariant,
+          color: isOverloaded
+              ? Colors.amber.shade700
+              : colorScheme.outlineVariant,
           width: isOverloaded ? 1.5 : 1.0,
         ),
       ),
@@ -298,8 +328,10 @@ class TodayCompassView extends ConsumerWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: meterColor.withAlpha(35),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -317,14 +349,13 @@ class TodayCompassView extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppTheme.spacingSm),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: capacityRatio.clamp(0.0, 1.0),
-                backgroundColor: colorScheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation<Color>(meterColor),
-                minHeight: 8,
-              ),
+            SegmentedCapacityMeter(
+              key: const ValueKey('today-capacity-meter'),
+              eventHours: meetingHours,
+              taskHours: plannedWorkHours,
+              capacityHours: totalCapacityHours,
+              loadColor: meterColor,
+              height: 8,
             ),
             if (isOverloaded) ...[
               const SizedBox(height: AppTheme.spacingMd),
@@ -340,8 +371,11 @@ class TodayCompassView extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            size: 18, color: Colors.amber),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: Colors.amber,
+                        ),
                         const SizedBox(width: AppTheme.spacingXs),
                         Text(
                           'Workload Notice: Remaining planned work (${plannedWorkHours.toStringAsFixed(1)}h) exceeds remaining workday (${remainingWorkHours.toStringAsFixed(1)}h)',
@@ -357,15 +391,19 @@ class TodayCompassView extends ConsumerWidget {
                       runSpacing: AppTheme.spacingXs,
                       children: [
                         OutlinedButton.icon(
-                          onPressed: () => _pushNonUrgentToTomorrow(context, ref, tasks),
+                          onPressed: () =>
+                              _pushNonUrgentToTomorrow(context, ref, tasks),
                           icon: const Icon(Icons.arrow_forward, size: 16),
-                          label: const Text('Push non-urgent tasks to tomorrow'),
+                          label: const Text(
+                            'Push non-urgent tasks to tomorrow',
+                          ),
                           style: OutlinedButton.styleFrom(
                             visualDensity: VisualDensity.compact,
                           ),
                         ),
                         OutlinedButton.icon(
-                          onPressed: () => _extendTodayHours(context, ref, workEndMinutes),
+                          onPressed: () =>
+                              _extendTodayHours(context, ref, workEndMinutes),
                           icon: const Icon(Icons.more_time, size: 16),
                           label: const Text("Extend today's hours by 1h"),
                           style: OutlinedButton.styleFrom(
@@ -402,7 +440,13 @@ class TodayCompassView extends ConsumerWidget {
         a.year == b.year && a.month == b.month && a.day == b.day;
 
     final todayEvents =
-        events.where((e) => isSameDay(e.startTime, today)).toList()
+        events
+            .where(
+              (event) =>
+                  isSameDay(event.startTime, today) &&
+                  event.endTime.isAfter(now),
+            )
+            .toList()
           ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
     final incompleteTasks = tasks.where((t) => !t.isCompleted).toList();
@@ -413,15 +457,19 @@ class TodayCompassView extends ConsumerWidget {
       tasksById[unscheduled.id] = unscheduled;
     }
 
-    final todayScheduledIds =
-        schedule.todayTasks.map((t) => t.id).toSet();
+    final todayScheduledIds = schedule.todayTasks.map((t) => t.id).toSet();
 
     // Find highest urgency / least slack task
     TaskItem? leastSlackItem;
     if (schedule.leastSlackTask != 'None') {
-      leastSlackItem = tasks.where((t) => t.title == schedule.leastSlackTask).firstOrNull;
+      leastSlackItem = tasks
+          .where((t) => t.title == schedule.leastSlackTask)
+          .firstOrNull;
     }
-    leastSlackItem ??= incompleteTasks.where((t) => todayScheduledIds.contains(t.id)).firstOrNull ??
+    leastSlackItem ??=
+        incompleteTasks
+            .where((t) => todayScheduledIds.contains(t.id))
+            .firstOrNull ??
         incompleteTasks.firstOrNull;
 
     // Remaining items for today / next up in queue
@@ -478,7 +526,8 @@ class TodayCompassView extends ConsumerWidget {
                 ? 'Realistic ${schedule.realisticSlack} · Actual ${schedule.actualSlack}'
                 : 'Urgent deadline today',
             onCompleted: () => _completeTask(context, ref, leastSlackItem!),
-            onPostpone: () => _postponeToTomorrow(context, ref, leastSlackItem!),
+            onPostpone: () =>
+                _postponeToTomorrow(context, ref, leastSlackItem!),
           ),
           const SizedBox(height: AppTheme.spacingLg),
         ],
@@ -544,7 +593,9 @@ class TodayCompassView extends ConsumerWidget {
             children: [
               const Expanded(child: Divider()),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingMd,
+                ),
                 child: Text(
                   'WORKDAY ENDS AT ${_formatTime(workEndTime)}',
                   style: textTheme.labelSmall?.copyWith(
@@ -603,7 +654,11 @@ class TodayCompassView extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.bedtime_outlined, color: colorScheme.primary, size: 28),
+                Icon(
+                  Icons.bedtime_outlined,
+                  color: colorScheme.primary,
+                  size: 28,
+                ),
                 const SizedBox(width: AppTheme.spacingSm),
                 Expanded(
                   child: Column(
@@ -700,7 +755,8 @@ class TodayCompassView extends ConsumerWidget {
                         runSpacing: AppTheme.spacingXs,
                         children: [
                           FilledButton.tonal(
-                            onPressed: () => _completeTonight(context, ref, task),
+                            onPressed: () =>
+                                _completeTonight(context, ref, task),
                             child: const Text('Complete Tonight (+2h Window)'),
                           ),
                           OutlinedButton(
@@ -708,7 +764,8 @@ class TodayCompassView extends ConsumerWidget {
                             child: const Text('Mark Done'),
                           ),
                           TextButton(
-                            onPressed: () => _postponeToTomorrow(context, ref, task),
+                            onPressed: () =>
+                                _postponeToTomorrow(context, ref, task),
                             child: const Text('Postpone (Late)'),
                           ),
                         ],
@@ -736,9 +793,11 @@ class TodayCompassView extends ConsumerWidget {
                   dense: true,
                   leading: const Icon(Icons.arrow_forward, size: 18),
                   title: Text(task.title),
-                  subtitle: Text(task.dueDate != null
-                      ? 'Due: ${_formatDateHeading(task.dueDate!)}'
-                      : 'No due date'),
+                  subtitle: Text(
+                    task.dueDate != null
+                        ? 'Due: ${_formatDateHeading(task.dueDate!)}'
+                        : 'No due date',
+                  ),
                   trailing: OutlinedButton(
                     onPressed: () => _postponeToTomorrow(context, ref, task),
                     child: const Text('Push to Tomorrow'),
@@ -800,7 +859,13 @@ class TodayCompassView extends ConsumerWidget {
   ) async {
     final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
     final tomorrow = now.add(const Duration(days: 1));
-    final newDueDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 17, 0);
+    final newDueDate = DateTime(
+      tomorrow.year,
+      tomorrow.month,
+      tomorrow.day,
+      17,
+      0,
+    );
     final previousDueDate = task.dueDate;
 
     final updated = TaskItem(
@@ -880,13 +945,26 @@ class TodayCompassView extends ConsumerWidget {
     final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = now.add(const Duration(days: 1));
-    final newDueDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 17, 0);
+    final newDueDate = DateTime(
+      tomorrow.year,
+      tomorrow.month,
+      tomorrow.day,
+      17,
+      0,
+    );
 
     // Filter non-urgent tasks: importance < 8 and not due today
-    final candidates = tasks.where((t) =>
-        !t.isCompleted &&
-        t.importance < 8 &&
-        (t.dueDate == null || !t.dueDate!.isBefore(DateTime(today.year, today.month, today.day, 23, 59)))).toList();
+    final candidates = tasks
+        .where(
+          (t) =>
+              !t.isCompleted &&
+              t.importance < 8 &&
+              (t.dueDate == null ||
+                  !t.dueDate!.isBefore(
+                    DateTime(today.year, today.month, today.day, 23, 59),
+                  )),
+        )
+        .toList();
 
     if (candidates.isEmpty) return;
 
@@ -1043,7 +1121,10 @@ class TodayCompassView extends ConsumerWidget {
     TaskItem task,
   ) async {
     final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-    final extensionEndMinutes = min(24 * 60, (now.hour * 60 + now.minute) + 120);
+    final extensionEndMinutes = min(
+      24 * 60,
+      (now.hour * 60 + now.minute) + 120,
+    );
     await _extendTodayHours(context, ref, extensionEndMinutes);
   }
 
@@ -1077,7 +1158,11 @@ class TodayCompassView extends ConsumerWidget {
   }
 
   static String _formatTime(DateTime time) {
-    final hour = time.hour > 12 ? time.hour - 12 : time.hour == 0 ? 12 : time.hour;
+    final hour = time.hour > 12
+        ? time.hour - 12
+        : time.hour == 0
+        ? 12
+        : time.hour;
     final minute = time.minute.toString().padLeft(2, '0');
     final amPm = time.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $amPm';
@@ -1086,7 +1171,11 @@ class TodayCompassView extends ConsumerWidget {
   static String _formatMinutes(int minutes) {
     final hour = minutes ~/ 60;
     final minute = minutes % 60;
-    final displayHour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    final displayHour = hour > 12
+        ? hour - 12
+        : hour == 0
+        ? 12
+        : hour;
     final amPm = hour >= 12 ? 'PM' : 'AM';
     return '$displayHour:${minute.toString().padLeft(2, '0')} $amPm';
   }
@@ -1170,7 +1259,9 @@ class _TodayTaskCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         side: BorderSide(
-          color: isLeastSlack ? Colors.red.shade400 : colorScheme.outlineVariant,
+          color: isLeastSlack
+              ? Colors.red.shade400
+              : colorScheme.outlineVariant,
           width: isLeastSlack ? 1.5 : 1.0,
         ),
       ),
@@ -1179,10 +1270,7 @@ class _TodayTaskCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: task.isCompleted,
-              onChanged: (_) => onCompleted(),
-            ),
+            Checkbox(value: task.isCompleted, onChanged: (_) => onCompleted()),
             const SizedBox(width: AppTheme.spacingSm),
             Expanded(
               child: Column(
@@ -1195,18 +1283,22 @@ class _TodayTaskCard extends StatelessWidget {
                           task.title,
                           style: textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
-                            decoration:
-                                task.isCompleted ? TextDecoration.lineThrough : null,
+                            decoration: task.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.surfaceContainerHigh,
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSm,
+                          ),
                         ),
                         child: Text(
                           '~${task.estimatedDurationMinutes}m',
@@ -1280,7 +1372,11 @@ class _TodayTaskCard extends StatelessWidget {
   }
 
   static String _formatShortDate(DateTime date) {
-    final hour = date.hour > 12 ? date.hour - 12 : date.hour == 0 ? 12 : date.hour;
+    final hour = date.hour > 12
+        ? date.hour - 12
+        : date.hour == 0
+        ? 12
+        : date.hour;
     final minute = date.minute.toString().padLeft(2, '0');
     final amPm = date.hour >= 12 ? 'PM' : 'AM';
     return '${date.month}/${date.day} $hour:$minute $amPm';
@@ -1354,7 +1450,11 @@ class _TodayEventCard extends StatelessWidget {
   }
 
   static String _formatTime(DateTime time) {
-    final hour = time.hour > 12 ? time.hour - 12 : time.hour == 0 ? 12 : time.hour;
+    final hour = time.hour > 12
+        ? time.hour - 12
+        : time.hour == 0
+        ? 12
+        : time.hour;
     final minute = time.minute.toString().padLeft(2, '0');
     final amPm = time.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $amPm';
@@ -1400,8 +1500,9 @@ class _MetaChip extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color:
-                  isAlert ? Colors.red.shade700 : colorScheme.onSurfaceVariant,
+              color: isAlert
+                  ? Colors.red.shade700
+                  : colorScheme.onSurfaceVariant,
               fontWeight: isAlert ? FontWeight.bold : FontWeight.normal,
             ),
           ),

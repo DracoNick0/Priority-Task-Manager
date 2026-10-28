@@ -16,7 +16,7 @@ When opened in the morning (e.g. 09:00 AM), the view provides a clear, priority-
 |  TODAY - Thursday, Oct 24, 2026                             [ + Quick Task ]  [ Settings: Hours ]  |
 +----------------------------------------------------------------------------------------------------+
 |                                                                                                    |
-|  TODAY'S WORKLOAD: 5.0h Planned Work | 1.5h Meetings | 1.5h Free Buffer  [ CAPACITY: [======= ] 77%]|
+|  TODAY'S WORKLOAD: 5.0h Planned Work | 1.5h Meetings | 1.5h Free Buffer  [ CAPACITY: [///==========---] 81%]|
 |                                                                                                    |
 |  RECOMMENDED SEQUENCE FOR TODAY (Order calculated by Gold Panning based on deadlines and effort):  |
 |                                                                                                    |
@@ -45,6 +45,8 @@ When opened in the morning (e.g. 09:00 AM), the view provides a clear, priority-
 |  ======================================= WORKDAY ENDS AT 5:00 PM =================================  |
 +----------------------------------------------------------------------------------------------------+
 ```
+
+The capacity bar segments represent event time inside work hours (`/`) in a distinct theme accent, planned task time (`=`) in the familiar green/amber/red load color, and free work capacity (`-`) in the unfilled track. The task fill retains the original load-state coloring based on total utilization. Event time outside configured work hours is excluded from the meter and meeting total.
 
 ---
 
