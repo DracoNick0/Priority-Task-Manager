@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/task_item.dart';
 import '../../models/task_list.dart';
 import '../../providers/app_notifications_provider.dart';
 import '../../providers/dev_log_provider.dart';
 import '../../providers/engine_status_provider.dart';
 import '../../providers/selection_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/view_provider.dart';
 import '../dev/dev_log_panel.dart';
@@ -293,20 +297,19 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
           ritualsState.lastMorningDate != todayStr) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          ref.read(dailyRitualsStateProvider.notifier).state =
-              ritualsState.copyWith(lastMorningDate: todayStr);
+          ref.read(dailyRitualsStateProvider.notifier).state = ritualsState
+              .copyWith(lastMorningDate: todayStr);
           showDailyRitualDialog(
             context,
             type: DailyRitualType.morningKickoff,
             listId: activeListId,
           );
         });
-      } else if (now.hour >= 17 &&
-          ritualsState.lastEveningDate != todayStr) {
+      } else if (now.hour >= 17 && ritualsState.lastEveningDate != todayStr) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          ref.read(dailyRitualsStateProvider.notifier).state =
-              ritualsState.copyWith(lastEveningDate: todayStr);
+          ref.read(dailyRitualsStateProvider.notifier).state = ritualsState
+              .copyWith(lastEveningDate: todayStr);
           showDailyRitualDialog(
             context,
             type: DailyRitualType.eveningWindDown,
@@ -318,9 +321,29 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
 
     final devLogOpen = kDebugMode && ref.watch(devLogPanelOpenProvider);
 
-    return LayoutBuilder(
-      builder: (context, constraints) =>
-          _buildScaffold(context, constraints, devLogOpen),
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        final keyboard = HardwareKeyboard.instance;
+        final hasControlOrMeta =
+            (keyboard.isControlPressed && !keyboard.isMetaPressed) ||
+            (keyboard.isMetaPressed && !keyboard.isControlPressed);
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.keyK &&
+            hasControlOrMeta &&
+            !keyboard.isShiftPressed &&
+            !keyboard.isAltPressed) {
+          unawaited(
+            showFastCapturePalette(context, onOpenInspector: _openInspector),
+          );
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) =>
+            _buildScaffold(context, constraints, devLogOpen),
+      ),
     );
   }
 
@@ -352,63 +375,72 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
         .clamp(_devLogMinHeight, devLogMaxHeight)
         .toDouble();
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            () => showFastCapturePalette(context),
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
-            () => showFastCapturePalette(context),
-      },
-      child: Scaffold(
-        key: _scaffoldKey,
-        drawer: leftDocked ? null : _buildLeftDrawer(context, isNarrow),
-        onEndDrawerChanged: _onEndDrawerChanged,
-        endDrawer: rightDocked
-            ? null
-            : _buildRightDrawer(context, isWide, rightWidth),
-        body: Column(
-          children: [
-            _buildTopAppBar(context, leftDocked, rightDocked, width),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (leftDocked)
-                    SizedBox(width: leftWidth, child: const LeftRail()),
-                  // Only rendered while docked or mid-drag, so the handle
-                  // disappears once the rail is collapsed and released.
-                  if ((isWide || isMedium) && (leftDocked || _left.dividerHeld))
-                    _buildLeftDivider(width, rightWidth),
-                  Expanded(
-                    child: CenterStage(
-                      showHamburger: false,
-                      onOpenLeftRail: () =>
-                          _scaffoldKey.currentState?.openDrawer(),
-                      showInspectorToggle: !rightDocked,
-                      onOpenInspector: () =>
-                          _scaffoldKey.currentState?.openEndDrawer(),
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: leftDocked ? null : _buildLeftDrawer(context, isNarrow),
+      onEndDrawerChanged: _onEndDrawerChanged,
+      endDrawer: rightDocked
+          ? null
+          : _buildRightDrawer(context, isWide, rightWidth),
+      body: Column(
+        children: [
+          _buildTopAppBar(context, leftDocked, rightDocked, width),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (leftDocked)
+                  SizedBox(width: leftWidth, child: const LeftRail()),
+                // Only rendered while docked or mid-drag, so the handle
+                // disappears once the rail is collapsed and released.
+                if ((isWide || isMedium) && (leftDocked || _left.dividerHeld))
+                  _buildLeftDivider(width, rightWidth),
+                Expanded(child: CenterStage(onOpenInspector: _openInspector)),
+                // Only rendered while docked or mid-drag, so the handle
+                // disappears once the inspector is collapsed and released.
+                if (isWide && (rightDocked || _right.dividerHeld))
+                  _buildRightDivider(width, leftWidth),
+                if (rightDocked)
+                  SizedBox(
+                    width: rightWidth,
+                    child: RightInspector(
+                      onClose: () => setState(_right.collapse),
                     ),
                   ),
-                  // Only rendered while docked or mid-drag, so the handle
-                  // disappears once the inspector is collapsed and released.
-                  if (isWide && (rightDocked || _right.dividerHeld))
-                    _buildRightDivider(width, leftWidth),
-                  if (rightDocked)
-                    SizedBox(
-                      width: rightWidth,
-                      child: RightInspector(
-                        onClose: () => setState(_right.collapse),
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
-            if (devLogOpen)
-              ..._buildDevLogSection(devLogHeight, devLogMaxHeight),
-          ],
-        ),
+          ),
+          if (devLogOpen) ..._buildDevLogSection(devLogHeight, devLogMaxHeight),
+        ],
       ),
     );
+  }
+
+  void _cleanupCompletedTasks() {
+    final activeListId = ref.read(activeListIdProvider);
+    if (activeListId == null) return;
+
+    final tasks =
+        ref.read(tasksProvider(activeListId)).asData?.value ??
+        const <TaskItem>[];
+    final notifier = ref.read(tasksProvider(activeListId).notifier);
+    final isAuthenticated =
+        ref.read(sessionControllerProvider).asData?.value.status ==
+        SessionStatus.authenticated;
+
+    for (final task in tasks.where((task) => task.isCompleted)) {
+      if (isAuthenticated) {
+        notifier.archiveTask(task.id);
+      } else {
+        notifier.deleteTask(task.id);
+      }
+    }
+  }
+
+  void _openInspector() {
+    if (!_isRightDocked(MediaQuery.sizeOf(context).width)) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    }
   }
 
   Widget _buildTopAppBar(
@@ -442,13 +474,17 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
             const SizedBox(width: AppTheme.spacingXs),
           ],
           if (!isCompact) ...[
-            Icon(Icons.checklist_rtl_rounded, color: colorScheme.primary, size: 22),
+            Icon(
+              Icons.checklist_rtl_rounded,
+              color: colorScheme.primary,
+              size: 22,
+            ),
             const SizedBox(width: AppTheme.spacingSm),
             Text(
               'Priority Task Manager',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (activeList != null) ...[
               Text(
@@ -461,8 +497,23 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
             ],
             const Spacer(),
           ] else ...[
-            Icon(Icons.checklist_rtl_rounded, color: colorScheme.primary, size: 20),
+            Icon(
+              Icons.checklist_rtl_rounded,
+              color: colorScheme.primary,
+              size: 20,
+            ),
             const SizedBox(width: 4),
+            if (activeList != null)
+              Flexible(
+                child: Text(
+                  activeList.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             const Spacer(),
           ],
           SegmentedButton<ViewMode>(
@@ -504,15 +555,15 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
           ),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.flash_on_rounded, size: 20),
-            tooltip: 'Fast Capture (Ctrl + K)',
-            onPressed: () => showFastCapturePalette(context),
+            icon: const Icon(Icons.cleaning_services_outlined),
+            tooltip: 'Cleanup completed tasks',
+            onPressed: activeListId == null ? null : _cleanupCompletedTasks,
           ),
           if (!rightDocked)
             IconButton(
               icon: const Icon(Icons.info_outline),
               tooltip: 'Show inspector',
-              onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+              onPressed: _openInspector,
             ),
         ],
       ),

@@ -79,6 +79,7 @@ class RightInspector extends ConsumerWidget {
   ) {
     switch (selection.kind) {
       case InspectorKind.none:
+      case InspectorKind.empty:
         return _EmptyInspector(key: const ValueKey('empty'));
       case InspectorKind.task:
         if (activeListId == null) return const SizedBox.shrink();

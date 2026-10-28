@@ -22,7 +22,7 @@ The **Fast-Capture Bar & Command Palette** enables rapid capture in under 3 seco
 |   |  QUICK ACTIONS / SUGGESTIONS:                                                              |   |
 |   |  Enter       Add and Auto-Schedule Task                                                    |   |
 |   |  Shift+Enter Add as Fixed Event / Meeting                                                  |   |
-|   |  Alt+Enter   Open in Right Inspector for Advanced Settings                                 |   |
+|   |  Alt+Enter   Open empty Right Inspector (New Task / New Event)                             |   |
 |   +--------------------------------------------------------------------------------------------+   |
 |   |  RECENT COMMANDS:                                                                          |   |
 |   |  * Switch view to: Today Execution View                                                    |   |

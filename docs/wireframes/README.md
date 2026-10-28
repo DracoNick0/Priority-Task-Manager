@@ -20,7 +20,7 @@ This directory contains reference text wireframes, visual ASCII mockups, and int
 | Document | Primary Focus | Key Features |
 | --- | --- | --- |
 | [TODAY_EXECUTION_VIEW.md](./TODAY_EXECUTION_VIEW.md) | Today's Planning Compass | Recommended priority sequence, remaining work capacity gauge, flexible offline tolerance, 1-tap push to tomorrow, evening summary |
-| [WEEK_HORIZON_GRID.md](./WEEK_HORIZON_GRID.md) | Multi-Day Calendar-Style Grid | Hourly time grid ([#56](https://github.com/DracoNick0/Priority-Task-Manager/issues/56)), daily capacity meters ([#27](https://github.com/DracoNick0/Priority-Task-Manager/issues/27), [#40](https://github.com/DracoNick0/Priority-Task-Manager/issues/40)), event hashes, unscheduled & risk side tray |
+| [WEEK_HORIZON_GRID.md](./WEEK_HORIZON_GRID.md) | Multi-Day Calendar-Style Grid | Hourly time grid ([#56](https://github.com/DracoNick0/Priority-Task-Manager/issues/56)), daily capacity meters ([#27](https://github.com/DracoNick0/Priority-Task-Manager/issues/27), [#40](https://github.com/DracoNick0/Priority-Task-Manager/issues/40)), event hashes, bottom-docked unscheduled & risk tray |
 | [FAST_CAPTURE_AND_PALETTE.md](./FAST_CAPTURE_AND_PALETTE.md) | Low-Friction Intake & Command Palette | Universal `Ctrl + K` palette, clean title quick-add with smart defaults, clickable micro-chips, future LLM candidate review container |
 | [EMPTY_STATES_AND_RITUALS.md](./EMPTY_STATES_AND_RITUALS.md) | Onboarding, Empty States & Daily Rituals | Actionable empty schedule hero ([#77](https://github.com/DracoNick0/Priority-Task-Manager/issues/77)), 60-second interactive tour, Morning Kickoff, Evening Wind-Down |
 
@@ -29,7 +29,7 @@ This directory contains reference text wireframes, visual ASCII mockups, and int
 ```text
 +--------------------------------------------------------------------------------------------------------------------+
 |                                           TOP APP BAR & VIEW SWITCHER                                              |
-|  [Logo] Priority Task Manager  |  [ Today ]  [ Horizon ]  [ Projects ]  |  [ Search / Ctrl+K ]  [ Account ]  |
+|  [Logo] Priority Task Manager · Work  |  [ Today ]  [ Horizon ]  [ Projects ]  |  [ Cleanup ]  [ Inspector ]  [ Account ]  |
 +-------------------+-----------------------------------------------------------------------+------------------------+
 | COLLAPSIBLE RAIL  | ACTIVE WORKSPACE (SWITCHABLE VIEW)                                    | CONTEXTUAL RIGHT PANE  |
 |                   |                                                                       |                        |
@@ -44,3 +44,5 @@ This directory contains reference text wireframes, visual ASCII mockups, and int
 | * Engine Status   |                                                                       |                        |
 +-------------------+-----------------------------------------------------------------------+------------------------+
 ```
+
+Fast Capture remains available through the global `Ctrl+K` / `Cmd+K` shortcut and the inline quick-add bar; it has no separate Top App Bar button.

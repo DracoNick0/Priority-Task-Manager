@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task_item.dart';
 
 /// The kind of entity currently shown in the Right Inspector.
-enum InspectorKind { none, task, event, list, defaults }
+enum InspectorKind { none, empty, task, event, list, defaults }
 
 /// What the Right Inspector should render.
 ///
-/// A null [id] with a non-[InspectorKind.none] kind means "create new".
+/// A null [id] with a task or event kind means "create new".
+/// [InspectorKind.empty] opens the inspector's new-item choices.
 class InspectorTarget {
   const InspectorTarget({required this.kind, this.id, this.task});
 
@@ -16,11 +17,17 @@ class InspectorTarget {
       id = null,
       task = null;
 
+  const InspectorTarget.empty()
+    : kind = InspectorKind.empty,
+      id = null,
+      task = null;
+
   final InspectorKind kind;
   final String? id;
   final TaskItem? task;
 
-  bool get isCreating => kind != InspectorKind.none && id == null;
+  bool get isCreating =>
+      kind != InspectorKind.none && kind != InspectorKind.empty && id == null;
 
   @override
   bool operator ==(Object other) =>

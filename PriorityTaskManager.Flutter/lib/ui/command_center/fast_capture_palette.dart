@@ -59,16 +59,22 @@ class CandidateTaskDetails {
 }
 
 /// Shows the universal Command Palette overlay dialog.
-Future<void> showFastCapturePalette(BuildContext context) {
+Future<void> showFastCapturePalette(
+  BuildContext context, {
+  VoidCallback? onOpenInspector,
+}) {
   return showDialog<void>(
     context: context,
-    builder: (context) => const FastCapturePaletteDialog(),
+    builder: (context) =>
+        FastCapturePaletteDialog(onOpenInspector: onOpenInspector),
   );
 }
 
 /// Universal Command Palette (`Ctrl + K` / `Cmd + K`) overlay.
 class FastCapturePaletteDialog extends ConsumerStatefulWidget {
-  const FastCapturePaletteDialog({super.key});
+  const FastCapturePaletteDialog({super.key, this.onOpenInspector});
+
+  final VoidCallback? onOpenInspector;
 
   @override
   ConsumerState<FastCapturePaletteDialog> createState() =>
@@ -79,6 +85,7 @@ class _FastCapturePaletteDialogState
     extends ConsumerState<FastCapturePaletteDialog> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  final _shortcutFocusNode = FocusNode();
 
   late int _durationMinutes;
   late DateTime? _dueDate;
@@ -92,7 +99,8 @@ class _FastCapturePaletteDialogState
     _importance = 5;
 
     final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-    _dueDate = nextWorkingDayAtTime(
+    _dueDate =
+        nextWorkingDayAtTime(
           currentTime: now,
           workDays: const [
             DateTime.monday,
@@ -112,16 +120,17 @@ class _FastCapturePaletteDialogState
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _shortcutFocusNode.dispose();
     super.dispose();
   }
 
   CandidateTaskDetails get _candidateDetails => CandidateTaskDetails(
-        title: _controller.text.trim(),
-        estimatedDurationMinutes: _durationMinutes,
-        dueDate: _dueDate,
-        importance: _importance,
-        listId: _selectedListId ?? '',
-      );
+    title: _controller.text.trim(),
+    estimatedDurationMinutes: _durationMinutes,
+    dueDate: _dueDate,
+    importance: _importance,
+    listId: _selectedListId ?? '',
+  );
 
   Future<void> _submitTask() async {
     final title = _controller.text.trim();
@@ -157,11 +166,12 @@ class _FastCapturePaletteDialogState
               textColor: colorScheme.inversePrimary,
               onPressed: () async {
                 await taskNotifier.deleteTask(createdTask.id);
-                ref.read(appNotificationProvider.notifier).state =
-                    const AppNotification(
-                      'Task removed',
-                      icon: Icons.delete_outline,
-                    );
+                ref
+                    .read(appNotificationProvider.notifier)
+                    .state = const AppNotification(
+                  'Task removed',
+                  icon: Icons.delete_outline,
+                );
               },
             ),
           ),
@@ -177,7 +187,8 @@ class _FastCapturePaletteDialogState
     if (listId == null) return;
 
     final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-    final start = nextWorkingHour(
+    final start =
+        nextWorkingHour(
           currentTime: now,
           workDays: const [
             DateTime.monday,
@@ -228,7 +239,8 @@ class _FastCapturePaletteDialogState
   void _openInInspector() {
     Navigator.of(context).pop();
     ref.read(selectedInspectorProvider.notifier).state =
-        const InspectorTarget(kind: InspectorKind.task, id: null);
+        const InspectorTarget.empty();
+    widget.onOpenInspector?.call();
   }
 
   @override
@@ -285,13 +297,16 @@ class _FastCapturePaletteDialogState
               const SizedBox(height: AppTheme.spacingSm),
               // Search / Capture input
               KeyboardListener(
-                focusNode: FocusNode(),
+                focusNode: _shortcutFocusNode,
                 onKeyEvent: (event) {
                   if (event is KeyDownEvent &&
                       event.logicalKey == LogicalKeyboardKey.enter) {
-                    if (HardwareKeyboard.instance.isShiftPressed) {
+                    final isShiftPressed =
+                        HardwareKeyboard.instance.isShiftPressed;
+                    final isAltPressed = HardwareKeyboard.instance.isAltPressed;
+                    if (isShiftPressed && !isAltPressed) {
                       _submitEvent();
-                    } else if (HardwareKeyboard.instance.isAltPressed) {
+                    } else if (isAltPressed && !isShiftPressed) {
                       _openInInspector();
                     }
                   }
@@ -303,8 +318,7 @@ class _FastCapturePaletteDialogState
                   textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.chevron_right, size: 24),
-                    hintText:
-                        'Type a task or event... Press Enter to schedule',
+                    hintText: 'Type a task or event... Press Enter to schedule',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
@@ -387,7 +401,8 @@ class _FastCapturePaletteDialogState
                 icon: Icons.wb_sunny_outlined,
                 title: 'Morning Kickoff Ritual',
                 onTap: () {
-                  final listId = _selectedListId ?? ref.read(activeListIdProvider);
+                  final listId =
+                      _selectedListId ?? ref.read(activeListIdProvider);
                   Navigator.of(context).pop();
                   if (listId != null) {
                     showDailyRitualDialog(
@@ -402,7 +417,8 @@ class _FastCapturePaletteDialogState
                 icon: Icons.bedtime_outlined,
                 title: 'Evening Wind-Down Ritual',
                 onTap: () {
-                  final listId = _selectedListId ?? ref.read(activeListIdProvider);
+                  final listId =
+                      _selectedListId ?? ref.read(activeListIdProvider);
                   Navigator.of(context).pop();
                   if (listId != null) {
                     showDailyRitualDialog(
@@ -465,7 +481,11 @@ class CandidatePillsPreview extends StatelessWidget {
     final target = DateTime(date.year, date.month, date.day);
 
     final timeStr =
-        '${date.hour > 12 ? date.hour - 12 : date.hour == 0 ? 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}';
+        '${date.hour > 12
+            ? date.hour - 12
+            : date.hour == 0
+            ? 12
+            : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}';
     if (target == today) return 'Today $timeStr';
     if (target == tomorrow) return 'Tomorrow $timeStr';
     return '${date.month}/${date.day} $timeStr';
@@ -481,8 +501,7 @@ class CandidatePillsPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final activeList =
-        lists.where((l) => l.id == details.listId).firstOrNull;
+    final activeList = lists.where((l) => l.id == details.listId).firstOrNull;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -528,7 +547,13 @@ class CandidatePillsPreview extends StatelessWidget {
                 case 3: // End of Week (Friday 5 PM)
                   final daysUntilFri = (DateTime.friday - now.weekday) % 7;
                   onDueDateChanged(
-                    DateTime(now.year, now.month, now.day + daysUntilFri, 17, 0),
+                    DateTime(
+                      now.year,
+                      now.month,
+                      now.day + daysUntilFri,
+                      17,
+                      0,
+                    ),
                   );
                   break;
                 case 4: // None
@@ -572,10 +597,7 @@ class CandidatePillsPreview extends StatelessWidget {
               onSelected: onListChanged,
               itemBuilder: (context) => [
                 for (final list in lists)
-                  PopupMenuItem(
-                    value: list.id,
-                    child: Text(list.name),
-                  ),
+                  PopupMenuItem(value: list.id, child: Text(list.name)),
               ],
               child: Chip(
                 avatar: const Icon(Icons.list_alt, size: 16),
@@ -607,9 +629,14 @@ class CandidatePillsPreview extends StatelessWidget {
 
 /// Persistent compact inline quick-add input at the top of Center Stage views.
 class InlineFastCaptureBar extends ConsumerStatefulWidget {
-  const InlineFastCaptureBar({super.key, required this.listId});
+  const InlineFastCaptureBar({
+    super.key,
+    required this.listId,
+    required this.onOpenInspector,
+  });
 
   final String listId;
+  final VoidCallback onOpenInspector;
 
   @override
   ConsumerState<InlineFastCaptureBar> createState() =>
@@ -632,7 +659,8 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
     _controller.clear();
     final taskNotifier = ref.read(tasksProvider(widget.listId).notifier);
     final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-    final dueDate = nextWorkingDayAtTime(
+    final dueDate =
+        nextWorkingDayAtTime(
           currentTime: now,
           workDays: const [
             DateTime.monday,
@@ -688,9 +716,7 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
       ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant),
-        ),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         children: [
@@ -725,7 +751,10 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
           IconButton(
             icon: const Icon(Icons.keyboard_command_key, size: 18),
             tooltip: 'Command Palette (Ctrl + K)',
-            onPressed: () => showFastCapturePalette(context),
+            onPressed: () => showFastCapturePalette(
+              context,
+              onOpenInspector: widget.onOpenInspector,
+            ),
           ),
         ],
       ),
@@ -761,10 +790,7 @@ class _ShortcutHint extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           description,
-          style: TextStyle(
-            fontSize: 11,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
         ),
       ],
     );

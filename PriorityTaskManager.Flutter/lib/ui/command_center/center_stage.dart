@@ -10,7 +10,6 @@ import '../../providers/selection_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/view_provider.dart';
-import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'day_column.dart';
 import 'empty_schedule_hero.dart';
@@ -25,17 +24,8 @@ import 'today_compass_view.dart';
 /// (Today, Tomorrow, ... , Unscheduled), each holding scheduled task cards
 /// and fixed event cards for that day in chronological order.
 class CenterStage extends ConsumerWidget {
-  const CenterStage({
-    super.key,
-    required this.showHamburger,
-    required this.onOpenLeftRail,
-    required this.showInspectorToggle,
-    required this.onOpenInspector,
-  });
+  const CenterStage({super.key, required this.onOpenInspector});
 
-  final bool showHamburger;
-  final VoidCallback onOpenLeftRail;
-  final bool showInspectorToggle;
   final VoidCallback onOpenInspector;
 
   @override
@@ -48,15 +38,11 @@ class CenterStage extends ConsumerWidget {
 
     return Column(
       children: [
-        _buildHeader(
-          context,
-          ref,
-          activeListId,
-          isAuthenticated: isAuthenticated,
-        ),
-        const Divider(height: 1),
         if (activeListId != null)
-          InlineFastCaptureBar(listId: activeListId),
+          InlineFastCaptureBar(
+            listId: activeListId,
+            onOpenInspector: onOpenInspector,
+          ),
         Expanded(
           child: activeListId == null
               ? Center(
@@ -74,92 +60,6 @@ class CenterStage extends ConsumerWidget {
               : GuestTaskList(listId: activeListId),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader(
-    BuildContext context,
-    WidgetRef ref,
-    String? activeListId, {
-    required bool isAuthenticated,
-  }) {
-    final lists = ref.watch(taskListsProvider).asData?.value ?? const [];
-    final activeList = lists
-        .where((list) => list.id == activeListId)
-        .firstOrNull;
-
-    void openNewTask() {
-      ref.read(selectedInspectorProvider.notifier).state =
-          const InspectorTarget(kind: InspectorKind.task, id: null);
-    }
-
-    void openNewEvent() {
-      ref.read(selectedInspectorProvider.notifier).state =
-          const InspectorTarget(kind: InspectorKind.event, id: null);
-    }
-
-    void cleanupCompleted() {
-      if (activeListId == null) return;
-      final tasks =
-          ref.read(tasksProvider(activeListId)).asData?.value ??
-          const <TaskItem>[];
-      final notifier = ref.read(tasksProvider(activeListId).notifier);
-      for (final task in tasks.where((task) => task.isCompleted)) {
-        // Guests have no archive (it's an online-exclusive feature; see
-        // docs/VISION.md), so completed tasks are just deleted for them.
-        if (isAuthenticated) {
-          notifier.archiveTask(task.id);
-        } else {
-          notifier.deleteTask(task.id);
-        }
-      }
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
-      child: SizedBox(
-        height: AppTheme.paneHeaderHeight,
-        child: Row(
-          children: [
-            if (showHamburger)
-              IconButton(
-                icon: const Icon(Icons.menu),
-                tooltip: 'Show navigation',
-                onPressed: onOpenLeftRail,
-              ),
-            Expanded(
-              child: Text(
-                activeList?.name ?? 'Priority Task Manager',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.add_task),
-              tooltip: 'Add Task',
-              onPressed: activeListId == null ? null : openNewTask,
-            ),
-            IconButton(
-              icon: const Icon(Icons.event),
-              tooltip: 'Add Event',
-              onPressed: activeListId == null ? null : openNewEvent,
-            ),
-            IconButton(
-              icon: const Icon(Icons.cleaning_services_outlined),
-              tooltip: 'Cleanup completed tasks',
-              onPressed: activeListId == null ? null : cleanupCompleted,
-            ),
-            if (showInspectorToggle)
-              IconButton(
-                icon: const Icon(Icons.info_outline),
-                tooltip: 'Show inspector',
-                onPressed: onOpenInspector,
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -260,9 +160,13 @@ class _Pipeline extends ConsumerWidget {
     final scheduleAsync = ref.watch(scheduleProvider);
     final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final events =
+    final viewMode = ref.watch(viewModeProvider);
+    final allEvents =
         ref.watch(eventOccurrencesProvider((listId, today))).asData?.value ??
         const <FixedEvent>[];
+    final events = viewMode == ViewMode.projects
+        ? allEvents.where((event) => event.endTime.isAfter(now)).toList()
+        : allEvents;
 
     final isInitialLoading =
         (tasksAsync.isLoading && !tasksAsync.hasValue) ||
@@ -541,8 +445,6 @@ class _Pipeline extends ConsumerWidget {
         .where((task) => !sequentialCatchUpIds.contains(task.id))
         .toList();
 
-    final viewMode = ref.watch(viewModeProvider);
-
     final columns = <DayColumn>[
       if ((viewMode == ViewMode.today ||
               viewMode == ViewMode.projects ||
@@ -590,7 +492,9 @@ class _Pipeline extends ConsumerWidget {
               freeTimeLabel: freeTimeLabel(
                 day,
                 futureByDay[day] ?? const [],
-                events.where((event) => isSameDay(event.startTime, day)).toList(),
+                events
+                    .where((event) => isSameDay(event.startTime, day))
+                    .toList(),
               ),
               cards: [
                 ...buildTimelineCards(
