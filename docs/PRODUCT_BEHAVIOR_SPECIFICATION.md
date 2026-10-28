@@ -19,6 +19,7 @@ The user interface follows a focused, three-mode interaction model supported by 
   - **Today**: High-focus chronological execution timeline and active task tracker.
   - **Horizon**: Strategic multi-day calendar-style planning grid with capacity meters.
   - **Projects**: Backlog and dependency organization for strategic initiatives.
+- **Top App Bar**: Shows the application and active-list context, view switcher, completed-task cleanup, and inspector controls. Fast Capture opens from its global keyboard shortcut or the inline quick-add bar, not a separate top-bar button.
 - **Left Rail**: Switch lists, manage global navigation (Archive, Settings), and view Engine Status (simulated clock and algorithm mode).
 - **Center Stage**: The main workspace hosting the active view (Today timeline, Horizon calendar grid, or Projects backlog for authenticated subscribers; or plain, sortable list for Guests).
 - **Universal Fast-Capture (`Ctrl + K`)**: An omnipresent intake bar allowing users to capture tasks and events in seconds using clean text entry and smart defaults.
@@ -85,8 +86,8 @@ Users can switch between three primary temporal views (supplemented by compact a
 
 | View | Intended user-facing behavior | Visual Reference |
 | --- | --- | --- |
-| **Today** (Execution Compass) | Focused daily planning compass. Presents the Gold Panning recommended priority sequence, remaining work hours compared to planned effort, and intentional transition buffers. Incomplete tasks remain available in sequence across offline intervals. Supports asynchronous batch completion (`[ ✓ Did This ]`) and 1-tap postponement to tomorrow for overloaded days. Past configured work hours, displays an evening accomplishment summary. | [TODAY_EXECUTION_VIEW.md](./wireframes/TODAY_EXECUTION_VIEW.md) |
-| **Horizon** (Week Calendar Grid) | Multi-day calendar grid across working days ([#56](https://github.com/DracoNick0/Priority-Task-Manager/issues/56)). Features proportional time-blocks, split-task part badges (`Part 1 of 2`), fixed event hashes, sticky headers with visual daily capacity utilization meters ([#27](https://github.com/DracoNick0/Priority-Task-Manager/issues/27), [#40](https://github.com/DracoNick0/Priority-Task-Manager/issues/40)), and a dedicated "Unscheduled & Risk" side tray that explains the exact constraint for unplaced tasks. | [WEEK_HORIZON_GRID.md](./wireframes/WEEK_HORIZON_GRID.md) |
+| **Today** (Execution Compass) | Focused daily planning compass. Presents the Gold Panning recommended priority sequence, remaining work hours compared to planned effort, and intentional transition buffers. Its capacity bar distinguishes task time (with the familiar green/amber/red load coloring), event time within configured work hours (in a separate theme accent), and free capacity; events outside work hours do not contribute. Incomplete tasks remain available in sequence across offline intervals. Supports asynchronous batch completion (`[ ✓ Did This ]`) and 1-tap postponement to tomorrow for overloaded days. Past configured work hours, displays an evening accomplishment summary. | [TODAY_EXECUTION_VIEW.md](./wireframes/TODAY_EXECUTION_VIEW.md) |
+| **Horizon** (Week Calendar Grid) | Responsive Monday–Sunday calendar grid with a full 24-hour timeline, proportional time-blocks, split-task part badges (`Part 1 of 2`), fixed events with diagonal hatching, and pinned headers with workday capacity meters that distinguish in-hours event time, scheduled task time, and free capacity. Day columns expand to fill wide views and stay at least 160 px wide on narrower views. Non-working days show events without a capacity meter. The event meter segment uses the same dark fill and diagonal hatch as fixed-event blocks; task time retains the familiar load coloring. A dedicated bottom-docked "Unscheduled & Risk" tray explains the exact constraint for unplaced tasks. Events outside work hours remain visible but are excluded from capacity, and overlapping event time is counted once. | [WEEK_HORIZON_GRID.md](./wireframes/WEEK_HORIZON_GRID.md) |
 | **Projects** (Backlog & Structure) | Outlined backlog view for managing larger goals, recurring templates, and visual step-chain dependencies (`Prerequisite ➔ Dependent ➔ QA`). | [docs/wireframes/README.md](./wireframes/README.md) |
 | **Schedule Board** | Hybrid column pipeline: daily columns group scheduled task and event cards, with Unscheduled and Completed areas. (Historical Command Center layout). | [STATUS.md](./STATUS.md) |
 | **Agenda** | Compact vertical chronological list of scheduled items, suited for mobile viewports. | [STATUS.md](./STATUS.md) |
@@ -97,9 +98,19 @@ All schedule views provide access to Unscheduled and Completed tasks; they need 
 
 - Switching among Today, Horizon, Projects, Schedule Board, and Agenda preserves the active list scope and selection without mutating task, event, or schedule data.
 - The **Today** view displays the recommended sequence of incomplete tasks ordered by scheduler urgency, along with remaining available work hours compared to remaining planned effort. Incomplete tasks remain active in sequence across offline intervals.
+- The Today capacity meter fills proportionally with task time in the familiar green/amber/red load color, in-hours event time in a distinct theme accent, and neutral free capacity. Only the portion of events within configured work hours counts; if scheduled task blocks are unavailable, estimated due-today effort remains the fallback and may exceed 100% when that estimated workload is infeasible.
 - The Today view provides asynchronous batch completion, recording task completions directly whenever the user returns.
 - Past configured work hours, the Today view presents an evening accomplishment summary and unfinished task carry-over options.
-- The **Horizon** view renders scheduled tasks with heights proportional to duration, distinct dark hash styling for fixed events, and daily capacity meters colored green (< 85%), amber (85%–100%), or red (> 100% overload).
+- The **Horizon** view renders scheduled tasks with heights proportional to duration, distinct dark fixed-event blocks with diagonal hatching, and daily capacity meters that fill proportionally with task time in the familiar green/amber/red load color, in-hours event time using the same dark fill and diagonal hatch as fixed-event blocks, and neutral free capacity. Events outside the configured work window remain visible but do not contribute to the meter; overlapping event time counts once.
+- The Horizon timeline always spans 00:00–24:00 regardless of configured work hours. Events remain visible outside work hours, while scheduled tasks remain within the configured work window. The day/date header stays pinned vertically and scrolls horizontally in sync with the timeline; the initial vertical scroll places the configured work-start time at the top of the timeline viewport.
+- Horizon shows all seven days, Monday through Sunday, regardless of configured workdays. On workdays, day columns expand to fill available width when they can remain at least 160 px wide; narrower viewports keep that minimum and allow horizontal scrolling. Non-working days show their events but no task blocks, capacity meter, or capacity summary.
+- On configured workdays, a subtle theme tint marks the effective work-start-to-work-end range in the timeline; off-hours and non-working days retain the neutral background.
+- While its schedule is recalculating, Horizon keeps the grid visible but hides stale task blocks and shows an updating indicator. If computation fails, it reports the error without presenting the previous schedule as current.
+- Horizon event cards show the event title followed by its duration (e.g. `Meeting 60m`), without a fixed-commitment text label.
+- For the current day, the Horizon capacity meter compares scheduled task time and event time remaining within the work window against work hours remaining. Blocks already in progress count only their remaining time; event intervals are clipped to the work window and overlapping events count once. Time before now is excluded. Other days use their full configured work hours. After work hours, the meter shows `0h left` instead of a percentage.
+- The Horizon view shows a current-time line in today's column at the clock position anywhere within the full-day timeline.
+- The Horizon **Unscheduled & Risk** tray starts collapsed at every viewport width and is toggled by a button in the Horizon navigation bar. When open, it docks below the calendar grid at every width, spans the Center Stage, and remains resizable. If the tray contains tasks, the button uses alert styling and shows the distinct task count in parentheses; otherwise it uses its normal styling without a count.
+- The Projects view and the Today fixed calendar commitments section omit events whose end time is at or before now; ongoing and future events remain visible.
 - Tasks in the "Unscheduled & Risk" tray display plain-language diagnostic reasons (e.g. "Prerequisite incomplete", "Exceeds daily work hours", "Due date passed").
 - In Guest mode, where automated schedule computation is unavailable:
   - The Today view displays tasks ordered by priority sequence with an option to sign in for automated scheduling.
@@ -110,7 +121,7 @@ All schedule views provide access to Unscheduled and Completed tasks; they need 
 
 **User story:** As a user, I want to capture tasks and events instantly with minimal keystrokes so that logging commitments preserves my flow.
 
-Users can press `Ctrl + K` (Windows/Web) or `Cmd + K` (macOS), or focus the inline quick-add field in Center Stage, to record work directly from keyboard focus (see [FAST_CAPTURE_AND_PALETTE.md](./wireframes/FAST_CAPTURE_AND_PALETTE.md)).
+Users can press `Ctrl + K` (Windows/Web) or `Cmd + K` (macOS) from anywhere in the application, regardless of which control has focus, or use the inline quick-add field in Center Stage, to record work directly from keyboard focus (see [FAST_CAPTURE_AND_PALETTE.md](./wireframes/FAST_CAPTURE_AND_PALETTE.md)).
 
 - **Low-Friction Capture & Smart Defaults**: The initial capture accepts a natural task title and applies sensible defaults immediately (default duration of 60m, end-of-next-workday deadline, normal importance).
 - **One-Tap Micro Chips**: Extracted details appear as compact clickable preview pills (`[ ⏱ 60m ]`, `[ 📅 Due: Tomorrow ]`). Clicking a chip opens a 1-tap popover to adjust values directly.
@@ -120,6 +131,7 @@ Users can press `Ctrl + K` (Windows/Web) or `Cmd + K` (macOS), or focus the inli
 ### Fast-Capture acceptance criteria
 
 - Pressing `Ctrl + K` (or `Cmd + K`) opens the palette from any view and autofocuses the text input field; pressing `Esc` closes it.
+- In the palette, `Shift + Enter` adds an event; `Alt + Enter` opens the empty Right Inspector with **New Task** and **New Event** actions.
 - Entering a title and pressing `Enter` creates the task with configured defaults applied.
 - Clicking an extracted preview pill opens an inline micro-picker to change the duration or due date directly.
 
