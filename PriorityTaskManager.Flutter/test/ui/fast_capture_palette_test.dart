@@ -515,11 +515,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     await tester.enterText(find.byType(TextField).last, 'Planning meeting');
-    await _sendShortcut(
-      tester,
-      LogicalKeyboardKey.shiftLeft,
-      LogicalKeyboardKey.enter,
-    );
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -527,6 +527,7 @@ void main() {
       'Planning meeting',
     ]);
     expect(repository.addedTaskTitles, isEmpty);
+    expect(find.text('Today'), findsOneWidget);
   });
 
   testWidgets('Cleanup deletes completed tasks for Guests', (

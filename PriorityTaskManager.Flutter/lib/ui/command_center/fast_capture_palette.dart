@@ -91,6 +91,8 @@ class _FastCapturePaletteDialogState
   late DateTime? _dueDate;
   late int _importance;
   late String? _selectedListId;
+  bool _isSubmitting = false;
+  bool _isOpeningInspector = false;
 
   @override
   void initState() {
@@ -133,114 +135,144 @@ class _FastCapturePaletteDialogState
   );
 
   Future<void> _submitTask() async {
+    if (_isSubmitting) return;
+
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
     final listId = _selectedListId ?? ref.read(activeListIdProvider);
     if (listId == null) return;
 
-    final taskNotifier = ref.read(tasksProvider(listId).notifier);
-    final createdTask = await taskNotifier.addTask(
-      title: title,
-      estimatedDurationMinutes: _durationMinutes,
-      dueDate: _dueDate,
-      importance: _importance,
-    );
+    _isSubmitting = true;
+    try {
+      final taskNotifier = ref.read(tasksProvider(listId).notifier);
+      final createdTask = await taskNotifier.addTask(
+        title: title,
+        estimatedDurationMinutes: _durationMinutes,
+        dueDate: _dueDate,
+        importance: _importance,
+      );
 
-    if (mounted) {
-      Navigator.of(context).pop();
-      final colorScheme = Theme.of(context).colorScheme;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: colorScheme.inverseSurface,
-            content: Text(
-              'Added task "$title"',
-              style: TextStyle(color: colorScheme.onInverseSurface),
+      if (mounted) {
+        Navigator.of(context).pop();
+        final colorScheme = Theme.of(context).colorScheme;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: colorScheme.inverseSurface,
+              content: Text(
+                'Added task "$title"',
+                style: TextStyle(color: colorScheme.onInverseSurface),
+              ),
+              duration: const Duration(seconds: 6),
+              action: SnackBarAction(
+                label: 'Undo',
+                textColor: colorScheme.inversePrimary,
+                onPressed: () async {
+                  await taskNotifier.deleteTask(createdTask.id);
+                  ref
+                      .read(appNotificationProvider.notifier)
+                      .state = const AppNotification(
+                    'Task removed',
+                    icon: Icons.delete_outline,
+                  );
+                },
+              ),
             ),
-            duration: const Duration(seconds: 6),
-            action: SnackBarAction(
-              label: 'Undo',
-              textColor: colorScheme.inversePrimary,
-              onPressed: () async {
-                await taskNotifier.deleteTask(createdTask.id);
-                ref
-                    .read(appNotificationProvider.notifier)
-                    .state = const AppNotification(
-                  'Task removed',
-                  icon: Icons.delete_outline,
-                );
-              },
-            ),
-          ),
-        );
+          );
+      }
+    } finally {
+      _isSubmitting = false;
     }
   }
 
   Future<void> _submitEvent() async {
+    if (_isSubmitting) return;
+
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
     final listId = _selectedListId ?? ref.read(activeListIdProvider);
     if (listId == null) return;
 
-    final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-    final start =
-        nextWorkingHour(
-          currentTime: now,
-          workDays: const [
-            DateTime.monday,
-            DateTime.tuesday,
-            DateTime.wednesday,
-            DateTime.thursday,
-            DateTime.friday,
-          ],
-          workStartMinutes: 9 * 60,
-          workEndMinutes: 17 * 60,
-        ) ??
-        DateTime(now.year, now.month, now.day, 10, 0);
-    final end = start.add(Duration(minutes: _durationMinutes));
+    _isSubmitting = true;
+    try {
+      final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
+      final start =
+          nextWorkingHour(
+            currentTime: now,
+            workDays: const [
+              DateTime.monday,
+              DateTime.tuesday,
+              DateTime.wednesday,
+              DateTime.thursday,
+              DateTime.friday,
+            ],
+            workStartMinutes: 9 * 60,
+            workEndMinutes: 17 * 60,
+          ) ??
+          DateTime(now.year, now.month, now.day, 10, 0);
+      final end = start.add(Duration(minutes: _durationMinutes));
 
-    final eventNotifier = ref.read(eventsProvider(listId).notifier);
-    final createdEvent = await eventNotifier.addEvent(
-      title: title,
-      startTime: start,
-      endTime: end,
-    );
+      final eventNotifier = ref.read(eventsProvider(listId).notifier);
+      final createdEvent = await eventNotifier.addEvent(
+        title: title,
+        startTime: start,
+        endTime: end,
+      );
 
-    if (mounted) {
-      Navigator.of(context).pop();
-      final colorScheme = Theme.of(context).colorScheme;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: colorScheme.inverseSurface,
-            content: Text(
-              'Added event "$title"',
-              style: TextStyle(color: colorScheme.onInverseSurface),
+      if (mounted) {
+        Navigator.of(context).pop();
+        final colorScheme = Theme.of(context).colorScheme;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: colorScheme.inverseSurface,
+              content: Text(
+                'Added event "$title"',
+                style: TextStyle(color: colorScheme.onInverseSurface),
+              ),
+              duration: const Duration(seconds: 6),
+              action: SnackBarAction(
+                label: 'Undo',
+                textColor: colorScheme.inversePrimary,
+                onPressed: () async {
+                  await eventNotifier.deleteEvent(createdEvent.id);
+                },
+              ),
             ),
-            duration: const Duration(seconds: 6),
-            action: SnackBarAction(
-              label: 'Undo',
-              textColor: colorScheme.inversePrimary,
-              onPressed: () async {
-                await eventNotifier.deleteEvent(createdEvent.id);
-              },
-            ),
-          ),
-        );
+          );
+      }
+    } finally {
+      _isSubmitting = false;
     }
   }
 
   void _openInInspector() {
+    if (_isOpeningInspector) return;
+    _isOpeningInspector = true;
     Navigator.of(context).pop();
     ref.read(selectedInspectorProvider.notifier).state =
         const InspectorTarget.empty();
     widget.onOpenInspector?.call();
+  }
+
+  void _handleInputSubmitted(String _) {
+    final keyboard = HardwareKeyboard.instance;
+    final isShiftPressed = keyboard.isShiftPressed;
+    final isAltPressed = keyboard.isAltPressed;
+
+    if (isShiftPressed && !isAltPressed) {
+      _submitEvent();
+    } else if (isAltPressed && !isShiftPressed) {
+      _openInInspector();
+    } else if (!isShiftPressed && !isAltPressed) {
+      _submitTask();
+    }
   }
 
   @override
@@ -327,7 +359,7 @@ class _FastCapturePaletteDialogState
                       vertical: AppTheme.spacingMd,
                     ),
                   ),
-                  onSubmitted: (_) => _submitTask(),
+                  onSubmitted: _handleInputSubmitted,
                   onChanged: (_) => setState(() {}),
                 ),
               ),
