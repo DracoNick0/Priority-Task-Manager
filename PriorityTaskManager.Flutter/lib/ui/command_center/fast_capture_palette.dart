@@ -15,6 +15,25 @@ import '../theme/app_theme.dart';
 import 'daily_rituals_dialog.dart';
 import 'empty_schedule_hero.dart';
 
+const _fastCaptureHintText =
+    'Add task (e.g. "Math homework", Enter) or add event '
+    '(e.g. "Math class", Shift+Enter)';
+
+DateTime _defaultFastCaptureEventStart(DateTime currentTime) =>
+    nextWorkingHour(
+      currentTime: currentTime,
+      workDays: const [
+        DateTime.monday,
+        DateTime.tuesday,
+        DateTime.wednesday,
+        DateTime.thursday,
+        DateTime.friday,
+      ],
+      workStartMinutes: 9 * 60,
+      workEndMinutes: 17 * 60,
+    ) ??
+    DateTime(currentTime.year, currentTime.month, currentTime.day, 10, 0);
+
 /// Data structure representing candidate attributes for task creation.
 /// Designed for Phase 1 smart defaults and Phase 2 LLM-assisted intake (Issue #18).
 class CandidateTaskDetails {
@@ -200,20 +219,7 @@ class _FastCapturePaletteDialogState
     _isSubmitting = true;
     try {
       final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-      final start =
-          nextWorkingHour(
-            currentTime: now,
-            workDays: const [
-              DateTime.monday,
-              DateTime.tuesday,
-              DateTime.wednesday,
-              DateTime.thursday,
-              DateTime.friday,
-            ],
-            workStartMinutes: 9 * 60,
-            workEndMinutes: 17 * 60,
-          ) ??
-          DateTime(now.year, now.month, now.day, 10, 0);
+      final start = _defaultFastCaptureEventStart(now);
       final end = start.add(Duration(minutes: _durationMinutes));
 
       final eventNotifier = ref.read(eventsProvider(listId).notifier);
@@ -350,7 +356,7 @@ class _FastCapturePaletteDialogState
                   textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.chevron_right, size: 24),
-                    hintText: 'Type a task or event... Press Enter to schedule',
+                    hintText: _fastCaptureHintText,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
@@ -677,63 +683,128 @@ class InlineFastCaptureBar extends ConsumerStatefulWidget {
 
 class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
   final _controller = TextEditingController();
+  final _shortcutFocusNode = FocusNode();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _shortcutFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitTask() async {
+    if (_isSubmitting) return;
+
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
-    _controller.clear();
-    final taskNotifier = ref.read(tasksProvider(widget.listId).notifier);
-    final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
-    final dueDate =
-        nextWorkingDayAtTime(
-          currentTime: now,
-          workDays: const [
-            DateTime.monday,
-            DateTime.tuesday,
-            DateTime.wednesday,
-            DateTime.thursday,
-            DateTime.friday,
-          ],
-          minutesSinceMidnight: 17 * 60,
-        ) ??
-        DateTime(now.year, now.month, now.day + 1, 17, 0);
+    _isSubmitting = true;
+    try {
+      _controller.clear();
+      final taskNotifier = ref.read(tasksProvider(widget.listId).notifier);
+      final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
+      final dueDate =
+          nextWorkingDayAtTime(
+            currentTime: now,
+            workDays: const [
+              DateTime.monday,
+              DateTime.tuesday,
+              DateTime.wednesday,
+              DateTime.thursday,
+              DateTime.friday,
+            ],
+            minutesSinceMidnight: 17 * 60,
+          ) ??
+          DateTime(now.year, now.month, now.day + 1, 17, 0);
 
-    final createdTask = await taskNotifier.addTask(
-      title: title,
-      estimatedDurationMinutes: 60,
-      dueDate: dueDate,
-      importance: 5,
-    );
+      final createdTask = await taskNotifier.addTask(
+        title: title,
+        estimatedDurationMinutes: 60,
+        dueDate: dueDate,
+        importance: 5,
+      );
 
-    if (mounted) {
-      final colorScheme = Theme.of(context).colorScheme;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: colorScheme.inverseSurface,
-            content: Text(
-              'Added task "$title"',
-              style: TextStyle(color: colorScheme.onInverseSurface),
+      if (mounted) {
+        final colorScheme = Theme.of(context).colorScheme;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: colorScheme.inverseSurface,
+              content: Text(
+                'Added task "$title"',
+                style: TextStyle(color: colorScheme.onInverseSurface),
+              ),
+              duration: const Duration(seconds: 6),
+              action: SnackBarAction(
+                label: 'Undo',
+                textColor: colorScheme.inversePrimary,
+                onPressed: () async {
+                  await taskNotifier.deleteTask(createdTask.id);
+                },
+              ),
             ),
-            duration: const Duration(seconds: 6),
-            action: SnackBarAction(
-              label: 'Undo',
-              textColor: colorScheme.inversePrimary,
-              onPressed: () async {
-                await taskNotifier.deleteTask(createdTask.id);
-              },
+          );
+      }
+    } finally {
+      _isSubmitting = false;
+    }
+  }
+
+  Future<void> _submitEvent() async {
+    if (_isSubmitting) return;
+
+    final title = _controller.text.trim();
+    if (title.isEmpty) return;
+
+    _isSubmitting = true;
+    try {
+      _controller.clear();
+      final now = ref.read(engineClockProvider).asData?.value ?? DateTime.now();
+      final start = _defaultFastCaptureEventStart(now);
+      final eventNotifier = ref.read(eventsProvider(widget.listId).notifier);
+      final createdEvent = await eventNotifier.addEvent(
+        title: title,
+        startTime: start,
+        endTime: start.add(const Duration(minutes: 60)),
+      );
+
+      if (mounted) {
+        final colorScheme = Theme.of(context).colorScheme;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: colorScheme.inverseSurface,
+              content: Text(
+                'Added event "$title"',
+                style: TextStyle(color: colorScheme.onInverseSurface),
+              ),
+              duration: const Duration(seconds: 6),
+              action: SnackBarAction(
+                label: 'Undo',
+                textColor: colorScheme.inversePrimary,
+                onPressed: () async {
+                  await eventNotifier.deleteEvent(createdEvent.id);
+                },
+              ),
             ),
-          ),
-        );
+          );
+      }
+    } finally {
+      _isSubmitting = false;
+    }
+  }
+
+  void _handleInputSubmitted(String _) {
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isShiftPressed && !keyboard.isAltPressed) {
+      _submitEvent();
+    } else {
+      _submitTask();
     }
   }
 
@@ -753,30 +824,41 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _controller,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                isDense: true,
-                prefixIcon: const Icon(Icons.add, size: 20),
-                hintText:
-                    'Add task (e.g. "Math homework due tomorrow 5pm"). Press Enter to schedule',
-                hintStyle: TextStyle(
-                  color: colorScheme.onSurfaceVariant.withAlpha(160),
-                  fontSize: 13,
+            child: KeyboardListener(
+              focusNode: _shortcutFocusNode,
+              onKeyEvent: (event) {
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.enter) {
+                  final keyboard = HardwareKeyboard.instance;
+                  if (keyboard.isShiftPressed && !keyboard.isAltPressed) {
+                    _submitEvent();
+                  }
+                }
+              },
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.add, size: 20),
+                  hintText: _fastCaptureHintText,
+                  hintStyle: TextStyle(
+                    color: colorScheme.onSurfaceVariant.withAlpha(160),
+                    fontSize: 13,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingSm,
+                    vertical: AppTheme.spacingSm,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
+                  ),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerLowest,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingSm,
-                  vertical: AppTheme.spacingSm,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  borderSide: BorderSide(color: colorScheme.outlineVariant),
-                ),
-                filled: true,
-                fillColor: colorScheme.surfaceContainerLowest,
+                onSubmitted: _handleInputSubmitted,
               ),
-              onSubmitted: (_) => _submit(),
             ),
           ),
           const SizedBox(width: AppTheme.spacingSm),

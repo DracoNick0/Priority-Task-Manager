@@ -1,7 +1,7 @@
 # Wireframe: Fast-Capture Bar & Command Palette (`Ctrl + K`)
 
 ## Purpose
-The **Fast-Capture Bar & Command Palette** enables rapid capture in under 3 seconds. The interface uses a **clean, low-friction text entry model with smart defaults**, connecting directly to the **MVP LLM-assisted intake** ([docs/LLM_ASSISTED_INTAKE.md](../LLM_ASSISTED_INTAKE.md) / Issue #18) for natural English interpretation.
+The **Fast-Capture Bar & Command Palette** enables rapid capture in under 3 seconds. The current Phase 1 flow uses direct task/event title entry and smart defaults; it does not interpret natural-language dates or other task details. LLM-assisted intake for natural-language interpretation is planned for Phase 2 ([docs/LLM_ASSISTED_INTAKE.md](../LLM_ASSISTED_INTAKE.md) / Issue #18).
 
 ---
 
@@ -39,7 +39,7 @@ The **Fast-Capture Bar & Command Palette** enables rapid capture in under 3 seco
 
 ```text
 +----------------------------------------------------------------------------------------------------+
-|  [ + Add task (e.g. "Math homework due tomorrow 5pm"). Press Enter to schedule                   ] |
+|  [ + Add task (e.g. "Math homework", Enter) or add event (e.g. "Math class", Shift+Enter)        ] |
 +----------------------------------------------------------------------------------------------------+
 ```
 
@@ -48,8 +48,8 @@ The **Fast-Capture Bar & Command Palette** enables rapid capture in under 3 seco
 ## Natural Intake & Evolutionary Roadmap
 
 ### Phase 1 (UI Overhaul Base):
-- **Simple Natural Title + Smart Defaults**:
-  - Typing a title and pressing `Enter` creates the task immediately.
+- **Direct Title Entry + Smart Defaults**:
+  - Typing a task title and pressing `Enter` creates the task immediately; pressing `Shift+Enter` creates a fixed event.
   - Applies smart defaults: default duration (`60m` or list default), next working day end for due date, normal importance (`5`), and the active list.
 - **One-Tap Micro Chips**:
   - The preview chips below the field (`[ 60m ]`, `[ Due: Tomorrow ]`) are clickable. Tapping any chip opens a 1-tap popover (such as `30m | 1h | 2h` or a calendar picker) within the prompt flow.

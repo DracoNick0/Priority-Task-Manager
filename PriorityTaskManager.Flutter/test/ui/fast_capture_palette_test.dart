@@ -18,6 +18,10 @@ import 'package:priority_task_manager/ui/command_center/command_center_screen.da
 import 'package:priority_task_manager/ui/command_center/daily_rituals_dialog.dart';
 import 'package:priority_task_manager/ui/command_center/fast_capture_palette.dart';
 
+const _expectedFastCaptureHint =
+    'Add task (e.g. "Math homework", Enter) or add event '
+    '(e.g. "Math class", Shift+Enter)';
+
 class _FakeMemoryTaskRepository implements TaskRepository {
   final Map<String, List<TaskItem>> _tasks = {};
   final Map<String, List<FixedEvent>> _events = {};
@@ -302,6 +306,10 @@ void main() {
     // Verify smart default micro-pills
     expect(find.text('60m'), findsOneWidget);
     expect(find.text('Normal (5)'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).decoration?.hintText,
+      _expectedFastCaptureHint,
+    );
 
     // Enter title
     await tester.enterText(find.byType(TextField), 'Math homework problem set');
@@ -344,6 +352,11 @@ void main() {
     );
     await tester.pump();
 
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).decoration?.hintText,
+      _expectedFastCaptureHint,
+    );
+
     // Enter text in inline bar
     await tester.enterText(find.byType(TextField), 'Read biology chapter 3');
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -351,6 +364,50 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Added task "Read biology chapter 3"'), findsOneWidget);
+  });
+
+  testWidgets('Inline fast-capture bar adds an event on shift+enter', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeMemoryTaskRepository();
+    final container = ProviderContainer(
+      overrides: [
+        taskRepositoryProvider.overrideWith((ref) => repository),
+        activeListIdProvider.overrideWith((ref) => 'list-1'),
+        engineClockProvider.overrideWith(
+          (ref) => Stream.value(DateTime(2026, 10, 24, 10, 0)),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: InlineFastCaptureBar(
+              listId: 'list-1',
+              onOpenInspector: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'Math class');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.addedEvents.map((event) => event.title), ['Math class']);
+    expect(repository.addedTaskTitles, isEmpty);
+    expect(find.text('Added event "Math class"'), findsOneWidget);
   });
 
   testWidgets('Command Palette quick commands switch views', (
