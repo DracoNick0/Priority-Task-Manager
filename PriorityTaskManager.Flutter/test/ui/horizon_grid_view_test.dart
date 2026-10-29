@@ -1428,4 +1428,91 @@ void main() {
     expect(find.text(task.title), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'HorizonGridView keeps Monday on far left and Sunday on far right across week transitions and DST',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final repository = _FakeMemoryTaskRepository();
+      // Wednesday Oct 28, 2026 (DST ends Sunday Nov 1, 2026)
+      final now = DateTime(2026, 10, 28, 14, 0);
+
+      await repository.addEvent(
+        listId: 'list-1',
+        title: 'Team Sync',
+        startTime: DateTime(2026, 10, 28, 10, 0),
+        endTime: DateTime(2026, 10, 28, 11, 0),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          taskRepositoryProvider.overrideWith((ref) => repository),
+          activeListIdProvider.overrideWith((ref) => 'list-1'),
+          engineClockProvider.overrideWith((ref) => Stream.value(now)),
+          scheduleProvider.overrideWith(
+            (ref) => Future.value(DailySchedule.empty()),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: HorizonGridView(listId: 'list-1')),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Current week: Oct 26 (Mon) to Nov 1 (Sun)
+      expect(find.text('MON Oct 26'), findsOneWidget);
+      expect(find.text('SUN Nov 1'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('MON Oct 26')).dx,
+        lessThan(tester.getTopLeft(find.text('SUN Nov 1')).dx),
+      );
+
+      // Navigate to Next Week: Nov 2 (Mon) to Nov 8 (Sun)
+      await tester.tap(find.text('Next Week >'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('MON Nov 2'), findsOneWidget);
+      expect(find.text('TUE Nov 3'), findsOneWidget);
+      expect(find.text('WED Nov 4'), findsOneWidget);
+      expect(find.text('THU Nov 5'), findsOneWidget);
+      expect(find.text('FRI Nov 6'), findsOneWidget);
+      expect(find.text('SAT Nov 7'), findsOneWidget);
+      expect(find.text('SUN Nov 8'), findsOneWidget);
+      expect(find.text('SUN Nov 1'), findsNothing);
+      expect(
+        tester.getTopLeft(find.text('MON Nov 2')).dx,
+        lessThan(tester.getTopLeft(find.text('SUN Nov 8')).dx),
+      );
+      expect(find.text('HORIZON — Week of Nov 2 – Nov 8, 2026'), findsOneWidget);
+
+      // Navigate to Previous Week twice (back to current week, then prior week: Oct 19 - Oct 25)
+      await tester.tap(find.text('< Prev Week'));
+      await tester.pump();
+      await tester.tap(find.text('< Prev Week'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('MON Oct 19'), findsOneWidget);
+      expect(find.text('SUN Oct 25'), findsOneWidget);
+      expect(
+        find.text('HORIZON — Week of Oct 19 – Oct 25, 2026'),
+        findsOneWidget,
+      );
+    },
+  );
 }

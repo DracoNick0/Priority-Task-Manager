@@ -151,9 +151,11 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
   Widget build(BuildContext context) {
     final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final currentMonday = today
-        .subtract(Duration(days: today.weekday - 1))
-        .add(Duration(days: _weekOffset * 7));
+    final currentMonday = DateTime(
+      today.year,
+      today.month,
+      today.day - (today.weekday - DateTime.monday) + (_weekOffset * 7),
+    );
 
     final tasksAsync = ref.watch(tasksProvider(widget.listId));
     final eventsAsync = ref.watch(eventsProvider(widget.listId));
@@ -225,7 +227,11 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
 
     final weekDays = List.generate(
       DateTime.sunday,
-      (i) => currentMonday.add(Duration(days: i)),
+      (i) => DateTime(
+        currentMonday.year,
+        currentMonday.month,
+        currentMonday.day + i,
+      ),
     );
 
     return Column(
