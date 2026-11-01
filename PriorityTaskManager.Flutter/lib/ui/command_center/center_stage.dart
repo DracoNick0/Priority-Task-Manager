@@ -311,7 +311,11 @@ class _Pipeline extends ConsumerWidget {
         key: ValueKey(event.id),
         event: event,
         onTap: () => ref.read(selectedInspectorProvider.notifier).state =
-            InspectorTarget(kind: InspectorKind.event, id: event.id),
+            InspectorTarget(
+              kind: InspectorKind.event,
+              id: event.id,
+              event: event,
+            ),
       );
     }
 

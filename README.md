@@ -12,9 +12,7 @@ Priority Task Manager turns tasks and commitments into a realistic work plan aro
 
 [Quick Start](#quick-start) · [Current capabilities](#current-capabilities-at-a-glance) · [Current maturity](#current-maturity-snapshot)
 
-![alt text](docs/images/image.png)
-
-## Why This Project Exists
+![alt text](docs/images/image.png) 
 
 Task managers are good at collecting work, but people still have to repeatedly decide what fits before deadlines. Priority Task Manager aims to reduce that re-triage by building a plan from the work to be done and the time actually available—and by keeping work that cannot be scheduled visible.
 

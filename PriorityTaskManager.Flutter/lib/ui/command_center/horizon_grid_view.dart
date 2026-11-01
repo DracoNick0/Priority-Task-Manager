@@ -1003,6 +1003,7 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
           ref.read(selectedInspectorProvider.notifier).state = InspectorTarget(
             kind: InspectorKind.event,
             id: event.id,
+            event: event,
           );
         },
         child: Container(
