@@ -20,10 +20,16 @@ import 'recurrence_picker.dart';
 ///
 /// A null [eventId] means "create a new event" for [listId].
 class EventInspectorForm extends ConsumerStatefulWidget {
-  const EventInspectorForm({super.key, required this.listId, this.eventId});
+  const EventInspectorForm({
+    super.key,
+    required this.listId,
+    this.eventId,
+    this.initialEvent,
+  });
 
   final String listId;
   final String? eventId;
+  final FixedEvent? initialEvent;
 
   @override
   ConsumerState<EventInspectorForm> createState() => _EventInspectorFormState();
@@ -145,6 +151,7 @@ class _EventInspectorFormState extends ConsumerState<EventInspectorForm> {
       existing = [
         ...occurrences,
         ...events,
+        if (widget.initialEvent?.id == widget.eventId) widget.initialEvent!,
       ].where((event) => event.id == widget.eventId).firstOrNull;
       if (existing == null) {
         return const Center(child: Text('Event not found.'));

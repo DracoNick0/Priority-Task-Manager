@@ -7,11 +7,13 @@ import 'package:priority_task_manager/models/user_profile.dart';
 import 'package:priority_task_manager/providers/app_notifications_provider.dart';
 import 'package:priority_task_manager/providers/engine_status_provider.dart';
 import 'package:priority_task_manager/providers/event_providers.dart';
+import 'package:priority_task_manager/providers/selection_provider.dart';
 import 'package:priority_task_manager/providers/session_provider.dart';
 import 'package:priority_task_manager/providers/task_providers.dart';
 import 'package:priority_task_manager/providers/user_profile_provider.dart';
 import 'package:priority_task_manager/ui/command_center/inspector_forms/event_inspector_form.dart';
 import 'package:priority_task_manager/ui/command_center/inspector_forms/task_inspector_form.dart';
+import 'package:priority_task_manager/ui/command_center/right_inspector.dart';
 
 class _Lists extends TaskListsNotifier {
   _Lists(this.lists);
@@ -168,7 +170,11 @@ void main() {
     SessionStatus session = SessionStatus.authenticated,
     _Tasks? tasksNotifier,
     _Events? eventsNotifier,
+    InspectorTarget? inspectorTarget,
+    String? activeListId,
+    DateTime? clockTime,
   }) async {
+    final currentTime = clockTime ?? simulated;
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -176,15 +182,19 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          if (inspectorTarget != null)
+            selectedInspectorProvider.overrideWith((ref) => inspectorTarget),
+          if (activeListId != null)
+            activeListIdProvider.overrideWith((ref) => activeListId),
           taskListsProvider.overrideWith(() => _Lists([list])),
           userProfileProvider.overrideWith(_Profile.new),
           sessionControllerProvider.overrideWith(() => _Session(session)),
           tasksProvider.overrideWith(() => tasksNotifier ?? _Tasks()),
           eventsProvider.overrideWith(() => eventsNotifier ?? _Events()),
-          engineClockProvider.overrideWith((ref) => Stream.value(simulated)),
+          engineClockProvider.overrideWith((ref) => Stream.value(currentTime)),
           eventOccurrencesProvider((
             'list',
-            DateTime(2026, 10, 2),
+            DateTime(currentTime.year, currentTime.month, currentTime.day),
           )).overrideWith((ref) async => []),
         ],
         child: MaterialApp(
@@ -463,4 +473,40 @@ void main() {
     expect(find.text('Fri, Oct 2 • 9:00 AM'), findsOneWidget);
     expect(find.text('Fri, Oct 2 • 10:00 AM'), findsOneWidget);
   });
+
+  testWidgets(
+    'inspector loads a selected recurring event outside the current window',
+    (tester) async {
+      final occurrenceDate = DateTime(2026, 10, 25);
+      final occurrence = FixedEvent(
+        id: 'series-id_2026-10-25',
+        listId: 'list',
+        title: 'Weekly event',
+        startTime: DateTime(2026, 10, 25, 9),
+        endTime: DateTime(2026, 10, 25, 10),
+        seriesId: 'series-id',
+        originalOccurrenceDate: occurrenceDate,
+      );
+
+      await pumpForm(
+        tester,
+        form: const RightInspector(),
+        list: TaskList(id: 'list', name: 'Work'),
+        activeListId: 'list',
+        clockTime: DateTime(2026, 10, 28),
+        inspectorTarget: InspectorTarget(
+          kind: InspectorKind.event,
+          id: occurrence.id,
+          event: occurrence,
+        ),
+      );
+
+      expect(find.text('Event not found.'), findsNothing);
+      expect(find.text('Edit Event'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+        'Weekly event',
+      );
+    },
+  );
 }

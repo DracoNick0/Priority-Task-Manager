@@ -95,6 +95,7 @@ class RightInspector extends ConsumerWidget {
           key: ValueKey('event-${selection.id}'),
           listId: activeListId,
           eventId: selection.id,
+          initialEvent: selection.event,
         );
       case InspectorKind.list:
         return ListInspectorForm(
