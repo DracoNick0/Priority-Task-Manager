@@ -78,15 +78,24 @@ class CandidateTaskDetails {
 }
 
 /// Shows the universal Command Palette overlay dialog.
+final Set<NavigatorState> _activePaletteNavigators = <NavigatorState>{};
+
 Future<void> showFastCapturePalette(
   BuildContext context, {
   VoidCallback? onOpenInspector,
-}) {
-  return showDialog<void>(
-    context: context,
-    builder: (context) =>
-        FastCapturePaletteDialog(onOpenInspector: onOpenInspector),
-  );
+}) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  if (!_activePaletteNavigators.add(navigator)) return;
+
+  try {
+    await showDialog<void>(
+      context: context,
+      builder: (context) =>
+          FastCapturePaletteDialog(onOpenInspector: onOpenInspector),
+    );
+  } finally {
+    _activePaletteNavigators.remove(navigator);
+  }
 }
 
 /// Universal Command Palette (`Ctrl + K` / `Cmd + K`) overlay.

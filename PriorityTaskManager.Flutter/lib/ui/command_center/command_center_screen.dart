@@ -225,6 +225,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleGlobalPaletteShortcut);
     _lifecycleListener = AppLifecycleListener(
       onResume: () {
         final now = DateTime.now();
@@ -247,8 +248,26 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalPaletteShortcut);
     _lifecycleListener.dispose();
     super.dispose();
+  }
+
+  bool _handleGlobalPaletteShortcut(KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.keyK) {
+      return false;
+    }
+
+    final keyboard = HardwareKeyboard.instance;
+    final hasControlOrMeta =
+        (keyboard.isControlPressed && !keyboard.isMetaPressed) ||
+        (keyboard.isMetaPressed && !keyboard.isControlPressed);
+    if (!hasControlOrMeta || keyboard.isShiftPressed || keyboard.isAltPressed) {
+      return false;
+    }
+
+    unawaited(showFastCapturePalette(context, onOpenInspector: _openInspector));
+    return true;
   }
 
   @override
@@ -321,29 +340,9 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
 
     final devLogOpen = kDebugMode && ref.watch(devLogPanelOpenProvider);
 
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        final keyboard = HardwareKeyboard.instance;
-        final hasControlOrMeta =
-            (keyboard.isControlPressed && !keyboard.isMetaPressed) ||
-            (keyboard.isMetaPressed && !keyboard.isControlPressed);
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.keyK &&
-            hasControlOrMeta &&
-            !keyboard.isShiftPressed &&
-            !keyboard.isAltPressed) {
-          unawaited(
-            showFastCapturePalette(context, onOpenInspector: _openInspector),
-          );
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: LayoutBuilder(
-        builder: (context, constraints) =>
-            _buildScaffold(context, constraints, devLogOpen),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          _buildScaffold(context, constraints, devLogOpen),
     );
   }
 

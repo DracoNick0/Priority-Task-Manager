@@ -517,6 +517,99 @@ void main() {
     expect(find.text('Fast Capture & Command Palette'), findsOneWidget);
   });
 
+  testWidgets('Global Ctrl+K opens the palette without selecting a control', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCommandCenter(tester, repository: _FakeMemoryTaskRepository());
+
+    await _sendShortcut(
+      tester,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.keyK,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Fast Capture & Command Palette'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Global Ctrl+K opens the palette while the inline field is focused',
+    (WidgetTester tester) async {
+      await _pumpCommandCenter(tester, repository: _FakeMemoryTaskRepository());
+
+      final inlineInput = find.descendant(
+        of: find.byType(InlineFastCaptureBar),
+        matching: find.byType(TextField),
+      );
+      expect(inlineInput, findsOneWidget);
+
+      await tester.enterText(inlineInput, 'Keep this draft');
+      await _sendShortcut(
+        tester,
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.keyK,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Fast Capture & Command Palette'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(inlineInput).controller!.text,
+        'Keep this draft',
+      );
+    },
+  );
+
+  testWidgets(
+    'Global Ctrl+K opens the palette from another focused overlay field',
+    (WidgetTester tester) async {
+      await _pumpCommandCenter(tester, repository: _FakeMemoryTaskRepository());
+      final screenContext = tester.element(find.byType(CommandCenterScreen));
+      final otherFieldController = TextEditingController();
+      addTearDown(otherFieldController.dispose);
+      final entry = OverlayEntry(
+        builder: (_) => Positioned(
+          top: 24,
+          left: 24,
+          child: Material(
+            child: SizedBox(
+              width: 320,
+              child: TextField(
+                key: const Key('other-overlay-field'),
+                controller: otherFieldController,
+              ),
+            ),
+          ),
+        ),
+      );
+      Overlay.of(screenContext).insert(entry);
+      addTearDown(entry.remove);
+      await tester.pump();
+
+      final otherField = find.byKey(const Key('other-overlay-field'));
+      await tester.enterText(otherField, 'Keep this draft');
+      await _sendShortcut(
+        tester,
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.keyK,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Fast Capture & Command Palette'), findsOneWidget);
+      await _sendShortcut(
+        tester,
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.keyK,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(FastCapturePaletteDialog), findsOneWidget);
+      expect(otherFieldController.text, 'Keep this draft');
+    },
+  );
+
   testWidgets('Alt+Enter keeps the empty inspector open when docked', (
     WidgetTester tester,
   ) async {
