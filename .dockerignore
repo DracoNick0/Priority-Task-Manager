@@ -5,7 +5,6 @@
 **/node_modules/
 PriorityTaskManager.Flutter/build/
 PriorityTaskManager.Flutter/.dart_tool/
-pt_prototyping/
 Data/
 history/
 docs/
