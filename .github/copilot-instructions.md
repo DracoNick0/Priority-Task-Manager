@@ -28,3 +28,7 @@ applyTo: '**'
 
 ## Code Conventions
 - Follow existing patterns and use descriptive names. Add XML documentation to public C# members; comment only non-obvious reasoning.
+
+## Worktrees & Environment (Windows)
+- When creating, suggesting, or configuring Git worktrees on Windows, always use a short root path such as `<drive>:\wt\<branch>` (e.g. `E:\wt\<branch>`). Never place worktrees in nested directories (such as `<repo>.worktrees/<branch>`) or paths with spaces. Flutter Windows desktop builds generate ephemeral plugin symlinks (`flutter_secure_storage_windows`) that consume ~160 characters and will exceed the Windows 260-character `MAX_PATH` limit, failing CMake builds.
+- Always open and build the worktree from the exact same path. Windows CMake caches absolute paths in `CMakeCache.txt`; switching between drive letters or mapped `subst` drives invalidates the cache and requires running `flutter clean` and `flutter pub get`.
