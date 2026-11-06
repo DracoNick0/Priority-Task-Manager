@@ -24,6 +24,40 @@
                 "${workspaceFolder}/PriorityTaskManager.API/PriorityTaskManager.API.csproj"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Flutter: Prepare Windows build",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/PriorityTaskManager.Flutter/tool/prepare_windows_build.ps1",
+                "-FlutterProjectDirectory",
+                "${workspaceFolder}/PriorityTaskManager.Flutter"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Flutter: Get dependencies",
+            "type": "process",
+            "command": "flutter",
+            "args": [
+                "pub",
+                "get"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter"
+            },
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
         }
     ]
 }

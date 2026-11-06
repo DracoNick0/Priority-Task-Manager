@@ -43,6 +43,10 @@ flutter pub get
 flutter run -d windows   # or -d chrome for web
 ```
 
+Flutter dependencies are local to each checkout or worktree. The VS Code workspace runs `flutter pub get` when opened and before a Flutter debug launch; in a terminal, run it from `PriorityTaskManager.Flutter` after creating a worktree or changing dependencies.
+
+For Windows desktop builds, keep each worktree under a short, stable path (for example, `E:\wt\<branch>`) and always open it through that same path. CMake caches absolute paths; alternating between a `subst` drive and the original worktree path invalidates the cache. The VS Code Windows launch profiles repair stale CMake paths and check the Windows path limit before building. See [docs/WORKFLOW.md](docs/WORKFLOW.md) for terminal setup and worktree guidance.
+
 Guest mode can be used without a running API. The client defaults to a local API at `http://127.0.0.1:5299`; account-backed features require a running API and reachable PostgreSQL database, and schedule generation additionally requires Subscription access. See [docs/WORKFLOW.md](docs/WORKFLOW.md) for running the API and database locally.
 
 To point the client at the hosted API instead:
@@ -62,7 +66,6 @@ See [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for A
 | `PriorityTaskManager.Flutter/` | Flutter web and desktop client |
 | `PriorityTaskManager.Tests/` | Active unit and API test project |
 | `PriorityTaskManager.CLI/` | Archived CLI source; unsupported and excluded from the active solution and test suite |
-| `pt_prototyping/` | Standalone Flutter sandbox for UI/UX prototyping, not part of the shipped product |
 | `docs/` | Product, architecture, status, workflow, and testing documentation |
 
 ## Documentation Map

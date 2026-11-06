@@ -40,19 +40,31 @@ Segments are prepared for independent review and possible commits, but `proceed`
 6.  **Update the GitHub Issue**: Mark the issue as complete or update its status.
 7.  **Commit**: Review the staged diff and write a clear Conventional Commit message describing the outcome. Choose one commit or a split based on useful review boundaries, not a fixed size target. Keep tests and documentation with the behavior they verify or describe. See the [commit-message skill](../.github/skills/commit-message/SKILL.md) for detailed boundary and message guidance.
 
+### Git Worktrees on Windows (Short Path Requirement)
+
+When creating a Git worktree on Windows (especially when developing or running the Flutter client):
+1. **Always use a short root path**: Create the worktree under a short root directory such as `<drive>:\wt\<branch>` (e.g. `E:\wt\<branch>`).
+   ```powershell
+   git worktree add "E:\wt\my-feature" -b feature/my-feature
+   code "E:\wt\my-feature"
+   ```
+2. **Avoid deep or nested paths**: Never place worktrees inside nested folders (like `<repo-dir>.worktrees\<branch>`) or paths with spaces. Flutter Windows desktop builds generate ephemeral plugin symlinks (`flutter_secure_storage_windows`) that consume ~160 characters. When the base worktree path exceeds ~100 characters, the total path exceeds the Windows 260-character `MAX_PATH` limit and CMake builds abort.
+3. **Maintain consistent paths**: Windows CMake hardcodes absolute source and build paths in `CMakeCache.txt`. Always open and build the worktree from the exact same path and drive letter. Switching between physical paths and virtual drive letters (`subst`) invalidates the CMake cache and requires `flutter clean` and `flutter pub get`.
+
 ## Building and Running the Application
 
 **Prerequisites:**
 *   .NET SDK (10.0 or higher)
+*   Flutter SDK satisfying the `environment.sdk` constraint in `PriorityTaskManager.Flutter/pubspec.yaml` (to run the web or Windows client)
 
 **Build the solution:**
 ```bash
 dotnet build
 ```
 
-**Run the API (required before running the Flutter client):**
+**Run the API (for authenticated API-backed features):**
 
-The Flutter client computes schedules by calling a separately-running `PriorityTaskManager.API` instance; it no longer starts this process itself, so start it first. Scheduling is an online-exclusive, Subscription-gated capability (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)), so a reachable Postgres database is required (see `PriorityTaskManager.API/appsettings.json`'s default connection string):
+The Flutter client can start in Guest mode without the API. Start the API to test authenticated account features and schedule computation; the API does not start with the Flutter client. Scheduling is an online-exclusive, Subscription-gated capability (see [ARCHITECTURE_INTEGRATIONS.md](ARCHITECTURE_INTEGRATIONS.md)), so a reachable Postgres database is required (see `PriorityTaskManager.API/appsettings.json`'s default connection string):
 
 ```bash
 dotnet run --project PriorityTaskManager.API --no-launch-profile
@@ -60,10 +72,30 @@ dotnet run --project PriorityTaskManager.API --no-launch-profile
 Set `ASPNETCORE_URLS` to `http://127.0.0.1:5299` to match the Flutter client's default, and `ASPNETCORE_ENVIRONMENT=Development` to enable dev account seeding (`free@dev.local` / `subscriber@dev.local`, see `PriorityTaskManager.API/Dev/DevAccountSeeder.cs`) for manual login testing. In VS Code, use the "API (Cloud, dev seed :5299)" launch config, or the "API + Flutter (Windows)" compound to start both together with debugging.
 
 **Run the Flutter client:**
+
+Flutter package configuration and native plugin links are generated locally and are not shared between Git worktrees. When opening the repository root in VS Code, the "Flutter: Get dependencies" task runs on folder open and before each Flutter debug launch. If running from a terminal or creating a worktree outside VS Code, fetch dependencies from the Flutter package directory first:
+
 ```bash
 cd PriorityTaskManager.Flutter
+flutter pub get
 flutter run -d windows   # or -d chrome for web
 ```
+
+For Windows desktop builds, create each worktree under a short path such as `E:\wt\<branch>` and always open it through that same path. Windows CMake caches absolute source and build paths; opening one worktree sometimes through a `subst` drive and sometimes through its original path makes the cache invalid. If you use a `subst` drive for an existing worktree, keep using that drive for every build.
+
+```powershell
+subst T: "E:\path\to\worktree"
+```
+
+The VS Code Windows Flutter launch configurations run `tool/prepare_windows_build.ps1` before debugging. It restores Flutter dependencies, removes only the generated `build\windows` output when its CMake cache belongs to a different path, and stops with an actionable message if the generated plugin header path reaches 260 characters. This prevents stale-cache errors but cannot make an overlong worktree path buildable.
+
+When launching Windows from a terminal, run the same preflight from the repository root before `flutter run -d windows`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\PriorityTaskManager.Flutter\tool\prepare_windows_build.ps1 -FlutterProjectDirectory (Resolve-Path .\PriorityTaskManager.Flutter).Path
+```
+
+If the preflight reports an overlong path, create the worktree in a short location and open that exact location in VS Code. For other stale generated plugin state, run `flutter clean` followed by `flutter pub get` from `PriorityTaskManager.Flutter`.
 
 **Run the API and Postgres together via Docker Compose:**
 

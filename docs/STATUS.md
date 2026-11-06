@@ -88,5 +88,5 @@ Tracks how much of the Core feature set is exposed through `PriorityTaskManager.
 
 - Build: `dotnet build .\Priority-Task-Manager.sln` succeeds with three nullable-reference warnings in scheduling tests.
 - .NET tests: `dotnet test .\PriorityTaskManager.Tests\PriorityTaskManager.Tests.csproj --configuration Release` reports 222 passed, 1 skipped, and 1 failed in `PersistenceServiceTests.ArchiveTasks_AppendsArchivedTasksToArchiveFile`.
-- Flutter: `flutter test --reporter compact` and `flutter analyze` pass when run from `PriorityTaskManager.Flutter/`.
+- Flutter: `flutter analyze` passes. `flutter test` reports 111 passed and 2 failed: the Horizon seven-day/non-workday-capacity widget test and the Projects ongoing-event visibility widget test.
 - Hosted API reachability: an unauthenticated `GET https://tpm-api.fly.dev/api/lists` returned HTTP 401, confirming the endpoint is reachable and protected. An authenticated scheduling request was not re-tested for this update.

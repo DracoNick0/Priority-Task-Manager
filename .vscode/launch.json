@@ -23,6 +23,7 @@
             "name": "Flutter (Windows)",
             "type": "dart",
             "request": "launch",
+            "preLaunchTask": "Flutter: Prepare Windows build",
             "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
             "program": "lib/main.dart",
             "deviceId": "windows"
@@ -31,6 +32,7 @@
             "name": "Flutter (Web)",
             "type": "dart",
             "request": "launch",
+            "preLaunchTask": "Flutter: Get dependencies",
             "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
             "program": "lib/main.dart",
             "deviceId": "edge"
@@ -39,6 +41,7 @@
             "name": "Flutter (Windows, Fly.io prod)",
             "type": "dart",
             "request": "launch",
+            "preLaunchTask": "Flutter: Prepare Windows build",
             "cwd": "${workspaceFolder}/PriorityTaskManager.Flutter",
             "program": "lib/main.dart",
             "deviceId": "windows",
@@ -49,10 +52,10 @@
     ],
     "compounds": [
         {
-            "name": "API + Flutter (Windows)",
+            "name": "API + Flutter (Web)",
             "configurations": [
                 "API (Cloud, dev seed :5299)",
-                "Flutter (Windows)"
+                "Flutter (Web)"
             ]
         }
     ]

@@ -5,7 +5,7 @@ Local-only (offline/guest) Flutter web + Windows desktop client for Priority Tas
 ## First-Time Setup
 
 1. Install a Flutter SDK that satisfies the `environment.sdk` constraint in [pubspec.yaml](pubspec.yaml). If your installed Flutter is older than that constraint, `flutter pub get` will fail with an SDK version solving error — run `flutter upgrade` (on the `stable` channel) and try again.
-2. From this directory, fetch dependencies:
+2. From this directory, fetch dependencies. Each clone/worktree has its own generated Dart package configuration and plugin links, so run this after creating a worktree or changing dependencies:
 
    ```bash
    flutter pub get
@@ -19,6 +19,8 @@ Local-only (offline/guest) Flutter web + Windows desktop client for Priority Tas
    ```
 
 This client calls a locally-running `PriorityTaskManager.API` instance (started separately, e.g. via the "API (Cloud, dev seed :5299)" launch config or `dotnet run` from `PriorityTaskManager.API/`) to compute schedules using the real scheduling strategies for logged-in accounts; see the root [README.md](../README.md) and [docs/WORKFLOW.md](../docs/WORKFLOW.md) for how to run it.
+
+The API is not required to launch the app in Guest mode. For Windows desktop builds, keep the worktree under a short path (for example, `E:\wt\<branch>`) and always open it through that same path because CMake caches absolute paths. The VS Code Windows launch profiles clear stale CMake output when the worktree path changes and stop early if the generated plugin path is too long. See [docs/WORKFLOW.md](../docs/WORKFLOW.md) for the terminal preflight and worktree guidance.
 
 ## Verifying Changes
 
