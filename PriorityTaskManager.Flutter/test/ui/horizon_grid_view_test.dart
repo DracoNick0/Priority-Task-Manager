@@ -696,9 +696,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Unscheduled & Risk'), findsOneWidget);
+      expect(find.text('Unscheduled'), findsOneWidget);
+      expect(find.byTooltip('Show Unscheduled'), findsOneWidget);
       final neutralButtonFinder = find.ancestor(
-        of: find.text('Unscheduled & Risk'),
+        of: find.text('Unscheduled'),
         matching: find.byType(TextButton),
       );
       final neutralButton = tester.widget<TextButton>(neutralButtonFinder);
@@ -778,10 +779,10 @@ void main() {
 
     // The tray starts collapsed and signals the number of tray tasks.
     expect(find.byKey(const ValueKey('unscheduled-tray')), findsNothing);
-    expect(find.text('UNSCHEDULED & RISK'), findsNothing);
-    expect(find.text('Unscheduled & Risk (1)'), findsOneWidget);
+    expect(find.text('UNSCHEDULED'), findsNothing);
+    expect(find.text('Unscheduled (1)'), findsOneWidget);
     final warningButtonFinder = find.ancestor(
-      of: find.text('Unscheduled & Risk (1)'),
+      of: find.text('Unscheduled (1)'),
       matching: find.byType(TextButton),
     );
     final warningButton = tester.widget<TextButton>(warningButtonFinder);
@@ -790,12 +791,13 @@ void main() {
       Theme.of(tester.element(warningButtonFinder)).colorScheme.error,
     );
 
-    await tester.tap(find.text('Unscheduled & Risk (1)'));
+    await tester.tap(find.text('Unscheduled (1)'));
     await tester.pumpAndSettle();
     final trayFinder = find.byKey(const ValueKey('unscheduled-tray'));
     expect(trayFinder, findsOneWidget);
+    expect(find.byTooltip('Hide Unscheduled'), findsOneWidget);
     expect(tester.getSize(trayFinder).width, 1280);
-    expect(find.text('UNSCHEDULED & RISK'), findsOneWidget);
+    expect(find.text('UNSCHEDULED'), findsOneWidget);
     expect(find.text('BLOCKED BY DEPENDENCY'), findsOneWidget);
     expect(find.text('Deploy to Production'), findsOneWidget);
     expect(
@@ -820,28 +822,28 @@ void main() {
     expect(tester.getSize(trayFinder).width, 1280);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Unscheduled & Risk (1)'));
+    await tester.tap(find.text('Unscheduled (1)'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('unscheduled-tray')), findsNothing);
-    expect(find.text('UNSCHEDULED & RISK'), findsNothing);
+    expect(find.text('UNSCHEDULED'), findsNothing);
 
     tester.view.physicalSize = const Size(800, 800);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('UNSCHEDULED & RISK'), findsNothing);
-    expect(find.text('Unscheduled & Risk (1)'), findsOneWidget);
+    expect(find.text('UNSCHEDULED'), findsNothing);
+    expect(find.text('Unscheduled (1)'), findsOneWidget);
 
     tester.view.physicalSize = const Size(480, 800);
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('UNSCHEDULED & RISK'), findsNothing);
-    expect(find.text('Unscheduled & Risk (1)'), findsOneWidget);
+    expect(find.text('UNSCHEDULED'), findsNothing);
+    expect(find.text('Unscheduled (1)'), findsOneWidget);
 
-    await tester.tap(find.text('Unscheduled & Risk (1)'));
+    await tester.tap(find.text('Unscheduled (1)'));
     await tester.pumpAndSettle();
 
-    expect(find.text('UNSCHEDULED & RISK'), findsOneWidget);
+    expect(find.text('UNSCHEDULED'), findsOneWidget);
     expect(find.text('BLOCKED BY DEPENDENCY'), findsOneWidget);
     expect(find.text('Deploy to Production'), findsOneWidget);
     expect(find.text('Extend Hours'), findsOneWidget);
@@ -862,10 +864,10 @@ void main() {
     expect(tester.getSize(trayFinder).width, 480);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byTooltip('Close Unscheduled & Risk'));
+    await tester.tap(find.byTooltip('Close Unscheduled'));
     await tester.pumpAndSettle();
-    expect(find.text('UNSCHEDULED & RISK'), findsNothing);
-    expect(find.text('Unscheduled & Risk (1)'), findsOneWidget);
+    expect(find.text('UNSCHEDULED'), findsNothing);
+    expect(find.text('Unscheduled (1)'), findsOneWidget);
   });
 
   testWidgets(
