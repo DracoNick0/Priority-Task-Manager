@@ -352,18 +352,33 @@ void main() {
     );
     await tester.pump();
 
+    final input = find.byType(TextField);
+    final inputFocusNode = tester.widget<TextField>(input).focusNode!;
+
     expect(
-      tester.widget<TextField>(find.byType(TextField)).decoration?.hintText,
+      tester.widget<TextField>(input).decoration?.hintText,
       _expectedFastCaptureHint,
     );
 
     // Enter text in inline bar
-    await tester.enterText(find.byType(TextField), 'Read biology chapter 3');
+    await tester.enterText(input, 'Read biology chapter 3');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Added task "Read biology chapter 3"'), findsOneWidget);
+    expect(inputFocusNode.hasFocus, isTrue);
+
+    tester.testTextInput.enterText('Email project update');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(inputFocusNode.hasFocus, isTrue);
+    expect(repository.addedTaskTitles, [
+      'Read biology chapter 3',
+      'Email project update',
+    ]);
   });
 
   testWidgets('Inline fast-capture bar adds an event on shift+enter', (
@@ -396,7 +411,10 @@ void main() {
     );
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), 'Math class');
+    final input = find.byType(TextField);
+    final inputFocusNode = tester.widget<TextField>(input).focusNode!;
+
+    await tester.enterText(input, 'Math class');
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -408,6 +426,23 @@ void main() {
     expect(repository.addedEvents.map((event) => event.title), ['Math class']);
     expect(repository.addedTaskTitles, isEmpty);
     expect(find.text('Added event "Math class"'), findsOneWidget);
+    expect(inputFocusNode.hasFocus, isTrue);
+
+    tester.testTextInput.enterText('Project sync');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(inputFocusNode.hasFocus, isTrue);
+    expect(repository.addedEvents.map((event) => event.title), [
+      'Math class',
+      'Project sync',
+    ]);
+    expect(repository.addedTaskTitles, isEmpty);
   });
 
   testWidgets('Command Palette quick commands switch views', (

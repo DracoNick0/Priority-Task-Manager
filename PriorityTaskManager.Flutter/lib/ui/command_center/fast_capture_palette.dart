@@ -683,12 +683,14 @@ class InlineFastCaptureBar extends ConsumerStatefulWidget {
 
 class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
   final _controller = TextEditingController();
+  final _inputFocusNode = FocusNode();
   final _shortcutFocusNode = FocusNode();
   bool _isSubmitting = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _inputFocusNode.dispose();
     _shortcutFocusNode.dispose();
     super.dispose();
   }
@@ -837,6 +839,7 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
               },
               child: TextField(
                 controller: _controller,
+                focusNode: _inputFocusNode,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
                   isDense: true,
@@ -857,6 +860,7 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
                   filled: true,
                   fillColor: colorScheme.surfaceContainerLowest,
                 ),
+                onEditingComplete: () => _inputFocusNode.requestFocus(),
                 onSubmitted: _handleInputSubmitted,
               ),
             ),

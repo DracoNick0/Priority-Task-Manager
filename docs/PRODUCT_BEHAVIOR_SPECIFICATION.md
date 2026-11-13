@@ -132,6 +132,7 @@ Users can press `Ctrl + K` (Windows/Web) or `Cmd + K` (macOS) from anywhere in t
 
 - Pressing `Ctrl + K` (or `Cmd + K`) opens the palette from any view and autofocuses the text input field; pressing `Esc` closes it.
 - In the palette and inline quick-add field, `Enter` adds a task and `Shift + Enter` adds an event; in the palette, `Alt + Enter` opens the empty Right Inspector with **New Task** and **New Event** actions.
+- After a task or event is created from the inline quick-add field, the field clears and remains focused so another entry can be typed without clicking.
 - Entering a title and pressing `Enter` creates the task with configured defaults applied.
 - Clicking an extracted preview pill opens an inline micro-picker to change the duration or due date directly.
 
