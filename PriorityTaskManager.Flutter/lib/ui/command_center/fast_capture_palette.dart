@@ -34,6 +34,35 @@ DateTime _defaultFastCaptureEventStart(DateTime currentTime) =>
     ) ??
     DateTime(currentTime.year, currentTime.month, currentTime.day, 10, 0);
 
+SnackBar _taskCreatedSnackBar({
+  required String title,
+  required ColorScheme colorScheme,
+  required VoidCallback onUndo,
+}) {
+  return SnackBar(
+    behavior: SnackBarBehavior.floating,
+    backgroundColor: colorScheme.inverseSurface,
+    content: Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Added task "$title"',
+            style: TextStyle(color: colorScheme.onInverseSurface),
+          ),
+        ),
+        TextButton(
+          onPressed: onUndo,
+          style: TextButton.styleFrom(
+            foregroundColor: colorScheme.inversePrimary,
+          ),
+          child: const Text('Undo'),
+        ),
+      ],
+    ),
+    duration: const Duration(seconds: 6),
+  );
+}
+
 /// Data structure representing candidate attributes for task creation.
 /// Designed for Phase 1 smart defaults and Phase 2 LLM-assisted intake (Issue #18).
 class CandidateTaskDetails {
@@ -173,32 +202,24 @@ class _FastCapturePaletteDialogState
       );
 
       if (mounted) {
-        Navigator.of(context).pop();
         final colorScheme = Theme.of(context).colorScheme;
-        ScaffoldMessenger.of(context)
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        final notificationNotifier = ref.read(appNotificationProvider.notifier);
+        Navigator.of(context).pop();
+        scaffoldMessenger
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: colorScheme.inverseSurface,
-              content: Text(
-                'Added task "$title"',
-                style: TextStyle(color: colorScheme.onInverseSurface),
-              ),
-              duration: const Duration(seconds: 6),
-              action: SnackBarAction(
-                label: 'Undo',
-                textColor: colorScheme.inversePrimary,
-                onPressed: () async {
-                  await taskNotifier.deleteTask(createdTask.id);
-                  ref
-                      .read(appNotificationProvider.notifier)
-                      .state = const AppNotification(
-                    'Task removed',
-                    icon: Icons.delete_outline,
-                  );
-                },
-              ),
+            _taskCreatedSnackBar(
+              title: title,
+              colorScheme: colorScheme,
+              onUndo: () async {
+                scaffoldMessenger.hideCurrentSnackBar();
+                await taskNotifier.deleteTask(createdTask.id);
+                notificationNotifier.state = const AppNotification(
+                  'Task removed',
+                  icon: Icons.delete_outline,
+                );
+              },
             ),
           );
       }
@@ -727,24 +748,17 @@ class _InlineFastCaptureBarState extends ConsumerState<InlineFastCaptureBar> {
 
       if (mounted) {
         final colorScheme = Theme.of(context).colorScheme;
-        ScaffoldMessenger.of(context)
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: colorScheme.inverseSurface,
-              content: Text(
-                'Added task "$title"',
-                style: TextStyle(color: colorScheme.onInverseSurface),
-              ),
-              duration: const Duration(seconds: 6),
-              action: SnackBarAction(
-                label: 'Undo',
-                textColor: colorScheme.inversePrimary,
-                onPressed: () async {
-                  await taskNotifier.deleteTask(createdTask.id);
-                },
-              ),
+            _taskCreatedSnackBar(
+              title: title,
+              colorScheme: colorScheme,
+              onUndo: () async {
+                scaffoldMessenger.hideCurrentSnackBar();
+                await taskNotifier.deleteTask(createdTask.id);
+              },
             ),
           );
       }
