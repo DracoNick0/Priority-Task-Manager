@@ -320,6 +320,24 @@ void main() {
     // SnackBar appears with undo
     expect(find.text('Added task "Math homework problem set"'), findsOneWidget);
     expect(find.text('Undo'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(repository.deletedTaskIds, hasLength(1));
+
+    await tester.tap(find.text('Open Palette'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.enterText(find.byType(TextField), 'History paper');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Added task "History paper"'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Added task "History paper"'), findsNothing);
   });
 
   testWidgets('Inline fast-capture bar creates task on enter', (
@@ -361,9 +379,24 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Read biology chapter 3');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Added task "Read biology chapter 3"'), findsOneWidget);
+    expect(find.text('Undo'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(repository.deletedTaskIds, hasLength(1));
+
+    await tester.enterText(find.byType(TextField), 'Read chemistry chapter 4');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Added task "Read chemistry chapter 4"'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Added task "Read chemistry chapter 4"'), findsNothing);
   });
 
   testWidgets('Inline fast-capture bar adds an event on shift+enter', (
