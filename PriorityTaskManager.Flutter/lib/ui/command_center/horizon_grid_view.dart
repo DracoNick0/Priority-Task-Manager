@@ -42,7 +42,7 @@ bool _isSameCalendarDay(DateTime left, DateTime right) =>
 /// The Week Horizon Calendar Grid View (resolves Issue #56).
 /// Renders scheduled task chunks and fixed events as proportional time-blocks
 /// on an hourly multi-day grid with synchronized time axis, daily capacity meters,
-/// split task part badges, and an explainable bottom-docked "Unscheduled & Risk" tray.
+/// split task part badges, and an explainable bottom-docked "Unscheduled" tray.
 class HorizonGridView extends ConsumerStatefulWidget {
   const HorizonGridView({super.key, required this.listId});
 
@@ -255,7 +255,7 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
               : null,
         ),
 
-        // Main Horizon Body: Time Grid + Unscheduled & Risk Tray
+        // Main Horizon Body: Time Grid + Unscheduled Tray
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -436,8 +436,8 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
         final hasUnscheduledTasks = unscheduledCount > 0;
         final unscheduledButton = Tooltip(
           message: isUnscheduledTrayOpen
-              ? 'Hide Unscheduled & Risk'
-              : 'Show Unscheduled & Risk',
+              ? 'Hide Unscheduled'
+              : 'Show Unscheduled',
           child: TextButton.icon(
             onPressed: onToggleUnscheduledTray,
             style: TextButton.styleFrom(
@@ -448,8 +448,8 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
             icon: const Icon(Icons.report_problem_outlined),
             label: Text(
               hasUnscheduledTasks
-                  ? 'Unscheduled & Risk ($unscheduledCount)'
-                  : 'Unscheduled & Risk',
+                  ? 'Unscheduled ($unscheduledCount)'
+                  : 'Unscheduled',
             ),
           ),
         );
@@ -1242,7 +1242,7 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
               const SizedBox(width: AppTheme.spacingXs),
               Expanded(
                 child: Text(
-                  'UNSCHEDULED & RISK',
+                  'UNSCHEDULED',
                   style: textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
@@ -1261,7 +1261,7 @@ class _HorizonGridViewState extends ConsumerState<HorizonGridView> {
                 const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  tooltip: 'Close Unscheduled & Risk',
+                  tooltip: 'Close Unscheduled',
                   visualDensity: VisualDensity.compact,
                   onPressed: onClose,
                 ),
