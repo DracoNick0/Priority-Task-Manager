@@ -355,15 +355,18 @@ class _ProjectTaskCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Checkbox(
-                visualDensity: VisualDensity.compact,
-                value: task.isCompleted,
-                onChanged:
-                    (isBlocked && !isCompleted) || task.recurrenceRule != null
-                    ? null
-                    : (value) {
-                        if (value != null) onToggleCompleted(value);
-                      },
+              ExcludeSemantics(
+                excluding: isBlocked,
+                child: Checkbox(
+                  visualDensity: VisualDensity.compact,
+                  value: task.isCompleted,
+                  onChanged:
+                      (isBlocked && !isCompleted) || task.recurrenceRule != null
+                      ? null
+                      : (value) {
+                          if (value != null) onToggleCompleted(value);
+                        },
+                ),
               ),
               const SizedBox(width: AppTheme.spacingXs),
               Expanded(

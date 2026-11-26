@@ -251,6 +251,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('blocked tasks keep their follow-up action accessible', (
+    tester,
+  ) async {
+    final container = await _pumpProjects(tester, [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+    ]);
+
+    final semantics = tester.ensureSemantics();
+    final followUp = find.descendant(
+      of: find.byKey(const ValueKey('project-task-B-2')),
+      matching: find.text('Add Follow-Up'),
+    );
+    try {
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('project-task-B-2')))
+            .flagsCollection
+            .isEnabled
+            .toBoolOrNull(),
+        isNot(false),
+      );
+      expect(
+        tester.getSemantics(followUp).flagsCollection.isEnabled.toBoolOrNull(),
+        isTrue,
+      );
+      await tester.tap(followUp);
+      expect(container.read(selectedInspectorProvider).prerequisiteTaskId, 'B');
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('Guest mode offers manual readiness without a schedule', (
     tester,
   ) async {
