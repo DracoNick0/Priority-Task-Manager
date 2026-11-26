@@ -11,6 +11,7 @@ import '../../utils/iterable_extensions.dart';
 import '../theme/app_theme.dart';
 import 'empty_schedule_hero.dart';
 import 'event_card.dart';
+import 'projects_view.dart';
 import 'task_card.dart';
 
 /// Ways [GuestTaskList] can order tasks. Scheduling (which orders tasks by
@@ -30,9 +31,8 @@ final guestTaskSortProvider = StateProvider<GuestTaskSort>(
 
 /// The Center Stage body shown to Guests (no account): since scheduling
 /// requires an authenticated, Subscription-tier account (issue #41), Guests
-/// see a plain, sortable list of their tasks instead of the computed Daily
-/// Column pipeline. Fixed events are listed separately above the tasks,
-/// sorted by start time, since they are not placed against a schedule here.
+/// see a plain, sortable list instead of the computed Daily Column pipeline.
+/// Projects uses the same dependency backlog as authenticated sessions.
 class GuestTaskList extends ConsumerWidget {
   const GuestTaskList({super.key, required this.listId});
 
@@ -40,6 +40,11 @@ class GuestTaskList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final viewMode = ref.watch(viewModeProvider);
+    if (viewMode == ViewMode.projects) {
+      return ProjectsView(listId: listId);
+    }
+
     final tasksAsync = ref.watch(tasksProvider(listId));
     final events = ref.watch(eventsProvider(listId)).asData?.value ?? const [];
     final sort = ref.watch(guestTaskSortProvider);
@@ -85,7 +90,6 @@ class GuestTaskList extends ConsumerWidget {
       );
     }
 
-    final viewMode = ref.watch(viewModeProvider);
     final viewLabel = switch (viewMode) {
       ViewMode.today => 'Today View',
       ViewMode.horizon => 'Horizon View',

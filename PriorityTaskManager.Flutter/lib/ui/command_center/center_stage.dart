@@ -17,12 +17,11 @@ import 'event_card.dart';
 import 'fast_capture_palette.dart';
 import 'guest_task_list.dart';
 import 'horizon_grid_view.dart';
+import 'projects_view.dart';
 import 'task_card.dart';
 import 'today_compass_view.dart';
 
-/// The Center Stage: a horizontally scrolling pipeline of Daily Columns
-/// (Today, Tomorrow, ... , Unscheduled), each holding scheduled task cards
-/// and fixed event cards for that day in chronological order.
+/// The Center Stage switches among the execution, calendar, and backlog views.
 class CenterStage extends ConsumerWidget {
   const CenterStage({super.key, required this.onOpenInspector});
 
@@ -31,6 +30,7 @@ class CenterStage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeListId = ref.watch(activeListIdProvider);
+    final viewMode = ref.watch(viewModeProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final isAuthenticated =
         ref.watch(sessionControllerProvider).asData?.value.status ==
@@ -51,10 +51,12 @@ class CenterStage extends ConsumerWidget {
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                 )
-              : ref.watch(viewModeProvider) == ViewMode.today
+              : viewMode == ViewMode.today
               ? TodayCompassView(listId: activeListId)
-              : ref.watch(viewModeProvider) == ViewMode.horizon
+              : viewMode == ViewMode.horizon
               ? HorizonGridView(listId: activeListId)
+              : viewMode == ViewMode.projects
+              ? ProjectsView(listId: activeListId)
               : isAuthenticated
               ? _AuthenticatedBody(listId: activeListId)
               : GuestTaskList(listId: activeListId),
@@ -161,12 +163,9 @@ class _Pipeline extends ConsumerWidget {
     final now = ref.watch(engineClockProvider).asData?.value ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final viewMode = ref.watch(viewModeProvider);
-    final allEvents =
+    final events =
         ref.watch(eventOccurrencesProvider((listId, today))).asData?.value ??
         const <FixedEvent>[];
-    final events = viewMode == ViewMode.projects
-        ? allEvents.where((event) => event.endTime.isAfter(now)).toList()
-        : allEvents;
 
     final isInitialLoading =
         (tasksAsync.isLoading && !tasksAsync.hasValue) ||
@@ -450,9 +449,7 @@ class _Pipeline extends ConsumerWidget {
         .toList();
 
     final columns = <DayColumn>[
-      if ((viewMode == ViewMode.today ||
-              viewMode == ViewMode.projects ||
-              viewMode == ViewMode.board) &&
+      if ((viewMode == ViewMode.today || viewMode == ViewMode.board) &&
           todayCards.isNotEmpty &&
           !isPastWorkEnd)
         DayColumn(
@@ -461,10 +458,7 @@ class _Pipeline extends ConsumerWidget {
           freeTimeLabel: freeTimeLabel(today, schedule.todayTasks, todayEvents),
           cards: todayCards,
         ),
-      if (viewMode == ViewMode.today &&
-          todayCards.isEmpty &&
-          !isPastWorkEnd &&
-          viewMode != ViewMode.projects)
+      if (viewMode == ViewMode.today && todayCards.isEmpty && !isPastWorkEnd)
         DayColumn(
           title: 'Today',
           subtitle: _formatDate(today),
@@ -481,9 +475,7 @@ class _Pipeline extends ConsumerWidget {
             ),
           ],
         ),
-      if (viewMode == ViewMode.horizon ||
-          viewMode == ViewMode.projects ||
-          viewMode == ViewMode.board)
+      if (viewMode == ViewMode.horizon || viewMode == ViewMode.board)
         for (final day in futureDays)
           if ((futureByDay[day]?.isNotEmpty ?? false) ||
               events.any((event) => isSameDay(event.startTime, day)) ||
@@ -512,16 +504,13 @@ class _Pipeline extends ConsumerWidget {
               ],
             ),
       if (remainingUnscheduledTasks.isNotEmpty &&
-          (viewMode == ViewMode.horizon ||
-              viewMode == ViewMode.projects ||
-              viewMode == ViewMode.board))
+          (viewMode == ViewMode.horizon || viewMode == ViewMode.board))
         DayColumn(
           title: 'Unscheduled',
           subtitle: '${remainingUnscheduledTasks.length} task(s)',
           cards: remainingUnscheduledTasks.map(buildPlainTaskCard).toList(),
         ),
-      if (viewMode == ViewMode.projects ||
-          viewMode == ViewMode.board ||
+      if (viewMode == ViewMode.board ||
           (viewMode == ViewMode.today && completedTasks.isNotEmpty))
         DayColumn(
           title: 'Completed',
