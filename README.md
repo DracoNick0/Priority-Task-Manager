@@ -62,7 +62,6 @@ See [docs/ARCHITECTURE_INTEGRATIONS.md](docs/ARCHITECTURE_INTEGRATIONS.md) for A
 | `PriorityTaskManager.Flutter/` | Flutter web and desktop client |
 | `PriorityTaskManager.Tests/` | Active unit and API test project |
 | `PriorityTaskManager.CLI/` | Archived CLI source; unsupported and excluded from the active solution and test suite |
-| `pt_prototyping/` | Standalone Flutter sandbox for UI/UX prototyping, not part of the shipped product |
 | `docs/` | Product, architecture, status, workflow, and testing documentation |
 
 ## Documentation Map
