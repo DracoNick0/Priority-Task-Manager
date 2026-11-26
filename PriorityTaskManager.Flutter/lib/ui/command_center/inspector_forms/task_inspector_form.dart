@@ -28,11 +28,13 @@ class TaskInspectorForm extends ConsumerStatefulWidget {
     required this.listId,
     this.taskId,
     this.initialTask,
+    this.initialDependencyId,
   });
 
   final String listId;
   final String? taskId;
   final TaskItem? initialTask;
+  final String? initialDependencyId;
 
   @override
   ConsumerState<TaskInspectorForm> createState() => _TaskInspectorFormState();
@@ -71,6 +73,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _descriptionController = TextEditingController();
     _linkController = TextEditingController();
     _durationController = TextEditingController(text: '60');
+    if (widget.initialDependencyId != null) {
+      _selectedDependencyIds.add(widget.initialDependencyId!);
+    }
     final initialTask = widget.initialTask;
     if (initialTask?.isRecurringOccurrence == true) {
       _occurrenceLoadFuture = _loadAuthoritativeOccurrence(initialTask!);
@@ -282,6 +287,11 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
+        if (!_isEditing && widget.initialDependencyId != null)
+          Text(
+            'Follow-up to ${tasks.where((task) => task.id == widget.initialDependencyId).firstOrNull?.title ?? widget.initialDependencyId}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         const SizedBox(height: AppTheme.spacingMd),
         TextField(
           controller: _titleController,

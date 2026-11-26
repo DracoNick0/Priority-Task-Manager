@@ -28,7 +28,7 @@ class RightInspector extends ConsumerWidget {
     final activeListId = ref.watch(activeListIdProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return Material(
       color: colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,10 +84,13 @@ class RightInspector extends ConsumerWidget {
       case InspectorKind.task:
         if (activeListId == null) return const SizedBox.shrink();
         return TaskInspectorForm(
-          key: ValueKey('task-${selection.id}'),
+          key: ValueKey(
+            'task-${selection.id ?? 'new-${selection.prerequisiteTaskId ?? 'blank'}'}',
+          ),
           listId: activeListId,
           taskId: selection.id,
           initialTask: selection.task,
+          initialDependencyId: selection.prerequisiteTaskId,
         );
       case InspectorKind.event:
         if (activeListId == null) return const SizedBox.shrink();
