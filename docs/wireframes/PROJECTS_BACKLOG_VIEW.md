@@ -1,0 +1,62 @@
+# Projects Backlog & Dependency Graph
+
+The **Projects** tab is the active list's structural task view. Unlike Today
+and Horizon, it does not display event cards or assign tasks to calendar slots.
+See the [product behavior specification](../PRODUCT_BEHAVIOR_SPECIFICATION.md#views)
+for acceptance criteria.
+
+## Wide layout
+
+```text
++-----------------------------------------------------------------------------------+
+| [ Today ] [ Horizon ] [ Projects ]        Projects & Dependency Backlog          |
+| Total: 8       Ready: 4       Blocked: 2       Completed: 2                      |
+|                                                                                   |
+| Dependency Step-Chains (1)                                                        |
+| +-----------------------------------------------------------------------------+   |
+| | Launch initiative                         4 steps                           |   |
+| | o-- Step 1  [ ] Launch initiative  [Ready to Schedule]  [+ Add Follow-Up]  |   |
+| | |   `-- Step 2  [ ] Design          [Blocked by: Launch initiative]        |   |
+| | |                  Waiting on: Launch initiative  [+ Add Follow-Up]        |   |
+| | |   `-- Step 2  [x] Research        [Completed]  [+ Add Follow-Up]         |   |
+| | |       `-- Step 3  [ ] QA           [Blocked by: Design]                   |   |
+| +-----------------------------------------------------------------------------+   |
+|                                                                                   |
+| Ready & Active (1)                                                                |
+| [ ] Finalize budget       [Ready to Schedule]                 [+ Add Follow-Up]    |
+| Someday / Flexible (1)                                                            |
+| [ ] Explore ideas         [Ready to Schedule]                 [+ Add Follow-Up]    |
+|                                                                                   |
+| > Completed Tasks (2)                                  [expand to inspect/undo]   |
++-----------------------------------------------------------------------------------+
+```
+
+Step numbers indicate prerequisite depth. Siblings share a step number, and
+multiple prerequisites can feed one dependent. Completed steps remain visible
+inside their chains for context; the collapsed Completed Tasks section also
+collects every completed task. A circular dependency displays a warning and
+each task at most once rather than looping forever.
+
+## States and interactions
+
+| State | Card treatment | Meaning |
+| --- | --- | --- |
+| Ready to Schedule | Green readiness badge | No incomplete prerequisite in the active list. This does not guarantee a calendar slot. |
+| Blocked | Amber lock badge and `Waiting on: [titles]` | One or more visible prerequisites are incomplete. |
+| Completed | Green checkmark and struck-through title | The task is complete; its dependents update their readiness. |
+
+- Tap a card to open its task in the Right Inspector. Its checkbox can complete
+  or reopen an eligible one-off task; blocked tasks are not marked complete
+  directly from the backlog.
+- **Add Follow-Up** opens a new task in the inspector with the tapped one-off
+  task already selected as its prerequisite. Saving creates the link. Recurring
+  series cannot be prerequisites because recurring task dependencies are not
+  supported.
+- Standalone tasks without a due date or with low importance (1-3) appear in
+  **Someday / Flexible**. Other independent incomplete tasks appear in
+  **Ready & Active**.
+- Guests see the same chains and backlog from their local tasks. Their green
+  badge says **Ready for manual execution**; it does not require or imply
+  automated scheduling. Authenticated users see API-backed tasks.
+- At narrow widths, the chain layout remains vertical and indented, and
+  selecting a task or follow-up opens the inspector drawer.
