@@ -494,13 +494,6 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
         isCriticalPath: stepNumber != null && criticalTaskIds.contains(task.id),
         onTap: () => ref.read(selectedInspectorProvider.notifier).state =
             InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
-        onFollowUp: () => ref.read(selectedInspectorProvider.notifier).state =
-            InspectorTarget(
-              kind: InspectorKind.task,
-              prerequisiteTaskId: task.id,
-            ),
-        onLinkExistingFollowUp: () =>
-            _linkExistingTask(task, DependencyLinkDirection.followUp),
         onLinkPrerequisite: () =>
             _linkExistingTask(task, DependencyLinkDirection.prerequisite),
         onLinkFollowUp: () =>
@@ -1006,7 +999,10 @@ class _ChainCardState extends State<_ChainCard> {
                 'Total: ${_formatEffort(chain.totalMinutes)} • Remaining: ${_formatEffort(chain.remainingMinutes)}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppTheme.spacingSm,
                 children: [
                   FilterChip(
                     key: ValueKey('project-hide-completed-$chainId'),
@@ -1020,7 +1016,6 @@ class _ChainCardState extends State<_ChainCard> {
                         ? null
                         : (value) => setState(() => _hideCompleted = value),
                   ),
-                  const Spacer(),
                   Text(
                     '${chain.totalCount} steps',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -1330,8 +1325,6 @@ class _ProjectTaskCard extends StatelessWidget {
     required this.stepNumber,
     required this.isCriticalPath,
     required this.onTap,
-    required this.onFollowUp,
-    required this.onLinkExistingFollowUp,
     required this.onLinkPrerequisite,
     required this.onLinkFollowUp,
     required this.onDetach,
@@ -1345,8 +1338,6 @@ class _ProjectTaskCard extends StatelessWidget {
   final int? stepNumber;
   final bool isCriticalPath;
   final VoidCallback onTap;
-  final VoidCallback onFollowUp;
-  final VoidCallback onLinkExistingFollowUp;
   final VoidCallback onLinkPrerequisite;
   final VoidCallback onLinkFollowUp;
   final VoidCallback onDetach;
@@ -1388,215 +1379,197 @@ class _ProjectTaskCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingSm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ExcludeSemantics(
-                excluding: isBlocked,
-                child: Checkbox(
-                  visualDensity: VisualDensity.compact,
-                  value: task.isCompleted,
-                  onChanged: (isBlocked && !isCompleted) || !isOneOff
-                      ? null
-                      : (value) {
-                          if (value != null) onToggleCompleted(value);
-                        },
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingXs),
-              if (task.recurrenceRule == null &&
-                  !task.isRecurringOccurrence) ...[
-                Tooltip(
-                  message: 'Drag ${task.title} to link or detach',
-                  child: Icon(
-                    Icons.drag_indicator,
-                    size: 20,
-                    color: colorScheme.onSurfaceVariant,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(
+                        excluding: isBlocked,
+                        child: Checkbox(
+                          visualDensity: VisualDensity.compact,
+                          value: task.isCompleted,
+                          onChanged: (isBlocked && !isCompleted) || !isOneOff
+                              ? null
+                              : (value) {
+                                  if (value != null) onToggleCompleted(value);
+                                },
+                        ),
+                      ),
+                      if (isOneOff)
+                        Tooltip(
+                          message: 'Drag ${task.title} to link or detach',
+                          child: Icon(
+                            Icons.drag_indicator,
+                            size: 20,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: AppTheme.spacingXs),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (stepNumber != null)
-                      Text(
-                        'Step $stepNumber',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    Text(
-                      task.title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        decoration: isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                    if (isCriticalPath)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppTheme.spacingXs),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.route_outlined,
-                              size: 16,
-                              color: colorScheme.primary,
-                            ),
-                            const SizedBox(width: AppTheme.spacingXs),
-                            Text(
-                              'Critical Path',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: colorScheme.primary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: AppTheme.spacingXs),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingSm,
-                        vertical: AppTheme.spacingXs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isCompleted
-                                ? Icons.check_circle_outline
-                                : isBlocked
-                                ? Icons.lock_outline
-                                : Icons.check_circle_outline,
-                            size: 16,
-                            color: statusColor,
+                  const SizedBox(width: AppTheme.spacingXs),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (stepNumber != null)
+                          Row(
+                            children: [
+                              Text(
+                                'Step $stepNumber',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                              if (isCriticalPath) ...[
+                                const SizedBox(width: AppTheme.spacingSm),
+                                Icon(
+                                  Icons.route_outlined,
+                                  size: 16,
+                                  color: colorScheme.primary,
+                                ),
+                                const SizedBox(width: AppTheme.spacingXs),
+                                Flexible(
+                                  child: Text(
+                                    'Critical Path',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(color: colorScheme.primary),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          const SizedBox(width: AppTheme.spacingXs),
-                          Flexible(
-                            child: Text(
-                              statusLabel,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: statusColor),
+                        Text(
+                          task.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                decoration: isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingXs),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.spacingSm,
+                            vertical: AppTheme.spacingXs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSm,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    if (isBlocked)
-                      Text(
-                        'Waiting on: $waitingNames',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    if (task.dueDate != null)
-                      Text(
-                        'Due ${DateFormat.yMMMd().format(task.dueDate!)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    if (isOneOff)
-                      PopupMenuButton<_FollowUpAction>(
-                        tooltip: 'Follow-up actions',
-                        onSelected: (action) {
-                          switch (action) {
-                            case _FollowUpAction.create:
-                              onFollowUp();
-                            case _FollowUpAction.link:
-                              onLinkExistingFollowUp();
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: _FollowUpAction.create,
-                            child: Text('Create New Follow-Up'),
-                          ),
-                          PopupMenuItem(
-                            value: _FollowUpAction.link,
-                            child: Text('Link Existing Task...'),
-                          ),
-                        ],
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.add, size: 16),
-                              SizedBox(width: AppTheme.spacingXs),
-                              Text('Add Follow-Up'),
-                              Icon(Icons.arrow_drop_down, size: 18),
+                              Icon(
+                                isCompleted
+                                    ? Icons.check_circle_outline
+                                    : isBlocked
+                                    ? Icons.lock_outline
+                                    : Icons.check_circle_outline,
+                                size: 16,
+                                color: statusColor,
+                              ),
+                              const SizedBox(width: AppTheme.spacingXs),
+                              Flexible(
+                                child: Text(
+                                  statusLabel,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(color: statusColor),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<_ProjectCardAction>(
-                key: ValueKey('project-actions-${task.id}-$stepNumber'),
-                tooltip: 'Task actions',
-                icon: const Icon(Icons.more_horiz),
-                onSelected: (action) {
-                  switch (action) {
-                    case _ProjectCardAction.linkPrerequisite:
-                      onLinkPrerequisite();
-                    case _ProjectCardAction.linkFollowUp:
-                      onLinkFollowUp();
-                    case _ProjectCardAction.detach:
-                      onDetach();
-                    case _ProjectCardAction.toggleCompleted:
-                      onToggleCompleted(!isCompleted);
-                    case _ProjectCardAction.archive:
-                      onArchive();
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: _ProjectCardAction.linkPrerequisite,
-                    enabled: isOneOff,
-                    child: const Text('Link Prerequisite...'),
-                  ),
-                  PopupMenuItem(
-                    value: _ProjectCardAction.linkFollowUp,
-                    enabled: isOneOff,
-                    child: const Text('Link Follow-Up...'),
-                  ),
-                  if (stepNumber != null || task.dependencies.isNotEmpty)
-                    PopupMenuItem(
-                      value: _ProjectCardAction.detach,
-                      enabled: isOneOff && task.dependencies.isNotEmpty,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Detach from Chain'),
-                          if (task.dependencies.isEmpty)
-                            Text(
-                              'No incoming links to remove',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                        ],
-                      ),
+                        if (task.dueDate != null)
+                          Text(
+                            'Due ${DateFormat.yMMMd().format(task.dueDate!)}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                      ],
                     ),
-                  PopupMenuItem(
-                    value: _ProjectCardAction.toggleCompleted,
-                    enabled: isOneOff && (!isBlocked || isCompleted),
-                    child: Text(isCompleted ? 'Reopen' : 'Mark Complete'),
                   ),
-                  const PopupMenuItem(
-                    value: _ProjectCardAction.archive,
-                    child: Text('Archive Task'),
+                  PopupMenuButton<_ProjectCardAction>(
+                    key: ValueKey('project-actions-${task.id}-$stepNumber'),
+                    tooltip: 'Task actions',
+                    icon: const Icon(Icons.more_horiz),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _ProjectCardAction.linkPrerequisite:
+                          onLinkPrerequisite();
+                        case _ProjectCardAction.linkFollowUp:
+                          onLinkFollowUp();
+                        case _ProjectCardAction.detach:
+                          onDetach();
+                        case _ProjectCardAction.toggleCompleted:
+                          onToggleCompleted(!isCompleted);
+                        case _ProjectCardAction.archive:
+                          onArchive();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: _ProjectCardAction.linkPrerequisite,
+                        enabled: isOneOff,
+                        child: const Text('Link Prerequisite...'),
+                      ),
+                      PopupMenuItem(
+                        value: _ProjectCardAction.linkFollowUp,
+                        enabled: isOneOff,
+                        child: const Text('Link Follow-Up...'),
+                      ),
+                      if (stepNumber != null || task.dependencies.isNotEmpty)
+                        PopupMenuItem(
+                          value: _ProjectCardAction.detach,
+                          enabled: isOneOff && task.dependencies.isNotEmpty,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Detach from Chain'),
+                              if (task.dependencies.isEmpty)
+                                Text(
+                                  'No incoming links to remove',
+                                  style: Theme.of(context).textTheme.labelSmall,
+                                ),
+                            ],
+                          ),
+                        ),
+                      PopupMenuItem(
+                        value: _ProjectCardAction.toggleCompleted,
+                        enabled: isOneOff && (!isBlocked || isCompleted),
+                        child: Text(isCompleted ? 'Reopen' : 'Mark Complete'),
+                      ),
+                      const PopupMenuItem(
+                        value: _ProjectCardAction.archive,
+                        child: Text('Archive Task'),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              if (isOneOff)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: ValueKey('project-follow-up-${task.id}-$stepNumber'),
+                    onPressed: onLinkFollowUp,
+                    child: const Text('+ Follow-Up'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1604,8 +1577,6 @@ class _ProjectTaskCard extends StatelessWidget {
     );
   }
 }
-
-enum _FollowUpAction { create, link }
 
 enum _ProjectCardAction {
   linkPrerequisite,

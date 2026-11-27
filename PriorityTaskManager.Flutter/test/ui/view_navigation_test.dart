@@ -255,7 +255,7 @@ void main() {
       expect(find.byType(DayColumn), findsNothing);
       expect(find.text('Step 1'), findsOneWidget);
       expect(find.text('Step 2'), findsOneWidget);
-      expect(find.text('Waiting on: Prerequisite'), findsOneWidget);
+      expect(find.text('Blocked by: Prerequisite'), findsOneWidget);
       for (final event in events) {
         expect(find.text(event.title), findsNothing);
       }
@@ -296,7 +296,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ProjectsView), findsOneWidget);
-    expect(find.text('Waiting on: Prerequisite'), findsOneWidget);
+    expect(find.text('Blocked by: Prerequisite'), findsOneWidget);
     expect(find.byType(DropdownButton<GuestTaskSort>), findsNothing);
     expect(find.textContaining('Guest mode:'), findsOneWidget);
     expect(tester.takeException(), isNull);

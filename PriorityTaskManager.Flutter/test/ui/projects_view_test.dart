@@ -135,8 +135,9 @@ Future<ProviderContainer> _pumpProjects(
   List<TaskItem> tasks, {
   bool guest = false,
   bool withInspector = false,
+  Size size = const Size(1200, 1600),
 }) async {
-  tester.view.physicalSize = const Size(1200, 1600);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(() {
     tester.view.resetPhysicalSize();
@@ -216,7 +217,8 @@ void main() {
     expect(find.text('Dependency Step-Chains (1)'), findsOneWidget);
     expect(find.text('Step 1'), findsOneWidget);
     expect(find.text('Step 2'), findsNWidgets(2));
-    expect(find.text('Waiting on: A'), findsNWidgets(2));
+    expect(find.text('Blocked by: A'), findsNWidgets(2));
+    expect(find.text('Waiting on: A'), findsNothing);
     expect(find.text('Ready & Active (1)'), findsOneWidget);
     expect(find.text('Someday / Flexible (1)'), findsOneWidget);
     expect(find.text('Completed Tasks (1)'), findsOneWidget);
@@ -257,8 +259,78 @@ void main() {
 
     expect(find.text('Blocked: 0'), findsOneWidget);
     expect(find.text('Ready: 1'), findsOneWidget);
-    expect(find.text('Waiting on: A'), findsNothing);
+    expect(find.text('Blocked by: A'), findsNothing);
     expect(tasks.first.isCompleted, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'keeps the drag affordance below the checkbox and path beside step',
+    (tester) async {
+      await _pumpProjects(tester, [
+        _task('A', estimatedMinutes: 120),
+        _task('B', dependencies: ['A']),
+      ]);
+
+      final card = find.byKey(const ValueKey('project-task-A-1'));
+      final checkbox = find.descendant(
+        of: card,
+        matching: find.byType(Checkbox),
+      );
+      final handle = find.descendant(
+        of: card,
+        matching: find.byIcon(Icons.drag_indicator),
+      );
+      final step = find.descendant(of: card, matching: find.text('Step 1'));
+      final path = find.descendant(
+        of: card,
+        matching: find.text('Critical Path'),
+      );
+      final followUp = find.byKey(const ValueKey('project-follow-up-A-1'));
+
+      expect(
+        tester.getTopLeft(handle).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(checkbox).dy),
+      );
+      expect(
+        tester.getCenter(handle).dx,
+        closeTo(tester.getCenter(checkbox).dx, 1),
+      );
+      expect(tester.getCenter(path).dy, closeTo(tester.getCenter(step).dy, 1));
+      expect(
+        tester.getTopLeft(path).dx,
+        greaterThan(tester.getTopRight(step).dx),
+      );
+      expect(
+        find.descendant(of: card, matching: find.text('+ Follow-Up')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(followUp).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(handle).dy),
+      );
+      expect(
+        tester.getBottomRight(card).dx - tester.getBottomRight(followUp).dx,
+        lessThan(24),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('keeps task actions reachable on a narrow Projects viewport', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+    ], size: const Size(320, 720));
+
+    final actions = find.byKey(const ValueKey('project-actions-B-2'));
+    await tester.ensureVisible(actions);
+    await tester.pumpAndSettle();
+    await tester.tap(actions);
+    await tester.pumpAndSettle();
+    expect(find.text('Link Prerequisite...'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -921,26 +993,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('creating a follow-up saves the selected prerequisite', (
+  testWidgets('empty Projects still opens the normal new-task inspector', (
     tester,
   ) async {
-    final tasks = [_task('A', dueDate: DateTime(2026, 12, 1))];
+    final tasks = <TaskItem>[];
     final container = await _pumpProjects(tester, tasks, withInspector: true);
 
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const ValueKey('project-task-A-null')),
-        matching: find.text('Add Follow-Up'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Create New Follow-Up'));
+    await tester.tap(find.text('Add a task'));
     await tester.pumpAndSettle();
 
     expect(container.read(selectedInspectorProvider).isCreating, isTrue);
-    expect(container.read(selectedInspectorProvider).prerequisiteTaskId, 'A');
-    expect(find.text('Follow-up to A'), findsOneWidget);
-    expect(find.byKey(const ValueKey('prerequisite-chip-A')), findsOneWidget);
+    expect(
+      container.read(selectedInspectorProvider).prerequisiteTaskId,
+      isNull,
+    );
     await tester.enterText(
       find.byWidgetPredicate(
         (widget) =>
@@ -951,24 +1017,25 @@ void main() {
     await tester.ensureVisible(find.text('Create'));
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
-    expect(tasks.last.title, 'Next step');
-    expect(tasks.last.dependencies, ['A']);
-    expect(find.text('Waiting on: A'), findsOneWidget);
+    expect(tasks.single.title, 'Next step');
+    expect(tasks.single.dependencies, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('blocked tasks keep their follow-up action accessible', (
     tester,
   ) async {
-    final container = await _pumpProjects(tester, [
+    final tasks = [
       _task('A'),
       _task('B', dependencies: ['A']),
-    ]);
+      _task('C'),
+    ];
+    final container = await _pumpProjects(tester, tasks);
 
     final semantics = tester.ensureSemantics();
     final followUp = find.descendant(
       of: find.byKey(const ValueKey('project-task-B-2')),
-      matching: find.text('Add Follow-Up'),
+      matching: find.text('+ Follow-Up'),
     );
     try {
       expect(
@@ -981,9 +1048,11 @@ void main() {
       );
       await tester.tap(followUp);
       await tester.pumpAndSettle();
-      expect(find.text('Link Existing Task...'), findsOneWidget);
-      await tester.tap(find.text('Create New Follow-Up'));
-      expect(container.read(selectedInspectorProvider).prerequisiteTaskId, 'B');
+      expect(find.text('Link Existing Follow-Up'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('link-candidate-C')));
+      await tester.pumpAndSettle();
+      expect(tasks.last.dependencies, ['B']);
+      expect(container.read(selectedInspectorProvider).isCreating, isFalse);
       expect(tester.takeException(), isNull);
     } finally {
       semantics.dispose();
@@ -1011,18 +1080,24 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byKey(const ValueKey('project-task-C-3')),
-          matching: find.text('Add Follow-Up'),
+          matching: find.text('+ Follow-Up'),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Link Existing Task...'));
-      await tester.pumpAndSettle();
 
+      expect(find.text('Link Existing Follow-Up'), findsOneWidget);
       final cyclic = find.byKey(const ValueKey('link-candidate-A'));
       expect(tester.widget<ListTile>(cyclic).enabled, isFalse);
       expect(find.text('Would create a circular dependency'), findsNWidgets(2));
       expect(
         find.byKey(const ValueKey('link-candidate-Recurring')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('project-task-Recurring-null')),
+          matching: find.text('+ Follow-Up'),
+        ),
         findsNothing,
       );
       expect(find.byKey(const ValueKey('link-candidate-C')), findsNothing);
@@ -1032,7 +1107,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tasks[3].dependencies, ['C']);
-      expect(find.text('Waiting on: C'), findsOneWidget);
+      expect(find.text('Blocked by: C'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -1046,11 +1121,9 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('project-task-A-null')),
-        matching: find.text('Add Follow-Up'),
+        matching: find.text('+ Follow-Up'),
       ),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Link Existing Task...'));
     await tester.pumpAndSettle();
     expect(
       tester

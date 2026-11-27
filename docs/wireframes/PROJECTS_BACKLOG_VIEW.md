@@ -19,19 +19,22 @@ for acceptance criteria.
 | | [v] Launch initiative       1 of 4 completed (25%)                       |   |
 | | [#####---------------]  Total: 3h 30m • Remaining: 2h 30m                |   |
 | | [ ] Hide completed steps                                    4 steps       |   |
-| | o-- Step 1  [ ] Launch initiative [Critical Path] [+ Add Follow-Up]       |   |
+| | o-- [ ] Step 1  Critical Path                        [···]             |   |
+| |     :: Launch initiative [Ready to Schedule]        [+ Follow-Up]     |   |
 | | |                                                                     |   |
-| | +----✕-- Step 2  [ ] Design [Critical Path] [Blocked by: Launch]           |   |
-| | |                  Waiting on: Launch initiative  [+ Add Follow-Up]        |   |
-| | `----✕-- Step 2  [x] Research      [Completed]  [+ Add Follow-Up]         |   |
-| |          `----✕-- Step 3  [ ] QA [Critical Path] [Blocked by: Design]      |   |
+| | +----✕-- [ ] Step 2  Critical Path                    [···]             |   |
+| | |         :: Design [Blocked by: Launch]              [+ Follow-Up]     |   |
+| | `----✕-- [x] Step 2                                   [···]             |   |
+| |           :: Research [Completed]                     [+ Follow-Up]     |   |
+| |          `----✕-- [ ] Step 3  Critical Path            [···]             |   |
+| |                    :: QA [Blocked by: Design]          [+ Follow-Up]     |   |
 | +-----------------------------------------------------------------------------+   |
 | [ Drop to detach from chain (make standalone) ]  (while dragging a linked task)   |
 |                                                                                   |
 | Ready & Active (1)                                                                |
-| [ ] Finalize budget       [Ready to Schedule]                 [+ Add Follow-Up]    |
+| [ ] Finalize budget       [Ready to Schedule]                 [+ Follow-Up]        |
 | Someday / Flexible (1)                                                            |
-| [ ] Explore ideas         [Ready to Schedule]                 [+ Add Follow-Up]    |
+| [ ] Explore ideas         [Ready to Schedule]                 [+ Follow-Up]        |
 |                                                                                   |
 | > Completed Tasks (2)                                  [expand to inspect/undo]   |
 +-----------------------------------------------------------------------------------+
@@ -42,6 +45,9 @@ multiple prerequisites can feed one dependent. Completed steps remain visible
 inside their chains for context; the collapsed Completed Tasks section also
 collects every completed task. A circular dependency displays a warning and
 each task at most once rather than looping forever.
+On one-off cards the `::` drag handle sits below the checkbox, `Critical Path`
+follows `Step N` on the same line, and the `+ Follow-Up` button sits at the
+bottom right. The `···` actions menu remains available at narrow widths.
 
 The vertical rails continue through intervening rows and turn smoothly into
 horizontal branches at the dependent card. Each prerequisite has its own rail
@@ -78,7 +84,7 @@ in chains. Switching lists resets the search and selected filter.
 | State | Card treatment | Meaning |
 | --- | --- | --- |
 | Ready to Schedule | Green readiness badge | No incomplete prerequisite in the active list. This does not guarantee a calendar slot. |
-| Blocked | Amber lock badge and `Waiting on: [titles]` | One or more visible prerequisites are incomplete. |
+| Blocked | Amber `Blocked by: [titles]` lock badge | One or more prerequisites are incomplete. |
 | Completed | Green checkmark and struck-through title | The task is complete; its dependents update their readiness. |
 
 - Tap a card to open its task in the Right Inspector. Its checkbox can complete
@@ -104,11 +110,10 @@ in chains. Switching lists resets the search and selected filter.
   disabled. Archiving a one-off task requires an authenticated account;
   Guests are told to sign in, and recurring tasks open the inspector so the
   user can choose the occurrence or series scope safely.
-- **Add Follow-Up** offers **Create New Follow-Up**, which opens a new task in
-  the inspector with this one-off task preselected as its prerequisite, and
-  **Link Existing Task...**, which adds this task to an existing task's
-  prerequisites. The picker excludes recurring and already-linked tasks and
-  disables links that would form a cycle.
+- **+ Follow-Up** directly opens **Link Existing Follow-Up**, which adds this
+  task to an existing task's prerequisites. The picker excludes recurring and
+  already-linked tasks and disables links that would form a cycle. The usual
+  new-task controls remain available elsewhere in the workspace.
 - The task inspector separates **Prerequisites** (this task waits on) from
   **Follow-ups** (tasks waiting on this task). Each list has a link picker and
   removable chips. Links on existing tasks save immediately; a new task's
