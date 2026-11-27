@@ -303,6 +303,9 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
           const SizedBox(height: AppTheme.spacingSm),
           for (final chain in graph.chains)
             _ChainCard(
+              key: ValueKey(
+                'project-chain-${chain.roots.isEmpty ? chain.steps.first.task.id : chain.roots.first.id}',
+              ),
               chain: chain,
               buildCard: taskCard,
               onUnlink: _unlinkDependency,
@@ -349,8 +352,9 @@ class _SummaryMetric extends StatelessWidget {
   );
 }
 
-class _ChainCard extends StatelessWidget {
+class _ChainCard extends StatefulWidget {
   const _ChainCard({
+    super.key,
     required this.chain,
     required this.buildCard,
     required this.onUnlink,
@@ -361,21 +365,52 @@ class _ChainCard extends StatelessWidget {
   final void Function(TaskItem dependent, TaskItem prerequisite) onUnlink;
 
   @override
+  State<_ChainCard> createState() => _ChainCardState();
+}
+
+class _ChainCardState extends State<_ChainCard> {
+  bool _isExpanded = true;
+  bool _hideCompleted = false;
+
+  String _formatEffort(int minutes) => '${minutes ~/ 60}h ${minutes % 60}m';
+
+  @override
   Widget build(BuildContext context) {
+    final chain = widget.chain;
     final colorScheme = Theme.of(context).colorScheme;
     final rootLabel = chain.roots.isEmpty
         ? 'Dependency loop'
         : chain.roots.map((root) => root.title).join(' + ');
+    final visibleSteps = [
+      for (final step in chain.steps)
+        if (!_hideCompleted || !step.task.isCompleted) step,
+    ];
+    final visibleDepths = <String, int>{};
+    for (final step in visibleSteps) {
+      visibleDepths[step.task.id] = step.task.dependencies
+          .map((id) => visibleDepths[id])
+          .whereType<int>()
+          .fold(
+            0,
+            (depth, prerequisiteDepth) =>
+                math.max(depth, prerequisiteDepth + 1),
+          );
+    }
     final indices = {
-      for (var index = 0; index < chain.steps.length; index++)
-        chain.steps[index].task.id: index,
+      for (var index = 0; index < visibleSteps.length; index++)
+        visibleSteps[index].task.id: index,
     };
     final lanes = <String, double>{};
     final cardOffsets = <String, double>{};
     var offset = 0.0;
-    final maxDepth = chain.steps.map((step) => step.depth).reduce(math.max);
+    final maxDepth = visibleDepths.isEmpty
+        ? 0
+        : visibleDepths.values.reduce(math.max);
     for (var depth = 0; depth <= maxDepth; depth++) {
-      final atDepth = chain.steps.where((step) => step.depth == depth).toList();
+      final atDepth = visibleSteps
+          .where((step) => visibleDepths[step.task.id] == depth)
+          .toList();
+      if (atDepth.isEmpty) continue;
       final width = 44.0 + (atDepth.length - 1) * 12.0;
       for (var index = 0; index < atDepth.length; index++) {
         final id = atDepth[index].task.id;
@@ -385,8 +420,8 @@ class _ChainCard extends StatelessWidget {
       offset += width;
     }
     final links = <_RailLink>[];
-    for (var index = 0; index < chain.steps.length; index++) {
-      final dependent = chain.steps[index].task;
+    for (var index = 0; index < visibleSteps.length; index++) {
+      final dependent = visibleSteps[index].task;
       final incoming = dependent.dependencies
           .toSet()
           .where(indices.containsKey)
@@ -395,7 +430,7 @@ class _ChainCard extends StatelessWidget {
         final prerequisiteId = incoming[position];
         links.add(
           _RailLink(
-            prerequisite: chain.steps[indices[prerequisiteId]!].task,
+            prerequisite: visibleSteps[indices[prerequisiteId]!].task,
             dependent: dependent,
             fromIndex: indices[prerequisiteId]!,
             toIndex: index,
@@ -406,6 +441,12 @@ class _ChainCard extends StatelessWidget {
       }
     }
     final minWidth = math.max(320.0, offset + 260);
+    final progress = chain.completedCount / chain.totalCount;
+    final summary =
+        '${chain.completedCount} of ${chain.totalCount} completed (${(progress * 100).round()}%)';
+    final chainId = chain.roots.isEmpty
+        ? chain.steps.first.task.id
+        : chain.roots.first.id;
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingMd),
       child: Padding(
@@ -413,74 +454,134 @@ class _ChainCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.account_tree_outlined, color: colorScheme.primary),
-                const SizedBox(width: AppTheme.spacingSm),
-                Expanded(
-                  child: Text(
-                    rootLabel,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                Text(
-                  '${chain.steps.length} steps',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-            if (chain.hasCycle)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppTheme.spacingSm,
-                ),
-                child: Text(
-                  'Circular dependencies detected. Review links in the inspector.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
-                ),
-              ),
-            const SizedBox(height: AppTheme.spacingSm),
-            LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: math.max(constraints.maxWidth, minWidth),
-                  child: Column(
-                    children: [
-                      for (var index = 0; index < chain.steps.length; index++)
-                        _DependencyRailRow(
-                          step: chain.steps[index],
-                          index: index,
-                          leadingWidth:
-                              cardOffsets[chain.steps[index].task.id]!,
-                          nodeX: lanes[chain.steps[index].task.id]!,
-                          activeLinks: links
-                              .where(
-                                (link) =>
-                                    link.fromIndex <= index &&
-                                    index <= link.toIndex,
-                              )
-                              .toList(),
-                          incomingLinks: links
-                              .where((link) => link.toIndex == index)
-                              .toList(),
-                          color: colorScheme.outline,
-                          hoverColor: colorScheme.error,
-                          onUnlink: onUnlink,
-                          child: buildCard(
-                            chain.steps[index].task,
-                            chain.steps[index].depth + 1,
+            Tooltip(
+              message: _isExpanded ? 'Collapse chain' : 'Expand chain',
+              child: InkWell(
+                key: ValueKey('project-chain-toggle-$chainId'),
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.account_tree_outlined,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppTheme.spacingSm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            rootLabel,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
-                        ),
-                    ],
-                  ),
+                          Text(
+                            summary,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
+                  ],
                 ),
               ),
             ),
+            if (_isExpanded) ...[
+              const SizedBox(height: AppTheme.spacingSm),
+              LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              const SizedBox(height: AppTheme.spacingXs),
+              Text(
+                'Total: ${_formatEffort(chain.totalMinutes)} • Remaining: ${_formatEffort(chain.remainingMinutes)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Row(
+                children: [
+                  FilterChip(
+                    key: ValueKey('project-hide-completed-$chainId'),
+                    label: Text(
+                      _hideCompleted
+                          ? '${chain.completedCount} completed hidden'
+                          : 'Hide completed steps',
+                    ),
+                    selected: _hideCompleted,
+                    onSelected: chain.completedCount == 0
+                        ? null
+                        : (value) => setState(() => _hideCompleted = value),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${chain.totalCount} steps',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+              if (chain.hasCycle)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppTheme.spacingSm,
+                  ),
+                  child: Text(
+                    'Circular dependencies detected. Review links in the inspector.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
+                  ),
+                ),
+              const SizedBox(height: AppTheme.spacingSm),
+              if (visibleSteps.isEmpty)
+                const Text('All steps completed.')
+              else
+                LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: math.max(constraints.maxWidth, minWidth),
+                      child: Column(
+                        children: [
+                          for (
+                            var index = 0;
+                            index < visibleSteps.length;
+                            index++
+                          )
+                            _DependencyRailRow(
+                              step: visibleSteps[index],
+                              index: index,
+                              leadingWidth:
+                                  cardOffsets[visibleSteps[index].task.id]!,
+                              nodeX: lanes[visibleSteps[index].task.id]!,
+                              activeLinks: links
+                                  .where(
+                                    (link) =>
+                                        link.fromIndex <= index &&
+                                        index <= link.toIndex,
+                                  )
+                                  .toList(),
+                              incomingLinks: links
+                                  .where((link) => link.toIndex == index)
+                                  .toList(),
+                              color: colorScheme.outline,
+                              hoverColor: colorScheme.error,
+                              onUnlink: widget.onUnlink,
+                              child: widget.buildCard(
+                                visibleSteps[index].task,
+                                visibleSteps[index].depth + 1,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),

@@ -14,7 +14,9 @@ for acceptance criteria.
 |                                                                                   |
 | Dependency Step-Chains (1)                                                        |
 | +-----------------------------------------------------------------------------+   |
-| | Launch initiative                         4 steps                           |   |
+| | [v] Launch initiative       1 of 4 completed (25%)                       |   |
+| | [#####---------------]  Total: 3h 30m • Remaining: 2h 30m                |   |
+| | [ ] Hide completed steps                                    4 steps       |   |
 | | o-- Step 1  [ ] Launch initiative  [Ready to Schedule]  [+ Add Follow-Up]  |   |
 | | |                                                                     |   |
 | | +----✕-- Step 2  [ ] Design        [Blocked by: Launch initiative]        |   |
@@ -45,6 +47,13 @@ one task. Hovering over a branch or its `✕` identifies the exact link and
 highlights it. Removing a link updates the chain and offers **Undo** in a
 notification; undo is refused if the tasks have changed such that restoring
 the link would make a cycle.
+
+Each chain header reports completed steps, a progress bar, total estimated
+effort, and remaining effort excluding completed steps. The chevron collapses
+the chain to its title and completion summary. **Hide completed steps** is
+independent per chain: it removes completed cards from that chain's rail
+without changing progress or completion counts, and keeps unfinished steps
+visible at their original step numbers.
 
 ## States and interactions
 

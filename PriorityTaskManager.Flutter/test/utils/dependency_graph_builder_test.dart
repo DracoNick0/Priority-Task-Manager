@@ -8,6 +8,7 @@ TaskItem task(
   bool completed = false,
   DateTime? dueDate,
   int importance = 5,
+  int estimatedMinutes = 60,
 }) => TaskItem(
   id: id,
   listId: 'list-1',
@@ -16,6 +17,7 @@ TaskItem task(
   isCompleted: completed,
   dueDate: dueDate,
   importance: importance,
+  estimatedDurationMinutes: estimatedMinutes,
 );
 
 void main() {
@@ -158,5 +160,20 @@ void main() {
     expect(cycles('C', 'A'), isFalse);
     expect(cycles('B', 'Independent'), isFalse);
     expect(() => cycles('B', 'outside-list'), throwsArgumentError);
+  });
+
+  test('summarizes each chain task once and excludes completed effort', () {
+    final graph = DependencyGraphBuilder.build([
+      task('A', completed: true, estimatedMinutes: 45),
+      task('B', dependencies: ['A'], estimatedMinutes: 70),
+      task('C', dependencies: ['A'], estimatedMinutes: 35),
+      task('D', dependencies: ['B', 'C'], estimatedMinutes: 20),
+    ]);
+
+    final chain = graph.chains.single;
+    expect(chain.totalCount, 4);
+    expect(chain.completedCount, 1);
+    expect(chain.totalMinutes, 170);
+    expect(chain.remainingMinutes, 125);
   });
 }

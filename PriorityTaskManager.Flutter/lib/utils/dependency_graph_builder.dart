@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math' as math;
 
 import '../models/task_item.dart';
 
@@ -25,6 +26,21 @@ class DependencyChain {
   final List<TaskItem> roots;
   final List<DependencyStep> steps;
   final bool hasCycle;
+
+  int get totalCount => steps.length;
+  int get completedCount => steps.where((step) => step.task.isCompleted).length;
+  int get totalMinutes => steps.fold(
+    0,
+    (total, step) => total + math.max(0, step.task.estimatedDurationMinutes),
+  );
+  int get remainingMinutes => steps.fold(
+    0,
+    (remaining, step) =>
+        remaining +
+        (step.task.isCompleted
+            ? 0
+            : math.max(0, step.task.estimatedDurationMinutes)),
+  );
 }
 
 /// A list-scoped snapshot of chains, independent backlog, and readiness.

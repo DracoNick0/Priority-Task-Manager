@@ -108,6 +108,7 @@ TaskItem _task(
   bool completed = false,
   DateTime? dueDate,
   RecurrenceRule? recurrenceRule,
+  int estimatedMinutes = 60,
 }) => TaskItem(
   id: id,
   listId: 'list-1',
@@ -116,6 +117,7 @@ TaskItem _task(
   isCompleted: completed,
   dueDate: dueDate,
   recurrenceRule: recurrenceRule,
+  estimatedDurationMinutes: estimatedMinutes,
 );
 
 Future<ProviderContainer> _pumpProjects(
@@ -317,6 +319,88 @@ void main() {
       container.read(appNotificationProvider)!.message,
       contains('Could not restore'),
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('chain progress, effort, collapse, and hide-completed controls', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('A', completed: true, estimatedMinutes: 50),
+      _task('B', dependencies: ['A'], estimatedMinutes: 80),
+      _task('C', dependencies: ['B'], estimatedMinutes: 30),
+    ]);
+
+    expect(find.text('1 of 3 completed (33%)'), findsOneWidget);
+    expect(find.text('Total: 2h 40m • Remaining: 1h 50m'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      closeTo(1 / 3, 0.001),
+    );
+    final originalWidth = tester
+        .getSize(find.byKey(const ValueKey('project-rail-B')))
+        .width;
+
+    final hideCompleted = find.byKey(
+      const ValueKey('project-hide-completed-A'),
+    );
+    await tester.tap(hideCompleted);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('project-task-A-1')), findsNothing);
+    expect(find.byKey(const ValueKey('project-task-B-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('project-task-C-3')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('project-rail-B'))).width,
+      lessThan(originalWidth),
+    );
+    expect(tester.widget<FilterChip>(hideCompleted).selected, isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('project-chain-toggle-A')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('project-task-B-2')), findsNothing);
+    expect(find.text('1 of 3 completed (33%)'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('project-chain-toggle-A')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('project-task-A-1')), findsNothing);
+    expect(find.byKey(const ValueKey('project-task-C-3')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('hide-completed is scoped to one chain', (tester) async {
+    await _pumpProjects(tester, [
+      _task('A', completed: true),
+      _task('B', dependencies: ['A']),
+      _task('X', completed: true),
+      _task('Y', dependencies: ['X']),
+    ]);
+
+    await tester.tap(find.byKey(const ValueKey('project-hide-completed-A')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('project-task-A-1')), findsNothing);
+    expect(find.byKey(const ValueKey('project-task-X-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('project-task-Y-2')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a fully completed chain retains its summary when hidden', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('A', completed: true),
+      _task('B', dependencies: ['A'], completed: true),
+    ]);
+
+    expect(find.text('2 of 2 completed (100%)'), findsOneWidget);
+    expect(find.text('Total: 2h 0m • Remaining: 0h 0m'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('project-hide-completed-A')));
+    await tester.pumpAndSettle();
+    expect(find.text('All steps completed.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('project-task-A-1')), findsNothing);
+    expect(find.byKey(const ValueKey('project-task-B-2')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
