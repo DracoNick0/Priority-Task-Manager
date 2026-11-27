@@ -95,6 +95,15 @@ in chains. Switching lists resets the search and selected filter.
   the newly added link or restores the previous prerequisites without
   overwriting unrelated edits; if intervening changes make restoration unsafe,
   it refuses the restore and explains why.
+- Every card's **···** menu offers **Link Prerequisite...** and
+  **Link Follow-Up...** (the same cycle-aware picker), **Mark Complete** or
+  **Reopen**, and **Archive Task**. A task with incoming links can also
+  **Detach from Chain**; this removes its prerequisites with Undo while
+  retaining any tasks that depend on it. Chain roots show why detach is
+  unavailable. Completing a blocked or recurring task from this menu is
+  disabled. Archiving a one-off task requires an authenticated account;
+  Guests are told to sign in, and recurring tasks open the inspector so the
+  user can choose the occurrence or series scope safely.
 - **Add Follow-Up** offers **Create New Follow-Up**, which opens a new task in
   the inspector with this one-off task preselected as its prerequisite, and
   **Link Existing Task...**, which adds this task to an existing task's
