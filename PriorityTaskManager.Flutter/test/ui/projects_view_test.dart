@@ -108,6 +108,7 @@ TaskItem _task(
   bool completed = false,
   DateTime? dueDate,
   RecurrenceRule? recurrenceRule,
+  bool occurrence = false,
   int estimatedMinutes = 60,
 }) => TaskItem(
   id: id,
@@ -117,6 +118,8 @@ TaskItem _task(
   isCompleted: completed,
   dueDate: dueDate,
   recurrenceRule: recurrenceRule,
+  seriesId: occurrence ? 'series-1' : null,
+  occurrenceDate: occurrence ? DateTime(2026, 11, 1) : null,
   estimatedDurationMinutes: estimatedMinutes,
 );
 
@@ -164,6 +167,17 @@ Future<ProviderContainer> _pumpProjects(
   );
   await tester.pumpAndSettle();
   return container;
+}
+
+Future<TestGesture> _startTaskDrag(
+  WidgetTester tester,
+  String taskId,
+  int? stepNumber,
+) async {
+  final source = find.byKey(ValueKey('project-drag-$taskId-$stepNumber'));
+  final gesture = await tester.startGesture(tester.getCenter(source));
+  await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+  return gesture;
 }
 
 void main() {
@@ -534,6 +548,200 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Total: 6'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dragging a task onto another links it with Undo', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A', dueDate: DateTime(2026, 12, 1)),
+      _task('B', dueDate: DateTime(2026, 12, 1)),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    expect(find.byTooltip('Drag B to link or detach'), findsOneWidget);
+    final gesture = await _startTaskDrag(tester, 'B', null);
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('project-drop-A-null'))),
+    );
+    await tester.pump();
+    expect(find.text('Make follow-up to A'), findsOneWidget);
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(tasks.last.dependencies, ['A']);
+    expect(find.byKey(const ValueKey('project-task-B-2')), findsOneWidget);
+    final notification = container.read(appNotificationProvider)!;
+    expect(notification.actionLabel, 'Undo');
+    await notification.onAction!();
+    await tester.pumpAndSettle();
+    expect(tasks.last.dependencies, isEmpty);
+    expect(find.byKey(const ValueKey('project-task-B-null')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('drag target rejects a cyclic dependency before saving', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+      _task('C', dependencies: ['B']),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    final gesture = await _startTaskDrag(tester, 'A', 1);
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('project-drop-C-3'))),
+    );
+    await tester.pump();
+    expect(
+      find.text('This link would create a circular dependency.'),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-drop-C-3')),
+        matching: find.byIcon(Icons.block),
+      ),
+      findsOneWidget,
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(tasks.first.dependencies, isEmpty);
+    expect(container.read(appNotificationProvider), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('drop revalidates links changed during the drag', (tester) async {
+    final tasks = [
+      _task('A', dueDate: DateTime(2026, 12, 1)),
+      _task('B', dueDate: DateTime(2026, 12, 1)),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+    final gesture = await _startTaskDrag(tester, 'B', null);
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('project-drop-A-null'))),
+    );
+    await tester.pump();
+    expect(find.text('Make follow-up to A'), findsOneWidget);
+
+    await container
+        .read(tasksProvider('list-1').notifier)
+        .updateTask(tasks.first.copyWith(dependencies: ['B']));
+    await tester.pumpAndSettle();
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('project-drop-A-2'))),
+    );
+    await tester.pump();
+    expect(
+      find.text('This link would create a circular dependency.'),
+      findsOneWidget,
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(tasks.last.dependencies, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recurring tasks and occurrences cannot be dragged or linked', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A', dueDate: DateTime(2026, 12, 1)),
+      _task(
+        'Recurring',
+        recurrenceRule: DailyIntervalRecurrenceRule(
+          seriesStartDate: DateTime(2026, 11, 1),
+          endCondition: NeverEndCondition(),
+        ),
+      ),
+      _task('Occurrence', occurrence: true),
+    ];
+    await _pumpProjects(tester, tasks);
+    expect(
+      find.byKey(const ValueKey('project-drag-Recurring-null')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('project-drag-Occurrence-null')),
+      findsNothing,
+    );
+
+    for (final id in ['Recurring', 'Occurrence']) {
+      final gesture = await _startTaskDrag(tester, 'A', null);
+      await gesture.moveTo(
+        tester.getCenter(find.byKey(ValueKey('project-drop-$id-null'))),
+      );
+      await tester.pump();
+      expect(find.text('Recurring tasks cannot be linked.'), findsOneWidget);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+    expect(tasks[1].dependencies, isEmpty);
+    expect(tasks[2].dependencies, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dropping on the backlog detaches all incoming links with Undo', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A'),
+      _task('B'),
+      _task('C', dependencies: ['A', 'B']),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    final gesture = await _startTaskDrag(tester, 'C', 2);
+    final zone = find.byKey(const ValueKey('project-detach-zone'));
+    expect(zone, findsOneWidget);
+    await gesture.moveTo(tester.getCenter(zone));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(tasks.last.dependencies, isEmpty);
+    expect(find.byKey(const ValueKey('project-task-C-null')), findsOneWidget);
+    final notification = container.read(appNotificationProvider)!;
+    expect(notification.actionLabel, 'Undo');
+    await notification.onAction!();
+    await tester.pumpAndSettle();
+    expect(tasks.last.dependencies, ['A', 'B']);
+    expect(find.byKey(const ValueKey('project-task-C-2')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('detach Undo refuses links that became cyclic', (tester) async {
+    final tasks = [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+    final gesture = await _startTaskDrag(tester, 'B', 2);
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('project-detach-zone'))),
+    );
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    final undo = container.read(appNotificationProvider)!.onAction!;
+
+    await container
+        .read(tasksProvider('list-1').notifier)
+        .updateTask(tasks.first.copyWith(dependencies: ['B']));
+    await tester.pumpAndSettle();
+    await undo();
+    await tester.pumpAndSettle();
+
+    expect(tasks.last.dependencies, isEmpty);
+    expect(
+      container.read(appNotificationProvider)!.message,
+      contains('Could not restore'),
+    );
     expect(tester.takeException(), isNull);
   });
 

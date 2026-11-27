@@ -29,6 +29,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   _ProjectsFilter _filter = _ProjectsFilter.all;
+  String? _draggedTaskId;
 
   @override
   void didUpdateWidget(covariant ProjectsView oldWidget) {
@@ -37,6 +38,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
       _searchController.clear();
       _searchQuery = '';
       _filter = _ProjectsFilter.all;
+      _draggedTaskId = null;
     }
   }
 
@@ -52,6 +54,188 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
       if (task.id == id) return task;
     }
     return null;
+  }
+
+  bool _isOneOff(TaskItem task) =>
+      task.recurrenceRule == null && !task.isRecurringOccurrence;
+
+  String? _dropLinkError(
+    List<TaskItem>? tasks,
+    String dependentId,
+    String prerequisiteId,
+  ) {
+    final dependent = _taskById(tasks, dependentId);
+    final prerequisite = _taskById(tasks, prerequisiteId);
+    if (tasks == null || dependent == null || prerequisite == null) {
+      return 'These tasks are no longer available in this list.';
+    }
+    if (!_isOneOff(dependent) || !_isOneOff(prerequisite)) {
+      return 'Recurring tasks cannot be linked.';
+    }
+    if (dependent.dependencies.contains(prerequisiteId)) {
+      return 'These tasks are already linked.';
+    }
+    if (DependencyGraphBuilder.wouldCreateCycle(
+      tasks,
+      taskId: dependentId,
+      proposedDependencyId: prerequisiteId,
+    )) {
+      return 'This link would create a circular dependency.';
+    }
+    return null;
+  }
+
+  Future<void> _linkDroppedTask(
+    String dependentId,
+    String prerequisiteId,
+  ) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final provider = tasksProvider(widget.listId);
+    final currentTasks = container.read(provider).asData?.value;
+    final dependent = _taskById(currentTasks, dependentId);
+    final prerequisite = _taskById(currentTasks, prerequisiteId);
+    final error = _dropLinkError(currentTasks, dependentId, prerequisiteId);
+    if (error != null || dependent == null || prerequisite == null) {
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not link tasks: ${error ?? 'Tasks are unavailable.'}',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+
+    try {
+      await container
+          .read(provider.notifier)
+          .updateTask(
+            dependent.copyWith(
+              dependencies: [...dependent.dependencies, prerequisiteId],
+            ),
+          );
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        '${dependent.title} now waits on ${prerequisite.title}',
+        icon: Icons.link,
+        actionLabel: 'Undo',
+        onAction: () async {
+          final latest = _taskById(
+            container.read(provider).asData?.value,
+            dependentId,
+          );
+          if (latest == null || !latest.dependencies.contains(prerequisiteId)) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = const AppNotification(
+              'Could not undo this link; the task or dependency changed.',
+              icon: Icons.error_outline,
+            );
+            return;
+          }
+          try {
+            await container
+                .read(provider.notifier)
+                .updateTask(
+                  latest.copyWith(
+                    dependencies: latest.dependencies
+                        .where((id) => id != prerequisiteId)
+                        .toList(),
+                  ),
+                );
+            container.read(appNotificationProvider.notifier).state =
+                const AppNotification('Link undone', icon: Icons.link_off);
+          } on Exception catch (error) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = AppNotification(
+              'Could not undo link: $error',
+              icon: Icons.error_outline,
+            );
+          }
+        },
+      );
+    } on Exception catch (error) {
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not link tasks: $error',
+        icon: Icons.error_outline,
+      );
+    }
+  }
+
+  Future<void> _detachDroppedTask(String taskId) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final provider = tasksProvider(widget.listId);
+    final current = _taskById(container.read(provider).asData?.value, taskId);
+    if (current == null ||
+        !_isOneOff(current) ||
+        current.dependencies.isEmpty) {
+      container
+          .read(appNotificationProvider.notifier)
+          .state = const AppNotification(
+        'Could not detach this task; its links changed.',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+    final previousDependencies = List<String>.of(current.dependencies);
+    try {
+      await container
+          .read(provider.notifier)
+          .updateTask(current.copyWith(dependencies: []));
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        '${current.title} detached from its prerequisites',
+        icon: Icons.link_off,
+        actionLabel: 'Undo',
+        onAction: () async {
+          final latestTasks = container.read(provider).asData?.value;
+          final latest = _taskById(latestTasks, taskId);
+          if (latestTasks == null ||
+              latest == null ||
+              !_isOneOff(latest) ||
+              previousDependencies.any((id) {
+                final prerequisite = _taskById(latestTasks, id);
+                return prerequisite == null ||
+                    !_isOneOff(prerequisite) ||
+                    (!latest.dependencies.contains(id) &&
+                        DependencyGraphBuilder.wouldCreateCycle(
+                          latestTasks,
+                          taskId: taskId,
+                          proposedDependencyId: id,
+                        ));
+              })) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = const AppNotification(
+              'Could not restore these links; the tasks or dependencies changed.',
+              icon: Icons.error_outline,
+            );
+            return;
+          }
+          final restored = [
+            ...previousDependencies,
+            ...latest.dependencies.where(
+              (id) => !previousDependencies.contains(id),
+            ),
+          ];
+          try {
+            await container
+                .read(provider.notifier)
+                .updateTask(latest.copyWith(dependencies: restored));
+            container.read(appNotificationProvider.notifier).state =
+                const AppNotification('Links restored', icon: Icons.link);
+          } on Exception catch (error) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = AppNotification(
+              'Could not restore links: $error',
+              icon: Icons.error_outline,
+            );
+          }
+        },
+      );
+    } on Exception catch (error) {
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not detach task: $error',
+        icon: Icons.error_outline,
+      );
+    }
   }
 
   Future<void> _unlinkDependency(
@@ -250,41 +434,144 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     final criticalTaskIds = {
       for (final chain in graph.chains) ...chain.criticalPathTaskIds,
     };
+    final draggedTask = _draggedTaskId == null
+        ? null
+        : _taskById(tasks, _draggedTaskId!);
 
-    Widget taskCard(TaskItem task, int? stepNumber) => _ProjectTaskCard(
-      key: ValueKey('project-task-${task.id}-$stepNumber'),
-      task: task,
-      graph: graph,
-      isGuest: isGuest,
-      stepNumber: stepNumber,
-      isCriticalPath: stepNumber != null && criticalTaskIds.contains(task.id),
-      onTap: () => ref.read(selectedInspectorProvider.notifier).state =
-          InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
-      onFollowUp: () =>
-          ref.read(selectedInspectorProvider.notifier).state = InspectorTarget(
-            kind: InspectorKind.task,
-            prerequisiteTaskId: task.id,
-          ),
-      onLinkExistingFollowUp: () => _linkExistingFollowUp(task),
-      onToggleCompleted: (completed) async {
-        try {
-          await ref
-              .read(tasksProvider(widget.listId).notifier)
-              .setCompleted(task.id, completed);
-          if (!context.mounted) return;
-          ref.read(appNotificationProvider.notifier).state = AppNotification(
-            completed ? 'Task completed' : 'Task reopened',
-            icon: completed ? Icons.task_alt : Icons.undo,
+    Widget taskCard(TaskItem task, int? stepNumber) {
+      final card = _ProjectTaskCard(
+        key: ValueKey('project-task-${task.id}-$stepNumber'),
+        task: task,
+        graph: graph,
+        isGuest: isGuest,
+        stepNumber: stepNumber,
+        isCriticalPath: stepNumber != null && criticalTaskIds.contains(task.id),
+        onTap: () => ref.read(selectedInspectorProvider.notifier).state =
+            InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
+        onFollowUp: () => ref.read(selectedInspectorProvider.notifier).state =
+            InspectorTarget(
+              kind: InspectorKind.task,
+              prerequisiteTaskId: task.id,
+            ),
+        onLinkExistingFollowUp: () => _linkExistingFollowUp(task),
+        onToggleCompleted: (completed) async {
+          try {
+            await ref
+                .read(tasksProvider(widget.listId).notifier)
+                .setCompleted(task.id, completed);
+            if (!context.mounted) return;
+            ref.read(appNotificationProvider.notifier).state = AppNotification(
+              completed ? 'Task completed' : 'Task reopened',
+              icon: completed ? Icons.task_alt : Icons.undo,
+            );
+          } on Exception catch (error) {
+            if (!context.mounted) return;
+            ref.read(appNotificationProvider.notifier).state = AppNotification(
+              'Could not update task: $error',
+              icon: Icons.error_outline,
+            );
+          }
+        },
+      );
+      final draggable = _isOneOff(task)
+          ? LongPressDraggable<String>(
+              key: ValueKey('project-drag-${task.id}-$stepNumber'),
+              data: task.id,
+              dragAnchorStrategy: pointerDragAnchorStrategy,
+              onDragStarted: () => setState(() => _draggedTaskId = task.id),
+              onDragEnd: (_) {
+                if (mounted) setState(() => _draggedTaskId = null);
+              },
+              feedback: Material(
+                color: Colors.transparent,
+                child: Opacity(
+                  opacity: 0.8,
+                  child: Card(
+                    elevation: 8,
+                    color: colorScheme.surfaceContainerHigh,
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppTheme.spacingSm),
+                      child: SizedBox(
+                        width: 200,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.drag_indicator),
+                            const SizedBox(width: AppTheme.spacingXs),
+                            Expanded(
+                              child: Text(
+                                task.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              childWhenDragging: Opacity(opacity: 0.4, child: card),
+              child: card,
+            )
+          : card;
+      return DragTarget<String>(
+        key: ValueKey('project-drop-${task.id}-$stepNumber'),
+        onWillAcceptWithDetails: (details) =>
+            _dropLinkError(
+              ref.read(tasksProvider(widget.listId)).asData?.value,
+              details.data,
+              task.id,
+            ) ==
+            null,
+        onAcceptWithDetails: (details) =>
+            _linkDroppedTask(details.data, task.id),
+        builder: (context, candidates, rejected) {
+          final valid = candidates.isNotEmpty && _draggedTaskId != task.id;
+          final invalid = rejected.isNotEmpty && _draggedTaskId != task.id;
+          if (!valid && !invalid) return draggable;
+          final indicatorColor = valid
+              ? colorScheme.primary
+              : colorScheme.error;
+          final message = valid
+              ? 'Make follow-up to ${task.title}'
+              : _dropLinkError(tasks, rejected.first, task.id) ??
+                    'Cannot link these tasks.';
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: indicatorColor, width: 2),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                draggable,
+                Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacingXs),
+                  child: Row(
+                    children: [
+                      Icon(
+                        valid ? Icons.link : Icons.block,
+                        size: 18,
+                        color: indicatorColor,
+                      ),
+                      const SizedBox(width: AppTheme.spacingXs),
+                      Flexible(
+                        child: Text(
+                          message,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: indicatorColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
-        } on Exception catch (error) {
-          if (!context.mounted) return;
-          ref.read(appNotificationProvider.notifier).state = AppNotification(
-            'Could not update task: $error',
-            icon: Icons.error_outline,
-          );
-        }
-      },
-    );
+        },
+      );
+    }
 
     Widget standaloneSection(String title, List<TaskItem> items) => Padding(
       padding: const EdgeInsets.only(top: AppTheme.spacingLg),
@@ -416,6 +703,54 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
               onUnlink: _unlinkDependency,
             ),
         ],
+        if (draggedTask != null &&
+            _isOneOff(draggedTask) &&
+            draggedTask.dependencies.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: AppTheme.spacingSm),
+            child: DragTarget<String>(
+              key: const ValueKey('project-detach-zone'),
+              onWillAcceptWithDetails: (details) {
+                final current = _taskById(
+                  ref.read(tasksProvider(widget.listId)).asData?.value,
+                  details.data,
+                );
+                return details.data == _draggedTaskId &&
+                    current != null &&
+                    _isOneOff(current) &&
+                    current.dependencies.isNotEmpty;
+              },
+              onAcceptWithDetails: (details) =>
+                  _detachDroppedTask(details.data),
+              builder: (context, candidates, rejected) {
+                final active = candidates.isNotEmpty;
+                final color = active
+                    ? colorScheme.primary
+                    : colorScheme.outline;
+                return Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingMd),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: color, width: active ? 2 : 1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.link_off, color: color),
+                      const SizedBox(width: AppTheme.spacingSm),
+                      Flexible(
+                        child: Text(
+                          'Drop to detach from chain (make standalone)',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(color: color),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
         if (readyStandalone.isNotEmpty)
           standaloneSection('Ready & Active', readyStandalone),
         if (somedayStandalone.isNotEmpty)
@@ -1008,6 +1343,18 @@ class _ProjectTaskCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppTheme.spacingXs),
+              if (task.recurrenceRule == null &&
+                  !task.isRecurringOccurrence) ...[
+                Tooltip(
+                  message: 'Drag ${task.title} to link or detach',
+                  child: Icon(
+                    Icons.drag_indicator,
+                    size: 20,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacingXs),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

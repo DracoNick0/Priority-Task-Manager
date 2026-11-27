@@ -26,6 +26,7 @@ for acceptance criteria.
 | | `----✕-- Step 2  [x] Research      [Completed]  [+ Add Follow-Up]         |   |
 | |          `----✕-- Step 3  [ ] QA [Critical Path] [Blocked by: Design]      |   |
 | +-----------------------------------------------------------------------------+   |
+| [ Drop to detach from chain (make standalone) ]  (while dragging a linked task)   |
 |                                                                                   |
 | Ready & Active (1)                                                                |
 | [ ] Finalize budget       [Ready to Schedule]                 [+ Add Follow-Up]    |
@@ -83,6 +84,17 @@ in chains. Switching lists resets the search and selected filter.
 - Tap a card to open its task in the Right Inspector. Its checkbox can complete
   or reopen an eligible one-off task; blocked tasks are not marked complete
   directly from the backlog.
+- One-off task cards have a drag handle. Press and hold a card, then drag it
+  onto another card to make it a follow-up of the target task. The target
+  highlights the proposed action; self-links, duplicate links, cycles, and
+  recurring-task targets show a forbidden indicator and reject the drop.
+  Recurring series and occurrences cannot be dragged. Dropping a task with
+  incoming links into the detach zone below the chains removes all its
+  prerequisites so it can return to the standalone backlog.
+- Both drag-to-link and drag-to-detach notify with **Undo**. Undo removes just
+  the newly added link or restores the previous prerequisites without
+  overwriting unrelated edits; if intervening changes make restoration unsafe,
+  it refuses the restore and explains why.
 - **Add Follow-Up** offers **Create New Follow-Up**, which opens a new task in
   the inspector with this one-off task preselected as its prerequisite, and
   **Link Existing Task...**, which adds this task to an existing task's
