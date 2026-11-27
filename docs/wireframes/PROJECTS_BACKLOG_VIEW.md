@@ -22,11 +22,11 @@ for acceptance criteria.
 | | o-- [ ] Step 1  Critical Path                        [···]             |   |
 | |     :: Launch initiative [Ready to Schedule]        [+ Follow-Up]     |   |
 | | |                                                                     |   |
-| | +----✕-- [ ] Step 2  Critical Path                    [···]             |   |
+| | +------- [ ] Step 2  Critical Path                    [···]             |   |
 | | |         :: Design [Blocked by: Launch]              [+ Follow-Up]     |   |
-| | `----✕-- [x] Step 2                                   [···]             |   |
+| | `------- [x] Step 2                                   [···]             |   |
 | |           :: Research [Completed]                     [+ Follow-Up]     |   |
-| |          `----✕-- [ ] Step 3  Critical Path            [···]             |   |
+| |          `------- [ ] Step 3  Critical Path            [···]             |   |
 | |                    :: QA [Blocked by: Design]          [+ Follow-Up]     |   |
 | +-----------------------------------------------------------------------------+   |
 | [ Drop to detach from chain (make standalone) ]  (while dragging a linked task)   |
@@ -50,12 +50,14 @@ follows `Step N` on the same line, and the `+ Follow-Up` button sits at the
 bottom right. The `···` actions menu remains available at narrow widths.
 
 The vertical rails continue through intervening rows and turn smoothly into
-horizontal branches at the dependent card. Each prerequisite has its own rail
-and an `✕` near the dependent card, including when several prerequisites feed
-one task. Hovering over a branch or its `✕` identifies the exact link and
-highlights it. Removing a link updates the chain and offers **Undo** in a
-notification; undo is refused if the tasks have changed such that restoring
-the link would make a cycle.
+horizontal branches at the dependent card. Each visible prerequisite gets a
+distinct incoming point, with equal vertical spacing. A task with visible
+dependents shares one outgoing rail and circle one spacing below its last
+incoming point; with no incoming points, the outgoing point is centered.
+Leaves show no outgoing stub or circle. Search and hide-completed remove hidden
+edges without leaving phantom connectors. Hovering a branch identifies and
+highlights that link; there are no `✕` buttons on the rails. Remove individual
+links using prerequisite or follow-up chips in the inspector.
 
 Each chain header reports completed steps, a progress bar, total estimated
 effort, and remaining effort excluding completed steps. The chevron collapses

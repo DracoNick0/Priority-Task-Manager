@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -197,6 +200,48 @@ Future<void> _openTaskActions(
   await tester.pumpAndSettle();
 }
 
+typedef _RailPixels = ({ByteData data, int width, int height});
+
+Future<_RailPixels> _paintRail(WidgetTester tester, String taskId) async {
+  final rail = find.byKey(ValueKey('project-rail-$taskId'));
+  final size = tester.getSize(rail);
+  final recorder = ui.PictureRecorder();
+  final painter = tester.widget<CustomPaint>(rail).painter!;
+  painter.paint(ui.Canvas(recorder), size);
+  final picture = recorder.endRecording();
+  ByteData? data;
+  try {
+    data = await tester.runAsync<ByteData?>(() async {
+      final image = await picture.toImage(
+        size.width.ceil(),
+        size.height.ceil(),
+      );
+      try {
+        return await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      } finally {
+        image.dispose();
+      }
+    });
+  } finally {
+    picture.dispose();
+  }
+  if (data == null) throw StateError('Could not read rail pixels.');
+  return (data: data, width: size.width.ceil(), height: size.height.ceil());
+}
+
+Color _railPixel(_RailPixels rail, int x, double y) {
+  final index = (y.round() * rail.width + x) * 4;
+  return Color.fromARGB(
+    rail.data.getUint8(index + 3),
+    rail.data.getUint8(index),
+    rail.data.getUint8(index + 1),
+    rail.data.getUint8(index + 2),
+  );
+}
+
+int _railAlpha(_RailPixels rail, int x, double y) =>
+    rail.data.getUint8((y.round() * rail.width + x) * 4 + 3);
+
 void main() {
   testWidgets('shows branching steps, status, backlog, and completed section', (
     tester,
@@ -334,16 +379,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('continuous rails branch to each dependent and unlink one edge', (
+  testWidgets('centers visible incoming points before the outgoing endpoint', (
     tester,
   ) async {
-    final tasks = [
+    await _pumpProjects(tester, [
       _task('A'),
       _task('B'),
       _task('C', dependencies: ['A', 'B']),
       _task('D', dependencies: ['C']),
-    ];
-    final container = await _pumpProjects(tester, tasks);
+    ]);
 
     final aRail = find.byKey(const ValueKey('project-rail-A'));
     final bRail = find.byKey(const ValueKey('project-rail-B'));
@@ -357,69 +401,176 @@ void main() {
       greaterThan(tester.getSize(aRail).width),
     );
 
-    final unlinkA = find.byKey(const ValueKey('project-unlink-C-A'));
-    final unlinkB = find.byKey(const ValueKey('project-unlink-C-B'));
-    expect(unlinkA, findsOneWidget);
-    expect(unlinkB, findsOneWidget);
+    final root = await _paintRail(tester, 'A');
+    final merged = await _paintRail(tester, 'C');
+    final leaf = await _paintRail(tester, 'D');
+    final colors = Theme.of(tester.element(cRail)).colorScheme;
+    expect(_railAlpha(root, root.width - 3, root.height / 2), greaterThan(0));
+    expect(_railAlpha(root, root.width - 3, root.height / 2 + 28), 0);
+    expect(merged.height, greaterThanOrEqualTo(108));
+    for (final offset in [-28.0, 0.0, 28.0]) {
+      expect(
+        _railAlpha(merged, merged.width - 3, merged.height / 2 + offset),
+        greaterThan(0),
+      );
+    }
+    expect(_railAlpha(merged, merged.width - 3, merged.height / 2 - 14), 0);
+    expect(_railAlpha(merged, merged.width - 3, merged.height / 2 + 14), 0);
     expect(
-      tester.getTopRight(unlinkA).dx,
-      lessThanOrEqualTo(
-        tester.getTopLeft(find.byKey(const ValueKey('project-task-C-2'))).dx,
-      ),
+      _railPixel(merged, merged.width - 3, merged.height / 2 - 28),
+      colors.primary,
     );
     expect(
-      find.byTooltip('Remove dependency: C will no longer wait on A'),
+      _railPixel(merged, merged.width - 3, merged.height / 2),
+      colors.outline,
+    );
+    expect(
+      _railPixel(merged, merged.width - 3, merged.height / 2 + 28),
+      colors.primary,
+    );
+    expect(_railAlpha(leaf, leaf.width - 3, leaf.height / 2), greaterThan(0));
+    expect(_railAlpha(leaf, leaf.width - 29, leaf.height / 2 + 2), 0);
+    expect(find.byKey(const ValueKey('project-unlink-C-A')), findsNothing);
+    expect(find.byKey(const ValueKey('project-unlink-C-B')), findsNothing);
+    expect(
+      find.byTooltip('C depends on A. Edit links in the inspector.'),
       findsOneWidget,
     );
+    expect(
+      find.byTooltip('C depends on B. Edit links in the inspector.'),
+      findsOneWidget,
+    );
+
+    final branchBeforeHover = await _paintRail(tester, 'C');
+    final branchX = branchBeforeHover.width - 3;
+    final firstBranchY = branchBeforeHover.height / 2 - 28;
+    final secondBranchY = branchBeforeHover.height / 2;
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(
-      location: tester.getCenter(unlinkA) - const Offset(26, 0),
+      location: tester.getCenter(
+        find.byKey(const ValueKey('project-link-C-B')),
+      ),
     );
     await tester.pump();
+    final branchAfterHover = await _paintRail(tester, 'C');
     expect(
-      tester.widget<IconButton>(unlinkA).color,
-      Theme.of(tester.element(unlinkA)).colorScheme.error,
+      _railPixel(branchAfterHover, branchX, firstBranchY),
+      _railPixel(branchBeforeHover, branchX, firstBranchY),
+    );
+    expect(
+      _railPixel(branchAfterHover, branchX, secondBranchY),
+      isNot(_railPixel(branchBeforeHover, branchX, secondBranchY)),
     );
     await mouse.removePointer();
-
-    await tester.tap(unlinkA);
-    await tester.pumpAndSettle();
-    expect(tasks[2].dependencies, ['B']);
-    expect(find.byKey(const ValueKey('project-unlink-C-A')), findsNothing);
-    expect(find.byKey(const ValueKey('project-unlink-C-B')), findsOneWidget);
-
-    final notification = container.read(appNotificationProvider)!;
-    expect(notification.actionLabel, 'Undo');
-    await notification.onAction!();
-    await tester.pumpAndSettle();
-    expect(tasks[2].dependencies, ['A', 'B']);
-    expect(find.byKey(const ValueKey('project-unlink-C-A')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('undo refuses to restore an edge that became cyclic', (
+  testWidgets('one root shares a centered outgoing point with two dependents', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+      _task('C', dependencies: ['A']),
+    ]);
+
+    final root = await _paintRail(tester, 'A');
+    expect(_railAlpha(root, root.width - 3, root.height / 2), greaterThan(0));
+    expect(_railAlpha(root, root.width - 3, root.height / 2 - 28), 0);
+    expect(_railAlpha(root, root.width - 3, root.height / 2 + 28), 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inspector chips remove one rail link without unlink buttons', (
     tester,
   ) async {
     final tasks = [
       _task('A'),
-      _task('B', dependencies: ['A']),
+      _task('B'),
+      _task('C', dependencies: ['A', 'B']),
+      _task('D', dependencies: ['C']),
     ];
-    final container = await _pumpProjects(tester, tasks);
+    await _pumpProjects(tester, tasks, withInspector: true);
 
-    await tester.tap(find.byKey(const ValueKey('project-unlink-B-A')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-task-C-2')),
+        matching: find.text('C'),
+      ),
+    );
     await tester.pumpAndSettle();
-    final undo = container.read(appNotificationProvider)!.onAction!;
-    await container
-        .read(tasksProvider('list-1').notifier)
-        .updateTask(tasks.first.copyWith(dependencies: ['B']));
+    expect(find.byKey(const ValueKey('prerequisite-chip-A')), findsOneWidget);
+    expect(find.byKey(const ValueKey('prerequisite-chip-B')), findsOneWidget);
+    expect(find.byKey(const ValueKey('follow-up-chip-D')), findsOneWidget);
+    final chip = find.byKey(const ValueKey('prerequisite-chip-A'));
+    await tester.ensureVisible(chip);
+    await tester.tapAt(
+      tester.getCenter(chip) + Offset(tester.getSize(chip).width / 2 - 14, 0),
+    );
     await tester.pumpAndSettle();
 
-    await undo();
+    expect(tasks[2].dependencies, ['B']);
+    expect(find.byKey(const ValueKey('project-link-C-A')), findsNothing);
+    expect(find.byKey(const ValueKey('project-link-C-B')), findsOneWidget);
+    expect(find.byKey(const ValueKey('prerequisite-chip-B')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search and hide-completed leave no phantom rail connections', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('A', completed: true),
+      _task('B', dependencies: ['A']),
+      _task('C', dependencies: ['B']),
+    ]);
+
+    await tester.tap(find.byKey(const ValueKey('project-hide-completed-A')));
     await tester.pumpAndSettle();
-    expect(tasks.last.dependencies, isEmpty);
+    final visibleRoot = await _paintRail(tester, 'B');
+    expect(find.byKey(const ValueKey('project-rail-A')), findsNothing);
     expect(
-      container.read(appNotificationProvider)!.message,
-      contains('Could not restore'),
+      _railAlpha(visibleRoot, visibleRoot.width - 3, visibleRoot.height / 2),
+      greaterThan(0),
+    );
+    expect(find.byKey(const ValueKey('project-link-B-A')), findsNothing);
+
+    await tester.enterText(find.byKey(const ValueKey('projects-search')), 'B');
+    await tester.pumpAndSettle();
+    final isolated = await _paintRail(tester, 'B');
+    expect(find.byKey(const ValueKey('project-rail-C')), findsNothing);
+    expect(_railAlpha(isolated, isolated.width - 3, isolated.height / 2), 0);
+    expect(_railAlpha(isolated, 12, isolated.height / 2), 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('filtered critical edges do not tint another visible link', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('Visible root'),
+      _task(
+        'Hidden heavy',
+        dependencies: ['Visible root'],
+        estimatedMinutes: 120,
+      ),
+      _task('Visible leaf', dependencies: ['Visible root']),
+    ]);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('projects-search')),
+      'Visible',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('project-rail-Hidden heavy')),
+      findsNothing,
+    );
+    final rootFinder = find.byKey(const ValueKey('project-rail-Visible root'));
+    final root = await _paintRail(tester, 'Visible root');
+    expect(
+      _railPixel(root, root.width - 3, root.height / 2),
+      Theme.of(tester.element(rootFinder)).colorScheme.outline,
     );
     expect(tester.takeException(), isNull);
   });

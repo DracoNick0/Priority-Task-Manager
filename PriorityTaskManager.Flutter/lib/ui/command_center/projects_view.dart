@@ -238,86 +238,6 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     }
   }
 
-  Future<void> _unlinkDependency(
-    TaskItem dependent,
-    TaskItem prerequisite,
-  ) async {
-    final container = ProviderScope.containerOf(context, listen: false);
-    final provider = tasksProvider(widget.listId);
-    final tasks = container.read(provider).asData?.value;
-    final current = _taskById(tasks, dependent.id);
-    if (current == null || !current.dependencies.contains(prerequisite.id)) {
-      container
-          .read(appNotificationProvider.notifier)
-          .state = const AppNotification(
-        'This dependency is no longer available.',
-        icon: Icons.error_outline,
-      );
-      return;
-    }
-
-    final previousIndex = current.dependencies.indexOf(prerequisite.id);
-    try {
-      await container
-          .read(provider.notifier)
-          .updateTask(
-            current.copyWith(
-              dependencies: current.dependencies
-                  .where((id) => id != prerequisite.id)
-                  .toList(),
-            ),
-          );
-      if (!mounted) return;
-      container.read(appNotificationProvider.notifier).state = AppNotification(
-        'Dependency removed: ${dependent.title} no longer waits on ${prerequisite.title}',
-        icon: Icons.link_off,
-        actionLabel: 'Undo',
-        onAction: () async {
-          final latestTasks = container.read(provider).asData?.value;
-          final latest = _taskById(latestTasks, dependent.id);
-          final latestPrerequisite = _taskById(latestTasks, prerequisite.id);
-          if (latestTasks == null ||
-              latest == null ||
-              latestPrerequisite == null ||
-              latest.recurrenceRule != null ||
-              latest.isRecurringOccurrence ||
-              latestPrerequisite.recurrenceRule != null ||
-              latestPrerequisite.isRecurringOccurrence ||
-              latest.dependencies.contains(prerequisite.id) ||
-              DependencyGraphBuilder.wouldCreateCycle(
-                latestTasks,
-                taskId: dependent.id,
-                proposedDependencyId: prerequisite.id,
-              )) {
-            container
-                .read(appNotificationProvider.notifier)
-                .state = const AppNotification(
-              'Could not restore this dependency; the tasks or links changed.',
-              icon: Icons.error_outline,
-            );
-            return;
-          }
-          final restored = List<String>.of(latest.dependencies)
-            ..insert(
-              math.min(previousIndex, latest.dependencies.length),
-              prerequisite.id,
-            );
-          await container
-              .read(provider.notifier)
-              .updateTask(latest.copyWith(dependencies: restored));
-          container.read(appNotificationProvider.notifier).state =
-              const AppNotification('Dependency restored', icon: Icons.link);
-        },
-      );
-    } on Exception catch (error) {
-      if (!mounted) return;
-      container.read(appNotificationProvider.notifier).state = AppNotification(
-        'Could not remove dependency: $error',
-        icon: Icons.error_outline,
-      );
-    }
-  }
-
   Future<void> _linkExistingTask(
     TaskItem task,
     DependencyLinkDirection direction,
@@ -746,7 +666,6 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
               chain: chain,
               visibleTaskIds: matchingIds,
               buildCard: taskCard,
-              onUnlink: _unlinkDependency,
             ),
         ],
         if (draggedTask != null &&
@@ -846,13 +765,11 @@ class _ChainCard extends StatefulWidget {
     required this.chain,
     required this.visibleTaskIds,
     required this.buildCard,
-    required this.onUnlink,
   });
 
   final DependencyChain chain;
   final Set<String> visibleTaskIds;
   final Widget Function(TaskItem, int?) buildCard;
-  final void Function(TaskItem dependent, TaskItem prerequisite) onUnlink;
 
   @override
   State<_ChainCard> createState() => _ChainCardState();
@@ -892,6 +809,16 @@ class _ChainCardState extends State<_ChainCard> {
       for (var index = 0; index < visibleSteps.length; index++)
         visibleSteps[index].task.id: index,
     };
+    final incomingByTask = {
+      for (final step in visibleSteps)
+        step.task.id: step.task.dependencies
+            .toSet()
+            .where(indices.containsKey)
+            .toList(),
+    };
+    final outgoingTaskIds = {
+      for (final incoming in incomingByTask.values) ...incoming,
+    };
     final lanes = <String, double>{};
     final cardOffsets = <String, double>{};
     var offset = 0.0;
@@ -914,10 +841,9 @@ class _ChainCardState extends State<_ChainCard> {
     final links = <_RailLink>[];
     for (var index = 0; index < visibleSteps.length; index++) {
       final dependent = visibleSteps[index].task;
-      final incoming = dependent.dependencies
-          .toSet()
-          .where(indices.containsKey)
-          .toList();
+      final incoming = incomingByTask[dependent.id]!;
+      final pointCount =
+          incoming.length + (outgoingTaskIds.contains(dependent.id) ? 1 : 0);
       for (var position = 0; position < incoming.length; position++) {
         final prerequisiteId = incoming[position];
         links.add(
@@ -927,7 +853,7 @@ class _ChainCardState extends State<_ChainCard> {
             fromIndex: indices[prerequisiteId]!,
             toIndex: index,
             railX: lanes[prerequisiteId]!,
-            branchOffset: (position - (incoming.length - 1) / 2) * 28,
+            branchOffset: (position - (pointCount - 1) / 2) * _railPointSpacing,
             isCritical: chain.criticalPathEdges.contains((
               prerequisiteId,
               dependent.id,
@@ -1066,12 +992,16 @@ class _ChainCardState extends State<_ChainCard> {
                               incomingLinks: links
                                   .where((link) => link.toIndex == index)
                                   .toList(),
+                              hasVisibleDependents: outgoingTaskIds.contains(
+                                visibleSteps[index].task.id,
+                              ),
                               color: colorScheme.outline,
-                              hoverColor: colorScheme.error,
+                              hoverColor: colorScheme.tertiary,
                               criticalColor: colorScheme.primary,
-                              isCriticalNode: chain.criticalPathTaskIds
-                                  .contains(visibleSteps[index].task.id),
-                              onUnlink: widget.onUnlink,
+                              isCriticalOutgoing: links.any(
+                                (link) =>
+                                    link.fromIndex == index && link.isCritical,
+                              ),
                               child: widget.buildCard(
                                 visibleSteps[index].task,
                                 visibleSteps[index].depth + 1,
@@ -1089,6 +1019,8 @@ class _ChainCardState extends State<_ChainCard> {
     );
   }
 }
+
+const _railPointSpacing = 28.0;
 
 class _RailLink {
   const _RailLink({
@@ -1118,11 +1050,11 @@ class _DependencyRailRow extends StatefulWidget {
     required this.nodeX,
     required this.activeLinks,
     required this.incomingLinks,
+    required this.hasVisibleDependents,
     required this.color,
     required this.hoverColor,
     required this.criticalColor,
-    required this.isCriticalNode,
-    required this.onUnlink,
+    required this.isCriticalOutgoing,
     required this.child,
   });
 
@@ -1132,11 +1064,11 @@ class _DependencyRailRow extends StatefulWidget {
   final double nodeX;
   final List<_RailLink> activeLinks;
   final List<_RailLink> incomingLinks;
+  final bool hasVisibleDependents;
   final Color color;
   final Color hoverColor;
   final Color criticalColor;
-  final bool isCriticalNode;
-  final void Function(TaskItem, TaskItem) onUnlink;
+  final bool isCriticalOutgoing;
   final Widget child;
 
   @override
@@ -1166,7 +1098,8 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
                   nodeX: widget.nodeX,
                   activeLinks: widget.activeLinks,
                   incomingLinks: widget.incomingLinks,
-                  isCriticalNode: widget.isCriticalNode,
+                  hasVisibleDependents: widget.hasVisibleDependents,
+                  isCriticalOutgoing: widget.isCriticalOutgoing,
                   hoveredPrerequisiteId: _hoveredPrerequisiteId,
                 ),
               ),
@@ -1177,6 +1110,9 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
                     child: Transform.translate(
                       offset: Offset(0, link.branchOffset),
                       child: MouseRegion(
+                        key: ValueKey(
+                          'project-link-${link.dependent.id}-${link.prerequisite.id}',
+                        ),
                         onEnter: (_) => setState(
                           () => _hoveredPrerequisiteId = link.prerequisite.id,
                         ),
@@ -1184,38 +1120,13 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
                             setState(() => _hoveredPrerequisiteId = null),
                         child: Tooltip(
                           message:
-                              'Remove dependency: ${link.dependent.title} will no longer wait on ${link.prerequisite.title}',
+                              '${link.dependent.title} depends on ${link.prerequisite.title}. Edit links in the inspector.',
                           child: SizedBox(
                             width: math.max(
-                              28,
+                              _railPointSpacing,
                               widget.leadingWidth - link.railX,
                             ),
-                            height: 28,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: IconButton(
-                                key: ValueKey(
-                                  'project-unlink-${link.dependent.id}-${link.prerequisite.id}',
-                                ),
-                                icon: const Icon(Icons.close, size: 16),
-                                color:
-                                    _hoveredPrerequisiteId ==
-                                        link.prerequisite.id
-                                    ? widget.hoverColor
-                                    : link.isCritical
-                                    ? widget.criticalColor
-                                    : widget.color,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints.tightFor(
-                                  width: 28,
-                                  height: 28,
-                                ),
-                                onPressed: () => widget.onUnlink(
-                                  link.dependent,
-                                  link.prerequisite,
-                                ),
-                              ),
-                            ),
+                            height: _railPointSpacing,
                           ),
                         ),
                       ),
@@ -1228,7 +1139,11 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
         Expanded(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: widget.incomingLinks.length * 28 + 24,
+              minHeight:
+                  (widget.incomingLinks.length +
+                          (widget.hasVisibleDependents ? 1 : 0)) *
+                      _railPointSpacing +
+                  24,
             ),
             child: widget.child,
           ),
@@ -1247,7 +1162,8 @@ class _RailConnectorPainter extends CustomPainter {
     required this.nodeX,
     required this.activeLinks,
     required this.incomingLinks,
-    required this.isCriticalNode,
+    required this.hasVisibleDependents,
+    required this.isCriticalOutgoing,
     required this.hoveredPrerequisiteId,
   });
 
@@ -1258,7 +1174,8 @@ class _RailConnectorPainter extends CustomPainter {
   final double nodeX;
   final List<_RailLink> activeLinks;
   final List<_RailLink> incomingLinks;
-  final bool isCriticalNode;
+  final bool hasVisibleDependents;
+  final bool isCriticalOutgoing;
   final String? hoveredPrerequisiteId;
 
   @override
@@ -1268,11 +1185,12 @@ class _RailConnectorPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final middle = size.height / 2;
+    final outgoingY = middle + incomingLinks.length * _railPointSpacing / 2;
     for (final isCritical in [false, true]) {
       for (final link in activeLinks) {
         if (link.isCritical != isCritical) continue;
         paint.color = isCritical ? criticalColor : color;
-        final start = link.fromIndex == rowIndex ? middle : 0.0;
+        final start = link.fromIndex == rowIndex ? outgoingY : 0.0;
         final end = link.toIndex == rowIndex
             ? middle + link.branchOffset - 8
             : size.height;
@@ -1285,9 +1203,15 @@ class _RailConnectorPainter extends CustomPainter {
         }
       }
     }
-    paint.color = isCriticalNode ? criticalColor : color;
-    canvas.drawCircle(Offset(nodeX, middle), 3, paint);
-    canvas.drawLine(Offset(nodeX, middle), Offset(size.width, middle), paint);
+    if (hasVisibleDependents) {
+      paint.color = isCriticalOutgoing ? criticalColor : color;
+      canvas.drawCircle(Offset(nodeX, outgoingY), 3, paint);
+      canvas.drawLine(
+        Offset(nodeX, outgoingY),
+        Offset(size.width, outgoingY),
+        paint,
+      );
+    }
     for (final link in incomingLinks) {
       final branchY = middle + link.branchOffset;
       paint.color = hoveredPrerequisiteId == link.prerequisite.id
@@ -1308,7 +1232,8 @@ class _RailConnectorPainter extends CustomPainter {
       color != oldDelegate.color ||
       hoverColor != oldDelegate.hoverColor ||
       criticalColor != oldDelegate.criticalColor ||
-      isCriticalNode != oldDelegate.isCriticalNode ||
+      isCriticalOutgoing != oldDelegate.isCriticalOutgoing ||
+      hasVisibleDependents != oldDelegate.hasVisibleDependents ||
       rowIndex != oldDelegate.rowIndex ||
       nodeX != oldDelegate.nodeX ||
       activeLinks != oldDelegate.activeLinks ||
