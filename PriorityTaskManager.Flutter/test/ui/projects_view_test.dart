@@ -191,6 +191,24 @@ Future<TestGesture> _startTaskDrag(
   return gesture;
 }
 
+Future<TestGesture> _startHandleDrag(
+  WidgetTester tester,
+  String taskId,
+  int? stepNumber, {
+  ui.PointerDeviceKind kind = ui.PointerDeviceKind.touch,
+}) async {
+  final source = find.byKey(
+    ValueKey('project-drag-handle-$taskId-$stepNumber'),
+  );
+  final gesture = await tester.startGesture(
+    tester.getCenter(source),
+    kind: kind,
+  );
+  await gesture.moveBy(const Offset(0, -40));
+  await tester.pump();
+  return gesture;
+}
+
 Future<void> _openTaskActions(
   WidgetTester tester,
   String taskId,
@@ -891,6 +909,63 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final guest in [false, true]) {
+    testWidgets('drag handle links immediately with Undo in '
+        '${guest ? 'Guest' : 'authenticated'} mode', (tester) async {
+      final tasks = [
+        _task('A', dueDate: DateTime(2026, 12, 1)),
+        _task('B', dueDate: DateTime(2026, 12, 1)),
+      ];
+      final container = await _pumpProjects(tester, tasks, guest: guest);
+
+      final gesture = await _startHandleDrag(
+        tester,
+        'B',
+        null,
+        kind: guest ? ui.PointerDeviceKind.touch : ui.PointerDeviceKind.mouse,
+      );
+      await gesture.moveTo(
+        tester.getCenter(find.byKey(const ValueKey('project-drop-A-null'))),
+      );
+      await tester.pump();
+      expect(find.text('Make follow-up to A'), findsOneWidget);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(tasks.last.dependencies, ['A']);
+      final notification = container.read(appNotificationProvider)!;
+      expect(notification.actionLabel, 'Undo');
+      await notification.onAction!();
+      await tester.pumpAndSettle();
+      expect(tasks.last.dependencies, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('drag handle detaches immediately with Undo', (tester) async {
+    final tasks = [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    final gesture = await _startHandleDrag(tester, 'B', 2);
+    final zone = find.byKey(const ValueKey('project-detach-zone'));
+    expect(zone, findsOneWidget);
+    await gesture.moveTo(tester.getCenter(zone));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(tasks.last.dependencies, isEmpty);
+    final notification = container.read(appNotificationProvider)!;
+    expect(notification.actionLabel, 'Undo');
+    await notification.onAction!();
+    await tester.pumpAndSettle();
+    expect(tasks.last.dependencies, ['A']);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('drag target rejects a cyclic dependency before saving', (
     tester,
   ) async {
@@ -980,6 +1055,14 @@ void main() {
       find.byKey(const ValueKey('project-drag-Occurrence-null')),
       findsNothing,
     );
+    expect(
+      find.byKey(const ValueKey('project-drag-handle-Recurring-null')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('project-drag-handle-Occurrence-null')),
+      findsNothing,
+    );
 
     for (final id in ['Recurring', 'Occurrence']) {
       final gesture = await _startTaskDrag(tester, 'A', null);
@@ -1064,7 +1147,7 @@ void main() {
     await _openTaskActions(tester, 'B', null);
     expect(find.text('Link Prerequisite...'), findsOneWidget);
     expect(find.text('Link Follow-Up...'), findsOneWidget);
-    expect(find.text('Mark Complete'), findsOneWidget);
+    expect(find.text('Mark Complete'), findsNothing);
     expect(find.text('Archive Task'), findsOneWidget);
     await tester.tap(find.text('Link Prerequisite...'));
     await tester.pumpAndSettle();
@@ -1114,7 +1197,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('card actions disable blocked completion and allow reopening', (
+  testWidgets('card actions omit completion and allow reopening', (
     tester,
   ) async {
     final tasks = [
@@ -1124,22 +1207,40 @@ void main() {
     await _pumpProjects(tester, tasks);
 
     await _openTaskActions(tester, 'B', 2);
-    final blockedAction = find.ancestor(
-      of: find.text('Mark Complete'),
-      matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+    expect(find.text('Mark Complete'), findsNothing);
+    expect(find.text('Reopen'), findsNothing);
+    final blockedCheckbox = find.descendant(
+      of: find.byKey(const ValueKey('project-task-B-2')),
+      matching: find.byType(Checkbox),
     );
-    expect(tester.widget<PopupMenuItem>(blockedAction).enabled, isFalse);
+    expect(tester.widget<Checkbox>(blockedCheckbox).onChanged, isNull);
     await tester.tapAt(const Offset(20, 20));
     await tester.pumpAndSettle();
 
     await _openTaskActions(tester, 'A', 1);
     expect(find.text('No incoming links to remove'), findsOneWidget);
-    await tester.tap(find.text('Mark Complete'));
+    expect(find.text('Mark Complete'), findsNothing);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-task-A-1')),
+        matching: find.byType(Checkbox),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(tasks.first.isCompleted, isTrue);
 
     await _openTaskActions(tester, 'B', 2);
-    await tester.tap(find.text('Mark Complete'));
+    expect(find.text('Mark Complete'), findsNothing);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-task-B-2')),
+        matching: find.byType(Checkbox),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(tasks.last.isCompleted, isTrue);
 
@@ -1149,6 +1250,11 @@ void main() {
     await tester.tap(find.text('Reopen'));
     await tester.pumpAndSettle();
     expect(tasks.last.isCompleted, isFalse);
+    await tester.tap(find.byKey(const ValueKey('projects-filter-all')));
+    await tester.pumpAndSettle();
+    await _openTaskActions(tester, 'B', 2);
+    expect(find.text('Mark Complete'), findsNothing);
+    expect(find.text('Reopen'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -405,6 +405,55 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
         : _taskById(tasks, _draggedTaskId!);
 
     Widget taskCard(TaskItem task, int? stepNumber) {
+      final isDraggable = _isOneOff(task);
+      void onDragStarted() => setState(() => _draggedTaskId = task.id);
+      void onDragEnd(DraggableDetails _) {
+        if (mounted) setState(() => _draggedTaskId = null);
+      }
+
+      final dragFeedback = Material(
+        color: Colors.transparent,
+        child: Opacity(
+          opacity: 0.8,
+          child: Card(
+            elevation: 8,
+            color: colorScheme.surfaceContainerHigh,
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingSm),
+              child: SizedBox(
+                width: 200,
+                child: Row(
+                  children: [
+                    const Icon(Icons.drag_indicator),
+                    const SizedBox(width: AppTheme.spacingXs),
+                    Expanded(
+                      child: Text(
+                        task.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final handle = Tooltip(
+        message: 'Drag ${task.title} to link or detach',
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: Icon(
+              Icons.drag_indicator,
+              size: 20,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
       final card = _ProjectTaskCard(
         key: ValueKey('project-task-${task.id}-$stepNumber'),
         task: task,
@@ -412,6 +461,18 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
         isGuest: isGuest,
         stepNumber: stepNumber,
         isCriticalPath: stepNumber != null && criticalTaskIds.contains(task.id),
+        dragHandle: isDraggable
+            ? Draggable<String>(
+                key: ValueKey('project-drag-handle-${task.id}-$stepNumber'),
+                data: task.id,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                onDragStarted: onDragStarted,
+                onDragEnd: onDragEnd,
+                feedback: dragFeedback,
+                childWhenDragging: Opacity(opacity: 0.4, child: handle),
+                child: handle,
+              )
+            : null,
         onTap: () => ref.read(selectedInspectorProvider.notifier).state =
             InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
         onLinkPrerequisite: () =>
@@ -439,44 +500,14 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
           }
         },
       );
-      final draggable = _isOneOff(task)
+      final draggable = isDraggable
           ? LongPressDraggable<String>(
               key: ValueKey('project-drag-${task.id}-$stepNumber'),
               data: task.id,
               dragAnchorStrategy: pointerDragAnchorStrategy,
-              onDragStarted: () => setState(() => _draggedTaskId = task.id),
-              onDragEnd: (_) {
-                if (mounted) setState(() => _draggedTaskId = null);
-              },
-              feedback: Material(
-                color: Colors.transparent,
-                child: Opacity(
-                  opacity: 0.8,
-                  child: Card(
-                    elevation: 8,
-                    color: colorScheme.surfaceContainerHigh,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingSm),
-                      child: SizedBox(
-                        width: 200,
-                        child: Row(
-                          children: [
-                            const Icon(Icons.drag_indicator),
-                            const SizedBox(width: AppTheme.spacingXs),
-                            Expanded(
-                              child: Text(
-                                task.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              onDragStarted: onDragStarted,
+              onDragEnd: onDragEnd,
+              feedback: dragFeedback,
               childWhenDragging: Opacity(opacity: 0.4, child: card),
               child: card,
             )
@@ -1274,6 +1305,7 @@ class _ProjectTaskCard extends StatelessWidget {
     required this.isGuest,
     required this.stepNumber,
     required this.isCriticalPath,
+    required this.dragHandle,
     required this.onTap,
     required this.onLinkPrerequisite,
     required this.onLinkFollowUp,
@@ -1287,6 +1319,7 @@ class _ProjectTaskCard extends StatelessWidget {
   final bool isGuest;
   final int? stepNumber;
   final bool isCriticalPath;
+  final Widget? dragHandle;
   final VoidCallback onTap;
   final VoidCallback onLinkPrerequisite;
   final VoidCallback onLinkFollowUp;
@@ -1350,15 +1383,7 @@ class _ProjectTaskCard extends StatelessWidget {
                                 },
                         ),
                       ),
-                      if (isOneOff)
-                        Tooltip(
-                          message: 'Drag ${task.title} to link or detach',
-                          child: Icon(
-                            Icons.drag_indicator,
-                            size: 20,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                      ?dragHandle,
                     ],
                   ),
                   const SizedBox(width: AppTheme.spacingXs),
@@ -1453,73 +1478,84 @@ class _ProjectTaskCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  PopupMenuButton<_ProjectCardAction>(
-                    key: ValueKey('project-actions-${task.id}-$stepNumber'),
-                    tooltip: 'Task actions',
-                    icon: const Icon(Icons.more_horiz),
-                    onSelected: (action) {
-                      switch (action) {
-                        case _ProjectCardAction.linkPrerequisite:
-                          onLinkPrerequisite();
-                        case _ProjectCardAction.linkFollowUp:
-                          onLinkFollowUp();
-                        case _ProjectCardAction.detach:
-                          onDetach();
-                        case _ProjectCardAction.toggleCompleted:
-                          onToggleCompleted(!isCompleted);
-                        case _ProjectCardAction.archive:
-                          onArchive();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: _ProjectCardAction.linkPrerequisite,
-                        enabled: isOneOff,
-                        child: const Text('Link Prerequisite...'),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      PopupMenuButton<_ProjectCardAction>(
+                        key: ValueKey('project-actions-${task.id}-$stepNumber'),
+                        tooltip: 'Task actions',
+                        icon: const Icon(Icons.more_horiz),
+                        onSelected: (action) {
+                          switch (action) {
+                            case _ProjectCardAction.linkPrerequisite:
+                              onLinkPrerequisite();
+                            case _ProjectCardAction.linkFollowUp:
+                              onLinkFollowUp();
+                            case _ProjectCardAction.detach:
+                              onDetach();
+                            case _ProjectCardAction.reopen:
+                              onToggleCompleted(false);
+                            case _ProjectCardAction.archive:
+                              onArchive();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: _ProjectCardAction.linkPrerequisite,
+                            enabled: isOneOff,
+                            child: const Text('Link Prerequisite...'),
+                          ),
+                          PopupMenuItem(
+                            value: _ProjectCardAction.linkFollowUp,
+                            enabled: isOneOff,
+                            child: const Text('Link Follow-Up...'),
+                          ),
+                          if (stepNumber != null ||
+                              task.dependencies.isNotEmpty)
+                            PopupMenuItem(
+                              value: _ProjectCardAction.detach,
+                              enabled: isOneOff && task.dependencies.isNotEmpty,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Detach from Chain'),
+                                  if (task.dependencies.isEmpty)
+                                    Text(
+                                      'No incoming links to remove',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          if (isCompleted)
+                            PopupMenuItem(
+                              value: _ProjectCardAction.reopen,
+                              enabled: isOneOff,
+                              child: const Text('Reopen'),
+                            ),
+                          const PopupMenuItem(
+                            value: _ProjectCardAction.archive,
+                            child: Text('Archive Task'),
+                          ),
+                        ],
                       ),
-                      PopupMenuItem(
-                        value: _ProjectCardAction.linkFollowUp,
-                        enabled: isOneOff,
-                        child: const Text('Link Follow-Up...'),
-                      ),
-                      if (stepNumber != null || task.dependencies.isNotEmpty)
-                        PopupMenuItem(
-                          value: _ProjectCardAction.detach,
-                          enabled: isOneOff && task.dependencies.isNotEmpty,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Detach from Chain'),
-                              if (task.dependencies.isEmpty)
-                                Text(
-                                  'No incoming links to remove',
-                                  style: Theme.of(context).textTheme.labelSmall,
-                                ),
-                            ],
+                      if (isOneOff)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            key: ValueKey(
+                              'project-follow-up-${task.id}-$stepNumber',
+                            ),
+                            onPressed: onLinkFollowUp,
+                            child: const Text('+ Follow-Up'),
                           ),
                         ),
-                      PopupMenuItem(
-                        value: _ProjectCardAction.toggleCompleted,
-                        enabled: isOneOff && (!isBlocked || isCompleted),
-                        child: Text(isCompleted ? 'Reopen' : 'Mark Complete'),
-                      ),
-                      const PopupMenuItem(
-                        value: _ProjectCardAction.archive,
-                        child: Text('Archive Task'),
-                      ),
                     ],
                   ),
                 ],
               ),
-              if (isOneOff)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    key: ValueKey('project-follow-up-${task.id}-$stepNumber'),
-                    onPressed: onLinkFollowUp,
-                    child: const Text('+ Follow-Up'),
-                  ),
-                ),
             ],
           ),
         ),
@@ -1532,6 +1568,6 @@ enum _ProjectCardAction {
   linkPrerequisite,
   linkFollowUp,
   detach,
-  toggleCompleted,
+  reopen,
   archive,
 }
