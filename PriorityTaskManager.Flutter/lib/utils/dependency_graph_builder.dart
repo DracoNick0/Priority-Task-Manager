@@ -61,6 +61,38 @@ class DependencyGraph {
 class DependencyGraphBuilder {
   const DependencyGraphBuilder._();
 
+  /// Whether making [proposedDependencyId] a prerequisite of [taskId] loops
+  /// back to the dependent through the active list's existing links.
+  static bool wouldCreateCycle(
+    List<TaskItem> tasks, {
+    required String taskId,
+    required String proposedDependencyId,
+  }) {
+    final byId = {for (final task in tasks) task.id: task};
+    if (!byId.containsKey(taskId)) {
+      throw ArgumentError.value(taskId, 'taskId', 'Task is not in this list');
+    }
+    if (!byId.containsKey(proposedDependencyId)) {
+      throw ArgumentError.value(
+        proposedDependencyId,
+        'proposedDependencyId',
+        'Prerequisite is not in this list',
+      );
+    }
+
+    final pending = Queue<String>()..add(proposedDependencyId);
+    final visited = <String>{};
+    while (pending.isNotEmpty) {
+      final id = pending.removeFirst();
+      if (id == taskId) return true;
+      if (!visited.add(id)) continue;
+      for (final dependencyId in byId[id]!.dependencies) {
+        if (byId.containsKey(dependencyId)) pending.add(dependencyId);
+      }
+    }
+    return false;
+  }
+
   static DependencyGraph build(List<TaskItem> tasks) {
     final byId = {for (final task in tasks) task.id: task};
     final adjacent = {for (final task in tasks) task.id: <String>{}};

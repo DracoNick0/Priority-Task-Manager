@@ -197,6 +197,24 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
               ),
             ],
           ),
+          action: notification.onAction == null
+              ? null
+              : SnackBarAction(
+                  label: notification.actionLabel!,
+                  onPressed: () async {
+                    try {
+                      await notification.onAction!();
+                    } on Exception catch (error) {
+                      if (!context.mounted) return;
+                      ref
+                          .read(appNotificationProvider.notifier)
+                          .state = AppNotification(
+                        'Could not ${notification.actionLabel!.toLowerCase()}: $error',
+                        icon: Icons.error_outline,
+                      );
+                    }
+                  },
+                ),
         ),
       );
   }

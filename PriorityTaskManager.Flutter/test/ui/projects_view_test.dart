@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,7 @@ import 'package:priority_task_manager/models/recurrence_rule.dart';
 import 'package:priority_task_manager/models/task_item.dart';
 import 'package:priority_task_manager/models/task_list.dart';
 import 'package:priority_task_manager/models/user_profile.dart';
+import 'package:priority_task_manager/providers/app_notifications_provider.dart';
 import 'package:priority_task_manager/providers/selection_provider.dart';
 import 'package:priority_task_manager/providers/session_provider.dart';
 import 'package:priority_task_manager/providers/task_providers.dart';
@@ -64,6 +66,14 @@ class _MemoryTasksNotifier extends TasksNotifier {
   Future<void> setCompleted(String taskId, bool completed) async {
     final index = items.indexWhere((task) => task.id == taskId);
     items[index] = items[index].copyWith(isCompleted: completed);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  @override
+  Future<void> updateTask(TaskItem task) async {
+    final index = items.indexWhere((item) => item.id == task.id);
+    items[index] = task;
     ref.invalidateSelf();
     await future;
   }
@@ -215,6 +225,96 @@ void main() {
     expect(find.text('Ready: 1'), findsOneWidget);
     expect(find.text('Waiting on: A'), findsNothing);
     expect(tasks.first.isCompleted, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('continuous rails branch to each dependent and unlink one edge', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A'),
+      _task('B'),
+      _task('C', dependencies: ['A', 'B']),
+      _task('D', dependencies: ['C']),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    final aRail = find.byKey(const ValueKey('project-rail-A'));
+    final bRail = find.byKey(const ValueKey('project-rail-B'));
+    final cRail = find.byKey(const ValueKey('project-rail-C'));
+    final dRail = find.byKey(const ValueKey('project-rail-D'));
+    expect(tester.getBottomLeft(aRail).dy, tester.getTopLeft(bRail).dy);
+    expect(tester.getBottomLeft(bRail).dy, tester.getTopLeft(cRail).dy);
+    expect(tester.getBottomLeft(cRail).dy, tester.getTopLeft(dRail).dy);
+    expect(
+      tester.getSize(cRail).width,
+      greaterThan(tester.getSize(aRail).width),
+    );
+
+    final unlinkA = find.byKey(const ValueKey('project-unlink-C-A'));
+    final unlinkB = find.byKey(const ValueKey('project-unlink-C-B'));
+    expect(unlinkA, findsOneWidget);
+    expect(unlinkB, findsOneWidget);
+    expect(
+      tester.getTopRight(unlinkA).dx,
+      lessThanOrEqualTo(
+        tester.getTopLeft(find.byKey(const ValueKey('project-task-C-2'))).dx,
+      ),
+    );
+    expect(
+      find.byTooltip('Remove dependency: C will no longer wait on A'),
+      findsOneWidget,
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(
+      location: tester.getCenter(unlinkA) - const Offset(26, 0),
+    );
+    await tester.pump();
+    expect(
+      tester.widget<IconButton>(unlinkA).color,
+      Theme.of(tester.element(unlinkA)).colorScheme.error,
+    );
+    await mouse.removePointer();
+
+    await tester.tap(unlinkA);
+    await tester.pumpAndSettle();
+    expect(tasks[2].dependencies, ['B']);
+    expect(find.byKey(const ValueKey('project-unlink-C-A')), findsNothing);
+    expect(find.byKey(const ValueKey('project-unlink-C-B')), findsOneWidget);
+
+    final notification = container.read(appNotificationProvider)!;
+    expect(notification.actionLabel, 'Undo');
+    await notification.onAction!();
+    await tester.pumpAndSettle();
+    expect(tasks[2].dependencies, ['A', 'B']);
+    expect(find.byKey(const ValueKey('project-unlink-C-A')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('undo refuses to restore an edge that became cyclic', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    await tester.tap(find.byKey(const ValueKey('project-unlink-B-A')));
+    await tester.pumpAndSettle();
+    final undo = container.read(appNotificationProvider)!.onAction!;
+    await container
+        .read(tasksProvider('list-1').notifier)
+        .updateTask(tasks.first.copyWith(dependencies: ['B']));
+    await tester.pumpAndSettle();
+
+    await undo();
+    await tester.pumpAndSettle();
+    expect(tasks.last.dependencies, isEmpty);
+    expect(
+      container.read(appNotificationProvider)!.message,
+      contains('Could not restore'),
+    );
     expect(tester.takeException(), isNull);
   });
 

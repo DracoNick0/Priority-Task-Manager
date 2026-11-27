@@ -7,13 +7,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// [appNotificationProvider]'s listener.
 @immutable
 class AppNotification {
-  const AppNotification(this.message, {this.icon = Icons.check_circle});
+  const AppNotification(
+    this.message, {
+    this.icon = Icons.check_circle,
+    this.actionLabel,
+    this.onAction,
+  }) : assert((actionLabel == null) == (onAction == null));
 
   final String message;
 
   /// Leading icon shown alongside [message]; callers pick one that matches
   /// the action (created/saved/deleted/completed).
   final IconData icon;
+
+  /// Optional one-shot SnackBar action, such as undoing a dependency edit.
+  final String? actionLabel;
+  final Future<void> Function()? onAction;
 }
 
 /// Holds the latest notification to surface. Set to a new [AppNotification]

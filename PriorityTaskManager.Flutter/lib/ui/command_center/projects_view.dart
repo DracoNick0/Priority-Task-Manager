@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -11,14 +13,107 @@ import '../../utils/dependency_graph_builder.dart';
 import '../theme/app_theme.dart';
 
 /// List-scoped backlog and dependency graph, available without a schedule.
-class ProjectsView extends ConsumerWidget {
+class ProjectsView extends ConsumerStatefulWidget {
   const ProjectsView({super.key, required this.listId});
 
   final String listId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tasksAsync = ref.watch(tasksProvider(listId));
+  ConsumerState<ProjectsView> createState() => _ProjectsViewState();
+}
+
+class _ProjectsViewState extends ConsumerState<ProjectsView> {
+  TaskItem? _taskById(List<TaskItem>? tasks, String id) {
+    if (tasks == null) return null;
+    for (final task in tasks) {
+      if (task.id == id) return task;
+    }
+    return null;
+  }
+
+  Future<void> _unlinkDependency(
+    TaskItem dependent,
+    TaskItem prerequisite,
+  ) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final provider = tasksProvider(widget.listId);
+    final tasks = container.read(provider).asData?.value;
+    final current = _taskById(tasks, dependent.id);
+    if (current == null || !current.dependencies.contains(prerequisite.id)) {
+      container
+          .read(appNotificationProvider.notifier)
+          .state = const AppNotification(
+        'This dependency is no longer available.',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+
+    final previousIndex = current.dependencies.indexOf(prerequisite.id);
+    try {
+      await container
+          .read(provider.notifier)
+          .updateTask(
+            current.copyWith(
+              dependencies: current.dependencies
+                  .where((id) => id != prerequisite.id)
+                  .toList(),
+            ),
+          );
+      if (!mounted) return;
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        'Dependency removed: ${dependent.title} no longer waits on ${prerequisite.title}',
+        icon: Icons.link_off,
+        actionLabel: 'Undo',
+        onAction: () async {
+          final latestTasks = container.read(provider).asData?.value;
+          final latest = _taskById(latestTasks, dependent.id);
+          final latestPrerequisite = _taskById(latestTasks, prerequisite.id);
+          if (latestTasks == null ||
+              latest == null ||
+              latestPrerequisite == null ||
+              latest.recurrenceRule != null ||
+              latest.isRecurringOccurrence ||
+              latestPrerequisite.recurrenceRule != null ||
+              latestPrerequisite.isRecurringOccurrence ||
+              latest.dependencies.contains(prerequisite.id) ||
+              DependencyGraphBuilder.wouldCreateCycle(
+                latestTasks,
+                taskId: dependent.id,
+                proposedDependencyId: prerequisite.id,
+              )) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = const AppNotification(
+              'Could not restore this dependency; the tasks or links changed.',
+              icon: Icons.error_outline,
+            );
+            return;
+          }
+          final restored = List<String>.of(latest.dependencies)
+            ..insert(
+              math.min(previousIndex, latest.dependencies.length),
+              prerequisite.id,
+            );
+          await container
+              .read(provider.notifier)
+              .updateTask(latest.copyWith(dependencies: restored));
+          container.read(appNotificationProvider.notifier).state =
+              const AppNotification('Dependency restored', icon: Icons.link);
+        },
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not remove dependency: $error',
+        icon: Icons.error_outline,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tasksAsync = ref.watch(tasksProvider(widget.listId));
     if (tasksAsync.isLoading && !tasksAsync.hasValue) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -49,7 +144,7 @@ class ProjectsView extends ConsumerWidget {
       onToggleCompleted: (completed) async {
         try {
           await ref
-              .read(tasksProvider(listId).notifier)
+              .read(tasksProvider(widget.listId).notifier)
               .setCompleted(task.id, completed);
           if (!context.mounted) return;
           ref.read(appNotificationProvider.notifier).state = AppNotification(
@@ -138,7 +233,11 @@ class ProjectsView extends ConsumerWidget {
           ),
           const SizedBox(height: AppTheme.spacingSm),
           for (final chain in graph.chains)
-            _ChainCard(chain: chain, buildCard: taskCard),
+            _ChainCard(
+              chain: chain,
+              buildCard: taskCard,
+              onUnlink: _unlinkDependency,
+            ),
         ],
         if (graph.readyStandalone.isNotEmpty)
           standaloneSection('Ready & Active', graph.readyStandalone),
@@ -182,10 +281,15 @@ class _SummaryMetric extends StatelessWidget {
 }
 
 class _ChainCard extends StatelessWidget {
-  const _ChainCard({required this.chain, required this.buildCard});
+  const _ChainCard({
+    required this.chain,
+    required this.buildCard,
+    required this.onUnlink,
+  });
 
   final DependencyChain chain;
   final Widget Function(TaskItem, int?) buildCard;
+  final void Function(TaskItem dependent, TaskItem prerequisite) onUnlink;
 
   @override
   Widget build(BuildContext context) {
@@ -193,6 +297,46 @@ class _ChainCard extends StatelessWidget {
     final rootLabel = chain.roots.isEmpty
         ? 'Dependency loop'
         : chain.roots.map((root) => root.title).join(' + ');
+    final indices = {
+      for (var index = 0; index < chain.steps.length; index++)
+        chain.steps[index].task.id: index,
+    };
+    final lanes = <String, double>{};
+    final cardOffsets = <String, double>{};
+    var offset = 0.0;
+    final maxDepth = chain.steps.map((step) => step.depth).reduce(math.max);
+    for (var depth = 0; depth <= maxDepth; depth++) {
+      final atDepth = chain.steps.where((step) => step.depth == depth).toList();
+      final width = 44.0 + (atDepth.length - 1) * 12.0;
+      for (var index = 0; index < atDepth.length; index++) {
+        final id = atDepth[index].task.id;
+        lanes[id] = offset + 12 + index * 12;
+        cardOffsets[id] = offset + width;
+      }
+      offset += width;
+    }
+    final links = <_RailLink>[];
+    for (var index = 0; index < chain.steps.length; index++) {
+      final dependent = chain.steps[index].task;
+      final incoming = dependent.dependencies
+          .toSet()
+          .where(indices.containsKey)
+          .toList();
+      for (var position = 0; position < incoming.length; position++) {
+        final prerequisiteId = incoming[position];
+        links.add(
+          _RailLink(
+            prerequisite: chain.steps[indices[prerequisiteId]!].task,
+            dependent: dependent,
+            fromIndex: indices[prerequisiteId]!,
+            toIndex: index,
+            railX: lanes[prerequisiteId]!,
+            branchOffset: (position - (incoming.length - 1) / 2) * 28,
+          ),
+        );
+      }
+    }
+    final minWidth = math.max(320.0, offset + 260);
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingMd),
       child: Padding(
@@ -231,36 +375,43 @@ class _ChainCard extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: AppTheme.spacingSm),
-            for (var index = 0; index < chain.steps.length; index++)
-              Padding(
-                padding: EdgeInsets.only(
-                  left:
-                      chain.steps[index].depth.clamp(0, 4) * AppTheme.spacingMd,
-                ),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+            LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: math.max(constraints.maxWidth, minWidth),
+                  child: Column(
                     children: [
-                      SizedBox(
-                        width: AppTheme.spacingLg,
-                        child: CustomPaint(
-                          painter: _StepConnectorPainter(
-                            color: colorScheme.outline,
-                            isRoot: chain.steps[index].depth == 0,
-                            hasNext: index < chain.steps.length - 1,
+                      for (var index = 0; index < chain.steps.length; index++)
+                        _DependencyRailRow(
+                          step: chain.steps[index],
+                          index: index,
+                          leadingWidth:
+                              cardOffsets[chain.steps[index].task.id]!,
+                          nodeX: lanes[chain.steps[index].task.id]!,
+                          activeLinks: links
+                              .where(
+                                (link) =>
+                                    link.fromIndex <= index &&
+                                    index <= link.toIndex,
+                              )
+                              .toList(),
+                          incomingLinks: links
+                              .where((link) => link.toIndex == index)
+                              .toList(),
+                          color: colorScheme.outline,
+                          hoverColor: colorScheme.error,
+                          onUnlink: onUnlink,
+                          child: buildCard(
+                            chain.steps[index].task,
+                            chain.steps[index].depth + 1,
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: buildCard(
-                          chain.steps[index].task,
-                          chain.steps[index].depth + 1,
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -268,16 +419,162 @@ class _ChainCard extends StatelessWidget {
   }
 }
 
-class _StepConnectorPainter extends CustomPainter {
-  const _StepConnectorPainter({
+class _RailLink {
+  const _RailLink({
+    required this.prerequisite,
+    required this.dependent,
+    required this.fromIndex,
+    required this.toIndex,
+    required this.railX,
+    required this.branchOffset,
+  });
+
+  final TaskItem prerequisite;
+  final TaskItem dependent;
+  final int fromIndex;
+  final int toIndex;
+  final double railX;
+  final double branchOffset;
+}
+
+class _DependencyRailRow extends StatefulWidget {
+  const _DependencyRailRow({
+    required this.step,
+    required this.index,
+    required this.leadingWidth,
+    required this.nodeX,
+    required this.activeLinks,
+    required this.incomingLinks,
     required this.color,
-    required this.isRoot,
-    required this.hasNext,
+    required this.hoverColor,
+    required this.onUnlink,
+    required this.child,
+  });
+
+  final DependencyStep step;
+  final int index;
+  final double leadingWidth;
+  final double nodeX;
+  final List<_RailLink> activeLinks;
+  final List<_RailLink> incomingLinks;
+  final Color color;
+  final Color hoverColor;
+  final void Function(TaskItem, TaskItem) onUnlink;
+  final Widget child;
+
+  @override
+  State<_DependencyRailRow> createState() => _DependencyRailRowState();
+}
+
+class _DependencyRailRowState extends State<_DependencyRailRow> {
+  String? _hoveredPrerequisiteId;
+
+  @override
+  Widget build(BuildContext context) => IntrinsicHeight(
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: widget.leadingWidth,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(
+                key: ValueKey('project-rail-${widget.step.task.id}'),
+                painter: _RailConnectorPainter(
+                  color: widget.color,
+                  hoverColor: widget.hoverColor,
+                  rowIndex: widget.index,
+                  nodeX: widget.nodeX,
+                  activeLinks: widget.activeLinks,
+                  incomingLinks: widget.incomingLinks,
+                  hoveredPrerequisiteId: _hoveredPrerequisiteId,
+                ),
+              ),
+              for (final link in widget.incomingLinks)
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Transform.translate(
+                      offset: Offset(0, link.branchOffset),
+                      child: MouseRegion(
+                        onEnter: (_) => setState(
+                          () => _hoveredPrerequisiteId = link.prerequisite.id,
+                        ),
+                        onExit: (_) =>
+                            setState(() => _hoveredPrerequisiteId = null),
+                        child: Tooltip(
+                          message:
+                              'Remove dependency: ${link.dependent.title} will no longer wait on ${link.prerequisite.title}',
+                          child: SizedBox(
+                            width: math.max(
+                              28,
+                              widget.leadingWidth - link.railX,
+                            ),
+                            height: 28,
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: IconButton(
+                                key: ValueKey(
+                                  'project-unlink-${link.dependent.id}-${link.prerequisite.id}',
+                                ),
+                                icon: const Icon(Icons.close, size: 16),
+                                color:
+                                    _hoveredPrerequisiteId ==
+                                        link.prerequisite.id
+                                    ? widget.hoverColor
+                                    : widget.color,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 28,
+                                  height: 28,
+                                ),
+                                onPressed: () => widget.onUnlink(
+                                  link.dependent,
+                                  link.prerequisite,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: widget.incomingLinks.length * 28 + 24,
+            ),
+            child: widget.child,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _RailConnectorPainter extends CustomPainter {
+  const _RailConnectorPainter({
+    required this.color,
+    required this.hoverColor,
+    required this.rowIndex,
+    required this.nodeX,
+    required this.activeLinks,
+    required this.incomingLinks,
+    required this.hoveredPrerequisiteId,
   });
 
   final Color color;
-  final bool isRoot;
-  final bool hasNext;
+  final Color hoverColor;
+  final int rowIndex;
+  final double nodeX;
+  final List<_RailLink> activeLinks;
+  final List<_RailLink> incomingLinks;
+  final String? hoveredPrerequisiteId;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -286,22 +583,43 @@ class _StepConnectorPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final middle = size.height / 2;
-    if (isRoot) {
-      canvas.drawCircle(Offset(8, middle), 3, paint);
-    } else {
-      canvas.drawLine(const Offset(8, 0), Offset(8, middle), paint);
+    for (final link in activeLinks) {
+      final start = link.fromIndex == rowIndex ? middle : 0.0;
+      final end = link.toIndex == rowIndex
+          ? middle + link.branchOffset - 8
+          : size.height;
+      if (start < end) {
+        canvas.drawLine(
+          Offset(link.railX, start),
+          Offset(link.railX, end),
+          paint,
+        );
+      }
     }
-    canvas.drawLine(Offset(8, middle), Offset(size.width, middle), paint);
-    if (hasNext) {
-      canvas.drawLine(Offset(8, middle), Offset(8, size.height), paint);
+    canvas.drawCircle(Offset(nodeX, middle), 3, paint);
+    canvas.drawLine(Offset(nodeX, middle), Offset(size.width, middle), paint);
+    for (final link in incomingLinks) {
+      final branchY = middle + link.branchOffset;
+      paint.color = hoveredPrerequisiteId == link.prerequisite.id
+          ? hoverColor
+          : color;
+      final branch = Path()
+        ..moveTo(link.railX, branchY - 8)
+        ..quadraticBezierTo(link.railX, branchY, link.railX + 8, branchY)
+        ..lineTo(size.width, branchY);
+      canvas.drawPath(branch, paint);
     }
   }
 
   @override
-  bool shouldRepaint(_StepConnectorPainter oldDelegate) =>
+  bool shouldRepaint(_RailConnectorPainter oldDelegate) =>
       color != oldDelegate.color ||
-      isRoot != oldDelegate.isRoot ||
-      hasNext != oldDelegate.hasNext;
+      hoverColor != oldDelegate.hoverColor ||
+      rowIndex != oldDelegate.rowIndex ||
+      nodeX != oldDelegate.nodeX ||
+      activeLinks != oldDelegate.activeLinks ||
+      incomingLinks != oldDelegate.incomingLinks ||
+      hoveredPrerequisiteId != oldDelegate.hoveredPrerequisiteId;
 }
 
 class _ProjectTaskCard extends StatelessWidget {

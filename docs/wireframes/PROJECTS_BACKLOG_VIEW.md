@@ -16,10 +16,11 @@ for acceptance criteria.
 | +-----------------------------------------------------------------------------+   |
 | | Launch initiative                         4 steps                           |   |
 | | o-- Step 1  [ ] Launch initiative  [Ready to Schedule]  [+ Add Follow-Up]  |   |
-| | |   `-- Step 2  [ ] Design          [Blocked by: Launch initiative]        |   |
+| | |                                                                     |   |
+| | +----✕-- Step 2  [ ] Design        [Blocked by: Launch initiative]        |   |
 | | |                  Waiting on: Launch initiative  [+ Add Follow-Up]        |   |
-| | |   `-- Step 2  [x] Research        [Completed]  [+ Add Follow-Up]         |   |
-| | |       `-- Step 3  [ ] QA           [Blocked by: Design]                   |   |
+| | `----✕-- Step 2  [x] Research      [Completed]  [+ Add Follow-Up]         |   |
+| |          `----✕-- Step 3  [ ] QA    [Blocked by: Design]                   |   |
 | +-----------------------------------------------------------------------------+   |
 |                                                                                   |
 | Ready & Active (1)                                                                |
@@ -36,6 +37,14 @@ multiple prerequisites can feed one dependent. Completed steps remain visible
 inside their chains for context; the collapsed Completed Tasks section also
 collects every completed task. A circular dependency displays a warning and
 each task at most once rather than looping forever.
+
+The vertical rails continue through intervening rows and turn smoothly into
+horizontal branches at the dependent card. Each prerequisite has its own rail
+and an `✕` near the dependent card, including when several prerequisites feed
+one task. Hovering over a branch or its `✕` identifies the exact link and
+highlights it. Removing a link updates the chain and offers **Undo** in a
+notification; undo is refused if the tasks have changed such that restoring
+the link would make a cycle.
 
 ## States and interactions
 
