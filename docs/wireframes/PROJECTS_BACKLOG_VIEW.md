@@ -10,6 +10,8 @@ for acceptance criteria.
 ```text
 +-----------------------------------------------------------------------------------+
 | [ Today ] [ Horizon ] [ Projects ]        Projects & Dependency Backlog          |
+| [ Search tasks by title...                                   ]                   |
+| [ All ] [ Ready ] [ Blocked ] [ Someday ] [ Completed ]                          |
 | Total: 8       Ready: 4       Blocked: 2       Completed: 2                      |
 |                                                                                   |
 | Dependency Step-Chains (1)                                                        |
@@ -17,12 +19,12 @@ for acceptance criteria.
 | | [v] Launch initiative       1 of 4 completed (25%)                       |   |
 | | [#####---------------]  Total: 3h 30m • Remaining: 2h 30m                |   |
 | | [ ] Hide completed steps                                    4 steps       |   |
-| | o-- Step 1  [ ] Launch initiative  [Ready to Schedule]  [+ Add Follow-Up]  |   |
+| | o-- Step 1  [ ] Launch initiative [Critical Path] [+ Add Follow-Up]       |   |
 | | |                                                                     |   |
-| | +----✕-- Step 2  [ ] Design        [Blocked by: Launch initiative]        |   |
+| | +----✕-- Step 2  [ ] Design [Critical Path] [Blocked by: Launch]           |   |
 | | |                  Waiting on: Launch initiative  [+ Add Follow-Up]        |   |
 | | `----✕-- Step 2  [x] Research      [Completed]  [+ Add Follow-Up]         |   |
-| |          `----✕-- Step 3  [ ] QA    [Blocked by: Design]                   |   |
+| |          `----✕-- Step 3  [ ] QA [Critical Path] [Blocked by: Design]      |   |
 | +-----------------------------------------------------------------------------+   |
 |                                                                                   |
 | Ready & Active (1)                                                                |
@@ -54,6 +56,21 @@ the chain to its title and completion summary. **Hide completed steps** is
 independent per chain: it removes completed cards from that chain's rail
 without changing progress or completion counts, and keeps unfinished steps
 visible at their original step numbers.
+
+The longest root-to-leaf route of **remaining estimated effort** in each
+acyclic chain is outlined with a primary accent, marked **Critical Path**, and
+has accent-colored connector segments. Completed steps contribute zero effort;
+an entirely completed chain or a dependency loop has no highlighted route.
+Only links on the chosen route receive the accent, not shortcuts between its
+tasks. This is a backlog estimate, not the scheduler's placement or urgency.
+
+Search matches task titles without regard to case. **All**, **Ready**,
+**Blocked**, **Someday**, and **Completed** filter the visible task cards while
+the summary counters and chain progress remain list-wide. Ready excludes the
+separate Someday / Flexible backlog. A matching chain shows only its matching
+steps; hidden prerequisites do not leave empty rail branches. The Completed
+filter opens the Completed Tasks section and does not repeat completed cards
+in chains. Switching lists resets the search and selected filter.
 
 ## States and interactions
 

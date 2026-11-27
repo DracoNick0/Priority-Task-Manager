@@ -176,4 +176,70 @@ void main() {
     expect(chain.totalMinutes, 170);
     expect(chain.remainingMinutes, 125);
   });
+
+  test(
+    'critical path follows the longest remaining branch and shifts on completion',
+    () {
+      final a = task('A', estimatedMinutes: 60);
+      final b = task('B', dependencies: ['A'], estimatedMinutes: 120);
+      final c = task('C', dependencies: ['A'], estimatedMinutes: 40);
+      final d = task('D', dependencies: ['B'], estimatedMinutes: 50);
+      final e = task('E', dependencies: ['C'], estimatedMinutes: 50);
+      final initial = DependencyGraphBuilder.build([
+        a,
+        b,
+        c,
+        d,
+        e,
+      ]).chains.single;
+
+      expect(initial.criticalPathTaskIds, {'A', 'B', 'D'});
+      expect(initial.criticalPathEdges, {('A', 'B'), ('B', 'D')});
+
+      final updated = DependencyGraphBuilder.build([
+        a,
+        b.copyWith(isCompleted: true),
+        c,
+        d,
+        e,
+      ]).chains.single;
+      expect(updated.criticalPathTaskIds, {'A', 'C', 'E'});
+      expect(updated.criticalPathEdges, {('A', 'C'), ('C', 'E')});
+    },
+  );
+
+  test('critical edges exclude shortcuts and choose the heavier root', () {
+    final diamond = DependencyGraphBuilder.build([
+      task('A', estimatedMinutes: 10),
+      task('B', dependencies: ['A'], estimatedMinutes: 20),
+      task('C', dependencies: ['A'], estimatedMinutes: 40),
+      task('D', dependencies: ['A', 'B', 'C'], estimatedMinutes: 5),
+    ]).chains.single;
+    expect(diamond.criticalPathTaskIds, {'A', 'C', 'D'});
+    expect(diamond.criticalPathEdges, {('A', 'C'), ('C', 'D')});
+    expect(diamond.criticalPathEdges, isNot(contains(('A', 'D'))));
+
+    final multipleRoots = DependencyGraphBuilder.build([
+      task('A', estimatedMinutes: 10),
+      task('X', estimatedMinutes: 70),
+      task('D', dependencies: ['A', 'X'], estimatedMinutes: 5),
+    ]).chains.single;
+    expect(multipleRoots.criticalPathTaskIds, {'X', 'D'});
+    expect(multipleRoots.criticalPathEdges, {('X', 'D')});
+  });
+
+  test('completed-only and cyclic chains have no remaining critical path', () {
+    final done = DependencyGraphBuilder.build([
+      task('A', completed: true),
+      task('B', dependencies: ['A'], completed: true),
+    ]).chains.single;
+    expect(done.criticalPathTaskIds, isEmpty);
+    expect(done.criticalPathEdges, isEmpty);
+
+    final cyclic = DependencyGraphBuilder.build([
+      task('A', dependencies: ['B']),
+      task('B', dependencies: ['A']),
+    ]).chains.single;
+    expect(cyclic.criticalPathTaskIds, isEmpty);
+  });
 }

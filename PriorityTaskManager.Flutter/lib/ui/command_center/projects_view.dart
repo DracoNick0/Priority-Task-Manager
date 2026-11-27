@@ -13,6 +13,8 @@ import '../../utils/dependency_graph_builder.dart';
 import '../theme/app_theme.dart';
 import 'link_existing_task_dialog.dart';
 
+enum _ProjectsFilter { all, ready, blocked, someday, completed }
+
 /// List-scoped backlog and dependency graph, available without a schedule.
 class ProjectsView extends ConsumerStatefulWidget {
   const ProjectsView({super.key, required this.listId});
@@ -24,6 +26,26 @@ class ProjectsView extends ConsumerStatefulWidget {
 }
 
 class _ProjectsViewState extends ConsumerState<ProjectsView> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  _ProjectsFilter _filter = _ProjectsFilter.all;
+
+  @override
+  void didUpdateWidget(covariant ProjectsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.listId != widget.listId) {
+      _searchController.clear();
+      _searchQuery = '';
+      _filter = _ProjectsFilter.all;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   TaskItem? _taskById(List<TaskItem>? tasks, String id) {
     if (tasks == null) return null;
     for (final task in tasks) {
@@ -195,6 +217,39 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
         ref.watch(sessionControllerProvider).asData?.value.status ==
         SessionStatus.guest;
     final colorScheme = Theme.of(context).colorScheme;
+    final somedayIds = graph.somedayStandalone.map((task) => task.id).toSet();
+    bool matches(TaskItem task) {
+      if (!task.title.toLowerCase().contains(_searchQuery)) return false;
+      return switch (_filter) {
+        _ProjectsFilter.all => true,
+        _ProjectsFilter.ready =>
+          graph.readinessFor(task) == ProjectTaskReadiness.ready &&
+              !somedayIds.contains(task.id),
+        _ProjectsFilter.blocked =>
+          graph.readinessFor(task) == ProjectTaskReadiness.blocked,
+        _ProjectsFilter.someday => somedayIds.contains(task.id),
+        _ProjectsFilter.completed =>
+          graph.readinessFor(task) == ProjectTaskReadiness.completed,
+      };
+    }
+
+    final matchingIds = {
+      for (final task in tasks)
+        if (matches(task)) task.id,
+    };
+    final visibleChains = _filter == _ProjectsFilter.completed
+        ? <DependencyChain>[]
+        : [
+            for (final chain in graph.chains)
+              if (chain.steps.any((step) => matchingIds.contains(step.task.id)))
+                chain,
+          ];
+    final readyStandalone = graph.readyStandalone.where(matches).toList();
+    final somedayStandalone = graph.somedayStandalone.where(matches).toList();
+    final completedTasks = graph.completedTasks.where(matches).toList();
+    final criticalTaskIds = {
+      for (final chain in graph.chains) ...chain.criticalPathTaskIds,
+    };
 
     Widget taskCard(TaskItem task, int? stepNumber) => _ProjectTaskCard(
       key: ValueKey('project-task-${task.id}-$stepNumber'),
@@ -202,6 +257,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
       graph: graph,
       isGuest: isGuest,
       stepNumber: stepNumber,
+      isCriticalPath: stepNumber != null && criticalTaskIds.contains(task.id),
       onTap: () => ref.read(selectedInspectorProvider.notifier).state =
           InspectorTarget(kind: InspectorKind.task, id: task.id, task: task),
       onFollowUp: () =>
@@ -262,6 +318,49 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
           ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: AppTheme.spacingMd),
+        TextField(
+          key: const ValueKey('projects-search'),
+          controller: _searchController,
+          decoration: InputDecoration(
+            labelText: 'Search tasks by title',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  ),
+          ),
+          onChanged: (value) =>
+              setState(() => _searchQuery = value.trim().toLowerCase()),
+        ),
+        const SizedBox(height: AppTheme.spacingSm),
+        Wrap(
+          spacing: AppTheme.spacingSm,
+          runSpacing: AppTheme.spacingXs,
+          children: [
+            for (final filter in _ProjectsFilter.values)
+              ChoiceChip(
+                key: ValueKey('projects-filter-${filter.name}'),
+                label: Text(switch (filter) {
+                  _ProjectsFilter.all => 'All',
+                  _ProjectsFilter.ready => 'Ready',
+                  _ProjectsFilter.blocked => 'Blocked',
+                  _ProjectsFilter.someday => 'Someday',
+                  _ProjectsFilter.completed => 'Completed',
+                }),
+                selected: _filter == filter,
+                onSelected: (selected) => setState(
+                  () => _filter = selected ? filter : _ProjectsFilter.all,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.spacingMd),
         Wrap(
           spacing: AppTheme.spacingSm,
           runSpacing: AppTheme.spacingSm,
@@ -294,36 +393,44 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
               ],
             ),
           ),
-        if (graph.chains.isNotEmpty) ...[
+        if (tasks.isNotEmpty && matchingIds.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppTheme.spacingLg),
+            child: Text('No tasks match your search or filter.'),
+          ),
+        if (visibleChains.isNotEmpty) ...[
           const SizedBox(height: AppTheme.spacingLg),
           Text(
-            'Dependency Step-Chains (${graph.chains.length})',
+            'Dependency Step-Chains (${visibleChains.length})',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppTheme.spacingSm),
-          for (final chain in graph.chains)
+          for (final chain in visibleChains)
             _ChainCard(
               key: ValueKey(
                 'project-chain-${chain.roots.isEmpty ? chain.steps.first.task.id : chain.roots.first.id}',
               ),
               chain: chain,
+              visibleTaskIds: matchingIds,
               buildCard: taskCard,
               onUnlink: _unlinkDependency,
             ),
         ],
-        if (graph.readyStandalone.isNotEmpty)
-          standaloneSection('Ready & Active', graph.readyStandalone),
-        if (graph.somedayStandalone.isNotEmpty)
-          standaloneSection('Someday / Flexible', graph.somedayStandalone),
-        const SizedBox(height: AppTheme.spacingLg),
-        ExpansionTile(
-          key: const ValueKey('projects-completed'),
-          tilePadding: EdgeInsets.zero,
-          title: Text('Completed Tasks (${graph.completedTasks.length})'),
-          children: [
-            for (final task in graph.completedTasks) taskCard(task, null),
-          ],
-        ),
+        if (readyStandalone.isNotEmpty)
+          standaloneSection('Ready & Active', readyStandalone),
+        if (somedayStandalone.isNotEmpty)
+          standaloneSection('Someday / Flexible', somedayStandalone),
+        if (_filter == _ProjectsFilter.all ||
+            _filter == _ProjectsFilter.completed) ...[
+          const SizedBox(height: AppTheme.spacingLg),
+          ExpansionTile(
+            key: ValueKey('projects-completed-${_filter.name}'),
+            initiallyExpanded: _filter == _ProjectsFilter.completed,
+            tilePadding: EdgeInsets.zero,
+            title: Text('Completed Tasks (${completedTasks.length})'),
+            children: [for (final task in completedTasks) taskCard(task, null)],
+          ),
+        ],
       ],
     );
   }
@@ -356,11 +463,13 @@ class _ChainCard extends StatefulWidget {
   const _ChainCard({
     super.key,
     required this.chain,
+    required this.visibleTaskIds,
     required this.buildCard,
     required this.onUnlink,
   });
 
   final DependencyChain chain;
+  final Set<String> visibleTaskIds;
   final Widget Function(TaskItem, int?) buildCard;
   final void Function(TaskItem dependent, TaskItem prerequisite) onUnlink;
 
@@ -383,7 +492,9 @@ class _ChainCardState extends State<_ChainCard> {
         : chain.roots.map((root) => root.title).join(' + ');
     final visibleSteps = [
       for (final step in chain.steps)
-        if (!_hideCompleted || !step.task.isCompleted) step,
+        if (widget.visibleTaskIds.contains(step.task.id) &&
+            (!_hideCompleted || !step.task.isCompleted))
+          step,
     ];
     final visibleDepths = <String, int>{};
     for (final step in visibleSteps) {
@@ -436,6 +547,10 @@ class _ChainCardState extends State<_ChainCard> {
             toIndex: index,
             railX: lanes[prerequisiteId]!,
             branchOffset: (position - (incoming.length - 1) / 2) * 28,
+            isCritical: chain.criticalPathEdges.contains((
+              prerequisiteId,
+              dependent.id,
+            )),
           ),
         );
       }
@@ -570,6 +685,9 @@ class _ChainCardState extends State<_ChainCard> {
                                   .toList(),
                               color: colorScheme.outline,
                               hoverColor: colorScheme.error,
+                              criticalColor: colorScheme.primary,
+                              isCriticalNode: chain.criticalPathTaskIds
+                                  .contains(visibleSteps[index].task.id),
                               onUnlink: widget.onUnlink,
                               child: widget.buildCard(
                                 visibleSteps[index].task,
@@ -597,6 +715,7 @@ class _RailLink {
     required this.toIndex,
     required this.railX,
     required this.branchOffset,
+    required this.isCritical,
   });
 
   final TaskItem prerequisite;
@@ -605,6 +724,7 @@ class _RailLink {
   final int toIndex;
   final double railX;
   final double branchOffset;
+  final bool isCritical;
 }
 
 class _DependencyRailRow extends StatefulWidget {
@@ -617,6 +737,8 @@ class _DependencyRailRow extends StatefulWidget {
     required this.incomingLinks,
     required this.color,
     required this.hoverColor,
+    required this.criticalColor,
+    required this.isCriticalNode,
     required this.onUnlink,
     required this.child,
   });
@@ -629,6 +751,8 @@ class _DependencyRailRow extends StatefulWidget {
   final List<_RailLink> incomingLinks;
   final Color color;
   final Color hoverColor;
+  final Color criticalColor;
+  final bool isCriticalNode;
   final void Function(TaskItem, TaskItem) onUnlink;
   final Widget child;
 
@@ -654,10 +778,12 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
                 painter: _RailConnectorPainter(
                   color: widget.color,
                   hoverColor: widget.hoverColor,
+                  criticalColor: widget.criticalColor,
                   rowIndex: widget.index,
                   nodeX: widget.nodeX,
                   activeLinks: widget.activeLinks,
                   incomingLinks: widget.incomingLinks,
+                  isCriticalNode: widget.isCriticalNode,
                   hoveredPrerequisiteId: _hoveredPrerequisiteId,
                 ),
               ),
@@ -693,6 +819,8 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
                                     _hoveredPrerequisiteId ==
                                         link.prerequisite.id
                                     ? widget.hoverColor
+                                    : link.isCritical
+                                    ? widget.criticalColor
                                     : widget.color,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints.tightFor(
@@ -731,19 +859,23 @@ class _RailConnectorPainter extends CustomPainter {
   const _RailConnectorPainter({
     required this.color,
     required this.hoverColor,
+    required this.criticalColor,
     required this.rowIndex,
     required this.nodeX,
     required this.activeLinks,
     required this.incomingLinks,
+    required this.isCriticalNode,
     required this.hoveredPrerequisiteId,
   });
 
   final Color color;
   final Color hoverColor;
+  final Color criticalColor;
   final int rowIndex;
   final double nodeX;
   final List<_RailLink> activeLinks;
   final List<_RailLink> incomingLinks;
+  final bool isCriticalNode;
   final String? hoveredPrerequisiteId;
 
   @override
@@ -753,25 +885,32 @@ class _RailConnectorPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final middle = size.height / 2;
-    for (final link in activeLinks) {
-      final start = link.fromIndex == rowIndex ? middle : 0.0;
-      final end = link.toIndex == rowIndex
-          ? middle + link.branchOffset - 8
-          : size.height;
-      if (start < end) {
-        canvas.drawLine(
-          Offset(link.railX, start),
-          Offset(link.railX, end),
-          paint,
-        );
+    for (final isCritical in [false, true]) {
+      for (final link in activeLinks) {
+        if (link.isCritical != isCritical) continue;
+        paint.color = isCritical ? criticalColor : color;
+        final start = link.fromIndex == rowIndex ? middle : 0.0;
+        final end = link.toIndex == rowIndex
+            ? middle + link.branchOffset - 8
+            : size.height;
+        if (start < end) {
+          canvas.drawLine(
+            Offset(link.railX, start),
+            Offset(link.railX, end),
+            paint,
+          );
+        }
       }
     }
+    paint.color = isCriticalNode ? criticalColor : color;
     canvas.drawCircle(Offset(nodeX, middle), 3, paint);
     canvas.drawLine(Offset(nodeX, middle), Offset(size.width, middle), paint);
     for (final link in incomingLinks) {
       final branchY = middle + link.branchOffset;
       paint.color = hoveredPrerequisiteId == link.prerequisite.id
           ? hoverColor
+          : link.isCritical
+          ? criticalColor
           : color;
       final branch = Path()
         ..moveTo(link.railX, branchY - 8)
@@ -785,6 +924,8 @@ class _RailConnectorPainter extends CustomPainter {
   bool shouldRepaint(_RailConnectorPainter oldDelegate) =>
       color != oldDelegate.color ||
       hoverColor != oldDelegate.hoverColor ||
+      criticalColor != oldDelegate.criticalColor ||
+      isCriticalNode != oldDelegate.isCriticalNode ||
       rowIndex != oldDelegate.rowIndex ||
       nodeX != oldDelegate.nodeX ||
       activeLinks != oldDelegate.activeLinks ||
@@ -799,6 +940,7 @@ class _ProjectTaskCard extends StatelessWidget {
     required this.graph,
     required this.isGuest,
     required this.stepNumber,
+    required this.isCriticalPath,
     required this.onTap,
     required this.onFollowUp,
     required this.onLinkExistingFollowUp,
@@ -809,6 +951,7 @@ class _ProjectTaskCard extends StatelessWidget {
   final DependencyGraph graph;
   final bool isGuest;
   final int? stepNumber;
+  final bool isCriticalPath;
   final VoidCallback onTap;
   final VoidCallback onFollowUp;
   final VoidCallback onLinkExistingFollowUp;
@@ -837,6 +980,12 @@ class _ProjectTaskCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingSm),
+      shape: isCriticalPath
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              side: BorderSide(color: colorScheme.primary, width: 1.5),
+            )
+          : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -878,6 +1027,26 @@ class _ProjectTaskCard extends StatelessWidget {
                             : null,
                       ),
                     ),
+                    if (isCriticalPath)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppTheme.spacingXs),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.route_outlined,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: AppTheme.spacingXs),
+                            Text(
+                              'Critical Path',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: colorScheme.primary),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: AppTheme.spacingXs),
                     Container(
                       padding: const EdgeInsets.symmetric(

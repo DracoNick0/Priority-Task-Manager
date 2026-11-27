@@ -404,6 +404,139 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('highlights the longest remaining path as tasks change', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A', estimatedMinutes: 60),
+      _task('B', dependencies: ['A'], estimatedMinutes: 120),
+      _task('C', dependencies: ['A'], estimatedMinutes: 40),
+      _task('D', dependencies: ['B'], estimatedMinutes: 50),
+      _task('E', dependencies: ['C'], estimatedMinutes: 50),
+    ];
+    final container = await _pumpProjects(tester, tasks);
+
+    Finder badgeFor(String id, int step) => find.descendant(
+      of: find.byKey(ValueKey('project-task-$id-$step')),
+      matching: find.text('Critical Path'),
+    );
+
+    expect(badgeFor('A', 1), findsOneWidget);
+    expect(badgeFor('B', 2), findsOneWidget);
+    expect(badgeFor('D', 3), findsOneWidget);
+    expect(badgeFor('C', 2), findsNothing);
+    expect(badgeFor('E', 3), findsNothing);
+    final criticalCard = tester.widget<Card>(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-task-B-2')),
+        matching: find.byType(Card),
+      ),
+    );
+    expect(
+      (criticalCard.shape! as RoundedRectangleBorder).side.color,
+      Theme.of(tester.element(badgeFor('B', 2))).colorScheme.primary,
+    );
+
+    await container
+        .read(tasksProvider('list-1').notifier)
+        .updateTask(tasks[1].copyWith(isCompleted: true));
+    await tester.pumpAndSettle();
+    expect(badgeFor('B', 2), findsNothing);
+    expect(badgeFor('D', 3), findsNothing);
+    expect(badgeFor('A', 1), findsOneWidget);
+    expect(badgeFor('C', 2), findsOneWidget);
+    expect(badgeFor('E', 3), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search and status filters show matching backlog tasks', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('Root', dueDate: DateTime(2026, 12, 1)),
+      _task('BlockedLeaf', dependencies: ['Root']),
+      _task('Active', dueDate: DateTime(2026, 12, 1)),
+      _task('Flexible'),
+      _task('Done', completed: true),
+      _task('DoneLinked', dependencies: ['Root'], completed: true),
+    ]);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('projects-search')),
+      'bLoCkEd',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('project-task-BlockedLeaf-2')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('project-task-Root-1')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('project-task-Active-null')),
+      findsNothing,
+    );
+    expect(find.text('Total: 6'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('projects-filter-ready')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('project-task-Root-1')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('project-task-Active-null')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('project-task-Flexible-null')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('project-task-BlockedLeaf-2')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('projects-filter-blocked')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('project-task-BlockedLeaf-2')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('project-task-Root-1')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('projects-filter-someday')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('project-task-Flexible-null')),
+      findsOneWidget,
+    );
+    expect(find.text('Dependency Step-Chains (1)'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('projects-filter-completed')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('project-task-Done-null')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('project-task-DoneLinked-null')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('project-task-DoneLinked-2')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('projects-filter-all')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('project-task-Root-1')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('project-task-BlockedLeaf-2')),
+      findsOneWidget,
+    );
+    expect(find.text('Total: 6'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('creating a follow-up saves the selected prerequisite', (
     tester,
   ) async {
@@ -424,7 +557,13 @@ void main() {
     expect(container.read(selectedInspectorProvider).prerequisiteTaskId, 'A');
     expect(find.text('Follow-up to A'), findsOneWidget);
     expect(find.byKey(const ValueKey('prerequisite-chip-A')), findsOneWidget);
-    await tester.enterText(find.byType(TextField).first, 'Next step');
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == 'Title',
+      ),
+      'Next step',
+    );
     await tester.ensureVisible(find.text('Create'));
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
@@ -570,7 +709,13 @@ void main() {
       expect(find.text('Follow-ups'), findsOneWidget);
       expect(find.byKey(const ValueKey('prerequisite-chip-A')), findsOneWidget);
       expect(find.byKey(const ValueKey('follow-up-chip-C')), findsOneWidget);
-      await tester.enterText(find.byType(TextField).first, 'Edited B');
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField && widget.decoration?.labelText == 'Title',
+        ),
+        'Edited B',
+      );
 
       await tester.tap(find.byKey(const ValueKey('link-prerequisite')));
       await tester.pumpAndSettle();

@@ -21,11 +21,19 @@ class DependencyChain {
     required this.roots,
     required this.steps,
     required this.hasCycle,
+    required this.criticalPathTaskIds,
+    required this.criticalPathEdges,
   });
 
   final List<TaskItem> roots;
   final List<DependencyStep> steps;
   final bool hasCycle;
+
+  /// Nodes on the longest route of remaining effort to a terminal task.
+  final Set<String> criticalPathTaskIds;
+
+  /// Prerequisite-to-dependent links on that route.
+  final Set<(String, String)> criticalPathEdges;
 
   int get totalCount => steps.length;
   int get completedCount => steps.where((step) => step.task.isCompleted).length;
@@ -218,6 +226,74 @@ class DependencyGraphBuilder {
       }
     }
 
-    return DependencyChain(roots: roots, steps: steps, hasCycle: hasCycle);
+    final criticalPath = hasCycle
+        ? (taskIds: <String>{}, edges: <(String, String)>{})
+        : _criticalPath(steps, dependents);
+    return DependencyChain(
+      roots: roots,
+      steps: steps,
+      hasCycle: hasCycle,
+      criticalPathTaskIds: criticalPath.taskIds,
+      criticalPathEdges: criticalPath.edges,
+    );
+  }
+
+  static ({Set<String> taskIds, Set<(String, String)> edges}) _criticalPath(
+    List<DependencyStep> steps,
+    Map<String, Set<String>> dependents,
+  ) {
+    if (steps.every((step) => step.task.isCompleted)) {
+      return (taskIds: <String>{}, edges: <(String, String)>{});
+    }
+
+    final component = {for (final step in steps) step.task.id};
+    final longestMinutes = <String, int>{};
+    final predecessor = <String, String?>{};
+    for (final step in steps) {
+      String? bestPredecessor;
+      var bestDuration = 0;
+      for (final id in step.task.dependencies.toSet().where(
+        component.contains,
+      )) {
+        final duration = longestMinutes[id];
+        if (duration == null) {
+          throw StateError('Acyclic dependency chain has an unordered link.');
+        }
+        if (bestPredecessor == null || duration > bestDuration) {
+          bestPredecessor = id;
+          bestDuration = duration;
+        }
+      }
+      predecessor[step.task.id] = bestPredecessor;
+      longestMinutes[step.task.id] =
+          bestDuration +
+          (step.task.isCompleted
+              ? 0
+              : math.max(0, step.task.estimatedDurationMinutes));
+    }
+
+    String? longestLeaf;
+    var longestRemaining = -1;
+    for (final step in steps) {
+      final id = step.task.id;
+      if (dependents[id]!.any(component.contains)) continue;
+      final duration = longestMinutes[id]!;
+      if (duration > longestRemaining) {
+        longestRemaining = duration;
+        longestLeaf = id;
+      }
+    }
+    if (longestLeaf == null) {
+      throw StateError('Acyclic dependency chain has no terminal task.');
+    }
+
+    final taskIds = <String>{};
+    final edges = <(String, String)>{};
+    for (String? id = longestLeaf; id != null; id = predecessor[id]) {
+      taskIds.add(id);
+      final parent = predecessor[id];
+      if (parent != null) edges.add((parent, id));
+    }
+    return (taskIds: taskIds, edges: edges);
   }
 }
