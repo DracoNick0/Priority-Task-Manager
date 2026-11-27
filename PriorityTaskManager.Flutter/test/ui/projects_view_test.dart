@@ -481,6 +481,77 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('gaps unrelated rails but keeps DAG branches and joins intact', (
+    tester,
+  ) async {
+    await _pumpProjects(tester, [
+      _task('A'),
+      _task('B', dependencies: ['A'], estimatedMinutes: 120),
+      _task('C', dependencies: ['A'], estimatedMinutes: 30),
+      _task('D', dependencies: ['B', 'C']),
+    ]);
+
+    final colors = Theme.of(
+      tester.element(find.byKey(const ValueKey('project-rail-D'))),
+    ).colorScheme;
+    final b = await _paintRail(tester, 'B');
+    final c = await _paintRail(tester, 'C');
+    final d = await _paintRail(tester, 'D');
+    final bBranchY = b.height / 2 - 14;
+    final cBranchY = c.height / 2 - 14;
+    final dFirstBranchY = d.height / 2 - 14;
+    final dSecondBranchY = d.height / 2 + 14;
+
+    void expectCrossing(
+      _RailPixels rail,
+      int verticalX,
+      double branchY,
+      Color verticalColor,
+      Color branchColor,
+    ) {
+      for (final offset in [-3.0, 3.0]) {
+        expect(_railAlpha(rail, verticalX, branchY + offset), 0);
+      }
+      for (final offset in [-8.0, 8.0]) {
+        expect(_railPixel(rail, verticalX, branchY + offset), verticalColor);
+      }
+      for (final offset in [-3, 3]) {
+        expect(_railPixel(rail, verticalX + offset, branchY), branchColor);
+      }
+    }
+
+    expectCrossing(c, 56, cBranchY, colors.primary, colors.outline);
+    expectCrossing(d, 68, dFirstBranchY, colors.outline, colors.primary);
+    expect(_railAlpha(b, 12, bBranchY - 3), greaterThan(0));
+    expect(_railAlpha(b, 12, bBranchY + 3), greaterThan(0));
+    expect(_railAlpha(c, 12, cBranchY - 9), greaterThan(0));
+    expect(_railAlpha(d, 56, dFirstBranchY - 9), greaterThan(0));
+    expect(_railPixel(b, b.width - 3, bBranchY), colors.primary);
+    expect(_railPixel(c, c.width - 3, cBranchY), colors.outline);
+    expect(_railPixel(d, d.width - 3, dFirstBranchY), colors.primary);
+    expect(_railPixel(d, d.width - 3, dSecondBranchY), colors.outline);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(
+      location: tester.getCenter(
+        find.byKey(const ValueKey('project-link-D-C')),
+      ),
+    );
+    await tester.pump();
+    final hoveredD = await _paintRail(tester, 'D');
+    expect(
+      _railPixel(hoveredD, hoveredD.width - 3, dFirstBranchY),
+      colors.primary,
+    );
+    expect(
+      _railPixel(hoveredD, hoveredD.width - 3, dSecondBranchY),
+      colors.tertiary,
+    );
+    expect(_railAlpha(hoveredD, 68, dFirstBranchY - 3), 0);
+    await mouse.removePointer();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('inspector chips remove one rail link without unlink buttons', (
     tester,
   ) async {

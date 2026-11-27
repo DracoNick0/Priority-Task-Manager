@@ -58,6 +58,11 @@ Leaves show no outgoing stub or circle. Search and hide-completed remove hidden
 edges without leaving phantom connectors. Hovering a branch identifies and
 highlights that link; there are no `✕` buttons on the rails. Remove individual
 links using prerequisite or follow-up chips in the inspector.
+The step-chain layout remains intact when branches cross: the horizontal branch
+continues, while an unrelated vertical rail has a small gap at the crossing.
+For example, with A -> B, A -> C, and both B and C -> D, the A -> C branch
+crosses B's rail without joining it; B -> D similarly passes C's rail.
+Actual prerequisite-to-dependent turns and shared outgoing rails remain joined.
 
 Each chain header reports completed steps, a progress bar, total estimated
 effort, and remaining effort excluding completed steps. The chevron collapses

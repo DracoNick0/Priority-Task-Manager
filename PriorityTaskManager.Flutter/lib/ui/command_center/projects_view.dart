@@ -1021,6 +1021,8 @@ class _ChainCardState extends State<_ChainCard> {
 }
 
 const _railPointSpacing = 28.0;
+const _railCornerRadius = 8.0;
+const _railCrossingHalfGap = 5.0;
 
 class _RailLink {
   const _RailLink({
@@ -1192,11 +1194,29 @@ class _RailConnectorPainter extends CustomPainter {
         paint.color = isCritical ? criticalColor : color;
         final start = link.fromIndex == rowIndex ? outgoingY : 0.0;
         final end = link.toIndex == rowIndex
-            ? middle + link.branchOffset - 8
+            ? middle + link.branchOffset - _railCornerRadius
             : size.height;
         if (start < end) {
+          final crossings = [
+            for (final branch in incomingLinks)
+              if (link.railX > branch.railX + _railCornerRadius)
+                middle + branch.branchOffset,
+          ]..sort();
+          var segmentStart = start;
+          for (final crossingY in crossings) {
+            final gapStart = crossingY - _railCrossingHalfGap;
+            final gapEnd = crossingY + _railCrossingHalfGap;
+            if (gapStart <= segmentStart || gapEnd >= end) continue;
+            // Keep the branch continuous without joining a different rail.
+            canvas.drawLine(
+              Offset(link.railX, segmentStart),
+              Offset(link.railX, gapStart),
+              paint,
+            );
+            segmentStart = gapEnd;
+          }
           canvas.drawLine(
-            Offset(link.railX, start),
+            Offset(link.railX, segmentStart),
             Offset(link.railX, end),
             paint,
           );
@@ -1220,8 +1240,13 @@ class _RailConnectorPainter extends CustomPainter {
           ? criticalColor
           : color;
       final branch = Path()
-        ..moveTo(link.railX, branchY - 8)
-        ..quadraticBezierTo(link.railX, branchY, link.railX + 8, branchY)
+        ..moveTo(link.railX, branchY - _railCornerRadius)
+        ..quadraticBezierTo(
+          link.railX,
+          branchY,
+          link.railX + _railCornerRadius,
+          branchY,
+        )
         ..lineTo(size.width, branchY);
       canvas.drawPath(branch, paint);
     }
