@@ -136,4 +136,27 @@ void main() {
     expect(graph.chains, isEmpty);
     expect(graph.readinessFor(task('Only task')), ProjectTaskReadiness.ready);
   });
+
+  test('rejects self-links and transitive cycles but allows new DAG edges', () {
+    final tasks = [
+      task('A'),
+      task('B', dependencies: ['A']),
+      task('C', dependencies: ['B']),
+      task('Independent'),
+    ];
+
+    bool cycles(String dependent, String prerequisite) =>
+        DependencyGraphBuilder.wouldCreateCycle(
+          tasks,
+          taskId: dependent,
+          proposedDependencyId: prerequisite,
+        );
+
+    expect(cycles('A', 'A'), isTrue);
+    expect(cycles('A', 'C'), isTrue);
+    expect(cycles('B', 'C'), isTrue);
+    expect(cycles('C', 'A'), isFalse);
+    expect(cycles('B', 'Independent'), isFalse);
+    expect(() => cycles('B', 'outside-list'), throwsArgumentError);
+  });
 }

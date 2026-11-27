@@ -107,6 +107,7 @@ TaskItem _task(
   List<String> dependencies = const [],
   bool completed = false,
   DateTime? dueDate,
+  RecurrenceRule? recurrenceRule,
 }) => TaskItem(
   id: id,
   listId: 'list-1',
@@ -114,6 +115,7 @@ TaskItem _task(
   dependencies: dependencies,
   isCompleted: completed,
   dueDate: dueDate,
+  recurrenceRule: recurrenceRule,
 );
 
 Future<ProviderContainer> _pumpProjects(
@@ -331,16 +333,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Create New Follow-Up'));
+    await tester.pumpAndSettle();
 
     expect(container.read(selectedInspectorProvider).isCreating, isTrue);
     expect(container.read(selectedInspectorProvider).prerequisiteTaskId, 'A');
     expect(find.text('Follow-up to A'), findsOneWidget);
-    await tester.tap(find.text('Advanced Settings'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<FilterChip>(find.widgetWithText(FilterChip, 'A')).selected,
-      isTrue,
-    );
+    expect(find.byKey(const ValueKey('prerequisite-chip-A')), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, 'Next step');
     await tester.ensureVisible(find.text('Create'));
     await tester.tap(find.text('Create'));
@@ -373,16 +372,203 @@ void main() {
             .toBoolOrNull(),
         isNot(false),
       );
-      expect(
-        tester.getSemantics(followUp).flagsCollection.isEnabled.toBoolOrNull(),
-        isTrue,
-      );
       await tester.tap(followUp);
+      await tester.pumpAndSettle();
+      expect(find.text('Link Existing Task...'), findsOneWidget);
+      await tester.tap(find.text('Create New Follow-Up'));
       expect(container.read(selectedInspectorProvider).prerequisiteTaskId, 'B');
       expect(tester.takeException(), isNull);
     } finally {
       semantics.dispose();
     }
+  });
+
+  testWidgets(
+    'links an existing task while disabling cyclic and recurring choices',
+    (tester) async {
+      final tasks = [
+        _task('A'),
+        _task('B', dependencies: ['A']),
+        _task('C', dependencies: ['B']),
+        _task('Independent'),
+        _task(
+          'Recurring',
+          recurrenceRule: DailyIntervalRecurrenceRule(
+            seriesStartDate: DateTime(2026, 11, 1),
+            endCondition: NeverEndCondition(),
+          ),
+        ),
+      ];
+      await _pumpProjects(tester, tasks);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('project-task-C-3')),
+          matching: find.text('Add Follow-Up'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Link Existing Task...'));
+      await tester.pumpAndSettle();
+
+      final cyclic = find.byKey(const ValueKey('link-candidate-A'));
+      expect(tester.widget<ListTile>(cyclic).enabled, isFalse);
+      expect(find.text('Would create a circular dependency'), findsNWidgets(2));
+      expect(
+        find.byKey(const ValueKey('link-candidate-Recurring')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('link-candidate-C')), findsNothing);
+      await tester.tap(
+        find.byKey(const ValueKey('link-candidate-Independent')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tasks[3].dependencies, ['C']);
+      expect(find.text('Waiting on: C'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('revalidates a picker choice when other links change', (
+    tester,
+  ) async {
+    final tasks = [_task('A'), _task('B')];
+    final container = await _pumpProjects(tester, tasks);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-task-A-null')),
+        matching: find.text('Add Follow-Up'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link Existing Task...'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const ValueKey('link-candidate-B')))
+          .enabled,
+      isTrue,
+    );
+
+    await container
+        .read(tasksProvider('list-1').notifier)
+        .updateTask(tasks.first.copyWith(dependencies: ['B']));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('link-candidate-B')));
+    await tester.pumpAndSettle();
+
+    expect(tasks.last.dependencies, isEmpty);
+    expect(container.read(appNotificationProvider)!.message, contains('cycle'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'inspector edits prerequisites and follow-ups without losing draft',
+    (tester) async {
+      final tasks = [
+        _task('A'),
+        _task('B', dependencies: ['A']),
+        _task('C', dependencies: ['B']),
+        _task('Independent'),
+      ];
+      await _pumpProjects(tester, tasks, withInspector: true);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('project-task-B-2')),
+          matching: find.text('B'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Prerequisites'), findsOneWidget);
+      expect(find.text('Follow-ups'), findsOneWidget);
+      expect(find.byKey(const ValueKey('prerequisite-chip-A')), findsOneWidget);
+      expect(find.byKey(const ValueKey('follow-up-chip-C')), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'Edited B');
+
+      await tester.tap(find.byKey(const ValueKey('link-prerequisite')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ListTile>(find.byKey(const ValueKey('link-candidate-C')))
+            .enabled,
+        isFalse,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('link-candidate-Independent')),
+      );
+      await tester.pumpAndSettle();
+      expect(tasks[1].dependencies, ['A', 'Independent']);
+      expect(
+        find.byKey(const ValueKey('prerequisite-chip-Independent')),
+        findsOneWidget,
+      );
+
+      final followUpChip = find.byKey(const ValueKey('follow-up-chip-C'));
+      await tester.ensureVisible(followUpChip);
+      await tester.tapAt(
+        tester.getCenter(followUpChip) +
+            Offset(tester.getSize(followUpChip).width / 2 - 14, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(tasks[2].dependencies, isEmpty);
+      expect(find.byKey(const ValueKey('follow-up-chip-C')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('link-follow-up')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('link-candidate-C')));
+      await tester.pumpAndSettle();
+      expect(tasks[2].dependencies, ['B']);
+      expect(find.byKey(const ValueKey('follow-up-chip-C')), findsOneWidget);
+
+      final prerequisiteChip = find.byKey(
+        const ValueKey('prerequisite-chip-A'),
+      );
+      await tester.ensureVisible(prerequisiteChip);
+      await tester.tapAt(
+        tester.getCenter(prerequisiteChip) +
+            Offset(tester.getSize(prerequisiteChip).width / 2 - 14, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(tasks[1].dependencies, ['Independent']);
+
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(tasks[1].title, 'Edited B');
+      expect(tasks[1].dependencies, ['Independent']);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('inspector can remove a missing prerequisite reference', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('Orphan', dependencies: ['removed-task']),
+    ];
+    await _pumpProjects(tester, tasks, withInspector: true);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-task-Orphan-null')),
+        matching: find.text('Orphan'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final chip = find.byKey(const ValueKey('prerequisite-chip-removed-task'));
+    expect(chip, findsOneWidget);
+    await tester.ensureVisible(chip);
+    await tester.tapAt(
+      tester.getCenter(chip) + Offset(tester.getSize(chip).width / 2 - 14, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tasks.single.dependencies, isEmpty);
+    expect(chip, findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Guest mode offers manual readiness without a schedule', (

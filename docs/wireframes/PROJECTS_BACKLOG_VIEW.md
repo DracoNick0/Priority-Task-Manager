@@ -57,10 +57,16 @@ the link would make a cycle.
 - Tap a card to open its task in the Right Inspector. Its checkbox can complete
   or reopen an eligible one-off task; blocked tasks are not marked complete
   directly from the backlog.
-- **Add Follow-Up** opens a new task in the inspector with the tapped one-off
-  task already selected as its prerequisite. Saving creates the link. Recurring
-  series cannot be prerequisites because recurring task dependencies are not
-  supported.
+- **Add Follow-Up** offers **Create New Follow-Up**, which opens a new task in
+  the inspector with this one-off task preselected as its prerequisite, and
+  **Link Existing Task...**, which adds this task to an existing task's
+  prerequisites. The picker excludes recurring and already-linked tasks and
+  disables links that would form a cycle.
+- The task inspector separates **Prerequisites** (this task waits on) from
+  **Follow-ups** (tasks waiting on this task). Each list has a link picker and
+  removable chips. Links on existing tasks save immediately; a new task's
+  selected prerequisites are saved with the task. Revalidation before saving
+  prevents stale selections from introducing a cycle or recurring-task link.
 - Standalone tasks without a due date or with low importance (1-3) appear in
   **Someday / Flexible**. Other independent incomplete tasks appear in
   **Ready & Active**.

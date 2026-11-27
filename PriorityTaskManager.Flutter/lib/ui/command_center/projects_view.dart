@@ -11,6 +11,7 @@ import '../../providers/session_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../utils/dependency_graph_builder.dart';
 import '../theme/app_theme.dart';
+import 'link_existing_task_dialog.dart';
 
 /// List-scoped backlog and dependency graph, available without a schedule.
 class ProjectsView extends ConsumerStatefulWidget {
@@ -111,6 +112,73 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     }
   }
 
+  Future<void> _linkExistingFollowUp(TaskItem prerequisite) async {
+    final provider = tasksProvider(widget.listId);
+    final tasks = ref.read(provider).asData?.value;
+    final currentPrerequisite = _taskById(tasks, prerequisite.id);
+    if (tasks == null ||
+        currentPrerequisite == null ||
+        currentPrerequisite.recurrenceRule != null ||
+        currentPrerequisite.isRecurringOccurrence) {
+      ref.read(appNotificationProvider.notifier).state = const AppNotification(
+        'Only one-off tasks in this list can be linked.',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+
+    final selected = await showLinkExistingTaskDialog(
+      context,
+      tasks: tasks,
+      task: currentPrerequisite,
+      direction: DependencyLinkDirection.followUp,
+    );
+    if (!mounted || selected == null) return;
+
+    final latestTasks = ref.read(provider).asData?.value;
+    final latestPrerequisite = _taskById(latestTasks, prerequisite.id);
+    final dependent = _taskById(latestTasks, selected.id);
+    if (latestTasks == null ||
+        latestPrerequisite == null ||
+        dependent == null ||
+        latestPrerequisite.recurrenceRule != null ||
+        latestPrerequisite.isRecurringOccurrence ||
+        dependent.recurrenceRule != null ||
+        dependent.isRecurringOccurrence ||
+        dependent.dependencies.contains(prerequisite.id) ||
+        DependencyGraphBuilder.wouldCreateCycle(
+          latestTasks,
+          taskId: dependent.id,
+          proposedDependencyId: prerequisite.id,
+        )) {
+      ref.read(appNotificationProvider.notifier).state = const AppNotification(
+        'Could not link these tasks; they changed or would form a cycle.',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+    try {
+      await ref
+          .read(provider.notifier)
+          .updateTask(
+            dependent.copyWith(
+              dependencies: [...dependent.dependencies, prerequisite.id],
+            ),
+          );
+      if (!mounted) return;
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        '${dependent.title} now waits on ${prerequisite.title}',
+        icon: Icons.link,
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not link tasks: $error',
+        icon: Icons.error_outline,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksProvider(widget.listId));
@@ -141,6 +209,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
             kind: InspectorKind.task,
             prerequisiteTaskId: task.id,
           ),
+      onLinkExistingFollowUp: () => _linkExistingFollowUp(task),
       onToggleCompleted: (completed) async {
         try {
           await ref
@@ -631,6 +700,7 @@ class _ProjectTaskCard extends StatelessWidget {
     required this.stepNumber,
     required this.onTap,
     required this.onFollowUp,
+    required this.onLinkExistingFollowUp,
     required this.onToggleCompleted,
   });
 
@@ -640,6 +710,7 @@ class _ProjectTaskCard extends StatelessWidget {
   final int? stepNumber;
   final VoidCallback onTap;
   final VoidCallback onFollowUp;
+  final VoidCallback onLinkExistingFollowUp;
   final ValueChanged<bool> onToggleCompleted;
 
   @override
@@ -757,13 +828,37 @@ class _ProjectTaskCard extends StatelessWidget {
                       ),
                     if (task.recurrenceRule == null &&
                         !task.isRecurringOccurrence)
-                      TextButton.icon(
-                        onPressed: onFollowUp,
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Add Follow-Up'),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
+                      PopupMenuButton<_FollowUpAction>(
+                        tooltip: 'Follow-up actions',
+                        onSelected: (action) {
+                          switch (action) {
+                            case _FollowUpAction.create:
+                              onFollowUp();
+                            case _FollowUpAction.link:
+                              onLinkExistingFollowUp();
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: _FollowUpAction.create,
+                            child: Text('Create New Follow-Up'),
+                          ),
+                          PopupMenuItem(
+                            value: _FollowUpAction.link,
+                            child: Text('Link Existing Task...'),
+                          ),
+                        ],
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add, size: 16),
+                              SizedBox(width: AppTheme.spacingXs),
+                              Text('Add Follow-Up'),
+                              Icon(Icons.arrow_drop_down, size: 18),
+                            ],
+                          ),
                         ),
                       ),
                   ],
@@ -776,3 +871,5 @@ class _ProjectTaskCard extends StatelessWidget {
     );
   }
 }
+
+enum _FollowUpAction { create, link }
