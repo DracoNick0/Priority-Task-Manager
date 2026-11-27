@@ -318,14 +318,14 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     }
   }
 
-  Future<void> _linkExistingFollowUp(TaskItem prerequisite) async {
+  Future<void> _linkExistingTask(
+    TaskItem task,
+    DependencyLinkDirection direction,
+  ) async {
     final provider = tasksProvider(widget.listId);
     final tasks = ref.read(provider).asData?.value;
-    final currentPrerequisite = _taskById(tasks, prerequisite.id);
-    if (tasks == null ||
-        currentPrerequisite == null ||
-        currentPrerequisite.recurrenceRule != null ||
-        currentPrerequisite.isRecurringOccurrence) {
+    final currentTask = _taskById(tasks, task.id);
+    if (tasks == null || currentTask == null || !_isOneOff(currentTask)) {
       ref.read(appNotificationProvider.notifier).state = const AppNotification(
         'Only one-off tasks in this list can be linked.',
         icon: Icons.error_outline,
@@ -336,27 +336,21 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     final selected = await showLinkExistingTaskDialog(
       context,
       tasks: tasks,
-      task: currentPrerequisite,
-      direction: DependencyLinkDirection.followUp,
+      task: currentTask,
+      direction: direction,
     );
     if (!mounted || selected == null) return;
 
     final latestTasks = ref.read(provider).asData?.value;
-    final latestPrerequisite = _taskById(latestTasks, prerequisite.id);
-    final dependent = _taskById(latestTasks, selected.id);
+    final isFollowUp = direction == DependencyLinkDirection.followUp;
+    final dependentId = isFollowUp ? selected.id : task.id;
+    final prerequisiteId = isFollowUp ? task.id : selected.id;
+    final dependent = _taskById(latestTasks, dependentId);
+    final prerequisite = _taskById(latestTasks, prerequisiteId);
     if (latestTasks == null ||
-        latestPrerequisite == null ||
         dependent == null ||
-        latestPrerequisite.recurrenceRule != null ||
-        latestPrerequisite.isRecurringOccurrence ||
-        dependent.recurrenceRule != null ||
-        dependent.isRecurringOccurrence ||
-        dependent.dependencies.contains(prerequisite.id) ||
-        DependencyGraphBuilder.wouldCreateCycle(
-          latestTasks,
-          taskId: dependent.id,
-          proposedDependencyId: prerequisite.id,
-        )) {
+        prerequisite == null ||
+        _dropLinkError(latestTasks, dependentId, prerequisiteId) != null) {
       ref.read(appNotificationProvider.notifier).state = const AppNotification(
         'Could not link these tasks; they changed or would form a cycle.',
         icon: Icons.error_outline,
@@ -368,7 +362,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
           .read(provider.notifier)
           .updateTask(
             dependent.copyWith(
-              dependencies: [...dependent.dependencies, prerequisite.id],
+              dependencies: [...dependent.dependencies, prerequisiteId],
             ),
           );
       if (!mounted) return;
@@ -380,6 +374,58 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
       if (!mounted) return;
       ref.read(appNotificationProvider.notifier).state = AppNotification(
         'Could not link tasks: $error',
+        icon: Icons.error_outline,
+      );
+    }
+  }
+
+  Future<void> _archiveTask(TaskItem task) async {
+    if (ref.read(sessionControllerProvider).asData?.value.status !=
+        SessionStatus.authenticated) {
+      ref.read(appNotificationProvider.notifier).state = const AppNotification(
+        'Archive is available after signing in.',
+        icon: Icons.info_outline,
+      );
+      return;
+    }
+
+    final provider = tasksProvider(widget.listId);
+    final current = _taskById(ref.read(provider).asData?.value, task.id);
+    if (current == null) {
+      ref.read(appNotificationProvider.notifier).state = const AppNotification(
+        'Could not archive this task; it is no longer available.',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+    if (!_isOneOff(current)) {
+      ref.read(selectedInspectorProvider.notifier).state = InspectorTarget(
+        kind: InspectorKind.task,
+        id: current.id,
+        task: current,
+      );
+      ref.read(appNotificationProvider.notifier).state = const AppNotification(
+        'Use the inspector archive action to choose a recurring-task scope.',
+        icon: Icons.info_outline,
+      );
+      return;
+    }
+
+    try {
+      await ref.read(provider.notifier).archiveTask(current.id);
+      if (!mounted) return;
+      if (ref.read(selectedInspectorProvider).id == current.id) {
+        ref.read(selectedInspectorProvider.notifier).state =
+            const InspectorTarget.none();
+      }
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        '${current.title} archived',
+        icon: Icons.archive_outlined,
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not archive task: $error',
         icon: Icons.error_outline,
       );
     }
@@ -453,7 +499,14 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
               kind: InspectorKind.task,
               prerequisiteTaskId: task.id,
             ),
-        onLinkExistingFollowUp: () => _linkExistingFollowUp(task),
+        onLinkExistingFollowUp: () =>
+            _linkExistingTask(task, DependencyLinkDirection.followUp),
+        onLinkPrerequisite: () =>
+            _linkExistingTask(task, DependencyLinkDirection.prerequisite),
+        onLinkFollowUp: () =>
+            _linkExistingTask(task, DependencyLinkDirection.followUp),
+        onDetach: () => _detachDroppedTask(task.id),
+        onArchive: () => _archiveTask(task),
         onToggleCompleted: (completed) async {
           try {
             await ref
@@ -1279,6 +1332,10 @@ class _ProjectTaskCard extends StatelessWidget {
     required this.onTap,
     required this.onFollowUp,
     required this.onLinkExistingFollowUp,
+    required this.onLinkPrerequisite,
+    required this.onLinkFollowUp,
+    required this.onDetach,
+    required this.onArchive,
     required this.onToggleCompleted,
   });
 
@@ -1290,6 +1347,10 @@ class _ProjectTaskCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onFollowUp;
   final VoidCallback onLinkExistingFollowUp;
+  final VoidCallback onLinkPrerequisite;
+  final VoidCallback onLinkFollowUp;
+  final VoidCallback onDetach;
+  final VoidCallback onArchive;
   final ValueChanged<bool> onToggleCompleted;
 
   @override
@@ -1300,6 +1361,7 @@ class _ProjectTaskCard extends StatelessWidget {
     final waitingNames = waitingOn.map((item) => item.title).join(', ');
     final isBlocked = readiness == ProjectTaskReadiness.blocked;
     final isCompleted = readiness == ProjectTaskReadiness.completed;
+    final isOneOff = task.recurrenceRule == null && !task.isRecurringOccurrence;
     final statusColor = isBlocked
         ? (Theme.of(context).brightness == Brightness.dark
               ? Colors.amber.shade300
@@ -1334,8 +1396,7 @@ class _ProjectTaskCard extends StatelessWidget {
                 child: Checkbox(
                   visualDensity: VisualDensity.compact,
                   value: task.isCompleted,
-                  onChanged:
-                      (isBlocked && !isCompleted) || task.recurrenceRule != null
+                  onChanged: (isBlocked && !isCompleted) || !isOneOff
                       ? null
                       : (value) {
                           if (value != null) onToggleCompleted(value);
@@ -1443,8 +1504,7 @@ class _ProjectTaskCard extends StatelessWidget {
                           color: colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    if (task.recurrenceRule == null &&
-                        !task.isRecurringOccurrence)
+                    if (isOneOff)
                       PopupMenuButton<_FollowUpAction>(
                         tooltip: 'Follow-up actions',
                         onSelected: (action) {
@@ -1481,6 +1541,62 @@ class _ProjectTaskCard extends StatelessWidget {
                   ],
                 ),
               ),
+              PopupMenuButton<_ProjectCardAction>(
+                key: ValueKey('project-actions-${task.id}-$stepNumber'),
+                tooltip: 'Task actions',
+                icon: const Icon(Icons.more_horiz),
+                onSelected: (action) {
+                  switch (action) {
+                    case _ProjectCardAction.linkPrerequisite:
+                      onLinkPrerequisite();
+                    case _ProjectCardAction.linkFollowUp:
+                      onLinkFollowUp();
+                    case _ProjectCardAction.detach:
+                      onDetach();
+                    case _ProjectCardAction.toggleCompleted:
+                      onToggleCompleted(!isCompleted);
+                    case _ProjectCardAction.archive:
+                      onArchive();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: _ProjectCardAction.linkPrerequisite,
+                    enabled: isOneOff,
+                    child: const Text('Link Prerequisite...'),
+                  ),
+                  PopupMenuItem(
+                    value: _ProjectCardAction.linkFollowUp,
+                    enabled: isOneOff,
+                    child: const Text('Link Follow-Up...'),
+                  ),
+                  if (stepNumber != null || task.dependencies.isNotEmpty)
+                    PopupMenuItem(
+                      value: _ProjectCardAction.detach,
+                      enabled: isOneOff && task.dependencies.isNotEmpty,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Detach from Chain'),
+                          if (task.dependencies.isEmpty)
+                            Text(
+                              'No incoming links to remove',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                        ],
+                      ),
+                    ),
+                  PopupMenuItem(
+                    value: _ProjectCardAction.toggleCompleted,
+                    enabled: isOneOff && (!isBlocked || isCompleted),
+                    child: Text(isCompleted ? 'Reopen' : 'Mark Complete'),
+                  ),
+                  const PopupMenuItem(
+                    value: _ProjectCardAction.archive,
+                    child: Text('Archive Task'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -1490,3 +1606,11 @@ class _ProjectTaskCard extends StatelessWidget {
 }
 
 enum _FollowUpAction { create, link }
+
+enum _ProjectCardAction {
+  linkPrerequisite,
+  linkFollowUp,
+  detach,
+  toggleCompleted,
+  archive,
+}

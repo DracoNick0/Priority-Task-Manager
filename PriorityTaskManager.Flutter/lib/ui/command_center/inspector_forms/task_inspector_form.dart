@@ -596,7 +596,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
         if (!_recurrenceEnabled &&
             existing?.recurrenceRule == null &&
             existing?.isRecurringOccurrence != true)
-          _buildDependencySection(tasks, existing),
+          _buildDependencySection(tasks, existing)
+        else
+          const SizedBox.shrink(),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(

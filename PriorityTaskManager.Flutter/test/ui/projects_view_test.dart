@@ -77,6 +77,13 @@ class _MemoryTasksNotifier extends TasksNotifier {
     ref.invalidateSelf();
     await future;
   }
+
+  @override
+  Future<void> archiveTask(String taskId) async {
+    items.removeWhere((task) => task.id == taskId);
+    ref.invalidateSelf();
+    await future;
+  }
 }
 
 class _Session extends SessionController {
@@ -178,6 +185,15 @@ Future<TestGesture> _startTaskDrag(
   final gesture = await tester.startGesture(tester.getCenter(source));
   await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
   return gesture;
+}
+
+Future<void> _openTaskActions(
+  WidgetTester tester,
+  String taskId,
+  int? stepNumber,
+) async {
+  await tester.tap(find.byKey(ValueKey('project-actions-$taskId-$stepNumber')));
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -741,6 +757,166 @@ void main() {
     expect(
       container.read(appNotificationProvider)!.message,
       contains('Could not restore'),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('card actions link both directions and detach prerequisites', (
+    tester,
+  ) async {
+    final tasks = [_task('A'), _task('B'), _task('C')];
+    final container = await _pumpProjects(tester, tasks);
+
+    await _openTaskActions(tester, 'B', null);
+    expect(find.text('Link Prerequisite...'), findsOneWidget);
+    expect(find.text('Link Follow-Up...'), findsOneWidget);
+    expect(find.text('Mark Complete'), findsOneWidget);
+    expect(find.text('Archive Task'), findsOneWidget);
+    await tester.tap(find.text('Link Prerequisite...'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('link-candidate-A')));
+    await tester.pumpAndSettle();
+    expect(tasks[1].dependencies, ['A']);
+
+    await _openTaskActions(tester, 'B', 2);
+    expect(find.text('Detach from Chain'), findsOneWidget);
+    await tester.tap(find.text('Link Follow-Up...'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('link-candidate-C')));
+    await tester.pumpAndSettle();
+    expect(tasks[2].dependencies, ['B']);
+
+    await _openTaskActions(tester, 'B', 2);
+    await tester.tap(find.text('Detach from Chain'));
+    await tester.pumpAndSettle();
+    expect(tasks[1].dependencies, isEmpty);
+    expect(tasks[2].dependencies, ['B']);
+    expect(find.byKey(const ValueKey('project-task-B-1')), findsOneWidget);
+    expect(container.read(appNotificationProvider)!.actionLabel, 'Undo');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('card prerequisite picker disables cyclic candidates', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+      _task('C', dependencies: ['B']),
+    ];
+    await _pumpProjects(tester, tasks);
+
+    await _openTaskActions(tester, 'A', 1);
+    await tester.tap(find.text('Link Prerequisite...'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const ValueKey('link-candidate-C')))
+          .enabled,
+      isFalse,
+    );
+    expect(find.text('Would create a circular dependency'), findsNWidgets(2));
+    expect(tasks.first.dependencies, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('card actions disable blocked completion and allow reopening', (
+    tester,
+  ) async {
+    final tasks = [
+      _task('A'),
+      _task('B', dependencies: ['A']),
+    ];
+    await _pumpProjects(tester, tasks);
+
+    await _openTaskActions(tester, 'B', 2);
+    final blockedAction = find.ancestor(
+      of: find.text('Mark Complete'),
+      matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+    );
+    expect(tester.widget<PopupMenuItem>(blockedAction).enabled, isFalse);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+
+    await _openTaskActions(tester, 'A', 1);
+    expect(find.text('No incoming links to remove'), findsOneWidget);
+    await tester.tap(find.text('Mark Complete'));
+    await tester.pumpAndSettle();
+    expect(tasks.first.isCompleted, isTrue);
+
+    await _openTaskActions(tester, 'B', 2);
+    await tester.tap(find.text('Mark Complete'));
+    await tester.pumpAndSettle();
+    expect(tasks.last.isCompleted, isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('projects-filter-completed')));
+    await tester.pumpAndSettle();
+    await _openTaskActions(tester, 'B', null);
+    await tester.tap(find.text('Reopen'));
+    await tester.pumpAndSettle();
+    expect(tasks.last.isCompleted, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Archive Task archives authenticated one-off tasks', (
+    tester,
+  ) async {
+    final tasks = [_task('A', dueDate: DateTime(2026, 12, 1))];
+    final container = await _pumpProjects(tester, tasks, withInspector: true);
+    await tester.tap(find.text('A').first);
+    await tester.pumpAndSettle();
+    expect(container.read(selectedInspectorProvider).id, 'A');
+
+    await _openTaskActions(tester, 'A', null);
+    await tester.tap(find.text('Archive Task'));
+    await tester.pumpAndSettle();
+    expect(tasks, isEmpty);
+    expect(container.read(selectedInspectorProvider).kind, InspectorKind.none);
+    expect(container.read(appNotificationProvider)!.message, 'A archived');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Archive Task explains Guest mode restrictions', (tester) async {
+    final guestTasks = [_task('Guest Task')];
+    final guestContainer = await _pumpProjects(tester, guestTasks, guest: true);
+    await _openTaskActions(tester, 'Guest Task', null);
+    await tester.tap(find.text('Archive Task'));
+    await tester.pumpAndSettle();
+    expect(guestTasks, hasLength(1));
+    expect(
+      guestContainer.read(appNotificationProvider)!.message,
+      contains('signing in'),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Archive Task routes recurring series to the scoped inspector', (
+    tester,
+  ) async {
+    final tasks = [
+      _task(
+        'Recurring',
+        recurrenceRule: DailyIntervalRecurrenceRule(
+          seriesStartDate: DateTime(2026, 11, 1),
+          endCondition: NeverEndCondition(),
+        ),
+      ),
+    ];
+    final container = await _pumpProjects(tester, tasks, withInspector: true);
+    await _openTaskActions(tester, 'Recurring', null);
+    final linkAction = find.ancestor(
+      of: find.text('Link Prerequisite...'),
+      matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+    );
+    expect(tester.widget<PopupMenuItem>(linkAction).enabled, isFalse);
+    await tester.tap(find.text('Archive Task'));
+    await tester.pumpAndSettle();
+
+    expect(tasks, hasLength(1));
+    expect(container.read(selectedInspectorProvider).id, 'Recurring');
+    expect(
+      container.read(appNotificationProvider)!.message,
+      contains('recurring-task scope'),
     );
     expect(tester.takeException(), isNull);
   });
