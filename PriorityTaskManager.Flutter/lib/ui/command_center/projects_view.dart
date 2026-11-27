@@ -238,6 +238,92 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     }
   }
 
+  Future<void> _unlinkDependency(
+    String dependentId,
+    String prerequisiteId,
+  ) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final provider = tasksProvider(widget.listId);
+    final tasks = container.read(provider).asData?.value;
+    final dependent = _taskById(tasks, dependentId);
+    final prerequisite = _taskById(tasks, prerequisiteId);
+    if (dependent == null ||
+        prerequisite == null ||
+        !dependent.dependencies.contains(prerequisiteId)) {
+      container
+          .read(appNotificationProvider.notifier)
+          .state = const AppNotification(
+        'Could not unlink these tasks; the link changed.',
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+
+    try {
+      await container
+          .read(provider.notifier)
+          .updateTask(
+            dependent.copyWith(
+              dependencies: dependent.dependencies
+                  .where((id) => id != prerequisiteId)
+                  .toList(),
+            ),
+          );
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        '${dependent.title} no longer waits on ${prerequisite.title}',
+        icon: Icons.link_off,
+        actionLabel: 'Undo',
+        onAction: () async {
+          final latestTasks = container.read(provider).asData?.value;
+          final latest = _taskById(latestTasks, dependentId);
+          final latestPrerequisite = _taskById(latestTasks, prerequisiteId);
+          if (latestTasks == null ||
+              latest == null ||
+              latestPrerequisite == null ||
+              !_isOneOff(latest) ||
+              !_isOneOff(latestPrerequisite) ||
+              latest.dependencies.contains(prerequisiteId) ||
+              DependencyGraphBuilder.wouldCreateCycle(
+                latestTasks,
+                taskId: dependentId,
+                proposedDependencyId: prerequisiteId,
+              )) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = const AppNotification(
+              'Could not restore this link; the tasks or dependencies changed.',
+              icon: Icons.error_outline,
+            );
+            return;
+          }
+          try {
+            await container
+                .read(provider.notifier)
+                .updateTask(
+                  latest.copyWith(
+                    dependencies: [...latest.dependencies, prerequisiteId],
+                  ),
+                );
+            container.read(appNotificationProvider.notifier).state =
+                const AppNotification('Link restored', icon: Icons.link);
+          } on Exception catch (error) {
+            container
+                .read(appNotificationProvider.notifier)
+                .state = AppNotification(
+              'Could not restore link: $error',
+              icon: Icons.error_outline,
+            );
+          }
+        },
+      );
+    } on Exception catch (error) {
+      container.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not unlink tasks: $error',
+        icon: Icons.error_outline,
+      );
+    }
+  }
+
   Future<void> _linkExistingTask(
     TaskItem task,
     DependencyLinkDirection direction,
@@ -299,21 +385,22 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     }
   }
 
-  Future<void> _archiveTask(TaskItem task) async {
-    if (ref.read(sessionControllerProvider).asData?.value.status !=
-        SessionStatus.authenticated) {
+  Future<void> _removeTask(TaskItem task) async {
+    final status = ref.read(sessionControllerProvider).asData?.value.status;
+    if (status != SessionStatus.guest &&
+        status != SessionStatus.authenticated) {
       ref.read(appNotificationProvider.notifier).state = const AppNotification(
-        'Archive is available after signing in.',
-        icon: Icons.info_outline,
+        'Could not remove this task; session is unavailable.',
+        icon: Icons.error_outline,
       );
       return;
     }
-
+    final isGuest = status == SessionStatus.guest;
     final provider = tasksProvider(widget.listId);
     final current = _taskById(ref.read(provider).asData?.value, task.id);
     if (current == null) {
-      ref.read(appNotificationProvider.notifier).state = const AppNotification(
-        'Could not archive this task; it is no longer available.',
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        'Could not ${isGuest ? 'delete' : 'archive'} this task; it is no longer available.',
         icon: Icons.error_outline,
       );
       return;
@@ -332,20 +419,24 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
     }
 
     try {
-      await ref.read(provider.notifier).archiveTask(current.id);
+      if (isGuest) {
+        await ref.read(provider.notifier).deleteTask(current.id);
+      } else {
+        await ref.read(provider.notifier).archiveTask(current.id);
+      }
       if (!mounted) return;
       if (ref.read(selectedInspectorProvider).id == current.id) {
         ref.read(selectedInspectorProvider.notifier).state =
             const InspectorTarget.none();
       }
       ref.read(appNotificationProvider.notifier).state = AppNotification(
-        '${current.title} archived',
-        icon: Icons.archive_outlined,
+        '${current.title} ${isGuest ? 'deleted' : 'archived'}',
+        icon: isGuest ? Icons.delete_outline : Icons.archive_outlined,
       );
     } on Exception catch (error) {
       if (!mounted) return;
       ref.read(appNotificationProvider.notifier).state = AppNotification(
-        'Could not archive task: $error',
+        'Could not ${isGuest ? 'delete' : 'archive'} task: $error',
         icon: Icons.error_outline,
       );
     }
@@ -480,7 +571,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
         onLinkFollowUp: () =>
             _linkExistingTask(task, DependencyLinkDirection.followUp),
         onDetach: () => _detachDroppedTask(task.id),
-        onArchive: () => _archiveTask(task),
+        onRemove: () => _removeTask(task),
         onToggleCompleted: (completed) async {
           try {
             await ref
@@ -697,6 +788,7 @@ class _ProjectsViewState extends ConsumerState<ProjectsView> {
               chain: chain,
               visibleTaskIds: matchingIds,
               buildCard: taskCard,
+              onUnlink: _unlinkDependency,
             ),
         ],
         if (draggedTask != null &&
@@ -796,11 +888,13 @@ class _ChainCard extends StatefulWidget {
     required this.chain,
     required this.visibleTaskIds,
     required this.buildCard,
+    required this.onUnlink,
   });
 
   final DependencyChain chain;
   final Set<String> visibleTaskIds;
   final Widget Function(TaskItem, int?) buildCard;
+  final void Function(String dependentId, String prerequisiteId) onUnlink;
 
   @override
   State<_ChainCard> createState() => _ChainCardState();
@@ -1033,6 +1127,7 @@ class _ChainCardState extends State<_ChainCard> {
                                 (link) =>
                                     link.fromIndex == index && link.isCritical,
                               ),
+                              onUnlink: widget.onUnlink,
                               child: widget.buildCard(
                                 visibleSteps[index].task,
                                 visibleSteps[index].depth + 1,
@@ -1088,6 +1183,7 @@ class _DependencyRailRow extends StatefulWidget {
     required this.hoverColor,
     required this.criticalColor,
     required this.isCriticalOutgoing,
+    required this.onUnlink,
     required this.child,
   });
 
@@ -1102,6 +1198,7 @@ class _DependencyRailRow extends StatefulWidget {
   final Color hoverColor;
   final Color criticalColor;
   final bool isCriticalOutgoing;
+  final void Function(String dependentId, String prerequisiteId) onUnlink;
   final Widget child;
 
   @override
@@ -1153,13 +1250,38 @@ class _DependencyRailRowState extends State<_DependencyRailRow> {
                             setState(() => _hoveredPrerequisiteId = null),
                         child: Tooltip(
                           message:
-                              '${link.dependent.title} depends on ${link.prerequisite.title}. Edit links in the inspector.',
+                              '${link.dependent.title} depends on ${link.prerequisite.title}. Hover to unlink.',
                           child: SizedBox(
                             width: math.max(
                               _railPointSpacing,
                               widget.leadingWidth - link.railX,
                             ),
                             height: _railPointSpacing,
+                            child:
+                                _hoveredPrerequisiteId == link.prerequisite.id
+                                ? Align(
+                                    alignment: Alignment.centerRight,
+                                    child: IconButton(
+                                      key: ValueKey(
+                                        'project-unlink-${link.dependent.id}-${link.prerequisite.id}',
+                                      ),
+                                      tooltip:
+                                          'Unlink ${link.dependent.title} from ${link.prerequisite.title}',
+                                      icon: const Icon(Icons.close, size: 16),
+                                      color: widget.hoverColor,
+                                      padding: EdgeInsets.zero,
+                                      constraints:
+                                          const BoxConstraints.tightFor(
+                                            width: _railPointSpacing,
+                                            height: _railPointSpacing,
+                                          ),
+                                      onPressed: () => widget.onUnlink(
+                                        link.dependent.id,
+                                        link.prerequisite.id,
+                                      ),
+                                    ),
+                                  )
+                                : null,
                           ),
                         ),
                       ),
@@ -1310,7 +1432,7 @@ class _ProjectTaskCard extends StatelessWidget {
     required this.onLinkPrerequisite,
     required this.onLinkFollowUp,
     required this.onDetach,
-    required this.onArchive,
+    required this.onRemove,
     required this.onToggleCompleted,
   });
 
@@ -1324,7 +1446,7 @@ class _ProjectTaskCard extends StatelessWidget {
   final VoidCallback onLinkPrerequisite;
   final VoidCallback onLinkFollowUp;
   final VoidCallback onDetach;
-  final VoidCallback onArchive;
+  final VoidCallback onRemove;
   final ValueChanged<bool> onToggleCompleted;
 
   @override
@@ -1495,8 +1617,8 @@ class _ProjectTaskCard extends StatelessWidget {
                               onDetach();
                             case _ProjectCardAction.reopen:
                               onToggleCompleted(false);
-                            case _ProjectCardAction.archive:
-                              onArchive();
+                            case _ProjectCardAction.remove:
+                              onRemove();
                           }
                         },
                         itemBuilder: (context) => [
@@ -1535,9 +1657,11 @@ class _ProjectTaskCard extends StatelessWidget {
                               enabled: isOneOff,
                               child: const Text('Reopen'),
                             ),
-                          const PopupMenuItem(
-                            value: _ProjectCardAction.archive,
-                            child: Text('Archive Task'),
+                          PopupMenuItem(
+                            value: _ProjectCardAction.remove,
+                            child: Text(
+                              isGuest ? 'Delete Task' : 'Archive Task',
+                            ),
                           ),
                         ],
                       ),
@@ -1569,5 +1693,5 @@ enum _ProjectCardAction {
   linkFollowUp,
   detach,
   reopen,
-  archive,
+  remove,
 }

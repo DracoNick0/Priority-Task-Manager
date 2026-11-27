@@ -87,6 +87,20 @@ class _MemoryTasksNotifier extends TasksNotifier {
     ref.invalidateSelf();
     await future;
   }
+
+  @override
+  Future<void> deleteTask(String taskId) async {
+    items.removeWhere((task) => task.id == taskId);
+    for (var index = 0; index < items.length; index++) {
+      items[index] = items[index].copyWith(
+        dependencies: items[index].dependencies
+            .where((id) => id != taskId)
+            .toList(),
+      );
+    }
+    ref.invalidateSelf();
+    await future;
+  }
 }
 
 class _Session extends SessionController {
@@ -450,14 +464,8 @@ void main() {
     expect(_railAlpha(leaf, leaf.width - 29, leaf.height / 2 + 2), 0);
     expect(find.byKey(const ValueKey('project-unlink-C-A')), findsNothing);
     expect(find.byKey(const ValueKey('project-unlink-C-B')), findsNothing);
-    expect(
-      find.byTooltip('C depends on A. Edit links in the inspector.'),
-      findsOneWidget,
-    );
-    expect(
-      find.byTooltip('C depends on B. Edit links in the inspector.'),
-      findsOneWidget,
-    );
+    expect(find.byTooltip('C depends on A. Hover to unlink.'), findsOneWidget);
+    expect(find.byTooltip('C depends on B. Hover to unlink.'), findsOneWidget);
 
     final branchBeforeHover = await _paintRail(tester, 'C');
     final branchX = branchBeforeHover.width - 3;
@@ -470,6 +478,8 @@ void main() {
       ),
     );
     await tester.pump();
+    expect(find.byKey(const ValueKey('project-unlink-C-B')), findsOneWidget);
+    expect(find.byKey(const ValueKey('project-unlink-C-A')), findsNothing);
     final branchAfterHover = await _paintRail(tester, 'C');
     expect(
       _railPixel(branchAfterHover, branchX, firstBranchY),
@@ -570,9 +580,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('inspector chips remove one rail link without unlink buttons', (
+  testWidgets('hovered rail button unlinks one dependency with Undo', (
     tester,
   ) async {
+    final tasks = [
+      _task('A'),
+      _task('B'),
+      _task('C', dependencies: ['A', 'B']),
+    ];
+    final container = await _pumpProjects(tester, tasks, guest: true);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(
+      location: tester.getCenter(
+        find.byKey(const ValueKey('project-link-C-A')),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('project-unlink-C-A')));
+    await tester.pumpAndSettle();
+
+    expect(tasks[2].dependencies, ['B']);
+    expect(find.byKey(const ValueKey('project-link-C-A')), findsNothing);
+    expect(find.byKey(const ValueKey('project-link-C-B')), findsOneWidget);
+    final notification = container.read(appNotificationProvider)!;
+    expect(notification.actionLabel, 'Undo');
+    await notification.onAction!();
+    await tester.pumpAndSettle();
+    expect(tasks[2].dependencies, containsAll(['A', 'B']));
+    expect(find.byKey(const ValueKey('project-link-C-A')), findsOneWidget);
+    await mouse.removePointer();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inspector chips remove one rail link', (tester) async {
     final tasks = [
       _task('A'),
       _task('B'),
@@ -1276,16 +1316,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Archive Task explains Guest mode restrictions', (tester) async {
-    final guestTasks = [_task('Guest Task')];
+  testWidgets('Delete Task permanently removes a Guest task and its links', (
+    tester,
+  ) async {
+    final guestTasks = [
+      _task('Guest Task'),
+      _task('Dependent', dependencies: ['Guest Task']),
+    ];
     final guestContainer = await _pumpProjects(tester, guestTasks, guest: true);
-    await _openTaskActions(tester, 'Guest Task', null);
-    await tester.tap(find.text('Archive Task'));
+    await _openTaskActions(tester, 'Guest Task', 1);
+    expect(find.text('Archive Task'), findsNothing);
+    await tester.tap(find.text('Delete Task'));
     await tester.pumpAndSettle();
     expect(guestTasks, hasLength(1));
+    expect(guestTasks.single.dependencies, isEmpty);
     expect(
       guestContainer.read(appNotificationProvider)!.message,
-      contains('signing in'),
+      'Guest Task deleted',
     );
     expect(tester.takeException(), isNull);
   });
