@@ -102,7 +102,7 @@ class _PaneResizeState {
 }
 
 /// Root widget for the "Three-Pane Command Center" layout: a persistent
-/// Left Rail, a horizontally scrolling Center Stage pipeline, and a Right
+/// Left Rail, a switchable Center Stage, and a Right
 /// Inspector, with responsive collapsing so no pane is ever squeezed below
 /// its minimum width (avoiding RenderFlex overflow).
 class CommandCenterScreen extends ConsumerStatefulWidget {
@@ -197,6 +197,24 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
               ),
             ],
           ),
+          action: notification.onAction == null
+              ? null
+              : SnackBarAction(
+                  label: notification.actionLabel!,
+                  onPressed: () async {
+                    try {
+                      await notification.onAction!();
+                    } on Exception catch (error) {
+                      if (!context.mounted) return;
+                      ref
+                          .read(appNotificationProvider.notifier)
+                          .state = AppNotification(
+                        'Could not ${notification.actionLabel!.toLowerCase()}: $error',
+                        icon: Icons.error_outline,
+                      );
+                    }
+                  },
+                ),
         ),
       );
   }
@@ -533,7 +551,7 @@ class _CommandCenterScreenState extends ConsumerState<CommandCenterScreen> {
                 value: ViewMode.projects,
                 label: isCompact ? null : const Text('Projects'),
                 icon: const Icon(Icons.folder_outlined, size: 16),
-                tooltip: 'Projects',
+                tooltip: 'Projects & Dependency Backlog',
               ),
             ],
             selected: {

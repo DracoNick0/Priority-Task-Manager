@@ -27,6 +27,7 @@ Use this file to find the canonical document for each topic. If a topic appears 
 | docs/CONSTRAINT_SOLVER.md | Constraint Solver specification and contract |
 | docs/COMPLEXITY_GUIDE.md | Complexity model reference |
 | docs/wireframes/README.md | Reference UI wireframes, ASCII layouts, and interaction mockups |
+| docs/wireframes/PROJECTS_BACKLOG_VIEW.md | Projects dependency backlog layout and interactions |
 
 ## Long-Lived Knowledge Documents
 | Document | Purpose |

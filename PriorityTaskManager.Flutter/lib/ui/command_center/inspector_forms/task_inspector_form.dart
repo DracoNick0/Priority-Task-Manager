@@ -9,10 +9,12 @@ import '../../../providers/selection_provider.dart';
 import '../../../providers/session_provider.dart';
 import '../../../providers/task_providers.dart';
 import '../../../providers/user_profile_provider.dart';
+import '../../../utils/dependency_graph_builder.dart';
 import '../../../utils/iterable_extensions.dart';
 import '../../../utils/task_date_constraints.dart';
 import '../../../utils/working_day_defaults.dart';
 import '../../theme/app_theme.dart';
+import '../link_existing_task_dialog.dart';
 import '../resizable_text_field.dart';
 import 'combined_date_time_picker.dart';
 import 'date_time_field.dart';
@@ -28,11 +30,13 @@ class TaskInspectorForm extends ConsumerStatefulWidget {
     required this.listId,
     this.taskId,
     this.initialTask,
+    this.initialDependencyId,
   });
 
   final String listId;
   final String? taskId;
   final TaskItem? initialTask;
+  final String? initialDependencyId;
 
   @override
   ConsumerState<TaskInspectorForm> createState() => _TaskInspectorFormState();
@@ -60,6 +64,7 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
   bool _appliedDefaultDueDate = false;
   DateTime? _defaultDueDate;
   bool _hasNoWorkingDayDefault = false;
+  bool _preserveDraftAfterDependencyChange = false;
   String? _titleError;
 
   bool get _isEditing => widget.taskId != null;
@@ -71,6 +76,9 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     _descriptionController = TextEditingController();
     _linkController = TextEditingController();
     _durationController = TextEditingController(text: '60');
+    if (widget.initialDependencyId != null) {
+      _selectedDependencyIds.add(widget.initialDependencyId!);
+    }
     final initialTask = widget.initialTask;
     if (initialTask?.isRecurringOccurrence == true) {
       _occurrenceLoadFuture = _loadAuthoritativeOccurrence(initialTask!);
@@ -86,6 +94,12 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
 
   void _loadFrom(TaskItem task) {
     if (identical(_loadedFrom, task)) return;
+    if (_preserveDraftAfterDependencyChange && _loadedFrom?.id == task.id) {
+      _preserveDraftAfterDependencyChange = false;
+      _loadedFrom = task;
+      _selectedDependencyIds = {...task.dependencies};
+      return;
+    }
     _loadedFrom = task;
     _titleController.text = task.title;
     _descriptionController.text = task.description;
@@ -120,6 +134,220 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
     if (_titleError != null && value.trim().isNotEmpty) {
       setState(() => _titleError = null);
     }
+  }
+
+  TaskItem? _taskById(List<TaskItem>? tasks, String id) {
+    if (tasks == null) return null;
+    for (final task in tasks) {
+      if (task.id == id) return task;
+    }
+    return null;
+  }
+
+  void _dependencyWarning(String message) {
+    ref.read(appNotificationProvider.notifier).state = AppNotification(
+      message,
+      icon: Icons.error_outline,
+    );
+  }
+
+  Future<void> _editDependency({
+    required String dependentId,
+    required String prerequisiteId,
+    required bool add,
+  }) async {
+    final provider = tasksProvider(widget.listId);
+    final tasks = ref.read(provider).asData?.value;
+    final dependent = _taskById(tasks, dependentId);
+    final prerequisite = _taskById(tasks, prerequisiteId);
+    if (tasks == null ||
+        dependent == null ||
+        dependent.listId != widget.listId ||
+        dependent.recurrenceRule != null ||
+        dependent.isRecurringOccurrence ||
+        (add &&
+            (prerequisite == null ||
+                prerequisite.listId != widget.listId ||
+                prerequisite.recurrenceRule != null ||
+                prerequisite.isRecurringOccurrence))) {
+      _dependencyWarning('Only one-off tasks in this list can be linked.');
+      return;
+    }
+    if (add &&
+        DependencyGraphBuilder.wouldCreateCycle(
+          tasks,
+          taskId: dependentId,
+          proposedDependencyId: prerequisiteId,
+        )) {
+      _dependencyWarning('This link would create a circular dependency.');
+      return;
+    }
+    final alreadyLinked = dependent.dependencies.contains(prerequisiteId);
+    if (alreadyLinked == add) {
+      _dependencyWarning(
+        add ? 'These tasks are already linked.' : 'This link no longer exists.',
+      );
+      return;
+    }
+
+    _preserveDraftAfterDependencyChange = true;
+    try {
+      await ref
+          .read(provider.notifier)
+          .updateTask(
+            dependent.copyWith(
+              dependencies: add
+                  ? [...dependent.dependencies, prerequisiteId]
+                  : dependent.dependencies
+                        .where((id) => id != prerequisiteId)
+                        .toList(),
+            ),
+          );
+      if (!mounted) return;
+      ref.read(appNotificationProvider.notifier).state = AppNotification(
+        add ? 'Dependency linked' : 'Dependency removed',
+        icon: add ? Icons.link : Icons.link_off,
+      );
+    } on Exception catch (error) {
+      _preserveDraftAfterDependencyChange = false;
+      if (!mounted) return;
+      _dependencyWarning('Could not update dependency: $error');
+    }
+  }
+
+  Future<void> _pickDependency(
+    List<TaskItem> tasks,
+    TaskItem? existing,
+    DependencyLinkDirection direction,
+  ) async {
+    final selected = await showLinkExistingTaskDialog(
+      context,
+      tasks: tasks,
+      task: existing,
+      direction: direction,
+      excludedIds: existing == null ? _selectedDependencyIds : const {},
+    );
+    if (!mounted || selected == null) return;
+    if (existing == null) {
+      final latest = ref.read(tasksProvider(widget.listId)).asData?.value;
+      final candidate = _taskById(latest, selected.id);
+      if (candidate == null ||
+          candidate.listId != widget.listId ||
+          candidate.recurrenceRule != null ||
+          candidate.isRecurringOccurrence) {
+        _dependencyWarning('This prerequisite is no longer available.');
+        return;
+      }
+      setState(() => _selectedDependencyIds.add(candidate.id));
+      return;
+    }
+    await _editDependency(
+      dependentId: direction == DependencyLinkDirection.prerequisite
+          ? existing.id
+          : selected.id,
+      prerequisiteId: direction == DependencyLinkDirection.prerequisite
+          ? selected.id
+          : existing.id,
+      add: true,
+    );
+  }
+
+  Widget _buildDependencySection(List<TaskItem> tasks, TaskItem? existing) {
+    final prerequisiteIds =
+        existing?.dependencies.toSet() ?? _selectedDependencyIds;
+    final byId = {for (final task in tasks) task.id: task};
+    final followUps = existing == null
+        ? const <TaskItem>[]
+        : tasks
+              .where(
+                (task) =>
+                    task.id != existing.id &&
+                    task.recurrenceRule == null &&
+                    !task.isRecurringOccurrence &&
+                    task.dependencies.contains(existing.id),
+              )
+              .toList();
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        Text('Prerequisites', style: textTheme.titleSmall),
+        Text('This task waits on...', style: textTheme.bodySmall),
+        if (existing != null)
+          Text('Links are saved immediately.', style: textTheme.bodySmall),
+        const SizedBox(height: AppTheme.spacingXs),
+        if (prerequisiteIds.isEmpty)
+          Text('No prerequisites linked.', style: textTheme.bodySmall),
+        Wrap(
+          spacing: AppTheme.spacingXs,
+          runSpacing: AppTheme.spacingXs,
+          children: [
+            for (final id in prerequisiteIds)
+              InputChip(
+                key: ValueKey('prerequisite-chip-$id'),
+                label: Text(byId[id]?.title ?? 'Unknown task ($id)'),
+                onDeleted: () {
+                  if (existing == null) {
+                    setState(() => _selectedDependencyIds.remove(id));
+                  } else {
+                    _editDependency(
+                      dependentId: existing.id,
+                      prerequisiteId: id,
+                      add: false,
+                    );
+                  }
+                },
+              ),
+          ],
+        ),
+        TextButton.icon(
+          key: const ValueKey('link-prerequisite'),
+          onPressed: () => _pickDependency(
+            tasks,
+            existing,
+            DependencyLinkDirection.prerequisite,
+          ),
+          icon: const Icon(Icons.link),
+          label: const Text('Link prerequisite...'),
+        ),
+        if (existing != null) ...[
+          const SizedBox(height: AppTheme.spacingSm),
+          Text('Follow-ups', style: textTheme.titleSmall),
+          Text('Tasks waiting on this task...', style: textTheme.bodySmall),
+          const SizedBox(height: AppTheme.spacingXs),
+          if (followUps.isEmpty)
+            Text('No follow-ups linked.', style: textTheme.bodySmall),
+          Wrap(
+            spacing: AppTheme.spacingXs,
+            runSpacing: AppTheme.spacingXs,
+            children: [
+              for (final followUp in followUps)
+                InputChip(
+                  key: ValueKey('follow-up-chip-${followUp.id}'),
+                  label: Text(followUp.title),
+                  onDeleted: () => _editDependency(
+                    dependentId: followUp.id,
+                    prerequisiteId: existing.id,
+                    add: false,
+                  ),
+                ),
+            ],
+          ),
+          TextButton.icon(
+            key: const ValueKey('link-follow-up'),
+            onPressed: () => _pickDependency(
+              tasks,
+              existing,
+              DependencyLinkDirection.followUp,
+            ),
+            icon: const Icon(Icons.link),
+            label: const Text('Link follow-up...'),
+          ),
+        ],
+        const SizedBox(height: AppTheme.spacingSm),
+      ],
+    );
   }
 
   Widget _buildRecurringTaskSettings() => Column(
@@ -243,9 +471,6 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
       return const Center(child: Text('Task not found.'));
     }
 
-    final candidateDependencies = tasks
-        .where((task) => task.id != widget.taskId)
-        .toList();
     final showRecurrenceControls =
         isAuthenticated &&
         (!_isEditing || existing?.recurrenceRule != null || _recurrenceEnabled);
@@ -282,6 +507,11 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
+        if (!_isEditing && widget.initialDependencyId != null)
+          Text(
+            'Follow-up to ${tasks.where((task) => task.id == widget.initialDependencyId).firstOrNull?.title ?? widget.initialDependencyId}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         const SizedBox(height: AppTheme.spacingMd),
         TextField(
           controller: _titleController,
@@ -363,6 +593,12 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           onChanged: (value) => setState(() => _complexity = value.round()),
         ),
         const SizedBox(height: AppTheme.spacingSm),
+        if (!_recurrenceEnabled &&
+            existing?.recurrenceRule == null &&
+            existing?.isRecurringOccurrence != true)
+          _buildDependencySection(tasks, existing)
+        else
+          const SizedBox.shrink(),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
@@ -433,49 +669,6 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
                   ),
                 ),
               ),
-              if (candidateDependencies.isNotEmpty &&
-                  !_recurrenceEnabled &&
-                  existing?.recurrenceRule == null) ...[
-                const SizedBox(height: AppTheme.spacingMd),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.account_tree_outlined,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: AppTheme.spacingXs),
-                    Text(
-                      'Dependencies',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.spacingSm),
-                Wrap(
-                  spacing: AppTheme.spacingSm,
-                  runSpacing: AppTheme.spacingSm,
-                  children: [
-                    for (final candidate in candidateDependencies)
-                      FilterChip(
-                        label: Text(candidate.title),
-                        selected: _selectedDependencyIds.contains(candidate.id),
-                        onSelected: (checked) {
-                          setState(() {
-                            if (checked) {
-                              _selectedDependencyIds.add(candidate.id);
-                            } else {
-                              _selectedDependencyIds.remove(candidate.id);
-                            }
-                          });
-                        },
-                      ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -612,80 +805,67 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
       );
       return;
     }
+    final latestTasks = ref.read(tasksProvider(widget.listId)).asData?.value;
+    if (latestTasks == null) {
+      _dependencyWarning('Could not validate tasks in this list. Try again.');
+      return;
+    }
+    if (existing != null &&
+        !existing.isRecurringOccurrence &&
+        existing.recurrenceRule == null) {
+      existing = _taskById(latestTasks, existing.id);
+      if (existing == null) {
+        _dependencyWarning('This task is no longer available.');
+        return;
+      }
+    }
+    final dependencyIds =
+        existing?.dependencies.toSet() ?? _selectedDependencyIds;
+    if ((_recurrenceEnabled || _recurrenceRule != null) &&
+        (dependencyIds.isNotEmpty ||
+            (existing != null &&
+                latestTasks.any(
+                  (task) => task.dependencies.contains(existing!.id),
+                )))) {
+      _dependencyWarning(
+        'Remove dependency links before making this task recurring.',
+      );
+      return;
+    }
+    for (final id in dependencyIds) {
+      final prerequisite = _taskById(latestTasks, id);
+      if (prerequisite == null ||
+          prerequisite.listId != widget.listId ||
+          prerequisite.recurrenceRule != null ||
+          prerequisite.isRecurringOccurrence) {
+        _dependencyWarning('A prerequisite is no longer a one-off task.');
+        return;
+      }
+      if (existing != null &&
+          DependencyGraphBuilder.wouldCreateCycle(
+            latestTasks,
+            taskId: existing.id,
+            proposedDependencyId: id,
+          )) {
+        _dependencyWarning('This link would create a circular dependency.');
+        return;
+      }
+    }
     final notBeforeWasCleared = _clearInvalidNotBefore(
       durationMinutes: duration,
       showWarning: false,
     );
     final notifier = ref.read(tasksProvider(widget.listId).notifier);
 
-    if (existing == null) {
-      await notifier.addTask(
-        title: title,
-        description: _descriptionController.text.trim(),
-        link: _linkController.text.trim(),
-        dueDate: _dueDate,
-        estimatedDurationMinutes: duration,
-        notBefore: _notBefore,
-        importance: _importance,
-        complexity: _complexity,
-        isPinned: _isPinned,
-        isDivisible: _isDivisible,
-        dependencies: _recurrenceRule == null
-            ? _selectedDependencyIds.toList()
-            : const [],
-        recurrenceRule: _recurrenceRule,
-        progressionMode: _progressionMode,
-        showMissedIndicator: _showMissedIndicator,
-        trackStreak: _trackStreak,
-      );
-    } else if (existing.isRecurringOccurrence ||
-        existing.recurrenceRule != null) {
-      final target = await showRecurrenceEditTargetDialog(
-        context,
-        isDelete: false,
-        allOccurrencesLabel: 'Whole series',
-      );
-      if (target == null) return;
-      await notifier.editTaskOccurrence(
-        seriesId: existing.seriesId ?? existing.id,
-        occurrenceDate:
-            existing.occurrenceDate ?? existing.recurrenceRule!.seriesStartDate,
-        title: title,
-        description: _descriptionController.text.trim(),
-        link: _linkController.text.trim(),
-        dueDate: _dueDate,
-        notBefore: _notBefore,
-        estimatedDurationMinutes: duration,
-        importance: _importance,
-        complexity: _complexity,
-        isPinned: _isPinned,
-        isDivisible: _isDivisible,
-        target: target,
-        recurrenceRule: target == RecurrenceEditTarget.thisOccurrence
-            ? existing.recurrenceRule
-            : _recurrenceRule,
-        progressionMode: target == RecurrenceEditTarget.thisOccurrence
-            ? existing.progressionMode
-            : _progressionMode,
-        requiredCompletions: existing.requiredCompletions,
-        showMissedIndicator: target == RecurrenceEditTarget.thisOccurrence
-            ? existing.showMissedIndicator
-            : _showMissedIndicator,
-        trackStreak: target == RecurrenceEditTarget.thisOccurrence
-            ? existing.trackStreak
-            : _trackStreak,
-      );
-    } else {
-      await notifier.updateTask(
-        existing.copyWith(
+    try {
+      if (existing == null) {
+        await notifier.addTask(
           title: title,
           description: _descriptionController.text.trim(),
           link: _linkController.text.trim(),
           dueDate: _dueDate,
-          clearDueDate: _dueDate == null,
           estimatedDurationMinutes: duration,
           notBefore: _notBefore,
-          clearNotBefore: _notBefore == null,
           importance: _importance,
           complexity: _complexity,
           isPinned: _isPinned,
@@ -697,8 +877,72 @@ class _TaskInspectorFormState extends ConsumerState<TaskInspectorForm> {
           progressionMode: _progressionMode,
           showMissedIndicator: _showMissedIndicator,
           trackStreak: _trackStreak,
-        ),
-      );
+        );
+      } else if (existing.isRecurringOccurrence ||
+          existing.recurrenceRule != null) {
+        final target = await showRecurrenceEditTargetDialog(
+          context,
+          isDelete: false,
+          allOccurrencesLabel: 'Whole series',
+        );
+        if (target == null) return;
+        await notifier.editTaskOccurrence(
+          seriesId: existing.seriesId ?? existing.id,
+          occurrenceDate:
+              existing.occurrenceDate ??
+              existing.recurrenceRule!.seriesStartDate,
+          title: title,
+          description: _descriptionController.text.trim(),
+          link: _linkController.text.trim(),
+          dueDate: _dueDate,
+          notBefore: _notBefore,
+          estimatedDurationMinutes: duration,
+          importance: _importance,
+          complexity: _complexity,
+          isPinned: _isPinned,
+          isDivisible: _isDivisible,
+          target: target,
+          recurrenceRule: target == RecurrenceEditTarget.thisOccurrence
+              ? existing.recurrenceRule
+              : _recurrenceRule,
+          progressionMode: target == RecurrenceEditTarget.thisOccurrence
+              ? existing.progressionMode
+              : _progressionMode,
+          requiredCompletions: existing.requiredCompletions,
+          showMissedIndicator: target == RecurrenceEditTarget.thisOccurrence
+              ? existing.showMissedIndicator
+              : _showMissedIndicator,
+          trackStreak: target == RecurrenceEditTarget.thisOccurrence
+              ? existing.trackStreak
+              : _trackStreak,
+        );
+      } else {
+        await notifier.updateTask(
+          existing.copyWith(
+            title: title,
+            description: _descriptionController.text.trim(),
+            link: _linkController.text.trim(),
+            dueDate: _dueDate,
+            clearDueDate: _dueDate == null,
+            estimatedDurationMinutes: duration,
+            notBefore: _notBefore,
+            clearNotBefore: _notBefore == null,
+            importance: _importance,
+            complexity: _complexity,
+            isPinned: _isPinned,
+            isDivisible: _isDivisible,
+            dependencies: existing.dependencies,
+            recurrenceRule: _recurrenceRule,
+            progressionMode: _progressionMode,
+            showMissedIndicator: _showMissedIndicator,
+            trackStreak: _trackStreak,
+          ),
+        );
+      }
+    } on Exception catch (error) {
+      if (!mounted) return;
+      _dependencyWarning('Could not save task: $error');
+      return;
     }
 
     if (!mounted) return;

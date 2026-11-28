@@ -11,24 +11,35 @@ enum InspectorKind { none, empty, task, event, list, defaults }
 /// A null [id] with a task or event kind means "create new".
 /// [InspectorKind.empty] opens the inspector's new-item choices.
 class InspectorTarget {
-  const InspectorTarget({required this.kind, this.id, this.task, this.event});
+  const InspectorTarget({
+    required this.kind,
+    this.id,
+    this.task,
+    this.event,
+    this.prerequisiteTaskId,
+  });
 
   const InspectorTarget.none()
     : kind = InspectorKind.none,
       id = null,
       task = null,
-      event = null;
+      event = null,
+      prerequisiteTaskId = null;
 
   const InspectorTarget.empty()
     : kind = InspectorKind.empty,
       id = null,
       task = null,
-      event = null;
+      event = null,
+      prerequisiteTaskId = null;
 
   final InspectorKind kind;
   final String? id;
   final TaskItem? task;
   final FixedEvent? event;
+
+  /// Preselects a prerequisite when opening a new follow-up task.
+  final String? prerequisiteTaskId;
 
   bool get isCreating =>
       kind != InspectorKind.none && kind != InspectorKind.empty && id == null;
@@ -39,11 +50,17 @@ class InspectorTarget {
       other.kind == kind &&
       other.id == id &&
       identical(other.task, task) &&
-      identical(other.event, event);
+      identical(other.event, event) &&
+      other.prerequisiteTaskId == prerequisiteTaskId;
 
   @override
-  int get hashCode =>
-      Object.hash(kind, id, identityHashCode(task), identityHashCode(event));
+  int get hashCode => Object.hash(
+    kind,
+    id,
+    identityHashCode(task),
+    identityHashCode(event),
+    prerequisiteTaskId,
+  );
 }
 
 /// Drives which entity (task/event/list) the Right Inspector currently shows.
